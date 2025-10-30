@@ -1,0 +1,16 @@
+# Test Plan: {Feature Name}
+
+## Unit Tests
+- Case 1: ...
+- Case 2: ...
+- Edge: ...
+
+## Integration Tests
+- Main flow: ...
+- Failure modes: ...
+
+## Manual Checklist
+- Steps for manual verification
+
+## Coverage Targets
+- Coverage goals and remaining gaps
