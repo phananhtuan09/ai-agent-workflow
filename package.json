@@ -5,7 +5,7 @@
   "bin": {
     "ai-workflow-init": "./cli.js"
   },
-  "author": "your-name",
+  "author": "tuanpa",
   "license": "MIT",
   "repository": {
     "type": "git",
