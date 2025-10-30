@@ -1,6 +1,6 @@
 {
   "name": "ai-workflow-init",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Initialize AI workflow docs & commands into any repo with one command",
   "bin": {
     "ai-workflow-init": "./cli.js"
@@ -12,7 +12,13 @@
     "url": "git+https://github.com/phananhtuan09/ai-agent-workflow.git"
   },
   "homepage": "https://github.com/phananhtuan09/ai-agent-workflow#readme",
-  "keywords": ["ai", "workflow", "docs", "degit", "init"],
+  "keywords": [
+    "ai",
+    "workflow",
+    "docs",
+    "degit",
+    "init"
+  ],
   "dependencies": {
     "degit": "^2.8.4"
   },
