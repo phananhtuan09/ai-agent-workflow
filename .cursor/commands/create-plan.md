@@ -43,9 +43,8 @@ Then collect inputs (after Q&A):
 ## Step 2: Load Templates
 **Before creating docs, read the following files:**
 - `docs/ai/planning/feature-template.md` - Template structure to follow
-- `docs/ai/testing/feature-template.md` - Template structure for test plan skeleton
 
-These templates define the required structure and format. Use them as the baseline for creating feature docs.
+This template defines the required structure and format. Use it as the baseline for creating the planning doc.
 
 ## Step 3: Draft the Plan (auto-generate)
 Using the Q&A results and templates, immediately generate the plan without asking for confirmation.
@@ -55,11 +54,10 @@ Auto-name feature:
 - Example: "Login Page (HTML/CSS)" → `feature-login-page`.
 - If a file with the same name already exists, append a numeric suffix: `feature-{name}-2`, `feature-{name}-3`, ...
 
-Create the following files automatically and populate initial content:
+Create the following file automatically and populate initial content:
 - `docs/ai/planning/feature-{name}.md` - Use structure from `feature-template.md`
-- `docs/ai/testing/feature-{name}.md` - Use structure from testing `feature-template.md` (skeleton)
 
-Do NOT create the implementation file at this step.
+Do NOT create the implementation or testing files at this step.
 Notify the user when done.
 
 Produce a Markdown doc following the template structure:
@@ -69,3 +67,4 @@ Produce a Markdown doc following the template structure:
 
 ## Step 4: Next Actions
 Suggest running `execute-plan` to begin task execution.
+Note: Test documentation will be created separately using the `writing-test` command.

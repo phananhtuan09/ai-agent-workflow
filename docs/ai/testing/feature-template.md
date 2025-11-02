@@ -1,16 +1,48 @@
 # Test Plan: {Feature Name}
 
+## Test Files Created
+- `path/to/test-file.spec.js` - Tests for [component/function]
+- `path/to/another-test.spec.js` - Tests for [component/function]
+
 ## Unit Tests
-- Case 1: ...
-- Case 2: ...
-- Edge: ...
 
-## Integration Tests
-- Main flow: ...
-- Failure modes: ...
+### Function/Component Name
+- ✓ Happy path: normal parameters → expected output
+- ✓ Edge case: empty/null input → handled correctly  
+- ✓ Edge case: boundary values (min/max, 0, -1) → handled correctly
+- ✓ Parameter variation: [param1]=X, [param2]=Y → output Z
+- ✓ Error case: invalid input → throws/returns error
+- ✓ Type safety: wrong type input → handled correctly
+- ✓ Property-based: [property] maintained → verified
 
-## Manual Checklist
-- Steps for manual verification
+### Another Function/Component
+- [Similar test cases...]
+
+## Run Command
+```bash
+npm test
+# or
+npx vitest run
+# or language-specific command
+```
+
+## Last Run Results
+- Total: 15 tests
+- Passed: 14
+- Failed: 1
+- Skipped: 0
+- Coverage:
+  - Lines: 82% (123/150)
+  - Branches: 75% (30/40)
+  - Functions: 90% (18/20)
 
 ## Coverage Targets
-- Coverage goals and remaining gaps
+- Target: 80% (lines), 70% (branches)
+- Current: 82% (lines), 75% (branches)
+- Status: ✓ Targets met
+
+## Notes
+- All tests run automatically via command line
+- Test results logged to terminal with detailed output
+- Focus on logic testing, edge cases, and parameter variations
+- No complex integration or UI rendering tests
