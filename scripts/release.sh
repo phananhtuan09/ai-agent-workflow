@@ -112,13 +112,43 @@ $release_msg"
 
 # Create git tag
 print_step "Creating git tag v$new_version..."
-git tag -a "v$new_version" -m "$release_msg"
-print_success "Tag created: v$new_version"
 
-# Push to GitHub (including tags)
+# Check if tag already exists locally
+if git rev-parse -q --verify "v$new_version" > /dev/null 2>&1; then
+    print_warning "Tag v$new_version already exists locally."
+    read -p "Do you want to overwrite it? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        git tag -d "v$new_version"
+        git tag -a "v$new_version" -m "$release_msg"
+        print_success "Tag recreated: v$new_version"
+    else
+        print_error "Cannot proceed with existing tag. Please delete it first or choose a different version."
+        exit 1
+    fi
+else
+    git tag -a "v$new_version" -m "$release_msg"
+    print_success "Tag created: v$new_version"
+fi
+
+# Push to GitHub
 print_step "Pushing to GitHub..."
 git push origin $current_branch
-git push origin --tags
+
+# Push only the new tag, not all tags
+print_step "Pushing tag v$new_version..."
+if git push origin "v$new_version" 2>/dev/null; then
+    print_success "Tag v$new_version pushed to GitHub"
+else
+    # Check if tag already exists on remote
+    if git ls-remote --tags origin "v$new_version" > /dev/null 2>&1; then
+        print_warning "Tag v$new_version already exists on remote. Skipping tag push."
+    else
+        print_error "Failed to push tag. Please check your git remote configuration."
+        exit 1
+    fi
+fi
+
 print_success "Pushed to GitHub"
 
 # Ask if user wants to publish to npm

@@ -179,13 +179,52 @@ async function main() {
 
   // Create git tag
   printStep(`Creating git tag v${newVersion}...`);
-  runCommand(`git tag -a "v${newVersion}" -m "${releaseMsg}"`);
-  printSuccess(`Tag created: v${newVersion}`);
+  
+  // Check if tag already exists locally
+  let tagExists = false;
+  try {
+    execSync(`git rev-parse -q --verify "v${newVersion}"`, { stdio: 'pipe' });
+    tagExists = true;
+  } catch {
+    tagExists = false;
+  }
+
+  if (tagExists) {
+    printWarning(`Tag v${newVersion} already exists locally.`);
+    const overwrite = await question('Do you want to overwrite it? (y/n) ');
+    if (overwrite.toLowerCase() === 'y') {
+      runCommand(`git tag -d "v${newVersion}"`);
+      runCommand(`git tag -a "v${newVersion}" -m "${releaseMsg}"`);
+      printSuccess(`Tag recreated: v${newVersion}`);
+    } else {
+      printError('Cannot proceed with existing tag. Please delete it first or choose a different version.');
+      process.exit(1);
+    }
+  } else {
+    runCommand(`git tag -a "v${newVersion}" -m "${releaseMsg}"`);
+    printSuccess(`Tag created: v${newVersion}`);
+  }
 
   // Push to GitHub
   printStep('Pushing to GitHub...');
   runCommand(`git push origin ${currentBranch}`);
-  runCommand('git push origin --tags');
+  
+  // Push only the new tag, not all tags
+  printStep(`Pushing tag v${newVersion}...`);
+  try {
+    execSync(`git push origin "v${newVersion}"`, { stdio: 'pipe' });
+    printSuccess(`Tag v${newVersion} pushed to GitHub`);
+  } catch {
+    // Check if tag already exists on remote
+    try {
+      execSync(`git ls-remote --tags origin "v${newVersion}"`, { stdio: 'pipe' });
+      printWarning(`Tag v${newVersion} already exists on remote. Skipping tag push.`);
+    } catch {
+      printError('Failed to push tag. Please check your git remote configuration.');
+      process.exit(1);
+    }
+  }
+  
   printSuccess('Pushed to GitHub');
 
   // Ask about npm publish
