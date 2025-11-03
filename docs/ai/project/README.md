@@ -41,11 +41,17 @@ Both files can be edited manually at any time. They are marked with a note indic
 
 ## Usage in Workflow
 
+### Development Workflow (4 phases)
+1) Plan: define goals, scope, and Acceptance Criteria; create a todo checklist from the plan before any coding.
+2) Implementation: make small, shippable edits; provide status updates before actions; perform edits via file editing tools.
+3) Testing: cover main and edge flows; run linter/type/build on changed files and auto-fix issues (up to 3 attempts).
+4) Review: self-review; when todos are done and checks pass, provide a concise summary and ship.
+
 ### Code Review
-The `code-review` command strictly checks code against these two standards:
-- Only reports violations of explicit rules
-- Does not provide design opinions or performance guesses
-- Focuses on conformance to standards
+The `code-review` command checks conformance to these standards and project structure:
+- Reports violations of explicit rules
+- Avoids subjective design opinions or performance guesses
+- Focuses on adherence to conventions and structure
 
 ### Implementation
 When implementing features (`execute-plan`), follow these standards:
@@ -58,6 +64,13 @@ When implementing features (`execute-plan`), follow these standards:
 - Feature planning: `../planning/`
 - Implementation notes: `../implementation/`
 - Test plans: `../testing/`
+
+## Navigation
+- Code conventions: `CODE_CONVENTIONS.md`
+- Project structure: `PROJECT_STRUCTURE.md`
+- Planning template: `../planning/feature-template.md`
+- Implementation template: `../implementation/feature-template.md`
+- Testing template: `../testing/feature-template.md`
 
 ---
 

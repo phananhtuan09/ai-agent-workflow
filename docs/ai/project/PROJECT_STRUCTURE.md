@@ -17,6 +17,12 @@
 - Import/module conventions
 - Config & secrets handling (if applicable)
 
+## AI Docs Roles (existing only)
+- `docs/ai/project/`: repository-wide conventions and structure; workflow overview and navigation live in `README.md`.
+- `docs/ai/planning/`: feature plans using `feature-template.md` with Acceptance Criteria; plans should drive a todo checklist before coding.
+- `docs/ai/implementation/`: per-feature implementation notes tracking what changed and why.
+- `docs/ai/testing/`: per-feature test plans and results; include quality checks and coverage targets.
+
 ## Guiding Questions (for AI regeneration)
 - How is the codebase organized by domain/feature vs layers?
 - What are the module boundaries and dependency directions to preserve?

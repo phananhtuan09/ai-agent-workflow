@@ -34,9 +34,15 @@ Analyze repository to infer:
   - Other architectural patterns
 
 ## Step 3: Draft Standards
-Generate two documents:
+Generate two documents (with template preload):
 
 ### CODE_CONVENTIONS.md
+- Template preload (in order, if present):
+  1) `docs/ai/project/template-convention/common.md` — always preload first.
+  2) `docs/ai/project/template-convention/javascript.md` — preload if the repository primarily uses JavaScript/TypeScript.
+  3) `docs/ai/project/template-convention/react.md` — preload if the repository uses React (detect via dependencies like `react`, file patterns like `.jsx/.tsx`, or imports from `react`).
+  
+  These templates take precedence and should appear at the top of the generated document, followed by auto-discovered rules.
 - Naming conventions (variables, functions, classes, constants)
 - Import order and grouping
 - Formatting tools (ESLint/Prettier/etc.) if detected
@@ -60,6 +66,7 @@ Generate two documents:
   - `docs/ai/project/CODE_CONVENTIONS.md`
   - `docs/ai/project/PROJECT_STRUCTURE.md`
 - Add header note: "This document is auto-generated from codebase analysis + brief Q&A. Edit manually as needed."
+- If template files exist, ensure the generated `CODE_CONVENTIONS.md` starts with their merged content in the preload order above, then append auto-discovered rules.
 
 ## Step 5: Next Actions
 - Suggest running `code-review` to validate new standards are being followed

@@ -12,3 +12,8 @@
 
 ## Follow-ups
 - TODOs or deferred work
+
+## Execution Discipline
+- Before each edit, provide a short status update describing the next action (1–3 sentences).
+- Perform edits via file editing tools; avoid printing large code blocks for copy-paste.
+- After each batch of edits, run linter/type/build on changed files; auto-fix issues (up to 3 attempts) before requesting review.

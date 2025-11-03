@@ -46,3 +46,12 @@ npx vitest run
 - Test results logged to terminal with detailed output
 - Focus on logic testing, edge cases, and parameter variations
 - No complex integration or UI rendering tests
+
+## Quality Checks
+- Linter: pass on changed files
+- Type checks: pass
+- Build: green
+
+## Process
+- After each batch of implementation edits, run linter/type/build on changed files.
+- Auto-fix linter issues (up to 3 attempts) before requesting review.

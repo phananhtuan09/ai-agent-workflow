@@ -33,6 +33,11 @@ Implementation docs serve as:
 - **Review reference**: For code-review and check-implementation commands
 - **Refactor guide**: Understanding what was done for future improvements
 
+### Execution Discipline
+- Provide a short status update before each meaningful action (1–3 sentences).
+- Perform edits via file editing tools; avoid printing large code for copy-paste.
+- After each batch of edits, run linter/type/build on changed files; auto-fix issues (up to 3 attempts) before requesting review.
+
 ## Template Reference
 See `feature-template.md` for the exact structure required for implementation notes.
 

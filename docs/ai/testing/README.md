@@ -87,6 +87,13 @@ See `feature-template.md` for the exact structure required for test plans.
 - Implementation notes: `../implementation/`
 - Project standards: `../project/`
 
+## Validation Requirements
+- After each batch of implementation edits, run:
+  - Linter on changed files (must pass; auto-fix up to 3 attempts)
+  - Type checks (must pass)
+  - Build (must be green)
+- Map test cases to the feature's Acceptance Criteria.
+
 ---
 
 **Note**: For complex E2E tests, performance testing, or bug tracking strategies, document these separately or in project-level documentation. The `writing-test` command focuses on automated, logic-focused testing that AI agents excel at.

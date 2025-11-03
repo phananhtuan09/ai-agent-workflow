@@ -24,6 +24,10 @@ Each feature plan follows the template structure:
 - **Risks/Assumptions**: Key risks and assumptions
 - **Metrics / Definition of Done**: Completion criteria (build/test/review/docs)
 
+### From Plan to Execution (Todos)
+- After the plan is written, generate an execution todo checklist from the plan.
+- Do not start Implementation until the todo list exists and is agreed.
+
 ### Feature Plan Naming Convention
 - Format: `feature-{name}.md` (kebab-case)
 - Example: `feature-user-authentication.md`
