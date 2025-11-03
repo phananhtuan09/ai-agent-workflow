@@ -61,12 +61,38 @@ Generate two documents (with template preload):
 - Test placement and naming conventions
 - Config/secrets handling summary
 
-## Step 4: Persist
-- Overwrite or create:
+## Step 4: Persist (Update-in-place, Non-destructive)
+- Target files:
   - `docs/ai/project/CODE_CONVENTIONS.md`
   - `docs/ai/project/PROJECT_STRUCTURE.md`
 - Add header note: "This document is auto-generated from codebase analysis + brief Q&A. Edit manually as needed."
-- If template files exist, ensure the generated `CODE_CONVENTIONS.md` starts with their merged content in the preload order above, then append auto-discovered rules.
+- Do NOT blindly overwrite entire files. Update only the managed blocks using markers:
+
+### Managed Block Markers
+Use these exact markers to wrap generated content:
+```
+<!-- GENERATED: CODE_CONVENTIONS:START -->
+... generated content ...
+<!-- GENERATED: CODE_CONVENTIONS:END -->
+```
+```
+<!-- GENERATED: PROJECT_STRUCTURE:START -->
+... generated content ...
+<!-- GENERATED: PROJECT_STRUCTURE:END -->
+```
+
+### Update Rules
+1) If the target file exists and contains the corresponding markers, replace only the content between START/END with the newly generated content.
+2) If the file exists but does not contain markers, append a new managed block to the end of the file (preserve all existing manual content).
+3) If the file does not exist, create it with the header note and a single managed block.
+4) Never modify content outside the managed blocks.
+
+### Generated Content Order (for CODE_CONVENTIONS)
+- Merge templates in preload order (when present):
+  1) `docs/ai/project/template-convention/common.md`
+  2) `docs/ai/project/template-convention/javascript.md` (when JS/TS repo)
+  3) `docs/ai/project/template-convention/react.md` (when React is detected)
+- After the merged templates, append auto-discovered rules from the codebase analysis.
 
 ## Step 5: Next Actions
 - Suggest running `code-review` to validate new standards are being followed

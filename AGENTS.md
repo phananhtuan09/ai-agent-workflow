@@ -13,6 +13,7 @@
 ## Communication
 - Use Markdown only when necessary; use backticks for `files/dirs/functions/classes`.
 - Provide status updates before/after important actions; provide a high-signal summary at completion.
+- Mirror the user's chat language in responses (respond in the user's language); default to English if the user's language is unclear or ambiguous.
 
 ## Code presentation
 - Existing code: cite using a code reference block with `startLine:endLine:filepath` (no language tag).
