@@ -90,8 +90,9 @@ Use these exact markers to wrap generated content:
 ### Generated Content Order (for CODE_CONVENTIONS)
 - Merge templates in preload order (when present):
   1) `docs/ai/project/template-convention/common.md`
-  2) `docs/ai/project/template-convention/javascript.md` (when JS/TS repo)
+  2) `docs/ai/project/template-convention/javascript.md` (when JS/TS detected)
   3) `docs/ai/project/template-convention/react.md` (when React is detected)
+  4) `docs/ai/project/template-convention/typescript.md.md` (when TS is detected)
 - After the merged templates, append auto-discovered rules from the codebase analysis.
 
 ## Step 5: Next Actions
