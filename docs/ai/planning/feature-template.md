@@ -1,5 +1,7 @@
 # Plan: {Feature Name}
 
+Note: All content in this document must be written in English.
+
 ## Goal
 - Objectives, scope, acceptance criteria (Given-When-Then)
 

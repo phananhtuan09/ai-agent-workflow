@@ -9,13 +9,15 @@ Initialize a new chat by loading and aligning to `AGENTS.md` so the AI agent con
 
 ## Steps
 1) Open and read `AGENTS.md` (project root).
-2) Produce a short confirmation in the chat including:
+2) Detect project languages/frameworks/libraries from repository metadata (e.g., `package.json`, `pyproject.toml`, lockfiles, config files). Update `docs/ai/project/CODE_CONVENTIONS.md` to include any missing key coding conventions (only important items like React, TypeScript, TailwindCSS, etc.).
+3) Read files in `docs/ai/project/` to understand project context and standards.
+4) Produce a short confirmation in the chat including:
    - Workflow alignment: Plan → Implement → Test → Review
    - Tooling strategy: semantic search first; parallelize independent steps
    - Communication: minimal Markdown; status updates; high-signal summaries; mirror user language (default English if unclear)
    - Code presentation: code references for existing code; fenced blocks for new code
    - TODO policy: create/update todos; keep only one `in_progress`
-3) If any section is missing or unclear, ask a single concise clarification question; otherwise proceed silently in future commands.
+5) If any section is missing or unclear, ask a single concise clarification question; otherwise proceed silently in future commands.
 
 ## Output format (concise)
 - Use the language of the triggering user message (mirror). If ambiguous, use English.

@@ -54,7 +54,13 @@ If creating implementation doc for first task:
   - `## Follow-ups` - TODOs or deferred work
 - Follow the template format strictly
 
-## Step 5: Next Actions
+## Step 5: Quality Checks
+After completing Step 4 for each task batch:
+- Run linting on changed files (e.g., `eslint` if JavaScript/TypeScript project).
+- Run type checks if applicable (e.g., `tsc --noEmit`).
+- Fix issues (up to 3 attempts) before proceeding to the next task.
+
+## Step 6: Next Actions
 After completing tasks:
 - Suggest running `code-review` to verify against standards
 - Suggest running `writing-test` if edge cases need coverage

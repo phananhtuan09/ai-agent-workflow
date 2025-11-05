@@ -1,5 +1,7 @@
 # Implementation Notes: {Feature Name}
 
+Note: All content in this document must be written in English.
+
 ## Summary
 - Short description of the solution approach
 
