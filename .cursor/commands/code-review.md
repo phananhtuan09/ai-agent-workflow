@@ -1,5 +1,9 @@
 You are helping me perform a local code review **before** I push changes. This review is restricted to standards conformance only.
 
+## Workflow Alignment
+- Provide brief status updates (1–3 sentences) before/after important actions.
+- Provide a high-signal summary at completion highlighting key findings and impact.
+
 ## Step 1: Gather Context (minimal)
 - Ask for feature name if not provided (must be kebab-case).
 - Then locate and read:
@@ -13,6 +17,15 @@ You are helping me perform a local code review **before** I push changes. This r
 - Review code strictly for violations against these two documents.
 - **Do NOT** provide design opinions, performance guesses, or alternative architectures.
 - **Do NOT** infer requirements beyond what standards explicitly state.
+
+### Automated Checks (recommended)
+- Detect tools from project config and run non-interactive checks:
+  - JS/TS: `npx eslint .` (or `pnpm eslint .`), consider `--max-warnings=0`; type checks with `npx tsc --noEmit`
+  - Python: `ruff .` or `flake8 .`; type checks with `mypy .` or `pyright`
+  - Go: `golangci-lint run` or `go vet ./...`
+  - Rust: `cargo clippy -- -D warnings`
+  - Java: `./gradlew check` or `mvn -q -DskipTests=false -Dspotbugs.failOnError=true verify`
+- Use results to focus the review; still report only clear violations per standards.
 
 ## Step 3: File-by-File Review (standards violations only)
 For every relevant file, report ONLY standards violations per the two docs above. Do not assess broader design or run git commands.

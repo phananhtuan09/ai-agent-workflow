@@ -1,12 +1,18 @@
 Use `docs/ai/testing/feature-{name}.md` as the source of truth.
 
+## Workflow Alignment
+- Provide brief status updates (1–3 sentences) before/after important actions.
+- For medium/large tasks, create todos (≤14 words, verb-led). Keep only one `in_progress` item.
+- Update todos immediately after progress; mark completed upon finish.
+- Default to parallel execution for independent operations; use sequential steps only when dependencies exist.
+
 ## Step 1: Gather Context (minimal)
 - Ask for feature name if not provided (must be kebab-case).
 - **Load template:** Read `docs/ai/testing/feature-template.md` to understand required structure.
 - Then locate docs by convention:
   - Planning: `docs/ai/planning/feature-{name}.md`
   - Implementation (optional): `docs/ai/implementation/feature-{name}.md`
-- **Detect test framework:** Check `package.json` and project structure to identify test framework (Vitest, Jest, Mocha, pytest, etc.)
+- **Detect test framework:** Check `package.json` and project structure to identify test framework (Vitest, Jest, Mocha, pytest, etc.). Auto-detect from `package.json` first; if no test runner found, create skeleton test and report missing runner.
 - **Load standards:** Read `docs/ai/project/PROJECT_STRUCTURE.md` for test file placement rules
 - **Load conventions:** Read `docs/ai/project/CODE_CONVENTIONS.md` for coding standards
 
@@ -115,12 +121,12 @@ describe('functionToTest', () => {
 ## Step 5: Run Tests with Logging (automatic)
 After generating test code:
 
-1. **Execute test command** based on detected framework:
-   - Vitest: `npm test` or `npx vitest run`
-   - Jest: `npm test` or `npx jest`
-   - Mocha: `npm test` or `npx mocha`
-   - pytest: `pytest` or `python -m pytest`
-   - Other: detect from `package.json` scripts
+1. **Execute test command** based on detected framework (use non-interactive flags):
+   - Vitest: `npm test` or `npx vitest run --run`
+   - Jest: `npm test` or `npx jest --ci`
+   - Mocha: `npm test` or `npx mocha --reporter spec`
+   - pytest: `pytest` or `python -m pytest -v`
+   - Other: detect from `package.json` scripts, add `--no-interactive` or equivalent flags
 
 2. **Capture and display output** in terminal with detailed logging:
    - Show test execution progress (which tests are running)
@@ -214,3 +220,5 @@ Ensure all required sections from template are present. Keep the document brief 
 - Test execution must show clear, detailed logging in terminal
 - AI excels at: edge case generation, parameter combinations, property-based testing, coverage analysis
 - Keep tests deterministic (avoid external dependencies, random values without seeds, time-dependent logic)
+- Creates test files only; does not edit non-test source files.
+- Idempotent: safe to re-run; appends entries or updates test doc deterministically.

@@ -9,7 +9,7 @@ Initialize a new chat by loading and aligning to `AGENTS.md` so the AI agent con
 
 ## Steps
 1) Open and read `AGENTS.md` (project root).
-2) Detect project languages/frameworks/libraries from repository metadata (e.g., `package.json`, `pyproject.toml`, lockfiles, config files). Update `docs/ai/project/CODE_CONVENTIONS.md` to include any missing key coding conventions (only important items like React, TypeScript, TailwindCSS, etc.).
+2) Detect project languages/frameworks/libraries from repository metadata (e.g., `package.json`, `pyproject.toml`, lockfiles, config files). If `docs/ai/project/CODE_CONVENTIONS.md` is missing, create a minimal generated stub capturing key conventions (e.g., React, TypeScript, TailwindCSS). If it already exists, do not modify; instead, report any detected gaps and suggest running the standards generator.
 3) Read files in `docs/ai/project/` to understand project context and standards.
 4) Produce a short confirmation in the chat including:
    - Workflow alignment: Plan → Implement → Test → Review
@@ -26,5 +26,5 @@ Initialize a new chat by loading and aligning to `AGENTS.md` so the AI agent con
 
 ## Notes
 - This command is idempotent—safe to re-run at the start of any chat.
-- It does not modify files; it only sets expectations for subsequent commands.
+- It does not modify existing files; it only sets expectations for subsequent commands and may create missing metadata files (e.g., initial `CODE_CONVENTIONS.md`) if required.
 

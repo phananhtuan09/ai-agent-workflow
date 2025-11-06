@@ -2,6 +2,11 @@
 ## Goal
 Generate a planning doc at `docs/ai/planning/feature-{name}.md` using the template, with minimal, actionable content aligned to the 4-phase workflow.
 
+## Workflow Alignment
+- Provide brief status updates (1–3 sentences) before/after important actions.
+- For medium/large tasks, create todos (≤14 words, verb-led). Keep only one `in_progress` item.
+- Update todos immediately after progress; mark completed upon finish.
+
 ## Step 1: Clarify Scope (Focused Q&A Guidelines)
 Purpose: the agent MUST generate a short, numbered Q&A for the user to clarify scope; keep it relevant, avoid off-topic, and do not build a static question bank.
 
@@ -68,3 +73,7 @@ Produce a Markdown doc following the template structure:
 ## Step 4: Next Actions
 Suggest running `execute-plan` to begin task execution.
 Note: Test documentation will be created separately using the `writing-test` command.
+
+## Notes
+- This command creates planning docs only; does not modify unrelated existing files.
+- Idempotent: safe to re-run; auto-appends numeric suffix if file exists.
