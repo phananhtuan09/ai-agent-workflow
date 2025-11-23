@@ -8,13 +8,35 @@ Note: All content in this document must be written in English.
 
 ## Changes
 
+### Phase 1: [Phase Name]
+
 - [ ] [ACTION] path/to/file (lines: x–y) — Summary of change
+  ```
+  Pseudo-code:
+  - function/logic outline
+  - key variables/state
+  ```
 - [ ] [ACTION] path/to/file (lines: a–b) — Summary of change
+  ```
+  Pseudo-code:
+  - logic structure
+  ```
+
+### Phase 2: [Phase Name]
+
+- [ ] [ACTION] path/to/file — Summary of change
+  ```
+  Pseudo-code:
+  - ...
+  ```
 
 Notes:
 
 - ACTION must be one of: ADDED | MODIFIED | DELETED | RENAMED
 - For MODIFIED files, use sub-bullets for each distinct logic change and include line ranges.
+- Pseudo-code shows logic structure and key steps, not actual implementation code.
+- Each phase groups related tasks; phases execute sequentially.
+- Use only one phase for small features (≤ 5 tasks); use multiple phases for larger features.
 
 ## Edge Cases
 

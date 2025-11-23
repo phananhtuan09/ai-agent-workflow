@@ -71,18 +71,55 @@ Auto-name feature:
 - Example: "Login Page (HTML/CSS)" → `feature-login-page`.
 - If a file with the same name already exists, append a numeric suffix: `feature-{name}-2`, `feature-{name}-3`, ...
 
-Create the following files automatically and populate initial content:
+### 3a: Generate Planning Doc
 
-- `docs/ai/planning/feature-{name}.md` - Use structure from `feature-template.md`
-- `docs/ai/implementation/feature-{name}.md` - Use structure from `docs/ai/implementation/feature-template.md` (read this template before writing)
+Produce a Markdown doc following `docs/ai/planning/feature-template.md`:
 
-Notify the user when done.
-
-Produce a Markdown doc following the template structure:
-
-- Match sections from `docs/ai/planning/feature-template.md`
+- Match sections from template
 - Fill in content from Q&A inputs
 - Ensure all required sections are present
+
+### 3b: Generate Implementation Doc with Phases
+
+Before creating implementation doc, read `docs/ai/implementation/feature-template.md` to understand phase structure.
+
+**Estimate phase scope**:
+- Count total tasks from planning doc
+- If tasks ≤ 5: use single phase named "Core Implementation"
+- If tasks 6–12: suggest 2–3 phases (group by feature area or dependency order)
+- If tasks > 12: suggest 3–5 phases; prioritize logical grouping
+
+**For each phase, generate**:
+- Phase name (descriptive, e.g., "Database Schema Setup", "API Endpoints", "UI Components")
+- Tasks list: `[ ] [ACTION] path/to/file — Summary`
+- Pseudo-code outline (show logic structure, not real code):
+  ```
+  Pseudo-code:
+  - [Step 1]: what will be done
+  - [Step 2]: validation or check
+  - [Step 3]: data storage/return
+  ```
+
+**Pseudo-code guidelines**:
+- Keep to 3–5 lines per task
+- Show inputs, key logic, outputs
+- Use natural language, not actual syntax
+- Example for "Create user endpoint":
+  ```
+  Pseudo-code:
+  - Parse username + password from request
+  - Validate password strength
+  - Hash password with bcrypt
+  - Store user in database
+  - Return success + user ID
+  ```
+
+Create the following files automatically:
+
+- `docs/ai/planning/feature-{name}.md` - Use structure from `feature-template.md`
+- `docs/ai/implementation/feature-{name}.md` - Use phase structure with pseudo-code per task
+
+Notify the user when done with summary: "Created plan with X phases: Phase 1 (name), Phase 2 (name), ..."
 
 ## Step 4: Next Actions
 

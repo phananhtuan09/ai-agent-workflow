@@ -21,14 +21,38 @@ Execute the feature plan by implementing tasks from the implementation doc and p
 - Load implementation doc: `docs/ai/implementation/feature-{name}.md`.
 - **Load template:** Read `docs/ai/implementation/feature-template.md` to understand required structure.
 
+### 1a: Phase Progress Detection
+
+If implementation doc exists, scan for phase markers (`### Phase X:`):
+
+- **Count total phases** in the document
+- **Detect last completed phase**: Find the highest phase where ALL tasks (checkbox `[x]`) are marked complete
+- **Detect current phase**: Find the first phase with incomplete tasks (`[ ]` marks)
+- **Show summary to user**:
+
+  ```
+  Found 3 phases.
+  - Phase 1 (Database Setup): Complete [x]
+  - Phase 2 (API Endpoints): In Progress [2/4 tasks done]
+  - Phase 3 (Frontend): Not Started
+
+  Resuming Phase 2...
+  ```
+
+If no phases detected (old format):
+
+- Treat entire "Changes" section as single phase (backward compatible)
+
 ## Step 2: Build Task Queue
 
-- Parse tasks (checkboxes `[ ]`, `[x]`) from the implementation doc:
-  - Primary source: `## Changes` section with `[ ] [ACTION] ...` entries.
+- Parse tasks (checkboxes `[ ]`, `[x]`) from **current phase only** (from phase detection in Step 1a):
+  - Primary source: Tasks under `### Phase X:` with `[ ] [ACTION] ...` entries (incomplete only).
   - For `[MODIFIED]` files, parse sub-bullets representing distinct logic items with line ranges.
-  - Optionally include other `[ ]` sections (e.g., `## Follow-ups`) if designated in-scope.
+  - **Skip completed phases** entirely (do not re-execute)
 - Build prioritized task queue (top-to-bottom unless dependencies block).
 - Identify blocked tasks and note reasons.
+
+Note: Do not include Follow-ups section unless explicitly in current phase.
 
 ## Step 3: Implement Iteratively (per task)
 
@@ -92,13 +116,36 @@ After completing Step 4 for each task batch:
   - Go/Rust/Java: rely on compiler/type system via build step
 - Parallelize lint and type-check when safe; fix issues (up to 3 attempts) before proceeding.
 
-## Step 6: Next Actions
+## Step 6: Phase Completion Check (NEW)
 
-After completing tasks:
+After completing all tasks in current phase:
+
+1. **Mark phase complete** in implementation doc (optional visual marker)
+2. **Check remaining phases**:
+   - If more incomplete phases exist:
+     ```
+     ✓ Phase 2 complete!
+     Ready for Phase 3 (Frontend)?
+     Run: /execute-plan
+     ```
+   - If this is final phase:
+     ```
+     ✓ All phases complete!
+     Ready for code review?
+     Run: /code-review
+     ```
+
+## Step 7: Next Actions
+
+After all phases complete:
 
 - Suggest running `code-review` to verify against standards
 - Suggest running `writing-test` if edge cases need coverage
 - Suggest running `check-implementation` to validate alignment with implementation entries
+
+If phases remain:
+
+- User runs `/execute-plan` again; Phase detection (Step 1a) will resume correctly
 
 ## Notes
 

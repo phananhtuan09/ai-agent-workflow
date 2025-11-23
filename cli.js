@@ -171,9 +171,10 @@ function askIDE() {
     console.log("\n🤖 Which AI tool(s) do you want to setup?");
     console.log("1. Cursor");
     console.log("2. GitHub Copilot");
-    console.log("3. Both");
+    console.log("3. Claude Code");
+    console.log("4. All");
 
-    rl.question("\nEnter your choice (1-3): ", (answer) => {
+    rl.question("\nEnter your choice (1-4): ", (answer) => {
       rl.close();
       resolve(answer.trim());
     });
@@ -182,11 +183,12 @@ function askIDE() {
 
 async function main() {
   const choice = await askIDE();
-  const installCursor = ["1", "3"].includes(choice);
-  const installCopilot = ["2", "3"].includes(choice);
+  const installCursor = ["1", "4"].includes(choice);
+  const installCopilot = ["2", "4"].includes(choice);
+  const installClaudeCode = ["3", "4"].includes(choice);
 
-  if (!["1", "2", "3"].includes(choice)) {
-    console.error("❌ Invalid choice. Please enter 1, 2, or 3.");
+  if (!["1", "2", "3", "4"].includes(choice)) {
+    console.error("❌ Invalid choice. Please enter 1, 2, 3, or 4.");
     process.exit(1);
   }
 
@@ -210,6 +212,15 @@ async function main() {
     }
     step("🚚 Downloading GitHub Copilot prompts (.github/prompts)...");
     run(`npx degit ${REPO}/.github/prompts .github/prompts --force`);
+  }
+
+  // Clone Claude Code commands (luôn ghi đè)
+  if (installClaudeCode) {
+    if (!existsSync(".claude/commands")) {
+      mkdirSync(".claude/commands", { recursive: true });
+    }
+    step("🚚 Downloading Claude Code commands (.claude/commands)...");
+    run(`npx degit ${REPO}/.claude/commands .claude/commands --force`);
   }
 
   // Clone Cursor prompts (luôn ghi đè)
