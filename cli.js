@@ -244,6 +244,13 @@ async function main() {
     } catch (_) {
       run(`wget -qO .claude/hooks.json ${RAW_BASE}/.claude/hooks.json`);
     }
+
+    // Download skills folder (always overwrite to get latest)
+    step("🚚 Downloading Claude Code skills (.claude/skills)...");
+    if (!existsSync(".claude/skills")) {
+      mkdirSync(".claude/skills", { recursive: true });
+    }
+    run(`npx degit ${REPO}/.claude/skills .claude/skills --force`);
   }
 
   // Clone Cursor prompts (luôn ghi đè)
