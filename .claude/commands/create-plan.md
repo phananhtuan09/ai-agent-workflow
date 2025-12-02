@@ -1,11 +1,11 @@
 ---
 name: create-plan
-description: Generates a feature planning doc and initializes the implementation doc.
+description: Generates a feature planning doc with implementation details.
 ---
 
 ## Goal
 
-Generate a planning doc at `docs/ai/planning/feature-{name}.md` using the template, with minimal, actionable content aligned to the 4-phase workflow. Also initialize the implementation doc at `docs/ai/implementation/feature-{name}.md` based on the implementation template.
+Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the template, with goal, acceptance criteria, risks, and detailed implementation phases with pseudo-code.
 
 ## Workflow Alignment
 
@@ -57,18 +57,17 @@ Then collect inputs (after Q&A):
 - High-level tasks overview (3–7 items)
 - Definition of Done (build/test/review/docs)
 
-## Step 2: Load Templates
+## Step 2: Load Template
 
-**Before creating docs, read the following files:**
+**Before creating the plan doc, read the following file:**
 
 - `docs/ai/planning/feature-template.md` - Template structure to follow
-- `docs/ai/implementation/feature-template.md` - Template structure to follow for the implementation doc
 
 This template defines the required structure and format. Use it as the baseline for creating the planning doc.
 
 ## Step 3: Draft the Plan (auto-generate)
 
-Using the Q&A results and templates, immediately generate the plan without asking for confirmation.
+Using the Q&A results and template, immediately generate the plan without asking for confirmation.
 
 Auto-name feature:
 
@@ -76,20 +75,20 @@ Auto-name feature:
 - Example: "Login Page (HTML/CSS)" → `feature-login-page`.
 - If a file with the same name already exists, append a numeric suffix: `feature-{name}-2`, `feature-{name}-3`, ...
 
-### 3a: Generate Planning Doc
+### Generate Single Planning Doc
 
-Produce a Markdown doc following `docs/ai/planning/feature-template.md`:
+Produce a Markdown doc following `docs/ai/planning/feature-template.md` with all 5 sections:
 
-- Match sections from template
-- Fill in content from Q&A inputs
-- Ensure all required sections are present
-
-### 3b: Generate Implementation Doc with Phases
-
-Before creating implementation doc, read `docs/ai/implementation/feature-template.md` to understand phase structure.
+1. **Goal & Acceptance Criteria**: Brief goal + Given-When-Then scenarios
+2. **Risks & Assumptions**: Known risks and key assumptions
+3. **Definition of Done**: Build/test/review/docs checklist
+4. **Implementation Plan**:
+   - Summary: Brief description of solution approach (1-3 sentences)
+   - Phases: Detailed tasks with pseudo-code
+5. **Follow-ups**: TODOs or deferred work
 
 **Estimate phase scope**:
-- Count total tasks from planning doc
+- Count total tasks from Q&A
 - If tasks ≤ 5: use single phase named "Core Implementation"
 - If tasks 6–12: suggest 2–3 phases (group by feature area or dependency order)
 - If tasks > 12: suggest 3–5 phases; prioritize logical grouping
@@ -119,19 +118,19 @@ Before creating implementation doc, read `docs/ai/implementation/feature-templat
   - Return success + user ID
   ```
 
-Create the following files automatically:
+Create the file automatically:
 
-- `docs/ai/planning/feature-{name}.md` - Use structure from `feature-template.md`
-- `docs/ai/implementation/feature-{name}.md` - Use phase structure with pseudo-code per task
+- `docs/ai/planning/feature-{name}.md` - Use complete structure from `feature-template.md`
 
 Notify the user when done with summary: "Created plan with X phases: Phase 1 (name), Phase 2 (name), ..."
 
 ## Step 4: Next Actions
 
-Suggest running `execute-plan` to begin task execution. Implementation work will be driven from `docs/ai/implementation/feature-{name}.md` as the task source.
+Suggest running `execute-plan` to begin task execution. Implementation work will be driven from `docs/ai/planning/feature-{name}.md` as the task source.
+
 Note: Test documentation will be created separately using the `writing-test` command.
 
 ## Notes
 
-- This command creates the planning doc and initializes the implementation doc; it does not modify unrelated existing files.
+- This command creates a single planning doc with both overview and implementation details.
 - Idempotent: safe to re-run; auto-appends numeric suffix if files exist.

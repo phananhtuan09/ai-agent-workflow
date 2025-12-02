@@ -1,9 +1,9 @@
 ---
 name: check-implementation
-description: Executes the implementation doc tasks, edits code, and persists notes.
+description: Validates implementation against planning doc.
 ---
 
-Compare current implementation against planning and implementation notes.
+Compare current implementation against planning doc.
 
 ## Workflow Alignment
 
@@ -13,18 +13,19 @@ Compare current implementation against planning and implementation notes.
 1. Ask me for:
 
 - Feature name (if not provided)
-- Then locate docs by feature name:
+- Then locate planning doc by feature name:
   - Planning: `docs/ai/planning/feature-{name}.md`
-  - Implementation (optional): `docs/ai/implementation/feature-{name}.md`
 
 2. Validation Scope (no inference):
 
 - Verify code follows the acceptance criteria from the planning doc
-- Verify code matches the steps/changes in the implementation notes (when present)
+- Verify code matches the steps/changes in the implementation plan phases
+- Check that completed tasks (marked `[x]`) have corresponding code changes
 - Do NOT invent or infer alternative logic beyond what the docs specify
 
 3. Output
 
-- List concrete mismatches between code and docs
-- List missing pieces the docs require but code lacks
+- List concrete mismatches between code and planning doc
+- List missing pieces the planning doc requires but code lacks
+- List tasks marked complete `[x]` but code not implemented
 - Short actionable next steps

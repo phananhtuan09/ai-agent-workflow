@@ -2,29 +2,68 @@
 
 Note: All content in this document must be written in English.
 
-## Goal
-- Objectives, scope, acceptance criteria (Given-When-Then)
+## 1. Goal & Acceptance Criteria
+
+### Goal
+- [Brief description: what problem this solves and why it matters]
 
 ### Acceptance Criteria (Given/When/Then)
-- Given ...
-- When ...
-- Then ...
+- Given [context or initial state]
+- When [action or event occurs]
+- Then [expected result or outcome]
 
-## Tasks (overview)
-- [ ] Task 1
-- [ ] Task 2
-- [ ] Task 3
+## 2. Risks & Assumptions
 
-## Risks/Assumptions
-- Key risks / assumptions
+### Risks
+- [Potential issues, blockers, or unknowns]
 
-## Observability
-- Logging requirements:
-- Metrics/telemetry:
+### Assumptions
+- [What we assume is true for this plan to work]
 
-## Metrics / Definition of Done
-- Build green, tests added, review passed, docs updated
+## 3. Definition of Done
+- [ ] Build passes (linter, type checks, compile)
+- [ ] Tests added and passing
+- [ ] Code reviewed and approved
+- [ ] Documentation updated
 
-## Execution Checklist (Todo)
-- Before starting implementation, generate a todo checklist from this plan.
-- Do not start coding until the todo list exists and is agreed.
+---
+
+## 4. Implementation Plan
+
+### Summary
+[Brief description of the solution approach in 1-3 sentences]
+
+### Phase 1: [Phase Name]
+
+- [ ] [ACTION] path/to/file — Summary of change
+  ```
+  Pseudo-code:
+  - Step 1: describe what will be done
+  - Step 2: validation or key logic
+  - Step 3: output or return value
+  ```
+
+- [ ] [ACTION] path/to/file — Summary of change
+  ```
+  Pseudo-code:
+  - ...
+  ```
+
+### Phase 2: [Phase Name]
+
+- [ ] [ACTION] path/to/file — Summary of change
+  ```
+  Pseudo-code:
+  - ...
+  ```
+
+Notes:
+- ACTION must be one of: ADDED | MODIFIED | DELETED | RENAMED
+- For MODIFIED files, use sub-bullets for each distinct logic change and include line ranges
+- Pseudo-code shows logic structure and key steps, not actual implementation code
+- Each phase groups related tasks; phases execute sequentially
+- Use only one phase for small features (≤ 5 tasks); use multiple phases for larger features
+
+## 5. Follow-ups
+- [ ] [TODO item or deferred work]
+- [ ] [Future improvements]

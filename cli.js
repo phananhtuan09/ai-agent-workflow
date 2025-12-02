@@ -75,9 +75,9 @@ function cloneDocsAI(source, dest) {
   run(`npx degit ${source} ${tempDir} --force`);
 
   // Xử lý từng subfolder
-  const subfolders = ["implementation", "planning", "testing"];
+  const subfolders = ["planning", "testing"];
 
-  // Xử lý folders: implementation, planning, testing
+  // Xử lý folders: planning, testing
   for (const subfolder of subfolders) {
     const tempSubfolder = path.join(tempDir, subfolder);
     const destSubfolder = path.join(dest, subfolder);
@@ -203,6 +203,7 @@ async function main() {
     }
     step("🚚 Downloading Cursor agent commands (.cursor/commands)...");
     run(`npx degit ${REPO}/.cursor/commands .cursor/commands --force`);
+
   }
 
   // Clone GitHub Copilot prompts (luôn ghi đè)
@@ -212,6 +213,7 @@ async function main() {
     }
     step("🚚 Downloading GitHub Copilot prompts (.github/prompts)...");
     run(`npx degit ${REPO}/.github/prompts .github/prompts --force`);
+
   }
 
   // Clone Claude Code commands (luôn ghi đè)
@@ -221,6 +223,27 @@ async function main() {
     }
     step("🚚 Downloading Claude Code commands (.claude/commands)...");
     run(`npx degit ${REPO}/.claude/commands .claude/commands --force`);
+
+    // Download CLAUDE.md (context memory) - only if not exists
+    step("🚚 Downloading Claude Code context memory (.claude/CLAUDE.md)...");
+    const claudeMdPath = ".claude/CLAUDE.md";
+    if (existsSync(claudeMdPath)) {
+      console.log(`⏭️  Skipping (already exists): ${claudeMdPath}`);
+    } else {
+      try {
+        run(`curl -fsSL ${RAW_BASE}/.claude/CLAUDE.md -o ${claudeMdPath}`);
+      } catch (_) {
+        run(`wget -qO ${claudeMdPath} ${RAW_BASE}/.claude/CLAUDE.md`);
+      }
+    }
+
+    // Download hooks.json (always overwrite to get latest)
+    step("🚚 Downloading Claude Code hooks (.claude/hooks.json)...");
+    try {
+      run(`curl -fsSL ${RAW_BASE}/.claude/hooks.json -o .claude/hooks.json`);
+    } catch (_) {
+      run(`wget -qO .claude/hooks.json ${RAW_BASE}/.claude/hooks.json`);
+    }
   }
 
   // Clone Cursor prompts (luôn ghi đè)

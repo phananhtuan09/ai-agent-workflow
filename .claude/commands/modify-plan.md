@@ -11,13 +11,12 @@ Modify a feature plan after partial/full implementation. Support reverting to a 
 
 - Feature name (kebab-case, e.g., `user-authentication`)
 - Planning doc exists: `docs/ai/planning/feature-{name}.md`
-- Implementation doc exists: `docs/ai/implementation/feature-{name}.md`
 - Git repo initialized (for tracking code state)
 
 ## Workflow Alignment
 
 - Provide brief status updates (1–3 sentences) before/after important actions.
-- Update both planning and implementation docs when making changes.
+- Update planning doc when making changes.
 - Do NOT auto-commit; user reviews all changes before pushing.
 
 ## Step 1: Load Current State
@@ -26,8 +25,7 @@ Ask for feature name (must be kebab-case).
 
 Load and summarize:
 
-1. **Planning doc**: Current goal, scope, tasks overview
-2. **Implementation doc**: Current phases, completion status, files affected
+1. **Planning doc**: Current goal, scope, implementation phases, completion status
 
 Display summary:
 
@@ -79,7 +77,7 @@ If user selects revert:
 
 1. **Identify affected files & changes**:
 
-   - Parse implementation doc; list all files modified in affected phase(s)
+   - Parse planning doc; list all files modified in affected phase(s)
    - Show file list that needs reverting:
      ```
      Files to revert (manual):
@@ -97,7 +95,7 @@ If user selects revert:
 3. **If user confirms**:
 
    - User manually reverts files (copy-paste old code back, undo in IDE, etc.)
-   - Update implementation doc:
+   - Update planning doc:
 
      - Mark affected phases/tasks `[ ]` (reset to pending)
      - Add "Modification History" entry:
@@ -122,6 +120,7 @@ If user selects new approach:
 
    - Modify goal/scope section if changed
    - Update affected task(s) with new approach
+   - Update pseudo-code to match new approach
    - Add "Modification History" section:
 
      ```
@@ -134,13 +133,13 @@ If user selects new approach:
      - **Affected phases**: Phase X, Y
      ```
 
-2. **Update implementation doc**:
+2. **Update implementation phases**:
 
    - For affected phases:
      - Modify pseudo-code to match new approach
      - Reset incomplete tasks `[ ]` (if approach changed significantly)
    - Keep completed tasks as-is (do not re-implement)
-   - Update "Changes" section with new structure (files/logic outline)
+   - Update "Implementation Plan" section with new structure (files/logic outline)
 
 3. **Show git impact**:
    - Highlight files that may need re-editing
@@ -151,20 +150,19 @@ If user selects new approach:
 Before finalizing, show:
 
 1. **Updated planning doc** snippet (modified sections)
-2. **Updated implementation doc** snippet (phase changes, pseudo-code)
-3. **Git state** (files that will be changed)
+2. **Git state** (files that will be changed)
 
-Ask: **"Apply changes and update docs?"** (yes/no)
+Ask: **"Apply changes and update doc?"** (yes/no)
 
 If **yes**:
 
-- Save updated docs
+- Save updated planning doc
 - If revert: `git status` shows reverted files (unstaged)
-- If new approach: docs updated; code changes staged for review
+- If new approach: doc updated; code changes staged for review
 
 If **no**:
 
-- Rollback changes to docs
+- Rollback changes to doc
 - Discard any temporary changes
 
 ## Step 5: Next Actions
@@ -183,7 +181,7 @@ If **no**:
 
 - **Manual revert**: User manually reverts code files (no git reset); AI guides the process
 - **Multi-feature safe**: Works when implementing multiple features simultaneously (selective revert possible)
-- **Backward compatible**: Works with both phase-based and non-phase-based implementation docs
+- **Backward compatible**: Works with both phase-based and non-phase-based planning docs
 - **Audit trail**: "Modification History" section preserves decision rationale and affected files
 - **Idempotent**: Safe to re-run; modification history accumulates
 - **Safe defaults**: Asks confirmation before any changes; user always has final say
@@ -196,12 +194,12 @@ Agent: Load state, show summary
 
 User: Revert Phase 2 (API Endpoints) - use different auth approach
 Agent: Identify affected files (src/api/users.ts, src/api/auth.ts)
-        Show current state vs. target state (pseudo-code + old implementation)
-        Ask: Ready to manually revert these files?
+       Show current state vs. target state (pseudo-code + old implementation)
+       Ask: Ready to manually revert these files?
 
 User: Yes, I'll manually revert
 Agent: (User manually copies old code back or undoes changes in IDE)
-       Update implementation doc:
+       Update planning doc:
        - Mark Phase 2 tasks [ ] (reset)
        - Add Modification History: Phase 2 reverted, reason: better auth strategy
 
