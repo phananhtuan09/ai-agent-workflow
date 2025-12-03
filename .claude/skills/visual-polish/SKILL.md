@@ -15,6 +15,71 @@ Add polish and delight to UI through animations, transitions, and micro-interact
 - User discusses improving "feel" or "polish"
 - Component interactions need enhancement
 
+---
+
+## Step 0: Design Context Detection
+
+**Before providing suggestions, check conversation context for animation specs:**
+
+### Indicators of Existing Design (Has Design Mode):
+1. ✅ User provided prototype/animation mockup or video
+2. ✅ User mentioned: "animation in Figma", "transition like prototype", "see animation specs"
+3. ✅ Figma prototype link shared (with interactive animations)
+4. ✅ MCP Figma tool showed prototype with animations
+5. ✅ User specified animation details: "300ms ease-out", "slide from left", "fade in 200ms"
+6. ✅ Design file includes motion/animation specifications
+
+### Decision:
+- **IF any indicator above found** → Use **Mode 1: Match Animation Specs**
+- **ELSE** → Use **Mode 2: Suggest Polish Patterns**
+
+---
+
+## Mode 1: Match Animation Specs (When Design Provided)
+
+**Goal**: Implement animations exactly as shown in design/prototype
+
+### What to Do:
+1. **Extract animation specs from design**:
+   - **Duration**: Check prototype timing (e.g., 300ms, 400ms)
+   - **Easing**: Note easing curve shown (ease-out, ease-in, spring)
+   - **Direction**: Note animation direction (slide from top, fade in, scale up)
+   - **Trigger**: When animation occurs (on hover, on click, on mount)
+
+2. **Validate implementation**:
+   - ✅ Animation duration matches prototype exactly
+   - ✅ Easing curve matches design specs
+   - ✅ Animation direction/behavior matches mockup
+   - ✅ Timing feels identical to prototype
+   - ⚠️ Flag: "Prototype shows 400ms, but code uses 250ms"
+   - 💡 Suggest: "Match prototype timing: use duration: 0.4s"
+
+3. **Figma easing mapping**:
+```markdown
+Figma easing → CSS equivalent:
+- "Ease Out" → cubic-bezier(0, 0, 0.2, 1)
+- "Ease In" → cubic-bezier(0.4, 0, 1, 1)
+- "Ease In and Out" → cubic-bezier(0.4, 0, 0.2, 1)
+- "Linear" → linear
+- "Spring" → Use spring animation library or cubic-bezier(0.34, 1.56, 0.64, 1)
+```
+
+### Validation Tone:
+- "Prototype animation is 300ms, code should match exactly"
+- "Design uses ease-out curve - implement as cubic-bezier(0, 0, 0.2, 1)"
+- "Animation should slide from top as shown in prototype, not fade"
+
+### Don't Suggest:
+- ❌ Don't suggest alternative timings
+- ❌ Don't recommend "better" easing curves
+- ❌ Focus on matching prototype, not best practices
+
+---
+
+## Mode 2: Suggest Polish Patterns (No Design / Creative)
+
+**Goal**: Suggest delightful, performant animations and micro-interactions
+
 ## Core Principle
 **Animations should be purposeful, not decorative**
 - Provide feedback
@@ -407,11 +472,20 @@ Subtle pulse for notifications:
 
 ## Testing Checklist
 
-Before shipping animations:
+### If Has Design (Mode 1):
+- [ ] Animation duration matches prototype exactly
+- [ ] Easing curve matches design specs
+- [ ] Animation direction/behavior matches mockup
+- [ ] Timing feels identical to prototype when compared side-by-side
+- [ ] All interactive states animated as shown in design
+- [ ] Respects `prefers-reduced-motion`
+
+### If No Design (Mode 2):
 - [ ] Duration < 500ms for all animations
 - [ ] Respects `prefers-reduced-motion`
-- [ ] Uses GPU-accelerated properties
+- [ ] Uses GPU-accelerated properties (transform, opacity)
 - [ ] No jank or stuttering (60fps)
 - [ ] Animations are purposeful, not decorative
 - [ ] Works on low-end devices
 - [ ] Does not block user interactions
+- [ ] Easing curves feel natural (ease-out for enter, ease-in for exit)

@@ -15,6 +15,81 @@ Ensure UI code follows fundamental design principles for visual consistency and 
 - User asks about layout, spacing, or visual design
 - Style-related files are being edited
 
+---
+
+## Step 0: Design Context Detection
+
+**Before providing suggestions, check conversation context for design references:**
+
+### Indicators of Existing Design (Has Design Mode):
+1. ✅ User attached screenshot/image/mockup
+2. ✅ User mentioned: "theo Figma", "according to design", "like the mockup", "as shown", "match this design"
+3. ✅ Figma URL present in conversation: `figma.com/file/...`
+4. ✅ MCP Figma tool was used/called in conversation
+5. ✅ User said: "implement this design", "match screenshot", "follow the design"
+
+### Decision:
+- **IF any indicator above found** → Use **Mode 1: Validate Against Design**
+- **ELSE** → Use **Mode 2: Suggest Best Practices**
+
+---
+
+## Mode 1: Validate Against Design (When Design Provided)
+
+**Goal**: Ensure implementation accurately matches the provided design specs
+
+### What to Check:
+- ✅ **Spacing**: Measure from screenshot/Figma - does code match? (e.g., design shows 24px, code has 24px)
+- ✅ **Colors**: Extract exact hex/rgb from reference - does code use same values?
+- ✅ **Typography**: Font sizes match design specs exactly
+- ✅ **Layout proportions**: Widths, heights, alignments accurate to mockup
+- ⚠️ **Flag deviations**: "Design shows 24px padding, but code uses 20px - should match design exactly"
+- 💡 **Suggest corrections**: "Update to match design: use padding: 24px as specified in mockup"
+
+### Validation Tone:
+- "Design specifies X, but code uses Y - update to match design"
+- "Ensure spacing matches mockup: 16px gap between elements (measured from screenshot)"
+- "Color in design is #3B82F6, code uses #4A90E2 - use exact design color"
+
+### Don't Suggest:
+- ❌ Don't suggest alternative spacing scales
+- ❌ Don't recommend "better" colors
+- ❌ Focus on accuracy, not best practices
+
+---
+
+## Mode 2: Suggest Best Practices (No Design / Creative)
+
+**Goal**: Suggest design principles for creating aesthetically pleasing UI
+
+### What to Suggest:
+
+#### Spacing Scale
+- ✅ Use consistent spacing based on 4px or 8px system:
+  - 4px, 8px, 12px, 16px, 24px, 32px, 48px, 64px
+- ⚠️ Avoid arbitrary values: 17px, 23px, 31px
+- 💡 Rationale: "Using 8px-based spacing creates visual consistency and rhythm"
+
+#### Typography Scale
+- ✅ Consistent font sizes:
+  - Body: 1rem (16px)
+  - Small: 0.875rem (14px)
+  - Headings: 1.25rem, 1.5rem, 2rem, 3rem
+- 💡 Rationale: "Type scale creates clear visual hierarchy"
+
+#### Color Contrast
+- ✅ Body text: 4.5:1 minimum (WCAG AA)
+- ✅ Large text (18px+): 3:1 minimum
+- ✅ Interactive elements: 3:1 minimum
+- 💡 Tool: "Use WebAIM Contrast Checker to verify"
+
+### Suggestion Tone:
+- "Consider using spacing scale for consistency: 16px, 24px, 32px"
+- "Recommend font sizes: 1rem for body, 1.25rem for subheadings"
+- "This approach creates better visual hierarchy and maintainability"
+
+---
+
 ## Visual Hierarchy Checks
 
 ### Font Sizes
@@ -194,7 +269,14 @@ h3 { font-size: 1.25rem; } /* 20px */
 
 ## Quality Checklist
 
-Before marking UI complete, verify:
+### If Has Design (Mode 1):
+- [ ] Spacing matches design specs exactly
+- [ ] Colors match design palette exactly (hex values)
+- [ ] Typography follows design system (sizes, weights, line-heights)
+- [ ] Layout proportions accurate to mockup
+- [ ] All design elements implemented as specified
+
+### If No Design (Mode 2):
 - [ ] Spacing follows consistent scale (4px/8px based)
 - [ ] Font sizes use type scale
 - [ ] Color contrast meets WCAG AA (4.5:1 for text)

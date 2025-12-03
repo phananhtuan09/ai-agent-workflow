@@ -15,7 +15,68 @@ Ensure UI works beautifully across all device sizes from mobile to desktop.
 - Component sizing or spacing defined
 - User discusses mobile or responsive design
 
-## Core Principle
+---
+
+## Step 0: Design Context Detection
+
+**Before providing suggestions, check conversation context for responsive design specs:**
+
+### Indicators of Existing Design (Has Design Mode):
+1. ✅ User provided mobile/tablet/desktop screenshots or mockups
+2. ✅ User mentioned: "responsive design in Figma", "see mockup for breakpoints", "design shows tablet view"
+3. ✅ Figma URL with multiple device frames/artboards
+4. ✅ MCP Figma tool was used showing multiple screen sizes
+5. ✅ User specified breakpoints: "breakpoints at 375px, 834px, 1440px"
+6. ✅ Design file shows multiple device views (mobile, tablet, desktop)
+
+### Decision:
+- **IF any indicator above found** → Use **Mode 1: Match Design Breakpoints**
+- **ELSE** → Use **Mode 2: Suggest Standard Breakpoints**
+
+---
+
+## Mode 1: Match Design Breakpoints (When Design Provided)
+
+**Goal**: Implement responsive behavior exactly as shown in design
+
+### What to Do:
+1. **Extract breakpoints from design**:
+   - Check mockup device sizes (e.g., Mobile: 375px, Tablet: 834px, Desktop: 1440px)
+   - Use exact breakpoints from design specs
+   - Identify layout changes at each breakpoint
+
+2. **Validate implementation**:
+   - ✅ Code uses design's exact breakpoints
+   - ✅ Layout changes match mockup at each breakpoint
+   - ✅ Component behavior matches design (stack → row, 1 col → 3 cols, etc.)
+   - ⚠️ Flag: "Design shows 3-column at 1024px, but code uses 1280px"
+   - 💡 Suggest: "Use design's breakpoint: @media (min-width: 1024px)"
+
+3. **Breakpoint extraction examples**:
+```markdown
+If design shows screens for:
+- Mobile (375px width) → Use: @media (min-width: 375px)
+- Tablet (768px width) → Use: @media (min-width: 768px)
+- Desktop (1440px width) → Use: @media (min-width: 1440px)
+```
+
+### Validation Tone:
+- "Design shows 2-column layout at 768px - implement exactly as specified"
+- "Mockup uses 834px breakpoint for tablet - code should match this"
+- "Layout change in design occurs at 1024px, not 1280px"
+
+### Don't Suggest:
+- ❌ Don't suggest alternative breakpoints
+- ❌ Don't recommend "standard" breakpoints if design has specific ones
+- ❌ Focus on matching design, not best practices
+
+---
+
+## Mode 2: Suggest Standard Breakpoints (No Design / Creative)
+
+**Goal**: Suggest industry-standard responsive patterns
+
+### Core Principle
 **Mobile-first approach**
 - Design for mobile first, enhance for larger screens
 - Most users are on mobile devices
@@ -528,25 +589,33 @@ const Dashboard = () => {
 
 ## Testing Checklist
 
-### Device Testing
+### If Has Design (Mode 1):
+- [ ] All design breakpoints implemented exactly
+- [ ] Layout matches design at each breakpoint
+- [ ] Component behavior matches mockups (stacking, columns, visibility)
+- [ ] Spacing/padding matches design at each screen size
+- [ ] Test on device sizes shown in design
+
+### If No Design (Mode 2):
+#### Device Testing
 - [ ] Test on real mobile device (iPhone, Android)
 - [ ] Test on tablet (iPad, Android tablet)
 - [ ] Test on desktop (various screen sizes)
 - [ ] Test in landscape and portrait orientations
 
-### Browser DevTools
+#### Browser DevTools
 - [ ] Use responsive design mode
 - [ ] Test all breakpoints: 320px, 375px, 768px, 1024px, 1440px
 - [ ] Zoom to 200% - layout still works?
 - [ ] Network throttling - images load properly?
 
-### Touch Interaction
+#### Touch Interaction
 - [ ] All buttons are 44x44px minimum
 - [ ] Adequate spacing between touch targets (8px+)
 - [ ] Touch feedback is visible
 - [ ] No hover-only interactions
 
-### Content
+#### Content
 - [ ] Text is readable on all screen sizes (min 16px)
 - [ ] Images scale properly without distortion
 - [ ] Horizontal scrolling only where intentional
