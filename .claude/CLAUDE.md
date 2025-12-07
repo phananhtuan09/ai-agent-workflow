@@ -107,6 +107,20 @@ Apply these principles when providing solutions, generating code, or making tech
 
 ---
 
+## Skill Reporting
+
+At the start of your response, briefly list which skills are being used for this task:
+
+```
+📚 Skills: design-fundamentals, ux-feedback-patterns, accessibility-ux
+```
+
+**Keep it concise** - one line only, comma-separated skill names.
+
+**Note:** Skill loading logic is defined in `.claude/skills/skills.config.json` and each skill's metadata. User can manually request skills with `/skill:name` commands.
+
+---
+
 **Claude Code Specifics:**
 - This file is automatically loaded every session
 - Commands inherit these standards

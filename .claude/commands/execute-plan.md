@@ -25,7 +25,52 @@ Execute the feature plan by implementing tasks from the planning doc and updatin
 - Load planning doc: `docs/ai/planning/feature-{name}.md`.
 - **Load template:** Read `docs/ai/planning/feature-template.md` to understand required structure.
 
-### 1a: Phase Progress Detection
+### 1a: Load Project Standards
+
+**Read and extract relevant sections** (keep summaries, not full content):
+
+1. **CODE_CONVENTIONS.md** (`docs/ai/project/CODE_CONVENTIONS.md`):
+   - Identify sections relevant to this feature type (e.g., frontend conventions for UI features)
+   - Extract key rules: naming patterns, file organization, code structure
+   - Keep summary (200-300 words max)
+
+2. **PROJECT_STRUCTURE.md** (`docs/ai/project/PROJECT_STRUCTURE.md`):
+   - Understand project architecture
+   - Identify where new files should go
+   - Note existing patterns to follow
+
+**Purpose**: These standards will guide implementation quality. Refresh this context at each phase boundary to prevent quality degradation in long plans.
+
+### 1b: Load Design/Theme Specifications (If Exists)
+
+**Check planning doc for design section**:
+
+**If "Design Specifications" exists** (Figma extraction):
+- Extract complete design specs into memory
+- Design tokens, component breakdown, responsive specs
+- **Note**: DO NOT fetch from Figma MCP again
+
+**If "Theme Specification" exists** (Theme selection):
+- Load theme details from planning doc
+- Extract: color palette, typography, spacing, visual style
+
+**Priority**: Figma Design Specifications > Theme Specification > No design constraints
+
+**Purpose**: Implementation must match these exact specifications for consistency.
+
+### 1c: Load Codebase Context (If Exists)
+
+**Check planning doc for "Codebase Context" section**:
+
+If exists (exploration was done):
+- Similar features to reference
+- Reusable components/utils
+- Architectural patterns to follow
+- Key files to study
+
+**Purpose**: Follow existing patterns for consistency.
+
+### 1d: Phase Progress Detection
 
 If planning doc exists, scan for phase markers (`### Phase X:`):
 
@@ -60,14 +105,44 @@ Note: Do not include Follow-ups section unless explicitly in current phase.
 
 ## Step 3: Implement Iteratively (per task)
 
+**At Phase Boundary** (when starting new phase):
+
+Refresh context to prevent quality degradation:
+```
+ Phase X: [Phase Name]
+ Code Standards Reminder:
+   - [Key convention 1 from CODE_CONVENTIONS.md]
+   - [Key convention 2 from CODE_CONVENTIONS.md]
+   - [Key pattern from PROJECT_STRUCTURE.md]
+ Design/Theme Active: [Yes/No]
+   - Colors: [primary colors if applicable]
+   - Typography: [font families if applicable]
+   - Spacing: [scale values if applicable]
+ Codebase Patterns:
+   - Reference: [similar feature files]
+   - Reuse: [components/utils to use]
+```
+
+This reminder keeps standards visible during long implementations.
+
+---
+
 For each task in queue:
 
 1. **Status update**: Brief note (1–3 sentences) on what will be done.
 2. Plan minimal change set:
    - Identify files/regions to modify
    - Map changes to acceptance criteria from plan (reference if needed)
+   - **If design/theme specs exist**: Verify implementation matches colors, spacing, typography
+   - **Follow CODE_CONVENTIONS**: Apply naming patterns, file organization rules
 3. Implement changes:
    - Write/edit code according to the planning doc entries (`[ACTION]` items)
+   - **Apply design/theme specifications** (if exists):
+     - Use exact color hex codes from palette
+     - Apply spacing scale values only (no arbitrary values)
+     - Follow typography scale and font families
+     - Use defined border radius and shadows
+   - **Follow codebase patterns** (if exists): Match existing implementation style
    - Keep changes minimal and incremental
    - Avoid speculative changes beyond implementation scope
 4. Quick validation:

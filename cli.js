@@ -251,6 +251,13 @@ async function main() {
       mkdirSync(".claude/skills", { recursive: true });
     }
     run(`npx degit ${REPO}/.claude/skills .claude/skills --force`);
+
+    // Download themes folder (always overwrite to get latest)
+    step("🚚 Downloading Claude Code themes (.claude/themes)...");
+    if (!existsSync(".claude/themes")) {
+      mkdirSync(".claude/themes", { recursive: true });
+    }
+    run(`npx degit ${REPO}/.claude/themes .claude/themes --force`);
   }
 
   // Clone Cursor prompts (luôn ghi đè)
