@@ -145,38 +145,16 @@ For each task in queue:
    - **Follow codebase patterns** (if exists): Match existing implementation style
    - Keep changes minimal and incremental
    - Avoid speculative changes beyond implementation scope
-4. Quick validation:
-   - Run build/compile if available
-   - Run fast unit/smoke tests if available
-   - Fix immediate issues before proceeding
-5. Persist notes to planning doc:
+4. Persist notes to planning doc:
    - File: `docs/ai/planning/feature-{name}.md`
    - Update the relevant `[ ]` entry to `[x]` when completed
    - For `MODIFIED` files with sub-bullets, mark each completed sub-bullet `[x]`
    - Include line ranges and concise summaries as per template
-6. Update planning doc:
+5. Update planning doc:
    - Mark completed tasks `[x]` with brief notes
    - Mark blocked tasks with reason
 
-## Step 4: Quality Checks
-
-After completing each task batch:
-
-- Detect available tools from project config (e.g., `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, build files) and run the appropriate non-interactive checks.
-- Linting on changed files (prefer non-interactive):
-  - JavaScript/TypeScript: `npx eslint .` or `pnpm eslint .` (add `--max-warnings=0` if desired)
-  - Python: `ruff .` or `flake8 .`
-  - Go: `golangci-lint run` or `go vet ./...`
-  - Rust: `cargo clippy -- -D warnings`
-  - Java: `./gradlew check` or `mvn -q -DskipTests=false -Dspotbugs.failOnError=true verify`
-  - Scope to changed files when possible for speed
-- Type checks (non-emitting where applicable):
-  - TypeScript: `npx tsc --noEmit`
-  - Python: `mypy .` (if configured) or `pyright` if present
-  - Go/Rust/Java: rely on compiler/type system via build step
-- Parallelize lint and type-check when safe; fix issues (up to 3 attempts) before proceeding.
-
-## Step 5: Phase Completion Check
+## Step 4: Phase Completion Check
 
 After completing all tasks in current phase:
 
@@ -188,12 +166,28 @@ After completing all tasks in current phase:
      Ready for Phase 3 (Frontend)?
      Run: /execute-plan
      ```
-   - If this is final phase:
+   - If all phases are complete:
      ```
      ✓ All phases complete!
-     Ready for code review?
-     Run: /code-review
+     Running quality checks now...
      ```
+
+## Step 5: Final Quality Checks (After All Phases Complete)
+
+Only run after ALL phases are marked complete. If incomplete phases remain, skip to Step 6.
+
+**Load the quality code check skill**:
+
+Run `/skill:quality` to load the quality-code-check skill, which provides guidance on:
+- **Linting**: Code style and best practices validation
+- **Type Checking**: Type safety verification across modules
+- **Build Verification**: Ensure code compiles and bundles successfully
+
+**Execution**:
+1. Load skill: `/skill:quality`
+2. Follow the quality check workflow
+3. Fix all issues until quality checks pass
+4. Validate checklist before proceeding
 
 ## Step 6: Next Actions
 

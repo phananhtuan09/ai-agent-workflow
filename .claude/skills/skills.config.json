@@ -116,6 +116,17 @@
         "keywords": ["accessibility", "a11y", "keyboard", "screen reader", "aria"],
         "priority": "high"
       }
+    ],
+    "architecture": [
+      {
+        "name": "quality-code-check",
+        "path": "architecture/quality-code-check/SKILL.md",
+        "category": "architecture",
+        "lines": 268,
+        "description": "Code quality validation - linting, type checking, build verification",
+        "keywords": ["quality", "lint", "type-check", "build", "validation"],
+        "priority": "high"
+      }
     ]
   },
 

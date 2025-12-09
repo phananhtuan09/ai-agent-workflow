@@ -529,8 +529,9 @@ Verify it loads correctly.
 | `design/theme-factory` | design | 420 | medium | Generate cohesive themes when no design provided |
 | `ux/feedback-patterns` | ux | 368 | high | Loading, success, error, empty states |
 | `ux/accessibility` | ux | 470 | high | Keyboard, screen readers, WCAG, ARIA |
+| `architecture/quality-code-check` | architecture | 268 | high | Linting, type checking, build verification |
 
-**Total:** 2,753 lines across 7 skills
+**Total:** 3,021 lines across 8 skills
 
 ---
 
@@ -545,6 +546,7 @@ Verify it loads correctly.
 /skill:feedback            # Load ux-feedback-patterns
 /skill:accessibility       # Load ux-accessibility
 /skill:a11y                # Alias for accessibility
+/skill:quality             # Load quality-code-check
 ```
 
 ---
