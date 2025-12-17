@@ -1,6 +1,6 @@
 ---
 name: writing-test
-description: Generates/updates code convention and project structure docs from the codebase.
+description: Generates comprehensive test files with edge cases, parameter variations, and coverage analysis.
 ---
 
 Use `docs/ai/testing/feature-{name}.md` as the source of truth.
@@ -16,14 +16,16 @@ Use `docs/ai/testing/feature-{name}.md` as the source of truth.
 
 - Ask for feature name if not provided (must be kebab-case).
 - **Load template:** Read `docs/ai/testing/feature-template.md` to understand required structure.
-- Then locate docs by convention:
-  - Planning: `docs/ai/planning/feature-{name}.md`
-  - Implementation (optional): `docs/ai/implementation/feature-{name}.md`
-- **Detect test framework:** Check `package.json` and project structure to identify test framework (Vitest, Jest, Mocha, pytest, etc.). Auto-detect from `package.json` first; if no test runner found, create skeleton test and report missing runner.
-- **Load standards:** Read `docs/ai/project/PROJECT_STRUCTURE.md` for test file placement rules
-- **Load conventions:** Read `docs/ai/project/CODE_CONVENTIONS.md` for coding standards
+- **Load planning doc:** Read `docs/ai/planning/feature-{name}.md` for:
+  - Acceptance criteria (test alignment)
+  - Implementation plan (files to test)
+  - Functions/components that need coverage
+- **Detect test framework:** Check `package.json` to identify test framework (Vitest, Jest, Mocha, pytest, etc.). If no test runner found, create skeleton test and report missing runner.
+- **Load standards:**
+  - `docs/ai/project/PROJECT_STRUCTURE.md` for test file placement rules
+  - `docs/ai/project/CODE_CONVENTIONS.md` for coding standards
 
-Always align test cases with acceptance criteria from the planning doc. If implementation notes are missing, treat planning as the single source of truth.
+**Source of truth:** Planning doc acceptance criteria + actual source code implementation.
 
 ## Step 2: Scope (logic and component tests only)
 
@@ -42,165 +44,69 @@ Always align test cases with acceptance criteria from the planning doc. If imple
   - E2E flows or end-to-end user journey tests
   - Tests requiring external API calls, database connections, or network mocking
   - Performance/load testing
+- **Dependency isolation (mocking):**
+  - Mock external dependencies (API clients, database connections, file system)
+  - Mock imported utilities/hooks if they have side effects
+  - Keep internal logic unmocked (test actual implementation)
+  - Use test framework's mocking utilities (vi.mock, jest.mock, unittest.mock)
 - Keep tests simple, fast, and deterministic.
 
-## Step 3: Analyze Code to Test
+## Step 3: Analyze Code & Generate Tests (automatic)
 
-Read implementation files from `docs/ai/implementation/feature-{name}.md` or scan source code files:
+**Analyze implementation:**
+- Read files from `docs/ai/implementation/feature-{name}.md` or scan source
+- Identify functions/components: signatures, parameters, return types, exceptions
+- Map: input types → expected outputs → edge cases → error cases
 
-- Identify all functions/components that need testing:
-  - List each function with its signature (parameters, return type, exceptions)
-  - List each component with its props interface
-  - List each class with its methods and properties
-- For each function/component, identify:
-  - Input parameter types and possible values
-  - Expected outputs for different inputs
-  - Edge cases (null, undefined, empty, boundaries, min/max values)
-  - Error cases (invalid inputs, exceptions, error messages)
-  - Control flow branches (if/else, switch cases, loops)
-  - Mathematical properties (if applicable): commutativity, associativity, idempotency, invariants
+**Generate test files:**
+- Create test file per `PROJECT_STRUCTURE.md` (colocated `*.spec.*` or `__tests__/`)
+- Follow naming conventions from `CODE_CONVENTIONS.md`
 
-## Step 4: Generate Test Code (automatic)
+**Test coverage strategy:**
+- **Happy path**: normal parameters → expected output
+- **Edge cases**: null, undefined, empty, boundaries (min/max, 0, -1)
+- **Parameter combinations**: systematically test input variations
+- **Error handling**: invalid inputs, exceptions, error messages
+- **Type safety**: wrong types, missing properties
+- **Property-based** (if applicable): commutativity, associativity, idempotency
 
-For each function/component identified:
+**For complex test suites (>15 test cases):**
+- Use Task tool with `subagent_type='general-purpose'`
+- Task prompt: "Generate comprehensive test cases for [function] covering happy path, edge cases, error handling, and parameter combinations"
 
-1. **Create test file** according to `PROJECT_STRUCTURE.md`:
-   - Colocated `*.spec.*` or `*.test.*` files with source, OR
-   - Under `__tests__/` or `tests/` mirroring source structure
-   - Follow naming conventions from `CODE_CONVENTIONS.md`
+## Step 4: Run Tests with Logging (automatic)
 
-2. **Write complete test code** with:
-   - Test framework setup (imports, describe blocks, test utilities)
-   - Multiple test cases per function/component:
-     - **Happy path**: normal parameters → expected output
-     - **Edge cases**: empty/null/undefined inputs, boundary values (min/max, 0, -1, empty strings/arrays)
-     - **Parameter combinations**: systematically test different combinations of parameters (cartesian product when practical)
-     - **Error cases**: invalid inputs, exceptions, error messages
-     - **Type safety**: wrong types, missing properties, extra properties
-     - **Property-based**: verify mathematical properties if applicable
-   - Clear, descriptive test names describing what is being tested
-   - Assertions using appropriate test framework syntax
+**Execute test command** (non-interactive):
+- Vitest: `npx vitest run --passWithNoTests`
+- Jest: `npx jest --ci --passWithNoTests`
+- Mocha: `npx mocha --reporter spec`
+- pytest: `pytest -v --tb=short`
 
-3. **Focus on logic testing:**
-   - For functions: test return values, side effects (if any), error handling
-   - For components: test output/logic with different props (avoid complex rendering - use lightweight snapshots or logic checks)
-   - For classes: test methods independently with various inputs
-   - Test parameter combinations systematically
+**Display output:**
+- Test execution progress and results (pass/fail, timing)
+- Test summary (total/passed/failed/skipped)
+- Error messages and stack traces for failures
+- Coverage report (lines, branches, functions %)
 
-4. **Generate edge cases systematically:**
-   - For each parameter, generate: null, undefined, empty, zero, negative, max/min values
-   - Test type mismatches: wrong types, missing required properties
-   - Test boundary conditions: off-by-one errors, overflow/underflow
+**If tests fail:**
+- Analyze failure reason (test logic vs implementation bug)
+- **Fix test logic** if test expectations are incorrect
+- **Report implementation bug** if source code violates acceptance criteria (do NOT auto-fix source code)
+- Re-run tests after fixing test logic
+- Update testing doc with results
 
-5. **Property-based testing (when applicable):**
-   - Identify mathematical/algorithmic properties
-   - Generate property-based tests: commutativity, associativity, idempotency, invariants
-   - Test with random inputs following constraints
+## Step 5: Coverage Gap Analysis (automatic)
 
-**Example test structure:**
+**Analyze coverage report:**
+- Identify untested branches/lines/functions
 
-```javascript
-import { describe, it, expect } from 'vitest';
-import { functionToTest } from './source-file';
+**Generate additional tests:**
+- Create test cases for uncovered branches/lines/functions
+- Re-run tests with coverage
+- Verify targets met (default: 80% lines, 70% branches)
+- Continue until targets met or all practical cases covered
 
-describe('functionToTest', () => {
-  it('should return correct value with normal parameters', () => {
-    // Test with standard inputs
-  });
-
-  it('should handle edge case with empty input', () => {
-    // Test boundary
-  });
-
-  it('should handle null input', () => {
-    // Test null handling
-  });
-
-  it('should handle different parameter combinations', () => {
-    // Test various param combinations
-  });
-
-  it('should throw error with invalid input', () => {
-    // Test error handling
-  });
-
-  it('should maintain idempotency property', () => {
-    // Property-based test
-  });
-});
-```
-
-## Step 5: Run Tests with Logging (automatic)
-
-After generating test code:
-
-1. **Execute test command** based on detected framework (use non-interactive flags):
-   - Vitest: `npm test` or `npx vitest run --run`
-   - Jest: `npm test` or `npx jest --ci`
-   - Mocha: `npm test` or `npx mocha --reporter spec`
-   - pytest: `pytest` or `python -m pytest -v`
-   - Other: detect from `package.json` scripts, add `--no-interactive` or equivalent flags
-
-2. **Capture and display output** in terminal with detailed logging:
-   - Show test execution progress (which tests are running)
-   - Show test results (pass/fail) for each test case with execution time
-   - Show test summary (total tests, passed, failed, skipped)
-   - Show any error messages, stack traces, or assertion failures for failures
-   - Show coverage report if available (lines, branches, functions coverage)
-   - Format output clearly for readability
-
-3. **Log format example:**
-
-   ```
-   === Running tests for feature: {name} ===
-
-   RUN  test-file-1.spec.js
-     ✓ should handle normal case (2ms)
-     ✓ should handle edge case (1ms)
-     ✗ should handle invalid input (3ms)
-
-       Error: Expected error to be thrown
-       at test-file-1.spec.js:25
-
-     ✓ should handle parameter combinations (5ms)
-     ✓ should maintain property (1ms)
-
-   Test Files:  1 passed | 0 failed | 1 total
-   Tests:       4 passed | 1 failed | 5 total
-   Time:        0.012s
-
-   Coverage:
-   - Lines: 82% (lines covered / total lines)
-   - Branches: 75% (branches covered / total branches)
-   - Functions: 90% (functions covered / total functions)
-   ```
-
-4. **If tests fail:**
-   - Analyze failure reason from logs
-   - Fix test code or implementation as needed
-   - Re-run tests until all pass
-   - Update implementation doc if code changes were needed
-
-## Step 6: Coverage Gap Analysis (automatic)
-
-After initial test generation and execution:
-
-1. **Analyze coverage report:**
-   - Identify untested branches/conditions
-   - Identify untested lines/paths
-   - Identify untested functions/methods
-
-2. **Generate additional tests automatically:**
-   - For each uncovered branch: create test case
-   - For each uncovered line: ensure it's reachable by existing tests or add new test
-   - For each uncovered function: create test cases
-
-3. **Re-run tests and verify coverage:**
-   - Execute tests again with coverage
-   - Verify coverage targets are met (default: 80% lines, 70% branches)
-   - Continue generating tests until targets are met or all practical cases are covered
-
-## Step 7: Update Testing Doc
+## Step 6: Update Testing Doc
 
 Use structure from `docs/ai/testing/feature-template.md` to populate `docs/ai/testing/feature-{name}.md`.
 
@@ -222,13 +128,14 @@ Fill with:
 
 Ensure all required sections from template are present. Keep the document brief and actionable.
 
-## Step 8: Verify Tests Pass
+## Step 7: Verify Tests Pass
 
 - Ensure all generated tests pass successfully
 - Ensure coverage targets are met (default: 80% lines, 70% branches)
-- If any test fails, debug and fix issues
-- Update implementation doc if code changes were needed
-- Re-run tests to confirm fixes
+- If any test fails:
+  - Debug test logic and fix test expectations
+  - **OR** report implementation bug to user (if source code violates acceptance criteria)
+- Re-run tests after fixing test logic
 
 ## Notes
 
@@ -239,5 +146,10 @@ Ensure all required sections from template are present. Keep the document brief 
 - Test execution must show clear, detailed logging in terminal
 - AI excels at: edge case generation, parameter combinations, property-based testing, coverage analysis
 - Keep tests deterministic (avoid external dependencies, random values without seeds, time-dependent logic)
-- Creates test files only; does not edit non-test source files.
-- Idempotent: safe to re-run; appends entries or updates test doc deterministically.
+
+**Scope boundaries:**
+- **Creates:** Test files only (*.spec.*, *.test.*)
+- **Modifies:** Test files only when fixing test logic
+- **Does NOT edit:** Non-test source files (implementation code)
+- **If implementation bug found:** Report to user; do NOT auto-fix source code
+- Idempotent: safe to re-run; updates test doc deterministically

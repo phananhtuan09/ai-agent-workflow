@@ -148,6 +148,131 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 
 ---
 
+## Tool Invocation
+
+### Project Detection
+
+**Use Glob to detect project type:**
+
+```markdown
+- Glob(pattern="**/package.json") → JavaScript/TypeScript
+- Glob(pattern="**/pyproject.toml") or Glob(pattern="**/requirements.txt") → Python
+- Glob(pattern="**/go.mod") → Go
+- Glob(pattern="**/Cargo.toml") → Rust
+- Glob(pattern="**/pom.xml") or Glob(pattern="**/build.gradle") → Java
+```
+
+### Language-Specific Commands
+
+#### JavaScript/TypeScript
+
+**Linting:**
+```bash
+Bash(command="npx eslint . --max-warnings=0")
+# Or with pnpm
+Bash(command="pnpm eslint . --max-warnings=0")
+# Auto-fix
+Bash(command="npx eslint . --fix")
+```
+
+**Type Checking:**
+```bash
+Bash(command="npx tsc --noEmit")
+```
+
+**Build:**
+```bash
+Bash(command="npm run build")
+# Or
+Bash(command="pnpm build")
+```
+
+#### Python
+
+**Linting:**
+```bash
+Bash(command="ruff check .")
+# Auto-fix
+Bash(command="ruff check . --fix")
+# Alternative
+Bash(command="flake8 .")
+```
+
+**Type Checking:**
+```bash
+Bash(command="mypy .")
+# Or
+Bash(command="pyright")
+```
+
+**Build/Import Check:**
+```bash
+Bash(command="python -m py_compile src/**/*.py")
+```
+
+#### Go
+
+**Linting:**
+```bash
+Bash(command="golangci-lint run")
+# Or
+Bash(command="go vet ./...")
+```
+
+**Type Checking:** (built into compiler)
+```bash
+Bash(command="go build ./...")
+```
+
+**Build:**
+```bash
+Bash(command="go build ./...")
+```
+
+#### Rust
+
+**Linting:**
+```bash
+Bash(command="cargo clippy -- -D warnings")
+```
+
+**Type Checking:** (built into compiler)
+```bash
+Bash(command="cargo check")
+```
+
+**Build:**
+```bash
+Bash(command="cargo build")
+```
+
+#### Java
+
+**Linting + Build (Gradle):**
+```bash
+Bash(command="./gradlew check")
+```
+
+**Linting + Build (Maven):**
+```bash
+Bash(command="mvn verify")
+```
+
+### Error Handling
+
+**Tool not found:**
+- Check if tool installed: Try command, catch error
+- If not found: Skip that check, notify user
+- Continue with remaining checks
+
+**Check fails:**
+- Parse error output
+- Report specific violations
+- Suggest fixes based on error type
+- Retry after fixes (max 3 attempts)
+
+---
+
 ## Validation Workflow
 
 ### Before Running Quality Checks
@@ -166,20 +291,23 @@ Running quality checks now...
 ### Quality Check Sequence
 
 1. **Detect available tools** from project configuration
-   - Check for `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`
+   - Use Glob to find config files (see Tool Invocation above)
    - Identify which tools are available
 
 2. **Run linting** (scoped to changed files when possible)
-   - Fix auto-fixable issues first
+   - Execute Bash commands from Tool Invocation section
+   - Fix auto-fixable issues first (--fix flag)
    - Manually fix remaining violations
    - Target: Zero warnings on changed files
 
 3. **Run type checks** (non-emitting where applicable)
+   - Execute Bash commands from Tool Invocation section
    - Fix all type errors
    - Validate type consistency across modules
    - Target: No type errors
 
 4. **Run build** (full build, production configuration)
+   - Execute Bash commands from Tool Invocation section
    - Ensure all code compiles
    - Validate all imports resolve
    - Confirm output artifacts are generated
@@ -189,9 +317,9 @@ Running quality checks now...
 
 **If quality checks fail:**
 
-1. **Analyze errors** - Identify root causes
+1. **Analyze errors** - Identify root causes from Bash output
 2. **Fix issues** - Make minimal changes to resolve
-3. **Re-run checks** - Validate fixes are complete
+3. **Re-run checks** - Execute same Bash commands again
 4. **Repeat** - Continue until all checks pass (up to 3 attempts)
 
 **If unable to fix after 3 attempts:**

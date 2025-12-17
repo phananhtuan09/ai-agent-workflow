@@ -19,11 +19,45 @@ Execute the feature plan by implementing tasks from the planning doc and updatin
 - Feature name (kebab-case, e.g., `user-authentication`)
 - Planning doc exists: `docs/ai/planning/feature-{name}.md`
 
+---
+
+## Parallel Execution Strategy
+
+**Step 1 substeps (1a/1b/1c) can run in parallel** to optimize context loading:
+
+**Execution plan:**
+- Task 1: Load standards (Step 1a) + Design specs (Step 1b) + Codebase context (Step 1c)
+- Task 2: Phase detection (Step 1d) - depends on planning doc being loaded
+
+Load operations (1a/1b/1c) are independent and can run concurrently after planning doc is loaded.
+
+**Implementation:**
+- Use single message with multiple Read tool calls
+- Use `run_in_background: true` for long document reads
+- Use `TaskOutput` to collect results when all complete
+
+Expected speedup: 30-40% for context loading phase.
+
+---
+
 ## Step 1: Gather Context
 
-- Ask for feature name if not provided (must be kebab-case).
-- Load planning doc: `docs/ai/planning/feature-{name}.md`.
-- **Load template:** Read `docs/ai/planning/feature-template.md` to understand required structure.
+**Tools:**
+- AskUserQuestion(questions=[...]) if feature name not provided
+- Read(file_path="docs/ai/planning/feature-{name}.md")
+- Read(file_path="docs/ai/planning/feature-template.md")
+- Read(file_path="docs/ai/project/CODE_CONVENTIONS.md")
+- Read(file_path="docs/ai/project/PROJECT_STRUCTURE.md")
+
+**Process:**
+- Ask for feature name if not provided (must be kebab-case)
+- Load planning doc: `docs/ai/planning/feature-{name}.md`
+- Load template: `docs/ai/planning/feature-template.md` to understand required structure
+
+**Error handling:**
+- Planning doc not found: Cannot proceed, notify user and exit
+- Template not found: Continue without template structure validation
+- Standards docs not found: Warn user, proceed without standards guidance
 
 ### 1a: Load Project Standards
 
@@ -32,7 +66,7 @@ Execute the feature plan by implementing tasks from the planning doc and updatin
 1. **CODE_CONVENTIONS.md** (`docs/ai/project/CODE_CONVENTIONS.md`):
    - Identify sections relevant to this feature type (e.g., frontend conventions for UI features)
    - Extract key rules: naming patterns, file organization, code structure
-   - Keep summary (200-300 words max)
+   - Keep concise summary of applicable rules
 
 2. **PROJECT_STRUCTURE.md** (`docs/ai/project/PROJECT_STRUCTURE.md`):
    - Understand project architecture
@@ -54,7 +88,12 @@ Execute the feature plan by implementing tasks from the planning doc and updatin
 - Load theme details from planning doc
 - Extract: color palette, typography, spacing, visual style
 
-**Priority**: Figma Design Specifications > Theme Specification > No design constraints
+**Priority** (if multiple design sources exist):
+1. **Use Figma Design Specifications** (highest fidelity) - ignore Theme if Figma exists
+2. **Use Theme Specification** only if no Figma design
+3. **No design constraints** if neither exists
+
+If both Figma and Theme sections exist, use ONLY Figma and ignore Theme completely.
 
 **Purpose**: Implementation must match these exact specifications for consistency.
 
@@ -94,7 +133,7 @@ If no phases detected (old format):
 
 ## Step 2: Build Task Queue
 
-- Parse tasks (checkboxes `[ ]`, `[x]`) from **current phase only** (from phase detection in Step 1a):
+- Parse tasks (checkboxes `[ ]`, `[x]`) from **current phase only** (from phase detection in Step 1d):
   - Primary source: Tasks under `### Phase X:` with `[ ] [ACTION] ...` entries (incomplete only).
   - For `[MODIFIED]` files, parse sub-bullets representing distinct logic items with line ranges.
   - **Skip completed phases** entirely (do not re-execute)
@@ -105,23 +144,18 @@ Note: Do not include Follow-ups section unless explicitly in current phase.
 
 ## Step 3: Implement Iteratively (per task)
 
+**Tools:**
+- Read(file_path=...) to check existing files
+- Write(file_path=..., content=...) for new files
+- Edit(file_path=..., old_string=..., new_string=...) for modifications
+- Edit(file_path="docs/ai/planning/feature-{name}.md") to update checkboxes
+
 **At Phase Boundary** (when starting new phase):
 
-Refresh context to prevent quality degradation:
-```
- Phase X: [Phase Name]
- Code Standards Reminder:
-   - [Key convention 1 from CODE_CONVENTIONS.md]
-   - [Key convention 2 from CODE_CONVENTIONS.md]
-   - [Key pattern from PROJECT_STRUCTURE.md]
- Design/Theme Active: [Yes/No]
-   - Colors: [primary colors if applicable]
-   - Typography: [font families if applicable]
-   - Spacing: [scale values if applicable]
- Codebase Patterns:
-   - Reference: [similar feature files]
-   - Reuse: [components/utils to use]
-```
+Refresh context to prevent quality degradation (see Notes for template format):
+- Remind code standards from CODE_CONVENTIONS.md
+- Remind design/theme specs if applicable
+- Remind codebase patterns to follow
 
 This reminder keeps standards visible during long implementations.
 
@@ -137,11 +171,7 @@ For each task in queue:
    - **Follow CODE_CONVENTIONS**: Apply naming patterns, file organization rules
 3. Implement changes:
    - Write/edit code according to the planning doc entries (`[ACTION]` items)
-   - **Apply design/theme specifications** (if exists):
-     - Use exact color hex codes from palette
-     - Apply spacing scale values only (no arbitrary values)
-     - Follow typography scale and font families
-     - Use defined border radius and shadows
+   - **Apply design/theme specifications** (if exists): Use exact values from design specs (colors, spacing, typography, etc.)
    - **Follow codebase patterns** (if exists): Match existing implementation style
    - Keep changes minimal and incremental
    - Avoid speculative changes beyond implementation scope
@@ -153,6 +183,12 @@ For each task in queue:
 5. Update planning doc:
    - Mark completed tasks `[x]` with brief notes
    - Mark blocked tasks with reason
+
+**Error handling:**
+- File write/edit fails: Retry once, then notify user
+- Design specs reference missing value: Use fallback or ask user
+- Cannot parse task description: Skip task, flag for manual review
+- Code generation uncertain: Ask user for clarification before implementing
 
 ## Step 4: Phase Completion Check
 
@@ -176,18 +212,28 @@ After completing all tasks in current phase:
 
 Only run after ALL phases are marked complete. If incomplete phases remain, skip to Step 6.
 
-**Load the quality code check skill**:
+**Tool:** Skill(skill="quality-code-check")
 
-Run `/skill:quality` to load the quality-code-check skill, which provides guidance on:
+**Invoke quality code check skill** to run automated validation:
 - **Linting**: Code style and best practices validation
 - **Type Checking**: Type safety verification across modules
 - **Build Verification**: Ensure code compiles and bundles successfully
 
+The skill will:
+1. Auto-detect project type and available tools
+2. Run appropriate checks for detected language
+3. Report violations and suggest fixes
+4. Retry up to 3 times on failures
+
 **Execution**:
-1. Load skill: `/skill:quality`
-2. Follow the quality check workflow
+1. Invoke: `Skill(skill="quality-code-check")`
+2. Follow the quality check workflow provided by skill
 3. Fix all issues until quality checks pass
 4. Validate checklist before proceeding
+
+**Error handling:**
+- Skill not available: Skip quality checks, warn user to run manually
+- Quality checks fail after 3 attempts: Document issues, proceed with caution
 
 ## Step 6: Next Actions
 
@@ -199,12 +245,38 @@ After all phases complete:
 
 If phases remain:
 
-- User runs `/execute-plan` again; Phase detection (Step 1a) will resume correctly
+- User runs `/execute-plan` again; Phase detection (Step 1d) will resume correctly
 
 ## Notes
+
+### General Guidelines
 
 - Keep code changes minimal and focused on planning tasks
 - Document all changes by updating checkboxes in the planning doc
 - Avoid implementing features not in the planning doc scope
 - Modifies source code per planning scope; updates `docs/ai/planning/feature-{name}.md`. Does not modify unrelated files.
 - Idempotent: safe to re-run; updates checkboxes deterministically.
+
+### Context Refresh Template (Step 3 - Phase Boundary)
+
+When starting a new phase, remind agent of key context:
+
+```
+Phase X: [Phase Name]
+
+Code Standards Reminder:
+  - [Key convention 1 from CODE_CONVENTIONS.md]
+  - [Key convention 2 from CODE_CONVENTIONS.md]
+  - [Key pattern from PROJECT_STRUCTURE.md]
+
+Design/Theme Active: [Yes/No]
+  - Colors: [primary colors if applicable]
+  - Typography: [font families if applicable]
+  - Spacing: [scale values if applicable]
+
+Codebase Patterns:
+  - Reference: [similar feature files]
+  - Reuse: [components/utils to use]
+```
+
+This reminder keeps standards visible during long implementations and prevents quality degradation.
