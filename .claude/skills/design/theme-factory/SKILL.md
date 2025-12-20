@@ -1,57 +1,25 @@
 ---
 name: theme-factory
-description: Generate cohesive UI themes when no design provided. Color theory, typography pairing, and brand personality principles for beautiful default UIs.
-allowed-tools: [read]
+description: |
+  Interactive UI theme generation when user needs help choosing colors/fonts.
+  Generates cohesive themes based on brand personality using color harmony theory.
 
-# Category & Loading
-category: design
-subcategory: theming
+  Use when user explicitly asks for theme help:
+  - "What theme should I use?" or "Help me pick colors"
+  - "Generate a theme" or "What colors work well together?"
+  - User uncertain about design direction and asks for suggestions
+  - Building UI with no design specs AND needs guidance on aesthetic choices
 
-# Auto-trigger logic
-auto-trigger:
-  enabled: true
-  keywords:
-    - create page
-    - build UI
-    - tạo page
-    - new component
-  exclude-keywords:
-    - figma
-    - design file
-    - mockup
-    - design system
-    - screenshot
-    - image
-    - attached
-    - theo design
-    - follow design
-  contexts:
-    - design
-    - ui
-    - planning
+  Interactive workflow: Ask personality → Present options → Generate custom theme.
+  References pre-defined themes in .claude/themes/ (professional-blue, minimal-monochrome, etc.).
 
-# Manual trigger
-manual-load:
-  enabled: true
-  commands:
-    - /skill:theme
-    - /skill:theme-factory
-  mentions:
-    - generate theme
-    - pick theme
-    - theme selection
+  Do NOT load for:
+  - User building UI with clear aesthetic in mind (let design-fundamentals guide)
+  - Figma/design file provided (use figma-design-extraction)
+  - User already chose colors/fonts (just apply them)
 
-# Dependencies & Priority
-dependencies: []
-conflicts-with: [figma-design-extraction]
-priority: medium
-
-# When to load this skill
-trigger-description: |
-  Load when user creates UI without ANY design source provided.
-  Design sources include: Figma, screenshots, detailed descriptions, references.
-  Only trigger if design source is unclear or not provided at all.
-  Prevents generic/monotone UIs by generating cohesive themes.
+  Integrates with design-fundamentals: Uses color harmony methods to generate themes
+  that follow fundamentals' principles (spacing, contrast, typography).
 ---
 
 # Theme Factory
@@ -74,21 +42,22 @@ Every UI communicates personality through color, typography, and style. Rather t
 
 ## When to Use Theme Factory
 
-**Trigger conditions:**
-- User creating UI (page, component, app)
-- AND no design source provided or unclear
+**Use theme factory when user EXPLICITLY asks for theme help:**
+- "What theme should I use?"
+- "Help me pick colors"
+- "Generate a theme for [personality]"
+- "What colors work well together?"
+- User uncertain about aesthetic choices
 
-**Design sources that PREVENT theme factory:**
+**Don't use if:**
+- User has clear aesthetic in mind → design-fundamentals handles it
 - Figma file/URL provided → use figma-design-extraction
-- Screenshot/image of design attached → follow that design
-- Detailed design description in prompt → follow description
-- Reference to existing design system → follow that system
-- "Theo design" or similar references → clarify design source first
+- User says "tạo page login" without asking for theme help → design-fundamentals applies principles directly
+- User already chose colors/fonts → just apply them
 
-**Use theme factory ONLY if:**
-- User says something like: "tạo page login" (no design mentioned)
-- Generic request: "build dashboard UI" (no design specifics)
-- Design source unclear or insufficient
+**Key distinction:**
+- **design-fundamentals**: Default for all UI creation (applies aesthetic principles directly)
+- **theme-factory**: Only when user asks "what theme?" or needs help choosing
 
 ---
 
@@ -177,66 +146,50 @@ Which would you like? (1, 2, or 3)
 
 ---
 
-### 2. Typography - Pairing Principles
+### 2. Typography
 
-**Font Pairing Rules:**
+**See design-fundamentals for typography pairing principles.**
 
-**Contrast pairing** (recommended):
-- Heading: Display/serif font (personality, attention)
-- Body: Sans-serif (readability, neutral)
-- Example: Playfair Display + Inter
+Theme should define:
+- Font families (heading + body)
+- Type scale values
+- Font weights available
+- Line heights
 
-**Harmonic pairing**:
-- Heading: Bold sans-serif
-- Body: Regular sans-serif (same family or similar)
-- Example: Inter Bold + Inter Regular
-
-**Avoid:**
-- Two competing display fonts
-- Very similar fonts that lack contrast
-- More than 2 font families (creates visual noise)
-
-**Font properties to define:**
-- Font families (with web-safe fallbacks)
-- Type scale (consistent multiplier, e.g., 1.25 or 1.333)
-- Font weights available (400, 500, 600, 700)
-- Line heights for readability (1.25 tight, 1.5 normal, 1.75 relaxed)
+**Reference fundamentals for:**
+- Font pairing rules (contrast vs harmonic)
+- Typography hierarchy
+- Readability guidelines
 
 ---
 
 ### 3. Spacing System
 
-**Principle:** Consistent scale creates visual rhythm.
+**See design-fundamentals for spacing scale principles.**
 
-**Base-8 System** (recommended):
-- Base: 8px
-- Scale: 4, 8, 16, 24, 32, 48, 64, 96px
-- **Why:** Divides evenly, easy math, widely used
+Theme should define:
+- Base unit (4px or 8px)
+- Scale values
 
-**Base-4 System** (finer control):
-- Base: 4px
-- Scale: 4, 8, 12, 16, 20, 24, 32, 40, 48px
-
-**Application:**
-- Component padding: Use scale values only
-- Margins/gaps: Use scale values only
-- Grid gutters: Use scale values only
-- Never arbitrary values (no 13px, 27px, etc.)
+**Reference fundamentals for:**
+- Base-4 vs base-8 choice
+- Application guidelines
 
 ---
 
 ### 4. Visual Properties
 
 **Border Radius** (roundness):
-- **Minimal themes:** Small (4px, 8px) or none (0px)
-- **Friendly themes:** Medium (8px, 12px, 16px)
-- **Playful themes:** Large (16px, 24px, full pill shapes)
+- **Minimal themes:** Small or none (sharp, clean edges)
+- **Friendly themes:** Medium roundness (approachable, soft)
+- **Playful themes:** Large roundness or full pill shapes (fun, organic)
+- Choose values that match personality - avoid arbitrary numbers
 
 **Shadows** (elevation):
 - Subtle shadows for depth (professional, minimal)
 - Stronger shadows for cards/modals (modern, bold)
 - No shadows for flat design (minimalist)
-- Define elevation system (sm, md, lg, xl)
+- Define elevation system with multiple levels (e.g., subtle/medium/strong)
 
 **Why shadows matter:**
 - Create visual hierarchy
@@ -251,100 +204,99 @@ Which would you like? (1, 2, or 3)
 
 **Complementary** - Opposites on color wheel:
 - High contrast, energetic, bold
-- Example: Blue (#3b82f6) + Orange (#f97316)
+- Concept: Choose two colors directly opposite each other (e.g., Blue + Orange, Red + Green)
 - Use for: Bold, tech, creative personalities
+- Creates maximum contrast and visual impact
 
 **Analogous** - Adjacent on color wheel:
 - Harmonious, calm, cohesive
-- Example: Blue (#3b82f6) + Purple (#8b5cf6) + Teal (#14b8a6)
+- Concept: Choose 2-3 colors next to each other (e.g., Blue + Purple + Teal)
 - Use for: Professional, minimal, warm personalities
+- Creates smooth, natural color transitions
 
 **Triadic** - Three evenly spaced:
 - Balanced, vibrant, dynamic
-- Example: Red + Yellow + Blue
+- Concept: Three colors evenly spaced on color wheel (e.g., Red + Yellow + Blue)
 - Use for: Playful, creative personalities
+- Creates balanced vibrancy
 
 **Monochromatic** - Single hue, varying lightness:
 - Clean, sophisticated, minimal
-- Example: Blue shades only (from #dbeafe to #1e3a8a)
+- Concept: Single color with variations in lightness/saturation
 - Use for: Minimal, professional personalities
+- Creates cohesive, elegant feel
 
 ---
 
 ### Color Psychology
 
-**Blue** - Trust, stability, professional, calm
-- Industries: Finance, healthcare, tech, corporate
+**See design-fundamentals for detailed color psychology.**
 
-**Green** - Growth, health, nature, balance
-- Industries: Health, sustainability, finance, education
+Quick reference:
+- Blue = Trust, professional
+- Green = Growth, health
+- Purple = Creativity, luxury
+- Red = Energy, urgency
+- Orange = Friendly, energetic
+- Yellow = Optimism, playfulness
+- Neutral = Sophisticated, minimal
 
-**Purple** - Creativity, luxury, wisdom, innovation
-- Industries: Beauty, creative, tech, education
-
-**Red** - Energy, urgency, passion, excitement
-- Industries: Food, entertainment, sales, sports
-
-**Orange** - Friendly, energetic, affordable, creative
-- Industries: E-commerce, social, creative
-
-**Yellow** - Optimism, warmth, caution, playfulness
-- Industries: Food, children, optimistic brands
-
-**Neutral (Gray/Black)** - Sophisticated, minimal, timeless
-- Industries: Luxury, fashion, professional services
-
-**Why personality matters:**
-Professional financial app → Blue (trust)
-Creative agency → Purple/Orange (creativity)
-Kids game → Bright multi-color (playful)
+**When choosing colors:**
+- Consider brand personality from fundamentals
+- Use color harmony methods (above) for cohesive palettes
+- Verify contrast ratios meet WCAG AA accessibility standards
 
 ---
 
 ## Theme Documentation Format
 
-**In planning doc:**
+**In planning doc (use actual values from your generated theme):**
 
 ```markdown
 ## Theme Specification
 
 ### Selected Theme
-- Name: Professional Blue
-- Source: .claude/themes/professional-blue.theme.json
-- Personality: Professional, trustworthy, business-focused
+- Name: [Theme Name]
+- Source: .claude/themes/[filename].theme.json OR "Custom generated theme"
+- Personality: [personality traits]
 
 ### Color Palette
-**Primary (Blue)**:
-- 500: #3b82f6 (buttons, links, primary actions)
-- 600: #2563eb (hover states)
-- 700: #1d4ed8 (active states)
+**Primary ([Color Name])**:
+- Base shade: [hex] (buttons, links, primary actions)
+- Hover shade: [hex] (hover states)
+- Active shade: [hex] (active states)
+- Additional shades: [hex values for 50-900 scale]
 
 **Neutral**:
-- 50: #fafafa (backgrounds)
-- 700: #374151 (body text)
-- 900: #111827 (headings)
+- Lightest: [hex] (backgrounds, subtle elements)
+- Medium: [hex] (body text, secondary elements)
+- Darkest: [hex] (headings, emphasis)
+- Additional shades: [hex values for full scale]
 
 **Semantic**:
-- Success: #10b981 (confirmations, success states)
-- Error: #ef4444 (errors, destructive actions)
-- Warning: #f59e0b (warnings, caution)
+- Success: [hex] (confirmations, success states)
+- Error: [hex] (errors, destructive actions)
+- Warning: [hex] (warnings, caution)
+- Info: [hex] (information, neutral notifications)
 
 ### Typography
-- Heading: Inter, 700 (bold), tight line-height (1.25)
-- Body: Inter, 400 (regular), normal line-height (1.5)
-- Scale: 14, 16, 18, 20, 24, 30, 36px
+- Heading: [Font family], [weight descriptor], [line-height descriptor]
+- Body: [Font family], [weight descriptor], [line-height descriptor]
+- Scale: [List chosen scale values matching your system]
 
 ### Spacing
-- Scale: 4, 8, 16, 24, 32, 48, 64px (base-8)
+- Scale: [List scale values - base-4 or base-8 system]
 
 ### Visual Style
-- Border radius: 8px (medium, friendly)
-- Shadows: Subtle elevation (sm, md for cards)
+- Border radius: [Descriptor] (small/medium/large matching personality)
+- Shadows: [Descriptor] (subtle/medium/strong elevation)
 ```
 
 ---
 
 ## Theme Application Guidelines
+
+**See design-fundamentals for complete application guidelines.**
 
 ### Consistency Rules
 
@@ -356,62 +308,62 @@ Kids game → Bright multi-color (playful)
 
 **Don't:**
 - Mix colors from multiple themes
-- Use arbitrary values (18.5px spacing, #3b7ef2 blue variant)
+- Use arbitrary values (random spacing, slight color variants)
 - Override theme for one-off styles
 - Ignore semantic color meanings
 
 ### Component Theming
 
 **Buttons:**
-- Primary: Primary color background, white text
-- Secondary: Secondary/neutral background
+- Primary: Primary color background, contrasting text
+- Secondary: Secondary/neutral background, readable text
 - Outline: Transparent background, primary border
 - Ghost: Transparent, primary text only
 
 **States consistently:**
-- Hover: Darken by one shade (500 → 600)
-- Active: Darken by two shades (500 → 700)
-- Disabled: Neutral-300 background, neutral-400 text
-- Focus: Primary color ring (3px width)
+- Hover: Slightly darker/more saturated than default
+- Active: Noticeably darker/more saturated than hover
+- Disabled: Muted neutral shades with reduced contrast
+- Focus: Primary color ring or outline
 
 **Text hierarchy:**
-- H1: Largest scale, heading font, bold, neutral-900
-- H2-H6: Descending scale, heading font, semibold/bold
-- Body: Base size, body font, regular, neutral-700
-- Caption: Smaller scale, body font, regular, neutral-500
+- H1: Largest scale, heading font, bold weight, darkest neutral
+- H2-H6: Descending scale, heading font, semibold/bold weight
+- Body: Base size, body font, regular weight, medium-dark neutral
+- Caption: Smaller scale, body font, regular weight, medium neutral
 
 ---
 
 ## Common Theme Mistakes
 
-1. **Too many colors** - Using 6+ colors creates chaos
-   → Fix: Stick to primary + neutral + semantics (4 total)
+**See design-fundamentals for foundational mistakes. Theme-specific issues:**
 
-2. **Poor contrast** - Text hard to read against background
-   → Fix: Follow WCAG AA (4.5:1 for text, 3:1 for UI)
+1. **No personality** - Generic theme, could be any site
+   → Fix: Choose personality first (professional/creative/minimal/etc.), theme follows
 
-3. **Inconsistent spacing** - Random margins everywhere
-   → Fix: Use scale values only (8, 16, 24, never 15, 23)
+2. **Arbitrary tweaks** - Modifying theme colors slightly "to see how it looks"
+   → Fix: Use theme palette exactly as defined - trust the color harmony
 
-4. **Clashing fonts** - Two display fonts competing
-   → Fix: One display + one readable body font
-
-5. **No personality** - Generic, could be any site
-   → Fix: Choose personality first, theme follows
-
-6. **Arbitrary values** - "Let me try #3b7ff3 instead of #3b82f6"
-   → Fix: Use theme palette exactly as defined
-
-7. **Semantic color abuse** - Green button for delete action
+3. **Semantic color abuse** - Green button for delete action
    → Fix: Red (error) for destructive, green (success) for positive
+
+4. **Ignoring color harmony** - Random color combinations without harmony method
+   → Fix: Use color harmony methods (complementary, analogous, etc.)
+
+5. **Theme mixing** - Using colors from multiple themes
+   → Fix: Commit to one theme, apply consistently
+
+6. **Copying examples literally** - Using exact values from documentation examples
+   → Fix: Generate unique values that match personality and harmony method
 
 ---
 
 ## Validation Checklist
 
-Before marking theme complete:
+**See design-fundamentals for complete validation. Theme-specific checks:**
 
 - [ ] Brand personality identified (professional/creative/minimal/etc.)
+- [ ] Color harmony method used (complementary, analogous, triadic, or monochromatic)
 - [ ] Primary color palette complete (50-900 shades)
 - [ ] Neutral palette defined (50-900 shades)
 - [ ] Semantic colors defined (success, warning, error, info)
@@ -422,14 +374,21 @@ Before marking theme complete:
 - [ ] Shadow system defined (if applicable)
 - [ ] Theme documented in planning doc
 - [ ] Theme file saved in `.claude/themes/` (if custom)
-- [ ] All colors pass WCAG AA contrast requirements
+- [ ] All colors pass WCAG AA contrast requirements (verify with contrast checker)
 
 ---
 
 ## Key Takeaway
 
-**Intentional themes prevent bland UIs.**
+**Color harmony + brand personality = cohesive themes.**
 
-Rather than defaulting to purple everywhere, start with personality, choose cohesive colors, and apply consistently. A thoughtful theme makes UI feel designed, not default.
+When users need help choosing colors/fonts:
+1. Ask brand personality (professional/creative/minimal/etc.)
+2. Apply color harmony methods (complementary, analogous, triadic, monochromatic)
+3. Generate complete theme specification
+4. Apply using design-fundamentals principles
 
-Theme is foundation—everything else builds on it.
+Theme-factory provides the **interactive selection process** and **color theory methods**.
+Design-fundamentals provides the **application principles** and **technical foundation**.
+
+Together: Distinctive, cohesive, accessible UI themes.

@@ -1,40 +1,24 @@
 ---
 name: quality-code-check
-description: Code quality validation principles - linting, type checking, and build verification across projects
-allowed-tools: [bash, read]
+description: |
+  Code quality validation through linting, type checking, and build verification.
+  Multi-language support for automated quality gates.
 
-# Category & Loading
-category: architecture
-subcategory: quality-assurance
+  Use when validating code quality:
+  - User explicitly requests quality checks ("/skill:quality" or "run quality checks")
+  - After implementation to validate code meets standards
+  - Before creating pull requests or commits
+  - When debugging build/type/lint issues
 
-# Auto-trigger logic
-auto-trigger:
-  enabled: false
-  keywords: []
-  exclude-keywords: []
-  contexts: []
+  Provides language-specific tool commands and validation workflows for:
+  - JavaScript/TypeScript (ESLint, tsc, build tools)
+  - Python (Ruff, MyPy, Pyright)
+  - Go (golangci-lint, go build)
+  - Rust (Clippy, cargo check/build)
+  - Java (Gradle, Maven)
 
-# Manual trigger
-manual-load:
-  enabled: true
-  commands:
-    - /skill:quality
-    - /skill:quality-code-check
-  mentions:
-    - quality check
-    - code validation
-    - lint check
-
-# Dependencies & Priority
-dependencies: []
-conflicts-with: []
-priority: high
-
-# When to load this skill
-trigger-description: |
-  Load when performing code quality validation after feature implementation.
-  Focus on detecting issues early through automated checks.
-  Use after all implementation phases are complete to validate the entire feature.
+  Manual-only trigger - runs when explicitly requested, not automatically.
+  Focuses on detecting issues early through systematic automated checks.
 ---
 
 # Quality Code Check
@@ -81,7 +65,7 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 - Run linting on all modified files
 - Auto-fix warnings when possible (formatting, import organization)
 - Fix remaining errors manually
-- Aim for zero warnings on changed files
+- Minimize warnings to meet project standards (some projects allow certain warnings)
 
 ---
 
@@ -142,13 +126,19 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 
 **Approach:**
 - Run full build after all changes are complete
-- Use production build configuration
+- Use production build configuration when available
 - All build steps must succeed without errors
-- Zero build warnings on changed files
+- Minimize build warnings to project-acceptable levels
 
 ---
 
 ## Tool Invocation
+
+**Note:** Commands shown are common examples. Adjust to your project's:
+- Package manager (npm/yarn/pnpm/bun)
+- Configuration files (eslintrc, tsconfig, pyproject.toml)
+- Build scripts (check package.json scripts)
+- Tool versions and flags
 
 ### Project Detection
 
@@ -168,55 +158,75 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 
 **Linting:**
 ```bash
+# Check package.json scripts first for "lint" command
+Bash(command="npm run lint")
+# Or use ESLint directly (adjust max-warnings to project standard)
 Bash(command="npx eslint . --max-warnings=0")
-# Or with pnpm
-Bash(command="pnpm eslint . --max-warnings=0")
-# Auto-fix
+# Alternative package managers
+Bash(command="pnpm lint")  # or "pnpm eslint ."
+Bash(command="yarn lint")
+# Auto-fix (review changes after)
 Bash(command="npx eslint . --fix")
 ```
 
 **Type Checking:**
 ```bash
+# Check package.json scripts first for "typecheck" or "tsc" command
+Bash(command="npm run typecheck")
+# Or run TypeScript directly
 Bash(command="npx tsc --noEmit")
 ```
 
 **Build:**
 ```bash
+# Check package.json scripts for "build" command
 Bash(command="npm run build")
-# Or
+# Alternative package managers
 Bash(command="pnpm build")
+Bash(command="yarn build")
 ```
 
 #### Python
 
 **Linting:**
 ```bash
+# Modern tool (Ruff - fast, recommended)
 Bash(command="ruff check .")
-# Auto-fix
+# Auto-fix (review changes after)
 Bash(command="ruff check . --fix")
-# Alternative
+# Alternative tools
 Bash(command="flake8 .")
+Bash(command="pylint .")
 ```
 
 **Type Checking:**
 ```bash
+# MyPy (common)
 Bash(command="mypy .")
-# Or
+# Or Pyright (faster, VS Code default)
 Bash(command="pyright")
+# Or with specific paths
+Bash(command="mypy src/")
 ```
 
 **Build/Import Check:**
 ```bash
+# Compile check (adjust path to your source directory)
 Bash(command="python -m py_compile src/**/*.py")
+# Or try importing main module
+Bash(command="python -c 'import your_package'")
 ```
 
 #### Go
 
 **Linting:**
 ```bash
+# Comprehensive linter (recommended)
 Bash(command="golangci-lint run")
-# Or
+# Or built-in vet
 Bash(command="go vet ./...")
+# Specific package
+Bash(command="golangci-lint run ./pkg/...")
 ```
 
 **Type Checking:** (built into compiler)
@@ -226,14 +236,20 @@ Bash(command="go build ./...")
 
 **Build:**
 ```bash
+# Build all packages
 Bash(command="go build ./...")
+# Or specific main package
+Bash(command="go build ./cmd/myapp")
 ```
 
 #### Rust
 
 **Linting:**
 ```bash
+# Clippy with warnings as errors (adjust -D to -W for warnings only)
 Bash(command="cargo clippy -- -D warnings")
+# Or allow warnings
+Bash(command="cargo clippy")
 ```
 
 **Type Checking:** (built into compiler)
@@ -243,19 +259,28 @@ Bash(command="cargo check")
 
 **Build:**
 ```bash
+# Development build
 Bash(command="cargo build")
+# Production build (optimized)
+Bash(command="cargo build --release")
 ```
 
 #### Java
 
 **Linting + Build (Gradle):**
 ```bash
+# Run all checks
 Bash(command="./gradlew check")
+# Or just build
+Bash(command="./gradlew build")
 ```
 
 **Linting + Build (Maven):**
 ```bash
+# Run all checks
 Bash(command="mvn verify")
+# Or just compile
+Bash(command="mvn compile")
 ```
 
 ### Error Handling
@@ -269,7 +294,7 @@ Bash(command="mvn verify")
 - Parse error output
 - Report specific violations
 - Suggest fixes based on error type
-- Retry after fixes (max 3 attempts)
+- Retry after fixes (continue until resolved or escalate if blocked)
 
 ---
 
@@ -277,15 +302,20 @@ Bash(command="mvn verify")
 
 ### Before Running Quality Checks
 
-**Prerequisites:**
-- All implementation phases are complete
-- All task checkboxes in planning doc are marked `[x]`
-- No incomplete tasks remain
+**When to run:**
+- After implementation is stable enough to validate
+- Before creating pull requests or commits
+- When user explicitly requests quality checks
+- Incrementally during development (optional)
+
+**Ideal conditions:**
+- Implementation phases complete (or stable enough)
+- Code compiles and runs without critical errors
+- Ready for validation against standards
 
 **Signal:**
 ```
-✓ All phases complete!
-Running quality checks now...
+Running quality checks...
 ```
 
 ### Quality Check Sequence
@@ -298,20 +328,20 @@ Running quality checks now...
    - Execute Bash commands from Tool Invocation section
    - Fix auto-fixable issues first (--fix flag)
    - Manually fix remaining violations
-   - Target: Zero warnings on changed files
+   - Target: Meet project's warning standards (minimize to acceptable level)
 
 3. **Run type checks** (non-emitting where applicable)
    - Execute Bash commands from Tool Invocation section
    - Fix all type errors
    - Validate type consistency across modules
-   - Target: No type errors
+   - Target: No type errors (unless intentionally using any/unknown)
 
-4. **Run build** (full build, production configuration)
+4. **Run build** (full build, production configuration when available)
    - Execute Bash commands from Tool Invocation section
    - Ensure all code compiles
    - Validate all imports resolve
    - Confirm output artifacts are generated
-   - Target: Build succeeds without errors
+   - Target: Build succeeds without critical errors
 
 ### Error Recovery
 
@@ -320,23 +350,23 @@ Running quality checks now...
 1. **Analyze errors** - Identify root causes from Bash output
 2. **Fix issues** - Make minimal changes to resolve
 3. **Re-run checks** - Execute same Bash commands again
-4. **Repeat** - Continue until all checks pass (up to 3 attempts)
+4. **Repeat** - Continue until checks pass or issue is understood
 
-**If unable to fix after 3 attempts:**
-- Document the issue in planning doc
-- Mark the task as blocked with reason
-- Escalate for further investigation
+**If unable to fix or issue is complex:**
+- Document the issue and root cause analysis
+- Mark as blocked if preventing progress
+- Escalate for further investigation or ask user for guidance
 
 ---
 
 ## Common Mistakes
 
-1. **Ignoring warnings**: Warnings often indicate real problems or future issues → Fix them or understand why they're acceptable
-2. **Only checking one file**: Changes in one file can break type checking across others → Check all modified files
-3. **Skipping the build step**: Code might lint and type-check but still fail to compile → Always run the full build
-4. **Accepting auto-fixes blindly**: Auto-fixes might hide real issues → Review each auto-fix
-5. **Running checks too early**: Incomplete code fails checks → Run only after all implementation is done
-6. **Loose quality standards**: Allowing technical debt accumulates over time → Maintain consistent standards across all features
+1. **Ignoring warnings**: Warnings often indicate real problems or future issues → Fix them or understand why they're acceptable for your project
+2. **Only checking one file**: Changes in one file can break type checking across others → Check all modified files and their dependencies
+3. **Skipping the build step**: Code might lint and type-check but still fail to compile → Always verify the full build
+4. **Accepting auto-fixes blindly**: Auto-fixes might hide real issues or change behavior → Review each auto-fix before committing
+5. **Not checking package.json scripts**: Projects often define custom lint/build commands → Check scripts first before running tools directly
+6. **Inconsistent standards**: Allowing different quality levels across features accumulates tech debt → Maintain consistent standards appropriate for your project
 
 ---
 
@@ -344,20 +374,29 @@ Running quality checks now...
 
 Before considering quality checks complete:
 
-- [ ] All implementation phases are marked complete in planning doc
-- [ ] All task checkboxes are `[x]` (no incomplete tasks)
+- [ ] Code is stable enough to validate (implementation complete or near-complete)
 - [ ] Linting tool runs successfully on changed files
-- [ ] All lint warnings are fixed or documented
+- [ ] Lint warnings minimized to project-acceptable levels
 - [ ] Type checking tool runs successfully
-- [ ] No type errors remain
-- [ ] Build completes successfully (full build, production config)
-- [ ] No build errors present
-- [ ] Zero warnings on changed files (across all checks)
-- [ ] All issues are fixed (no open blockers)
+- [ ] No critical type errors remain (intentional any/unknown documented if needed)
+- [ ] Build completes successfully (full build when available)
+- [ ] No critical build errors present
+- [ ] Warnings are at project-acceptable levels (not necessarily zero)
+- [ ] All blocking issues are fixed or escalated with clear documentation
 
 ---
 
 ## Key Takeaway
 
-Code quality validation is the final gate before code review. By enforcing consistent checks after all implementation is complete, you ensure the entire feature meets project standards. Quality checks catch errors early, prevent tech debt, and give confidence that the feature is ready for review and deployment.
+**Systematic quality validation catches issues early and maintains consistency.**
+
+Quality checks are flexible gates that validate code against project standards:
+- Run when code is stable enough (not necessarily 100% complete)
+- Adjust tool commands and flags to your project's needs
+- Target project-appropriate warning levels (not always zero)
+- Use as validation before PRs, commits, or deployment
+
+Commands shown are examples - check your project's scripts and configuration first. Quality standards should be consistent within your project but may vary between projects.
+
+Systematic checks catch errors early, prevent tech debt accumulation, and build confidence in code readiness.
 

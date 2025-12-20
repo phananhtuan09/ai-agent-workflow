@@ -1,55 +1,24 @@
 ---
 name: ux-accessibility
-description: Accessibility principles for inclusive design - keyboard navigation, screen readers, contrast, focus management. WCAG compliance guidelines.
-allowed-tools: [read, grep]
+description: |
+  Accessibility principles for inclusive design - keyboard navigation, screen readers,
+  ARIA, color contrast, and focus management. WCAG compliance guidelines for building
+  interfaces usable by everyone, including people with disabilities.
 
-# Category & Loading
-category: ux
-subcategory: accessibility
+  Use when implementing interactive UI components and user interfaces:
+  - Forms, buttons, links, and all interactive elements requiring keyboard access
+  - Keyboard navigation, focus management, and tab order implementation
+  - Screen reader support with semantic HTML and ARIA attributes
+  - Color contrast validation (WCAG AA/AAA standards: 4.5:1, 3:1 ratios)
+  - Modals, dialogs, dropdowns, and complex widgets needing focus trapping
+  - Alternative text for images, icons, and visual content
+  - Form validation with accessible error messages
 
-# Auto-trigger logic
-auto-trigger:
-  enabled: true
-  keywords:
-    - accessibility
-    - a11y
-    - keyboard
-    - screen reader
-    - aria
-    - focus
-    - contrast
-    - wcag
-    - semantic
-  exclude-keywords:
-    - animation
-    - responsive
-    - performance
-  contexts:
-    - ux
-    - accessibility
-    - frontend
+  Focus on making UI usable via keyboard, screen readers, and assistive technologies.
+  Covers semantic HTML, ARIA patterns, contrast ratios, and WCAG compliance.
 
-# Manual trigger
-manual-load:
-  enabled: true
-  commands:
-    - /skill:accessibility
-    - /skill:a11y
-  mentions:
-    - check accessibility
-    - keyboard navigation
-    - screen reader
-
-# Dependencies & Priority
-dependencies: []
-conflicts-with: []
-priority: high
-
-# When to load this skill
-trigger-description: |
-  Load when implementing interactive UI components or when accessibility is mentioned.
-  Focus on keyboard navigation, screen readers, ARIA, focus management, and color contrast.
-  Principles apply to any framework or technology.
+  Do NOT load for: Performance optimization, responsive/mobile design, or animation timing.
+  Accessibility is about usability for all users, not visual design or performance.
 ---
 
 # UX Accessibility

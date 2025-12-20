@@ -1,57 +1,22 @@
 ---
 name: ux-feedback-patterns
-description: User feedback patterns for interactions - loading, success, errors, empty states. Ensures users always know system state.
-allowed-tools: [read, grep]
+description: |
+  User feedback patterns for user-facing interactions - loading states, success messages,
+  error handling, and empty states. Ensures users always understand system state and next steps.
 
-# Category & Loading
-category: ux
-subcategory: feedback
+  Use when implementing user-facing state changes in UI:
+  - Form submissions requiring validation feedback and success/error messages
+  - Async operations needing loading indicators (when to show, what type)
+  - Error handling flows with clear recovery paths
+  - Empty state designs with helpful messaging and actions
+  - Success confirmations and toast notifications
+  - Optimistic updates and rollback patterns
 
-# Auto-trigger logic
-auto-trigger:
-  enabled: true
-  keywords:
-    - loading
-    - error
-    - success
-    - feedback
-    - toast
-    - notification
-    - form submit
-    - async
-    - API call
-    - empty state
-    - spinner
-  exclude-keywords:
-    - animation timing
-    - responsive
-    - backend API
-  contexts:
-    - ux
-    - frontend
-    - user-interaction
+  Focus on WHEN to show feedback (timing thresholds), WHAT type (toast/inline/modal),
+  and HOW LONG (auto-dismiss vs manual). Covers user-facing feedback patterns only.
 
-# Manual trigger
-manual-load:
-  enabled: true
-  commands:
-    - /skill:feedback
-    - /skill:ux-feedback
-  mentions:
-    - user feedback
-    - loading state
-    - error handling
-
-# Dependencies & Priority
-dependencies: []
-conflicts-with: []
-priority: high
-
-# When to load this skill
-trigger-description: |
-  Load when implementing user interactions, forms, API calls, or async operations.
-  Focus on loading states, success/error feedback, and empty states.
-  Ensures users always know what's happening.
+  Do NOT load for: Backend error logging, API response design, or animation implementation
+  details (timing curves, easing functions). For animation mechanics, see design/animations.
 ---
 
 # UX Feedback Patterns
@@ -77,16 +42,19 @@ Every user action needs feedback in one or more states:
 
 ### When to Show Loading
 
-**Timing thresholds:**
-- **< 100ms**: Instant, no feedback needed
-- **100-300ms**: Subtle indicator (optional)
-- **300ms-1s**: Show spinner or skeleton
-- **1-5s**: Spinner + explanatory text
-- **5-10s**: Progress bar with percentage
-- **10s+**: Progress bar + explanation + cancel option
+**Timing thresholds (based on human perception research):**
+
+These timings are based on UX research (Nielsen Norman Group, human-computer interaction studies) but should be adjusted to your specific context:
+
+- **< 100ms**: Perceived as instant, no feedback needed
+- **100-300ms**: Subtle indicator (optional) - users start noticing delay
+- **300ms-1s**: Show spinner or skeleton - noticeable wait
+- **1-5s**: Spinner + explanatory text - user needs reassurance
+- **5-10s**: Progress bar with percentage - user needs tracking
+- **10s+**: Progress bar + explanation + cancel option - user needs control
 
 **Why 300ms threshold?**
-Prevents flicker for fast operations while providing feedback for perceived delays.
+Research shows this is where users start perceiving delay. Prevents flicker for fast operations while providing feedback for perceived delays. Adjust based on user expectations in your domain.
 
 ### Loading Patterns
 
@@ -127,8 +95,9 @@ Prevents flicker for fast operations while providing feedback for perceived dela
 - Payment confirmations
 
 **Skip for:**
-- Very quick actions (< 500ms)
+- Very quick actions (near-instant completion)
 - Continuous interactions (likes, simple toggles) - use optimistic updates
+- Actions where feedback is inherent in the result (e.g., UI immediately updates)
 
 ### Success Patterns
 
@@ -305,10 +274,12 @@ Prevents flicker for fast operations while providing feedback for perceived dela
 ## Best Practices
 
 ### Timing
-- Feedback should feel immediate (< 100ms perceived delay)
-- Success messages: auto-dismiss 3-5 seconds
-- Error messages: manual dismiss or longer timeout (10s+)
-- Loading threshold: 300ms
+
+**Research-based guidelines (adjust to your context):**
+- Feedback should feel immediate (instant perceived response)
+- Success messages: auto-dismiss after user has time to read (typically 3-5 seconds)
+- Error messages: manual dismiss or longer timeout (user needs time to process)
+- Loading threshold: Show indicators when operation feels delayed (research: ~300ms)
 
 ### Tone
 - Be specific, not vague
@@ -337,7 +308,7 @@ Prevents flicker for fast operations while providing feedback for perceived dela
 3. **No loading state** - User clicks repeatedly
 4. **Blank screens** - Empty state without explanation
 5. **Disabled without reason** - No tooltip explaining why
-6. **Flickering loaders** - Show only for operations > 300ms
+6. **Flickering loaders** - Show only for operations with noticeable delay (not instant)
 7. **Success overload** - Toast for every tiny action
 8. **Technical error codes** - Show user-friendly messages instead
 9. **No recovery path** - Error with no next step
@@ -348,7 +319,7 @@ Prevents flicker for fast operations while providing feedback for perceived dela
 ## Validation Checklist
 
 For every interactive feature:
-- [ ] Loading state for async operations > 300ms
+- [ ] Loading state for async operations with noticeable delay
 - [ ] Success feedback (toast, inline, or visual confirmation)
 - [ ] Error messages specific and actionable
 - [ ] Empty states have helpful messaging + action
@@ -364,5 +335,7 @@ For every interactive feature:
 ## Key Takeaway
 
 **Never leave users guessing.** Clear, timely feedback is the difference between a frustrating experience and a delightful one.
+
+Timing guidelines in this skill are based on UX research (Nielsen Norman Group, human perception studies) but should be adjusted to your specific context. Users in different domains have different expectations (e.g., gaming vs banking).
 
 When in doubt, over-communicate rather than under-communicate.

@@ -1,61 +1,36 @@
 ---
 name: design-responsive
-description: Responsive design principles - mobile-first approach, breakpoints, fluid layouts, touch-friendly interfaces. Framework agnostic guidelines.
-allowed-tools: [read]
+description: |
+  Mobile-first responsive design for beautiful, multi-device UIs. Breakpoints, fluid layouts,
+  touch optimization, and creative responsive patterns for distinctive experiences across screens.
 
-# Category & Loading
-category: design
-subcategory: responsive
+  Use when building responsive UIs or adapting designs for multiple devices:
+  - Creating mobile-first layouts (stack→row, fluid grids, asymmetric patterns)
+  - Defining breakpoints and fluid typography (mobile/tablet/desktop)
+  - Optimizing for touch devices (44x44px targets, gestures, feedback)
+  - Responsive component patterns (navigation, tables, forms, images)
+  - Maintaining aesthetic consistency across screen sizes
+  - Performance optimization (lazy loading, conditional loading)
 
-# Auto-trigger logic
-auto-trigger:
-  enabled: true
-  keywords:
-    - responsive
-    - mobile
-    - tablet
-    - desktop
-    - breakpoint
-    - media query
-    - mobile-first
-    - touch
-    - viewport
-    - fluid
-  exclude-keywords:
-    - animation
-    - backend
-    - API
-  contexts:
-    - design
-    - responsive
-    - mobile
+  Mobile-first approach: Design for mobile constraints first, enhance progressively
+  for larger screens. Focus on essential content, touch-friendly interactions, and
+  maintaining distinctive aesthetic across all devices.
 
-# Manual trigger
-manual-load:
-  enabled: true
-  commands:
-    - /skill:responsive
-    - /skill:responsive-design
-  mentions:
-    - make responsive
-    - mobile-first
-    - breakpoints
+  Covers: Breakpoint systems, creative layout patterns, fluid typography, touch
+  optimization, responsive spacing, component patterns, performance, testing strategies.
 
-# Dependencies & Priority
-dependencies: []
-conflicts-with: []
-priority: medium
+  Integrates with design-fundamentals: Apply spacing, typography, and color systems
+  responsively. Maintain chosen aesthetic (minimal/bold/playful) across all devices.
 
-# When to load this skill
-trigger-description: |
-  Load when user explicitly mentions responsive design, mobile layouts, or multi-device support.
-  Focus on mobile-first principles and fluid design patterns.
+  Apply to: All responsive web UIs (mobile/tablet/desktop)
+  Do NOT load for: Desktop-only applications, native mobile apps (different patterns),
+  or non-responsive legacy systems.
 ---
 
 # Responsive Design
 
 ## Purpose
-Ensure UI works beautifully across all device sizes through mobile-first approach and fluid patterns.
+Create beautiful, functional UIs that adapt gracefully across all device sizes through mobile-first approach, creative layout patterns, and technical excellence.
 
 ---
 
@@ -70,26 +45,103 @@ Design for mobile first, enhance for larger screens.
 - Easier to enhance than to strip down
 - Forces focus on essential content
 - Better performance on mobile
+- Encourages progressive enhancement
+
+---
+
+## Creative Responsive Patterns
+
+### Maintain Aesthetic Across Devices
+
+**Principle:** Your chosen aesthetic (from design-fundamentals) should feel consistent across all screen sizes, while adapting to each device's constraints.
+
+**Minimal/Refined aesthetic:**
+- **Mobile**: Generous whitespace, restrained content, elegant typography
+- **Tablet**: More breathing room, refined spacing increases
+- **Desktop**: Maximum whitespace, elevated elegance
+
+**Bold/Vibrant aesthetic:**
+- **Mobile**: Strong colors, compact energy, bold typography
+- **Tablet**: Bolder layouts, increased contrast
+- **Desktop**: Full boldness, dramatic scale differences
+
+**Playful/Friendly aesthetic:**
+- **Mobile**: Rounded shapes, warm colors, cozy spacing
+- **Tablet**: More playful interactions, generous padding
+- **Desktop**: Full playfulness with space for delight
+
+### Beyond Stack→Row: Creative Layouts
+
+**Standard pattern** (functional but predictable):
+```
+Mobile: Stack vertically
+Desktop: Side-by-side columns
+```
+
+**Creative patterns** (distinctive and memorable):
+
+**Asymmetric Responsive:**
+- Mobile: Single column with visual hierarchy through size variation
+- Desktop: Asymmetric grid with unexpected element placement
+- Elements don't just scale—they reposition creatively
+
+**Diagonal Flow:**
+- Mobile: Vertical flow with diagonal visual elements
+- Desktop: Diagonal layouts, overlapping sections
+- Maintains dynamism across breakpoints
+
+**Intentional Breaking:**
+- Mobile: Full-width sections with purpose
+- Desktop: Break grid for hero elements, feature highlights
+- Responsive doesn't mean boring—be bold where it counts
+
+**Z-Pattern Adaptation:**
+- Mobile: Vertical Z (natural scroll)
+- Desktop: Horizontal Z (guide eye across screen)
+- Use size, color, spacing to maintain flow
+
+### Responsive Visual Hierarchy
+
+**Principle:** Hierarchy adapts to available space—not all elements scale equally.
+
+**Scale dramatically:**
+- Primary CTAs: 2-3x size increase from mobile to desktop
+- Hero headings: Significant size jump
+- Featured content: More prominent on larger screens
+
+**Scale subtly:**
+- Body text: Minimal increase (16px → 18px)
+- Labels: Stay similar size
+- Helper text: Consistent across sizes
+
+**Spacing hierarchy:**
+- Mobile: Tight but intentional spacing (conserve space)
+- Desktop: Generous spacing for visual breathing room
+- Related items stay close, unrelated items separate more on desktop
 
 ---
 
 ## Breakpoint System
 
-### Standard Breakpoints
+### Defining Breakpoints
 
-**Common breakpoint ranges:**
-- **Mobile**: 320px - 639px (default, no media query needed)
-- **Small (sm)**: 640px+ (mobile landscape, small tablet)
-- **Medium (md)**: 768px+ (tablet portrait)
-- **Large (lg)**: 1024px+ (tablet landscape, small desktop)
-- **XLarge (xl)**: 1280px+ (desktop)
-- **2XLarge (2xl)**: 1536px+ (large desktop)
+**Principle:** Base breakpoints on content needs, not specific devices.
+
+**Common approach (reference, not prescriptive):**
+- **Mobile**: ~320-640px range (default, no media query needed)
+- **Small/Tablet**: ~640-768px+ (mobile landscape, small tablet)
+- **Medium**: ~768-1024px+ (tablet portrait)
+- **Large**: ~1024-1280px+ (tablet landscape, small desktop)
+- **XLarge**: ~1280px+ (desktop)
 
 **Guidelines:**
 - Use 3-4 major breakpoints (not 10+)
-- Base on content needs, not specific devices
+- Choose values based on where YOUR content breaks
 - Avoid device-specific breakpoints (iPhone X, iPad Pro, etc.)
 - Use `min-width` queries (mobile-first)
+- Adjust to your design system (Material Design uses 600/960/1280, Tailwind uses 640/768/1024)
+
+**Note:** Examples shown in CSS syntax for illustration. Principles apply to all frameworks (React, Vue, Svelte, Flutter, React Native, etc.)
 
 ### Mobile-First Pattern
 
@@ -106,17 +158,19 @@ Design for mobile first, enhance for larger screens.
 
 ### Fluid Typography
 
-**Principle:** Font sizes scale smoothly with viewport.
+**Principle:** Font sizes scale smoothly with viewport, maintaining readability.
 
 **Approaches:**
-- **Viewport units**: `font-size: calc(16px + 0.5vw)`
-- **clamp()**: `font-size: clamp(16px, 2vw, 24px)` (min, preferred, max)
+- **Viewport units**: Scale proportionally with screen size
+- **clamp()**: Define minimum, preferred, and maximum sizes
 - **Stepped sizes**: Different fixed sizes per breakpoint
 
 **Guidelines:**
-- Body text minimum: 16px on mobile
-- Scale up slightly on desktop (18-20px comfortable)
+- Body text typically 16px+ on mobile for readability (adjust per font family)
+- Scale up slightly on desktop (18-20px range common)
 - Headings scale more dramatically than body text
+- Maintain hierarchy ratios across breakpoints
+- Verify with your design system's typography scale
 
 ### Line Length
 
@@ -233,12 +287,15 @@ Collapse to hamburger at smaller breakpoints, expand to full menu at larger.
 
 ### Tap Target Sizes
 
-**Minimum sizes:**
-- 44x44px (Apple/Google guidelines)
-- 48x48px for better accessibility
-- Spacing between targets: 8px minimum
+**Principle:** Touch targets must be large enough for finger interaction.
 
-**Why:** Finger taps less precise than mouse clicks.
+**Common standards (verify with your platform):**
+- 44x44px (Apple HIG, Google Material baseline)
+- 48x48px (WCAG 2.1 AAA, better accessibility)
+- 40x40px (acceptable in dense UIs with adequate spacing)
+- Spacing between targets: 8px minimum for usability
+
+**Why:** Finger taps less precise than mouse clicks (~9mm average finger pad).
 
 **Applies to:**
 - Buttons
@@ -246,6 +303,8 @@ Collapse to hamburger at smaller breakpoints, expand to full menu at larger.
 - Form inputs
 - Checkboxes/radios
 - Icons
+
+**Note:** Adjust based on context (mobile app vs responsive web) and platform guidelines.
 
 ### Touch Gestures
 
@@ -274,15 +333,18 @@ Collapse to hamburger at smaller breakpoints, expand to full menu at larger.
 ### Mobile Considerations
 
 **Input focus:**
-- iOS zooms on inputs < 16px font size
-- Solution: Use 16px minimum font size
+- iOS auto-zooms on inputs with font size < 16px
+- Solution: Use 16px+ for input fields (or disable zoom if intentional)
+- Applies to: text inputs, textareas, select dropdowns
 
 **Viewport meta tag:**
-- Always include: `<meta name="viewport" content="width=device-width, initial-scale=1">`
+- Always include viewport meta configuration
 - Prevents desktop-width rendering on mobile
+- Standard: `<meta name="viewport" content="width=device-width, initial-scale=1">`
 
 **Smooth scrolling:**
-- Enable momentum scrolling on iOS: `-webkit-overflow-scrolling: touch`
+- Enable momentum scrolling on iOS for better feel
+- Consider touch-action CSS for gesture control
 
 ---
 
@@ -311,14 +373,15 @@ Collapse to hamburger at smaller breakpoints, expand to full menu at larger.
 **Principle:** Spacing scales with viewport.
 
 **Approaches:**
-- **clamp()**: `padding: clamp(16px, 5vw, 48px)`
-- **Viewport units**: `margin: 5vw`
+- **clamp()**: Define min, preferred, max spacing
+- **Viewport units**: Scale proportionally
 - **Stepped values**: Different spacing per breakpoint
 
 **Guidelines:**
 - Mobile: Tighter spacing (conserve screen space)
 - Desktop: Generous spacing (utilize available space)
 - Scale consistently across similar elements
+- Maintain spacing scale ratios from design-fundamentals
 
 ---
 
@@ -365,38 +428,49 @@ Collapse to hamburger at smaller breakpoints, expand to full menu at larger.
 - [ ] Network throttling (performance)
 
 ### Touch Interaction
-- [ ] All tap targets 44x44px minimum
-- [ ] Adequate spacing between targets
+- [ ] All tap targets meet minimum size (verify with platform guidelines)
+- [ ] Adequate spacing between targets (8px+ typical)
 - [ ] Touch feedback visible
 - [ ] No hover-only interactions for critical features
 
-### Content
-- [ ] Text readable on all screen sizes (16px+ body)
+### Content & Aesthetic
+- [ ] Text readable on all screen sizes (verify with design system)
 - [ ] Images scale properly without distortion
 - [ ] Horizontal scroll only where intentional
 - [ ] No content cut off or hidden
+- [ ] Chosen aesthetic maintained across devices
+- [ ] Visual hierarchy clear at all sizes
 
 ---
 
 ## Common Mistakes
 
-1. **Desktop-first** - Start mobile, enhance up
-2. **Fixed widths** - Use max-width instead
-3. **Too many breakpoints** - 3-4 is enough
-4. **Pixel-perfect designs** - Embrace fluidity
-5. **Hover-only interactions** - Not accessible on touch
-6. **Small touch targets** - 44x44px minimum
-7. **Horizontal scroll** - Only use intentionally
-8. **Ignoring landscape** - Test both orientations
-9. **No real device testing** - Emulators aren't enough
-10. **Not testing zoom** - Users zoom to read
+**❌ Avoid:**
+1. Desktop-first - Start mobile, enhance up
+2. Fixed widths - Use max-width instead
+3. Too many breakpoints - 3-4 is enough
+4. Pixel-perfect designs - Embrace fluidity
+5. Hover-only interactions - Not accessible on touch
+6. Small touch targets - Verify minimum size for platform
+7. Horizontal scroll - Only use intentionally
+8. Ignoring landscape - Test both orientations
+9. No real device testing - Emulators aren't enough
+10. Not testing zoom - Users zoom to read
+11. Losing aesthetic on mobile - Maintain distinctiveness
+12. Generic mobile layouts - Be creative within constraints
+13. Copying breakpoints blindly - Base on YOUR content needs
 
 ---
 
 ## Key Takeaway
 
-**Embrace fluidity, not fixed perfection.**
+**Principles over prescriptive values. Fluidity over rigidity.**
 
-Responsive design isn't about making things look identical across devices—it's about providing the best experience for each context.
+Responsive design isn't about hitting exact pixel values—it's about understanding WHY:
+- Why mobile-first? (Forces focus on essentials)
+- Why large touch targets? (Finger precision ~9mm)
+- Why breakpoints on content? (Not devices)
 
-Start with mobile constraints, enhance progressively. This forces focus on what truly matters.
+Common standards (44px, 640px, 16px) are starting points, not absolute rules. Adjust to your design system, platform, and content needs.
+
+Start with mobile constraints, enhance progressively. Maintain your aesthetic identity across all devices—just adapted to each device's strengths and constraints.

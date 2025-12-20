@@ -1,52 +1,33 @@
 ---
 name: figma-design-extraction
-description: Extract complete design specifications from Figma MCP for accurate implementation. Validates data completeness and documents design tokens systematically.
-allowed-tools: [read]
+description: |
+  Complete Figma design extraction for pixel-perfect implementation.
+  Extracts design tokens, component specs, layouts, and responsive behavior systematically.
 
-# Category & Loading
-category: design
-subcategory: figma
+  Use when user provides Figma design:
+  - Figma URL or file link provided
+  - User mentions "Figma", "design file", "mockup", or "design system"
+  - During /create-plan phase when design needs extraction
+  - User says "extract from Figma" or references Figma link
 
-# Auto-trigger logic
-auto-trigger:
-  enabled: true
-  keywords:
-    - figma
-    - design file
-    - mockup
-    - design system
-    - figma link
-    - figma url
-  exclude-keywords:
-    - responsive
-    - animation
-    - backend
-  contexts:
-    - design
-    - planning
-    - ui-spec
+  Extract systematically:
+  - Design tokens: ALL colors (hex + usage), typography (sizes, weights, line heights),
+    spacing scale, border radius, shadows, opacity values
+  - Components: ALL states (default, hover, active, focus, disabled, loading, error),
+    ALL variants (size/style/intent), exact dimensions, spacing, visual properties
+  - Layouts: page structure, grid systems (columns, gutters), component hierarchy
+  - Responsive: mobile/tablet/desktop differences explicitly documented
+  - Assets: icons (names, sizes), images (dimensions, alt text), illustrations
 
-# Manual trigger
-manual-load:
-  enabled: true
-  commands:
-    - /skill:figma
-    - /skill:figma-extraction
-  mentions:
-    - extract figma
-    - figma design
-    - design specs
+  Goal: Extract ONCE completely during planning phase. Implementation should never
+  need to re-fetch from Figma MCP. Focus on exact values only - no approximations,
+  no guessing. Completeness prevents re-work and design inconsistencies.
 
-# Dependencies & Priority
-dependencies: []
-conflicts-with: []
-priority: high
+  Critical for /create-plan workflow. Validates MCP connection before extraction.
+  Documents everything in structured format for /execute-plan to implement accurately.
 
-# When to load this skill
-trigger-description: |
-  Load when user mentions Figma, provides Figma URL, or references design files.
-  Critical for /create-plan when design extraction is needed.
-  Focus on complete, accurate extraction to avoid re-fetching during implementation.
+  Do NOT load for: Building UI without design (use theme-factory), implementing
+  from already-extracted specs, responsive layout questions, or backend work.
 ---
 
 # Figma Design Extraction
