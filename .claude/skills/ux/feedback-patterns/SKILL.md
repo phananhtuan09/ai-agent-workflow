@@ -1,22 +1,19 @@
 ---
 name: ux-feedback-patterns
 description: |
-  User feedback patterns for user-facing interactions - loading states, success messages,
-  error handling, and empty states. Ensures users always understand system state and next steps.
+  User feedback patterns for interactions - loading states, success/error messages,
+  form validation, empty states. Ensures users understand system state and next steps.
 
-  Use when implementing user-facing state changes in UI:
-  - Form submissions requiring validation feedback and success/error messages
-  - Async operations needing loading indicators (when to show, what type)
-  - Error handling flows with clear recovery paths
-  - Empty state designs with helpful messaging and actions
-  - Success confirmations and toast notifications
-  - Optimistic updates and rollback patterns
+  Use when implementing user-facing state changes and interactions:
+  - Form submissions with validation feedback, success/error messages
+  - Async operations needing loading indicators (API calls, data fetching)
+  - Error handling flows with clear recovery paths and retry options
+  - Empty state designs with helpful messaging (no data, no results)
+  - User mentions "form", "loading", "error", "validation", "async", "API call"
 
-  Focus on WHEN to show feedback (timing thresholds), WHAT type (toast/inline/modal),
-  and HOW LONG (auto-dismiss vs manual). Covers user-facing feedback patterns only.
+  Keywords: loading, success, error, form, validation, async, feedback, toast, empty state
 
-  Do NOT load for: Backend error logging, API response design, or animation implementation
-  details (timing curves, easing functions). For animation mechanics, see design/animations.
+  Focus on WHEN to show feedback, WHAT type (toast/inline/modal), HOW LONG (timing).
 ---
 
 # UX Feedback Patterns
@@ -42,19 +39,13 @@ Every user action needs feedback in one or more states:
 
 ### When to Show Loading
 
-**Timing thresholds (based on human perception research):**
-
-These timings are based on UX research (Nielsen Norman Group, human-computer interaction studies) but should be adjusted to your specific context:
-
+**Timing thresholds (adjust to your context):**
 - **< 100ms**: Perceived as instant, no feedback needed
-- **100-300ms**: Subtle indicator (optional) - users start noticing delay
-- **300ms-1s**: Show spinner or skeleton - noticeable wait
-- **1-5s**: Spinner + explanatory text - user needs reassurance
-- **5-10s**: Progress bar with percentage - user needs tracking
-- **10s+**: Progress bar + explanation + cancel option - user needs control
-
-**Why 300ms threshold?**
-Research shows this is where users start perceiving delay. Prevents flicker for fast operations while providing feedback for perceived delays. Adjust based on user expectations in your domain.
+- **100-300ms**: Optional subtle indicator
+- **300ms-1s**: Show spinner or skeleton
+- **1-5s**: Spinner + explanatory text
+- **5-10s**: Progress bar with percentage
+- **10s+**: Progress bar + explanation + cancel option
 
 ### Loading Patterns
 
@@ -62,24 +53,16 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 - Disable button to prevent double-submission
 - Show spinner inside button or change text
 - Keep button in place (don't shift layout)
-- Maintain original button size
 
 **Content Loading:**
-- Prefer skeleton screens over spinners (better UX)
+- Prefer skeleton screens over spinners
 - Match skeleton structure to actual content
-- Use shimmer animation for polish
 - Maintain layout space (prevent content jump)
 
 **Progress Indicators:**
 - Use for file uploads, large operations
 - Show percentage when determinable
 - Provide cancel option for long operations
-- Update frequently (avoid appearing frozen)
-
-**Global vs Local:**
-- Local: Loading specific component/section
-- Global: Full-page overlay for critical operations
-- Prefer local (doesn't block entire UI)
 
 ---
 
@@ -92,38 +75,28 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 - Data mutations (create, update, delete)
 - File uploads
 - Account changes
-- Payment confirmations
 
 **Skip for:**
 - Very quick actions (near-instant completion)
-- Continuous interactions (likes, simple toggles) - use optimistic updates
-- Actions where feedback is inherent in the result (e.g., UI immediately updates)
+- Continuous interactions (likes, toggles) - use optimistic updates
+- Actions where feedback is inherent in result
 
 ### Success Patterns
 
 **Toast Notifications:**
 - Auto-dismiss after 3-5 seconds
 - Position: top-right or top-center (consistent)
-- Include success icon for scannability
 - Specific message, not generic "Success"
 
 **Inline Messages:**
 - For form submissions: show below form
-- For section updates: show in affected area
 - Less intrusive than toasts
 - Can stay visible longer
 
 **Visual Confirmation:**
 - Button state change (e.g., "Save" → "Saved ✓")
 - Brief color change (green tint)
-- Small animation (checkmark, fade)
 - Return to normal after 2-3 seconds
-
-**When Success is Obvious:**
-- Navigation to new page (implicit success)
-- Item appears in list immediately
-- Change is visually apparent
-- No additional confirmation needed
 
 ---
 
@@ -133,9 +106,7 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 
 **Be Specific:**
 - ❌ "Error occurred"
-- ❌ "Something went wrong"
 - ✅ "Email already exists. Try logging in instead."
-- ✅ "Password must be at least 8 characters"
 
 **Be Helpful:**
 - Explain what happened
@@ -144,10 +115,10 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 
 **Be Human:**
 - Natural language, avoid technical jargon
-- Don't blame user ("You entered invalid email" → "Invalid email")
+- Don't blame user
 - Empathetic tone for serious errors
 
-**Error Severity Levels:**
+**Severity Levels:**
 - **Critical**: System failure, data loss - modal, manual dismiss
 - **High**: Form validation, API errors - prominent, actionable
 - **Medium**: Warnings, non-blocking - dismissible notices
@@ -157,9 +128,8 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 
 **Form Field Errors:**
 - Show inline, next to/below field
-- Trigger on blur (not every keystroke - too aggressive)
+- Trigger on blur (not every keystroke)
 - Include error icon for visibility
-- Associate with field (accessibility)
 - Keep visible until corrected
 
 **Global Errors:**
@@ -173,7 +143,7 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 - Always provide a path forward
 - "Try Again" button for transient errors
 - Link to help/support for persistent issues
-- Save user's work when possible (don't lose data)
+- Save user's work when possible
 
 ---
 
@@ -192,7 +162,6 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 **First-Time Empty:**
 - Welcoming, encouraging tone
 - Clear next step to get started
-- Example: "Welcome! Create your first project to begin."
 
 **Search No Results:**
 - Acknowledge the query
@@ -202,12 +171,6 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 **Filtered Empty:**
 - Explain filters are active
 - Show way to clear filters
-- Example: "No items match your filters. Clear filters to see all."
-
-**Permanently Empty:**
-- Explain why empty (deleted, archived, etc.)
-- Provide navigation to related content
-- Avoid dead-end feeling
 
 ---
 
@@ -222,7 +185,7 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 
 **Success Indicators:**
 - Optional: show checkmark for valid fields
-- Only after field touched (not immediately)
+- Only after field touched
 - Subtle, not distracting
 
 ### Button States
@@ -274,12 +237,10 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 ## Best Practices
 
 ### Timing
-
-**Research-based guidelines (adjust to your context):**
 - Feedback should feel immediate (instant perceived response)
-- Success messages: auto-dismiss after user has time to read (typically 3-5 seconds)
-- Error messages: manual dismiss or longer timeout (user needs time to process)
-- Loading threshold: Show indicators when operation feels delayed (research: ~300ms)
+- Success messages: auto-dismiss after 3-5 seconds
+- Error messages: manual dismiss or longer timeout
+- Loading threshold: Show indicators after ~300ms
 
 ### Tone
 - Be specific, not vague
@@ -308,9 +269,9 @@ Research shows this is where users start perceiving delay. Prevents flicker for 
 3. **No loading state** - User clicks repeatedly
 4. **Blank screens** - Empty state without explanation
 5. **Disabled without reason** - No tooltip explaining why
-6. **Flickering loaders** - Show only for operations with noticeable delay (not instant)
+6. **Flickering loaders** - Show only for operations with noticeable delay
 7. **Success overload** - Toast for every tiny action
-8. **Technical error codes** - Show user-friendly messages instead
+8. **Technical error codes** - Show user-friendly messages
 9. **No recovery path** - Error with no next step
 10. **Blocking entire UI** - Use local loading when possible
 
@@ -336,6 +297,4 @@ For every interactive feature:
 
 **Never leave users guessing.** Clear, timely feedback is the difference between a frustrating experience and a delightful one.
 
-Timing guidelines in this skill are based on UX research (Nielsen Norman Group, human perception studies) but should be adjusted to your specific context. Users in different domains have different expectations (e.g., gaming vs banking).
-
-When in doubt, over-communicate rather than under-communicate.
+Timing guidelines are based on UX research but should be adjusted to your context. When in doubt, over-communicate rather than under-communicate.

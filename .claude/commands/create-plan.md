@@ -120,52 +120,47 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 - New project (no similar patterns exist)
 - User says "fresh start"
 
-## Step 4: Extract Figma Design (Optional - Skill)
+## Step 4: Extract Figma Design (Optional)
 
 **Trigger:** User mentions "figma", "design file", "mockup", or provides Figma URL (detected in Step 1).
 
-**Tool:** Skill(skill="figma-design-extraction")
-- Skill location: `.claude/skills/design/figma-extraction/SKILL.md`
-- Skill handles:
-  - Validate Figma MCP connection
-  - Extract design tokens (colors, typography, spacing, shadows, border radius)
-  - Extract component specs (states, variants, dimensions, hierarchies)
-  - Extract responsive breakpoints (mobile/tablet/desktop)
-  - Document extraction in planning doc format
+**Use `figma-design-extraction` skill to:**
+- Validate Figma MCP connection
+- Extract design tokens (colors, typography, spacing, shadows, border radius)
+- Extract component specs (states, variants, dimensions, hierarchies)
+- Extract responsive breakpoints (mobile/tablet/desktop)
+- Document extraction in planning doc format
 
-**Skill output:** "Design Specifications" section for planning doc with:
+**Expected output:** "Design Specifications" section in planning doc with:
 - Reference (file name, frame, link, timestamp)
 - Design Tokens (complete palette, typography scale, spacing scale)
 - Component Breakdown (all components with detailed specs)
 - Responsive Specs (breakpoints and layout changes)
 
-**Error handling:**
-- If skill not found: Skip extraction, proceed to Step 5 or prompt user to provide design manually
-- If Figma MCP not connected: Ask user to configure MCP or provide design description instead
-- If extraction fails: Log error details, ask user for alternative design source
-
-**Note:** Complete extraction means `/execute-plan` does NOT need to fetch Figma again.
+**If extraction fails:**
+- Figma MCP not connected: Ask user to configure MCP or provide design description
+- Extraction fails: Ask user for alternative design source (screenshot, description)
+- Continue to Step 5 for theme selection if needed
 
 **Skip this step if:** No Figma URL/mention detected in Step 1.
 
-## Step 5: Theme Selection (Optional - Skill)
+## Step 5: Design System & Theme (Optional)
 
 **Trigger:** Step 4 skipped (no Figma) AND user has NOT provided detailed design description/screenshot.
 
-**Tool:** Skill(skill="theme-factory")
-- Skill location: `.claude/skills/design/theme-factory/SKILL.md`
-- Skill handles:
-  - Ask about brand personality/preferences
-  - Present theme options from `.claude/themes/`
-  - Generate or customize theme
-  - Document theme spec in planning doc
+**Use design skills to guide design decisions:**
+- `design-fundamentals`: Core principles (spacing, typography, color, hierarchy)
+- `theme-factory`: Interactive theme selection based on brand personality
+- `design-responsive`: Mobile-first responsive patterns and breakpoints
 
-**Skill output:** "Theme Specification" section for planning doc.
+**Expected workflow:**
+1. Ask about brand personality/preferences if needed
+2. Choose aesthetic direction (minimal, bold, elegant, etc.)
+3. Propose complete design system (colors, fonts, spacing)
+4. Consider responsive strategy (mobile-first for target devices)
+5. Document theme/design specs in planning doc
 
-**Error handling:**
-- If skill not found: Use basic theme defaults or ask user for theme preferences manually
-- If theme directory not found: Create minimal theme inline in planning doc
-- If user skips theme selection: Proceed with unstyled/framework-default approach
+**Expected output:** "Design System" or "Theme Specification" section in planning doc.
 
 **Skip this step if:** User provided design description/screenshot in Step 1.
 

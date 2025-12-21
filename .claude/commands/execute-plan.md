@@ -212,28 +212,15 @@ After completing all tasks in current phase:
 
 Only run after ALL phases are marked complete. If incomplete phases remain, skip to Step 6.
 
-**Tool:** Skill(skill="quality-code-check")
-
-**Invoke quality code check skill** to run automated validation:
+**Use `quality-code-check` skill for automated validation:**
 - **Linting**: Code style and best practices validation
 - **Type Checking**: Type safety verification across modules
 - **Build Verification**: Ensure code compiles and bundles successfully
 
-The skill will:
-1. Auto-detect project type and available tools
-2. Run appropriate checks for detected language
-3. Report violations and suggest fixes
-4. Retry up to 3 times on failures
-
-**Execution**:
-1. Invoke: `Skill(skill="quality-code-check")`
-2. Follow the quality check workflow provided by skill
-3. Fix all issues until quality checks pass
-4. Validate checklist before proceeding
-
 **Error handling:**
-- Skill not available: Skip quality checks, warn user to run manually
-- Quality checks fail after 3 attempts: Document issues, proceed with caution
+- Quality checks fail: Fix issues and retry until checks pass
+- Persistent failures: Document issues, proceed with caution
+- See Notes section for manual commands if needed
 
 ## Step 6: Next Actions
 

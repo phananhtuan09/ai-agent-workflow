@@ -57,27 +57,20 @@ Expected speedup: 30-40% for projects with automated checks.
 **Tools:**
 - Read(file_path="docs/ai/project/CODE_CONVENTIONS.md")
 - Read(file_path="docs/ai/project/PROJECT_STRUCTURE.md")
-- Skill(skill="quality-code-check") for automated validation
 
 **Standards review scope:**
 - Review code strictly for violations against CODE_CONVENTIONS and PROJECT_STRUCTURE only
 - **Do NOT** provide design opinions, performance guesses, or alternative architectures
 - **Do NOT** infer requirements beyond what standards explicitly state
 
-**Quality checks (automated via skill):**
+**Quality checks (automated):**
 
-Use `quality-code-check` skill to run automated validation:
+Use `quality-code-check` skill for automated validation:
 - **Linting**: Code style and best practices (ESLint, Ruff, golangci-lint, Clippy)
 - **Type checking**: Type safety validation (tsc, MyPy, Pyright)
 - **Build verification**: Compilation and packaging checks
 
-The skill will:
-1. Auto-detect project type and available tools
-2. Run appropriate checks for detected language
-3. Report violations and suggest fixes
-4. Retry up to 3 times on failures
-
-**Fallback:** If skill unavailable, see Notes for manual commands by language.
+See Notes section for manual commands by language if needed.
 
 Use results to focus manual review; report only clear violations per standards.
 
