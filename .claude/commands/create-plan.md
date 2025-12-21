@@ -124,7 +124,7 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 
 **Trigger:** User mentions "figma", "design file", "mockup", or provides Figma URL (detected in Step 1).
 
-**Tool:** Skill(skill="figma-extraction")
+**Tool:** Skill(skill="figma-design-extraction")
 - Skill location: `.claude/skills/design/figma-extraction/SKILL.md`
 - Skill handles:
   - Validate Figma MCP connection
