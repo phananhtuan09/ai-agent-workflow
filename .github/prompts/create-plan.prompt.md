@@ -13,61 +13,146 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 - For medium/large tasks, create todos (≤14 words, verb-led). Keep only one `in_progress` item.
 - Update todos immediately after progress; mark completed upon finish.
 
-## Step 1: Clarify Scope (Focused Q&A Guidelines)
+## Step 1: Analyze User Prompt
 
-Purpose: the agent MUST generate a short, numbered Q&A for the user to clarify scope; keep it relevant, avoid off-topic, and do not build a static question bank.
+**Parse user request to identify:**
+- **Feature type:** UI/Page, API/Service, Data/Database, Full-stack, Other
+- **Explicit requirements:** Framework, libraries, constraints mentioned
+- **Design context:**
+  - Has Figma URL/mention? → Flag for Step 4
+  - Has design description/screenshot? → Skip Steps 4-5
+  - No design source? → Flag for Step 5 (theme selection)
+- **Scope hints:** MVP mentions, deadlines, specific exclusions
 
-Principles:
+**Design Source Priority** (if multiple sources detected):
+1. **Figma URL** (highest priority) → Extract from Figma MCP (Step 4)
+2. **Screenshot/Image** → Use as visual reference, skip Figma extraction
+3. **Design description** → Use as text reference, skip Figma extraction
+4. **Multiple sources** → Ask user which to prioritize by asking user:
+   - Example: "You provided both Figma URL and screenshots. Which should I use as primary design source?"
+   - Options: "Figma design (extract full specs)", "Screenshots (visual reference only)", "Combine both"
 
-- Quickly classify context: a) Micro-UI, b) Page/Flow, c) Service/API/Data, d) Cross-cutting.
-- Ask only what is missing to produce Goal, Tasks, Risks, and DoD. Keep to 3–7 questions.
-- Do not re-ask what the user already stated; if ambiguous, confirm briefly (yes/no or single choice).
-- Keep each question short and single-purpose; avoid multi-part questions.
-- Answers may be a/b/c or free text; the agent is not required to present fixed option lists.
+**Output:** Internal classification to make Step 2 (Q&A) adaptive.
 
-Output format for Q&A:
+**Purpose:** Understand what user provided → Ask only what's missing in Step 2.
 
-- Number questions sequentially starting at 1 (e.g., "1.", "2.").
-- Under each question, provide 2–4 suggested options labeled with lowercase letters + ")" (e.g., "a)", "b)").
-- Keep options short (≤7 words) and add an "other" when useful.
-- Example:
-  1. UI library?
-     a) TailwindCSS b) Bootstrap c) SCSS d) Other
+## Step 2: Clarify Scope (Adaptive Q&A)
 
-Scope checklist to cover (ask only missing items, based on context):
+**Purpose:** Generate short Q&A (3-7 questions) to clarify scope. Ask only what's missing for Goal/Tasks/Risks/DoD.
 
-1. Problem & Users: the core problem and target user groups.
-2. In-scope vs Out-of-scope: what is included and excluded (e.g., MVP, no i18n, no payments).
-3. Acceptance Criteria (GWT): 2–3 key Given–When–Then scenarios.
-4. Constraints & Dependencies: technical constraints, libraries, real API vs mock, deadlines, external deps.
-5. Risks & Assumptions: known risks and key assumptions.
-6. Tasks Overview: 3–7 high-level work items.
-7. Definition of Done: completion criteria (build/test/docs/review).
+**Tool:** ask user for clarification
 
-Adaptive behavior:
+**Q&A Strategy** (based on Step 1 classification):
+- **If feature type clear:** Skip feature type question
+- **If design source detected:** Skip design-related questions
+- **If tech stack mentioned:** Skip framework questions
+- Prioritize scope/acceptance criteria over implementation details
 
-- Always reduce questions to what is necessary; once Goal/Tasks/Risks/DoD can be written, stop asking.
-- Prioritize clarifying scope and acceptance criteria before implementation details.
-- If the user already specified items (framework, API/Mock, deadlines, etc.), confirm briefly only.
+**Core Scope Questions** (ask only missing items):
+1. **Problem & Users:** What problem does this solve? Who uses it?
+2. **In-scope vs Out-of-scope:** What's included/excluded? (MVP features, no i18n, etc.)
+3. **Acceptance Criteria:** 2-3 Given-When-Then scenarios
+4. **Constraints:** Tech stack, libraries, APIs (real/mock), deadlines
+5. **Risks & Assumptions:** Known blockers or assumptions
+6. **Tasks:** 3-7 high-level work items
+7. **Definition of Done:** Build/test/review/docs criteria
 
-Then collect inputs (after Q&A):
+**Q&A Format:** Use ask user with 2-4 options per question.
+- Example: "1. UI library? a) TailwindCSS b) Bootstrap c) Other"
 
-- Feature name (kebab-case, e.g., `user-authentication`)
-- Short goal and scope
-- High-level tasks overview (3–7 items)
-- Definition of Done (build/test/review/docs)
+**Collect after Q&A:**
+- Feature name (kebab-case) - Ask if not derivable from prompt
+- Goal, scope, tasks, DoD
 
-## Step 2: Load Template
+---
 
-**Before creating the plan doc, read the following file:**
 
-- `docs/ai/planning/feature-template.md` - Template structure to follow
+## Step 3: Research Codebase 
+
+**Purpose:** Understand existing patterns to ensure plan follows project standards and reuses existing features.
+
+**Automated process:**
+- Use workspace search and analysis to accomplish this task
+
+**What to explore** (based on feature type from Step 1):
+- **UI/Page:** Component patterns, styling approach, state management
+- **API/Service:** Endpoint patterns, middleware, validation, error handling
+- **Data:** Schema patterns, migration structure, model definitions
+- **Full-stack:** Both frontend and backend patterns
+
+**Exploration output** (concise summary, focus on actionable findings):
+- Similar features: [2-3 implementations]
+- Reusable components/utils: [key files]
+- Patterns to follow: [architecture patterns]
+- Files to reference: [key file paths]
+
+**Skip exploration if:**
+- New project (no similar patterns exist)
+- User says "fresh start"
+
+## Step 4: Extract Figma Design (Optional)
+
+**Trigger:** User mentions "figma", "design file", "mockup", or provides Figma URL (detected in Step 1).
+
+**Follow step by step in `.claude/skills/design/figma-extraction/SKILL.md`:**
+- Validate Figma MCP connection
+- Extract design tokens (colors, typography, spacing, shadows, border radius)
+- Extract component specs (states, variants, dimensions, hierarchies)
+- Extract responsive breakpoints (mobile/tablet/desktop)
+- Document extraction in planning doc format
+
+**Expected output:** "Design Specifications" section in planning doc with:
+- Reference (file name, frame, link, timestamp)
+- Design Tokens (complete palette, typography scale, spacing scale)
+- Component Breakdown (all components with detailed specs)
+- Responsive Specs (breakpoints and layout changes)
+
+**If extraction fails:**
+- Figma MCP not connected: Ask user to configure MCP or provide design description
+- Extraction fails: Ask user for alternative design source (screenshot, description)
+- Continue to Step 5 for theme selection if needed
+
+**Skip this step if:** No Figma URL/mention detected in Step 1.
+
+## Step 5: Design System & Theme (Optional)
+
+**Trigger:** Step 4 skipped (no Figma) AND user has NOT provided detailed design description/screenshot.
+
+**Follow design guidelines in `.claude/skills/design/` to guide design decisions:**
+- Design fundamentals (`.claude/skills/design/fundamentals/SKILL.md`): Core principles (spacing, typography, color, hierarchy)
+- Theme selection (`.claude/skills/design/theme-factory/SKILL.md`): Interactive theme selection based on brand personality
+- Responsive design (`.claude/skills/design/responsive/SKILL.md`): Mobile-first responsive patterns and breakpoints
+
+**Expected workflow:**
+1. Ask about brand personality/preferences if needed
+2. Choose aesthetic direction (minimal, bold, elegant, etc.)
+3. Propose complete design system (colors, fonts, spacing)
+4. Consider responsive strategy (mobile-first for target devices)
+5. Document theme/design specs in planning doc
+
+**Expected output:** "Design System" or "Theme Specification" section in planning doc.
+
+**Skip this step if:** User provided design description/screenshot in Step 1.
+
+## Step 6: Load Template
+
+**Tool:** read `docs/ai/planning/feature-template.md`
+
+- Validate template contains required sections: Goal, Implementation Plan, DoD
+- If template not found: Use fallback minimal structure (Goal → Tasks → DoD)
 
 This template defines the required structure and format. Use it as the baseline for creating the planning doc.
 
-## Step 3: Draft the Plan (auto-generate)
+## Step 7: Draft the Plan (Auto-generate)
 
-Using the Q&A results and template, immediately generate the plan without asking for confirmation.
+**Using inputs from:**
+- Step 2: Scope, acceptance criteria, tasks, DoD
+- Step 3: Codebase patterns (if done)
+- Step 4: Figma design specs (if done)
+- Step 5: Theme specification (if done)
+- Step 6: Template structure
+
+**Generate immediately without asking for confirmation.**
 
 Auto-name feature:
 
@@ -77,15 +162,39 @@ Auto-name feature:
 
 ### Generate Single Planning Doc
 
-Produce a Markdown doc following `docs/ai/planning/feature-template.md` with all 5 sections:
+Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 
-1. **Goal & Acceptance Criteria**: Brief goal + Given-When-Then scenarios
-2. **Risks & Assumptions**: Known risks and key assumptions
-3. **Definition of Done**: Build/test/review/docs checklist
-4. **Implementation Plan**:
+**Include these sections** (in suggested order):
+
+1. **Codebase Context** (if exploration was done):
+   - Similar features found
+   - Reusable components/utils to use
+   - Architectural patterns to follow
+   - Key files to reference
+
+2. **Design Specifications** (if Figma extraction was done):
+   - Complete Figma design specs from Step 4
+   - Design tokens, component breakdown, responsive specs
+
+   **OR**
+
+   **Theme Specification** (if theme selection was done):
+   - Theme name and source file
+   - Color palette (primary, neutral, semantic)
+   - Typography (fonts, scale)
+   - Spacing scale and visual style
+
+3. **Goal & Acceptance Criteria**: Brief goal + Given-When-Then scenarios
+
+4. **Risks & Assumptions**: Known risks and key assumptions
+
+5. **Definition of Done**: Build/test/review/docs checklist
+
+6. **Implementation Plan**:
    - Summary: Brief description of solution approach (1-3 sentences)
    - Phases: Detailed tasks with pseudo-code
-5. **Follow-ups**: TODOs or deferred work
+
+7. **Follow-ups**: TODOs or deferred work
 
 **Estimate phase scope**:
 - Count total tasks from Q&A
@@ -93,40 +202,28 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md` with all
 - If tasks 6–12: suggest 2–3 phases (group by feature area or dependency order)
 - If tasks > 12: suggest 3–5 phases; prioritize logical grouping
 
-**For each phase, generate**:
-- Phase name (descriptive, e.g., "Database Schema Setup", "API Endpoints", "UI Components")
+**For each phase:**
+- Phase name: Descriptive (e.g., "API Endpoints", "UI Components")
 - Tasks list: `[ ] [ACTION] path/to/file — Summary`
-- Pseudo-code outline (show logic structure, not real code):
+- Pseudo-code: 3-5 lines, natural language, show inputs → logic → outputs
   ```
-  Pseudo-code:
-  - [Step 1]: what will be done
-  - [Step 2]: validation or check
-  - [Step 3]: data storage/return
-  ```
-
-**Pseudo-code guidelines**:
-- Keep to 3–5 lines per task
-- Show inputs, key logic, outputs
-- Use natural language, not actual syntax
-- Example for "Create user endpoint":
-  ```
-  Pseudo-code:
+  Example:
   - Parse username + password from request
-  - Validate password strength
-  - Hash password with bcrypt
-  - Store user in database
-  - Return success + user ID
+  - Validate password strength → Hash with bcrypt
+  - Store user in database → Return success + user ID
   ```
 
 Create the file automatically:
 
 - `docs/ai/planning/feature-{name}.md` - Use complete structure from `feature-template.md`
 
-Notify the user when done with summary: "Created plan with X phases: Phase 1 (name), Phase 2 (name), ..."
+**Notify user:** "Created plan with X phases: [Phase 1], [Phase 2], ..."
 
-## Step 4: Next Actions
+## Step 8: Next Actions
 
-Suggest running `execute-plan` to begin task execution. Implementation work will be driven from `docs/ai/planning/feature-{name}.md` as the task source.
+Suggest: `/execute-plan` to begin implementation.
+
+Implementation will be driven from `docs/ai/planning/feature-{name}.md`.
 
 Note: Test documentation will be created separately using the `writing-test` command.
 

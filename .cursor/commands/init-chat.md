@@ -1,3 +1,8 @@
+---
+name: init-chat
+description: Initializes chat by loading and aligning to AGENTS.md project rules.
+---
+
 ## Goal
 
 Initialize a new chat by loading and aligning to `AGENTS.md` so the AI agent consistently follows project rules (workflow, tooling, communication, language mirroring) from the first message.
