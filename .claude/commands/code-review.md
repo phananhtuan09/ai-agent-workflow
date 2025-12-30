@@ -3,7 +3,7 @@ name: code-review
 description: Performs a local code review strictly for standards conformance.
 ---
 
-You are helping me perform a local code review **before** I push changes. This review is restricted to standards conformance only.
+You are helping me perform a local code review **before** I push changes.
 
 ## Workflow Alignment
 
@@ -14,193 +14,300 @@ You are helping me perform a local code review **before** I push changes. This r
 
 ---
 
-## Parallel Execution Strategy
+## Step 1: Determine Review Scope
 
-**Steps 1-2 can run in parallel** to optimize performance:
+**Ask user for scope:**
 
-**Execution plan:**
-- Task 1: Step 1 - Determine scope & load context docs
-- Task 2: Step 2 - Load standards & run automated checks
+Use AskUserQuestion to determine what files to review:
+```
+AskUserQuestion(questions=[{
+  question: "Which files would you like to review?",
+  header: "Review Scope",
+  options: [
+    { label: "Review against a base branch (PR Style)", description: "Compare current branch against main/master or specified base branch" },
+    { label: "Review uncommitted changes (Working directory)", description: "Review staged and unstaged changes in working directory" }
+  ],
+  multiSelect: false
+}])
+```
 
-Both tasks are independent and can run concurrently.
+**Based on selection:**
 
-**Implementation:**
-- Use single message with multiple tool calls
-- Use `run_in_background: true` for long-running automated checks
-- Use `TaskOutput` to collect results when both complete
+1. **PR Style (against base branch):**
+   - Ask for base branch if not specified (default: main/master)
+   - `Bash(command="git diff <base-branch>...HEAD --name-only")` to get changed files
+   - `Bash(command="git diff <base-branch>...HEAD")` to get full diff
 
-Expected speedup: 30-40% for projects with automated checks.
+2. **Working directory changes:**
+   - `Bash(command="git diff --name-only")` for unstaged changes
+   - `Bash(command="git diff --cached --name-only")` for staged changes
+   - Combine both lists for full review scope
+
+**Error handling:**
+- Git not available: Ask user for file paths directly
+- No files to review: Notify user and exit
+- Base branch not found: Ask user to specify correct branch name
 
 ---
 
-## Step 1: Determine Review Scope & Gather Context
+## Step 2: Execute Both Reviews
 
-**Scope detection (in order):**
-1. If feature name provided: Review files from planning/implementation docs
-2. If no feature name but git repo: Review changed files from git diff
-3. If no git changes: Ask user for file paths or review entire src/
+Run **both** review types automatically. Results are reported **independently** in separate sections.
 
-**Tools:**
-- AskUserQuestion(questions=[...]) if feature name not provided
-- Read(file_path="docs/ai/planning/feature-{name}.md") for file list
-- Read(file_path="docs/ai/implementation/feature-{name}.md") for file list
-- Bash(command="git diff --name-only HEAD") to find changed files (fallback)
-- Glob(pattern="src/**/*.{js,ts,py,go,rs,java}") for full project scan (last resort)
+---
 
-**Error handling:**
-- Feature docs not found: Fall back to git diff
-- Git not available: Ask user for file paths
-- No files to review: Notify user and exit
+## Part A: Standards Conformance
 
-## Step 2: Load Standards & Run Quality Checks
+> **Mode: STRICT** - Only report violations explicitly defined in standards docs. Do NOT infer or suggest beyond what rules state.
+
+### A1. Load Standards
 
 **Tools:**
 - Read(file_path="docs/ai/project/CODE_CONVENTIONS.md")
 - Read(file_path="docs/ai/project/PROJECT_STRUCTURE.md")
 
-**Standards review scope:**
-- Review code strictly for violations against CODE_CONVENTIONS and PROJECT_STRUCTURE only
-- **Do NOT** provide design opinions, performance guesses, or alternative architectures
-- **Do NOT** infer requirements beyond what standards explicitly state
-
-**Quality checks (automated):**
-
-Use `quality-code-check` skill for automated validation:
-- **Linting**: Code style and best practices (ESLint, Ruff, golangci-lint, Clippy)
-- **Type checking**: Type safety validation (tsc, MyPy, Pyright)
-- **Build verification**: Compilation and packaging checks
-
-See Notes section for manual commands by language if needed.
-
-Use results to focus manual review; report only clear violations per standards.
-
 **Error handling:**
-- Standards docs not found: Notify user, cannot proceed without standards
-- Skill not available: Fall back to manual commands (see Notes)
-- Quality checks fail: Report errors as violations, fix and retry up to 3 times
+- Standards docs not found: Notify user, cannot proceed with Standards Conformance review
 
-## Step 3: Scan for Standards Violations
+### A2. Scan for Violations
 
 **Tool:** Task(
   subagent_type='Explore',
   thoroughness='medium',
-  prompt="Scan files identified in Step 1 for CODE_CONVENTIONS and PROJECT_STRUCTURE violations.
-    Focus on:
+  prompt="Scan files for violations against CODE_CONVENTIONS and PROJECT_STRUCTURE ONLY.
+
+    STRICT RULES:
+    - Report ONLY violations that are EXPLICITLY stated in the standards docs
+    - Do NOT infer additional rules
+    - Do NOT suggest improvements beyond what standards require
+    - Do NOT provide design opinions
+
+    Check for:
     - Naming conventions (variables, functions, classes, constants)
     - Import order and grouping
     - Folder structure and module boundaries
     - Test placement and naming
-    - Cross-file consistency (naming patterns, module boundaries)
-    Return violations with file:line, rule violated, and brief description."
+    - File naming patterns
+    - Export patterns
+
+    Return violations with file:line, exact rule violated (quote from docs), and brief description."
 )
 
 **Fallback:** If Explore agent unavailable, manually Read each file and check against standards.
 
-**Review scope:** Files from Step 1 only. Report ONLY standards violations, not design opinions.
+### A3. Standards Report
 
-**Output format (Standards Conformance Report):**
+**Output format:**
 
 ```
-- path/to/file.ext — [Rule]: short description of the violated rule
+## Standards Conformance Report
+
+### Violations Found: X
+
+#### [File: path/to/file.ext]
+
+1. **Line XX** — Violates: "[exact rule from CODE_CONVENTIONS or PROJECT_STRUCTURE]"
+   - Found: `actual_code`
+   - Expected: `expected_code`
+
+2. **Line YY** — Violates: "[exact rule]"
+   ...
 ```
 
-Only include clear violations. Group similar violations by file when helpful.
+**Severity:**
+- **Blocking**: Architectural violations, module boundary breaches
+- **Important**: Naming conventions, import order
+- **Minor**: Formatting, spacing (if explicitly in standards)
 
-**Error handling:**
-- Agent timeout: Retry once with thoroughness='quick', then fall back to manual review
-- No violations found: Report clean bill of health
-- Too many violations (>50): Group by file and summarize patterns
+---
 
-## Step 4: Summarize Findings (rules-focused)
+## Part B: Quality Review
 
-**Report structure:**
+> **Mode: REASONING** - Agent uses judgment to identify issues and provide recommendations.
 
-1. **Summary**: Violation counts by severity (Blocking / Important / Nice-to-have)
-2. **Detailed Findings**: For each violation:
-   - File path and line number
-   - Rule violated (from CODE_CONVENTIONS or PROJECT_STRUCTURE)
-   - Brief description and impact
-   - Recommended fix
-3. **Next Steps**: Prioritized action items
+### Guidelines for Quality Review
 
-**Severity criteria:**
-- **Blocking**: Build/test failure, security risk, architectural breach
-- **Important**: Degrades maintainability, not immediately breaking
-- **Nice-to-have**: Style/consistency improvements, low impact
+**Good Feedback is:**
+- Specific and actionable
+- Educational, not judgmental
+- Focused on the code, not the person
+- Balanced (praise good work too)
+- Prioritized (critical vs nice-to-have)
 
-(See Notes for detailed report format example)
+**Examples:**
 
-## Step 5: Final Checklist (rules-focused)
+❌ Bad: "This is wrong."
+✅ Good: "This could cause a race condition when multiple users access simultaneously. Consider using a mutex here."
 
-Confirm whether each item is complete (yes/no/needs follow-up):
+❌ Bad: "Why didn't you use X pattern?"
+✅ Good: "Have you considered the Repository pattern? It would make this easier to test."
 
-- Naming and formatting adhere to CODE_CONVENTIONS
-- Structure and boundaries adhere to PROJECT_STRUCTURE
+❌ Bad: "Rename this variable."
+✅ Good: "[nit] Consider `userCount` instead of `uc` for clarity. Not blocking."
+
+### B1. Review Criteria
+
+**What to Review:**
+- Logic correctness and edge cases
+- Security vulnerabilities
+- Performance implications
+- Error handling
+- Code readability and maintainability
+- API design and naming
+- Test coverage gaps
+
+**What NOT to Review (leave to linters):**
+- Code formatting
+- Import organization
+- Simple typos
+
+### B2. Perform Quality Review
+
+**Tool:** Task(
+  subagent_type='Explore',
+  thoroughness='medium',
+  prompt="Review files for quality issues using your reasoning.
+
+    REASONING MODE - Use judgment to identify:
+    - Logic bugs and edge cases
+    - Security vulnerabilities (injection, auth issues, data exposure)
+    - Performance problems (N+1 queries, memory leaks, unnecessary loops)
+    - Poor error handling (silent failures, swallowed exceptions)
+    - Code smells and maintainability issues
+    - Missing or weak test coverage
+
+    For each issue:
+    - Explain WHY it's a problem
+    - Provide actionable recommendation
+    - Mark severity (Critical/Important/Nit)
+
+    Also note GOOD patterns worth praising."
+)
+
+### B3. Quality Report
+
+**Output format:**
+
+```
+## Quality Review Report
+
+### Overview
+- 🔴 Critical: X
+- 🟡 Important: Y
+- 💬 Nits: Z
+
+### What's Good
+- [Positive observations about the code]
+
+### Issues Found
+
+#### Critical
+
+**1. path/to/file.ext:45**
+- **Category**: Security / Bug / Performance
+- **Issue**: [Clear description of the problem]
+- **Why it matters**: [Explanation]
+- **Recommendation**: [Specific fix]
+
+#### Important
+
+**2. path/to/file.ext:78**
+...
+
+#### Nits
+
+**3. path/to/file.ext:15**
+- [nit] [Minor suggestion - not blocking]
+```
+
+---
+
+## Step 3: Final Summary
+
+Present results in **two separate sections**:
+
+### Section 1: Standards Conformance Checklist
+
+```
+## Standards Conformance
+- [ ] Naming conventions: [pass/X violations]
+- [ ] Import order: [pass/X violations]
+- [ ] Folder structure: [pass/X violations]
+- [ ] Module boundaries: [pass/X violations]
+```
+
+### Section 2: Quality Review Checklist
+
+```
+## Quality Review
+- [ ] Logic correctness verified
+- [ ] Security vulnerabilities checked
+- [ ] Error handling adequate
+- [ ] Performance considerations reviewed
+- [ ] Code is maintainable
+```
 
 ---
 
 ## Notes
 
-### Automated Checks Complete List (Step 2)
-
-**JavaScript/TypeScript:**
-- Linting: `npx eslint . --max-warnings=0` or `pnpm eslint .`
-- Type checking: `npx tsc --noEmit`
-- Alternative linters: `npx biome check .`
-
-**Python:**
-- Linting: `ruff check .` or `flake8 .`
-- Type checking: `mypy .` or `pyright`
-- Formatting: `ruff format --check .` or `black --check .`
-
-**Go:**
-- Linting: `golangci-lint run`
-- Vet: `go vet ./...`
-- Formatting: `gofmt -l .`
-
-**Rust:**
-- Linting: `cargo clippy -- -D warnings`
-- Formatting: `cargo fmt --check`
-
-**Java:**
-- Gradle: `./gradlew check`
-- Maven: `mvn -q -DskipTests=false -Dspotbugs.failOnError=true verify`
-
-### Detailed Report Format Example (Step 5)
+### Report Example (Both Reviews)
 
 ```markdown
-## Code Review Summary
+# Code Review Summary
 
-### Standards Compliance Overview
-- ✅ Blocking issues: 0
-- ⚠️  Important follow-ups: 3
-- 💡 Nice-to-have improvements: 5
+---
 
-### Detailed Findings
+## Part 1: Standards Conformance
 
-#### 1. src/services/user-service.ts
-- **Issue**: Function name uses snake_case instead of camelCase
-- **Rule violated**: CODE_CONVENTIONS > Naming > Functions must use camelCase
-- **Impact**: Important (consistency)
-- **Recommendation**: Rename `get_user_by_id` → `getUserById`
+### Violations: 3
 
-#### 2. src/utils/helpers.ts
-- **Issue**: Missing index.ts export
-- **Rule violated**: PROJECT_STRUCTURE > Module boundaries > All utils must export via index
-- **Impact**: Important (architecture)
-- **Recommendation**: Add export to `src/utils/index.ts`
+1. **src/utils/helper.ts:12** — Violates: "Functions must use camelCase"
+   - Found: `get_user_data`
+   - Expected: `getUserData`
 
-#### 3. tests/unit/user.spec.ts
-- **Issue**: Test file placed in wrong directory
-- **Rule violated**: CODE_CONVENTIONS > Tests > Colocate with source files
-- **Impact**: Nice-to-have (organization)
-- **Recommendation**: Move to `src/services/user-service.spec.ts`
+2. **src/services/auth.ts:1** — Violates: "Imports must be grouped: external, internal, relative"
+   - Found: Mixed import order
+   - Expected: Group by category with blank lines
 
-### Recommended Next Steps
-- [ ] Fix 3 important violations (estimated 15 minutes)
-- [ ] Address 5 nice-to-have improvements (estimated 30 minutes)
-- [ ] Re-run `/code-review` after fixes
-- [ ] Run automated checks: `npm run lint && npm run type-check`
+3. **tests/user.spec.ts** — Violates: "Tests must be colocated with source"
+   - Found: `tests/user.spec.ts`
+   - Expected: `src/services/user.spec.ts`
+
+---
+
+## Part 2: Quality Review
+
+### Overview
+- 🔴 Critical: 1
+- 🟡 Important: 2
+- 💬 Nits: 1
+
+### What's Good
+- Clean separation of concerns in service layer
+- Good TypeScript usage with proper generics
+
+### Critical
+
+**1. src/api/auth.ts:78**
+- **Category**: Bug
+- **Issue**: Missing `await` on async password comparison
+- **Why**: Function returns Promise<boolean> but caller expects boolean, causing auth bypass
+- **Recommendation**: Add `await` before `bcrypt.compare()`
+
+### Important
+
+**2. src/controllers/order.ts:120**
+- **Category**: Performance
+- **Issue**: N+1 query pattern
+- **Recommendation**: Use eager loading
+
+---
+
+## Next Steps
+1. [ ] Fix critical bug (auth bypass)
+2. [ ] Fix 3 standards violations
+3. [ ] Address performance issue
 ```
 
 ---
