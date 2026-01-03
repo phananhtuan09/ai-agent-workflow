@@ -205,6 +205,15 @@ async function main() {
   step("🚚 Downloading workflow template (docs/ai)...");
   cloneDocsAI(`${REPO}/docs/ai`, "docs/ai");
 
+  // Create docs/dev folder for dev documentation output
+  step("📁 Creating docs/dev folder...");
+  if (!existsSync("docs/dev")) {
+    mkdirSync("docs/dev", { recursive: true });
+    console.log("✅ Created: docs/dev");
+  } else {
+    console.log("⏭️  Skipping (already exists): docs/dev");
+  }
+
   // Clone Cursor commands (luôn ghi đè)
   if (installCursor) {
     if (!existsSync(".cursor/commands")) {
