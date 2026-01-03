@@ -75,9 +75,9 @@ function cloneDocsAI(source, dest) {
   run(`npx degit ${source} ${tempDir} --force`);
 
   // Xử lý từng subfolder
-  const subfolders = ["planning", "testing"];
+  const subfolders = ["planning", "testing", "requirements"];
 
-  // Xử lý folders: planning, testing
+  // Xử lý folders: planning, testing, requirements
   for (const subfolder of subfolders) {
     const tempSubfolder = path.join(tempDir, subfolder);
     const destSubfolder = path.join(dest, subfolder);
@@ -86,7 +86,7 @@ function cloneDocsAI(source, dest) {
       mkdirSync(destSubfolder, { recursive: true });
 
       // Chỉ copy file template và README.md
-      const filesToCopy = ["README.md", "feature-template.md"];
+      const filesToCopy = ["README.md", "feature-template.md", "req-template.md"];
 
       for (const file of filesToCopy) {
         const srcFile = path.join(tempSubfolder, file);
@@ -94,6 +94,15 @@ function cloneDocsAI(source, dest) {
 
         if (existsSync(srcFile)) {
           cpSync(srcFile, destFile, { force: true });
+        }
+      }
+
+      // Tạo folder archive nếu là requirements hoặc planning
+      if (subfolder === "requirements" || subfolder === "planning") {
+        const archiveDir = path.join(destSubfolder, "archive");
+        if (!existsSync(archiveDir)) {
+          mkdirSync(archiveDir, { recursive: true });
+          console.log(`📁 Created archive folder: docs/ai/${subfolder}/archive`);
         }
       }
     }

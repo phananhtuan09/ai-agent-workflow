@@ -34,7 +34,21 @@ AskUserQuestion(questions=[{
 **Based on selection:**
 
 1. **PR Style (against base branch):**
-   - Ask for base branch if not specified (default: main/master)
+   - Ask for base branch using AskUserQuestion:
+   ```
+   AskUserQuestion(questions=[{
+     question: "Which base branch should we compare against?",
+     header: "Base Branch",
+     options: [
+       { label: "main", description: "Compare against main branch (Recommended)" },
+       { label: "develop", description: "Compare against develop branch" },
+       { label: "master", description: "Compare against master branch" },
+       { label: "Other", description: "Enter a custom branch name" }
+     ],
+     multiSelect: false
+   }])
+   ```
+   - If user selects "Other", prompt them to enter the branch name
    - `Bash(command="git diff <base-branch>...HEAD --name-only")` to get changed files
    - `Bash(command="git diff <base-branch>...HEAD")` to get full diff
 

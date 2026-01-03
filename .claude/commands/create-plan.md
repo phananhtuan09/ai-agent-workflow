@@ -16,6 +16,7 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 ## Step 1: Analyze User Prompt
 
 **Parse user request to identify:**
+- **Requirement doc reference:** Check if user provided path to `docs/ai/requirements/req-{name}.md`
 - **Feature type:** UI/Page, API/Service, Data/Database, Full-stack, Other
 - **Explicit requirements:** Framework, libraries, constraints mentioned
 - **Design context:**
@@ -23,6 +24,26 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
   - Has design description/screenshot? → Skip Steps 4-5
   - No design source? → Flag for Step 5 (theme selection)
 - **Scope hints:** MVP mentions, deadlines, specific exclusions
+
+**If Requirement Doc Provided:**
+- Read the requirement doc: `Read(file_path="docs/ai/requirements/req-{name}.md")`
+- Extract and map to planning sections:
+
+| Requirement Section | Maps to Planning Section |
+|---------------------|--------------------------|
+| 1. Problem Statement | 3. Goal (problem context) |
+| 2. User Stories | 3. Goal (user context) |
+| 3. Business Rules | 6. Implementation Plan (logic constraints) |
+| 4. Functional Requirements | 6. Implementation Plan (tasks) |
+| 5. Non-Functional Requirements | 4. Risks & Assumptions |
+| 6. Edge Cases & Constraints | 4. Risks & Assumptions |
+| 8. Out of Scope | 7. Follow-ups |
+| 9. Acceptance Criteria | 3. Acceptance Criteria |
+| 11. Glossary | Keep as reference during implementation |
+
+- Skip most of Step 2 (Q&A) - requirements already documented
+- Proceed to Step 3 (Explore) with context from requirement doc
+- **Include Section 0: Requirements Reference** in planning output with link to requirement doc
 
 **Design Source Priority** (if multiple sources detected):
 1. **Figma URL** (highest priority) → Extract from Figma MCP (Step 4)
@@ -188,13 +209,33 @@ Auto-name feature:
 
 - Derive `feature-{name}` from user prompt + Q&A (kebab-case, concise, specific).
 - Example: "Login Page (HTML/CSS)" → `feature-login-page`.
-- If a file with the same name already exists, append a numeric suffix: `feature-{name}-2`, `feature-{name}-3`, ...
+
+**If file already exists:**
+1. **Backup existing file** to archive folder:
+   ```
+   docs/ai/planning/archive/feature-{name}_{timestamp}.md
+   ```
+   - Timestamp format: `YYYYMMDD-HHMMSS`
+   - Example: `archive/feature-login-page_20250115-143022.md`
+
+2. **Overwrite** the main file: `docs/ai/planning/feature-{name}.md`
+
+3. **Notify user:**
+   > "Previous version backed up to `archive/feature-{name}_{timestamp}.md`"
+
+**Create archive folder if not exists:**
+```bash
+mkdir -p docs/ai/planning/archive
+```
 
 ### Generate Single Planning Doc
 
 Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 
 **Include these sections** (in suggested order):
+
+0. **Requirements Reference** (if requirement doc was provided):
+   - Link to requirement doc: `[req-{name}.md](../requirements/req-{name}.md)`
 
 1. **Codebase Context** (if exploration was done):
    - Similar features found
@@ -260,4 +301,17 @@ Note: Test documentation will be created separately using the `writing-test` com
 ## Notes
 
 - This command creates a single planning doc with both overview and implementation details.
-- Idempotent: safe to re-run; auto-appends numeric suffix if files exist.
+- Previous versions are preserved in `archive/` folder for reference.
+
+### Template Relationship
+
+**Requirement Doc** (`req-template.md`) focuses on **WHAT**:
+- Problem, Users, Business Rules, Functional Requirements
+
+**Planning Doc** (`feature-template.md`) focuses on **HOW**:
+- Codebase Context, Design, Implementation Phases, Pseudo-code
+
+When requirement doc exists, planning doc should:
+1. Link to requirement doc (Section 0)
+2. Not duplicate requirement content - reference it instead
+3. Focus on technical implementation details
