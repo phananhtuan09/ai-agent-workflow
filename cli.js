@@ -86,7 +86,7 @@ function cloneDocsAI(source, dest) {
       mkdirSync(destSubfolder, { recursive: true });
 
       // Chỉ copy file template và README.md
-      const filesToCopy = ["README.md", "feature-template.md", "req-template.md"];
+      const filesToCopy = ["README.md", "unit-template.md", "req-template.md", "integration-template.md"];
 
       for (const file of filesToCopy) {
         const srcFile = path.join(tempSubfolder, file);

@@ -1,9 +1,9 @@
 ---
 name: writing-test
-description: Generates comprehensive test files with edge cases, parameter variations, and coverage analysis.
+description: Generates comprehensive unit test files with edge cases, parameter variations, and coverage analysis.
 ---
 
-Use `docs/ai/testing/feature-{name}.md` as the source of truth.
+Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 
 ## Workflow Alignment
 
@@ -15,17 +15,32 @@ Use `docs/ai/testing/feature-{name}.md` as the source of truth.
 ## Step 1: Gather Context (minimal)
 
 - Ask for feature name if not provided (must be kebab-case).
-- **Load template:** Read `docs/ai/testing/feature-template.md` to understand required structure.
+- **Load template:** Read `docs/ai/testing/unit-template.md` to understand required structure.
 - **Load planning doc:** Read `docs/ai/planning/feature-{name}.md` for:
   - Acceptance criteria (test alignment)
   - Implementation plan (files to test)
   - Functions/components that need coverage
-- **Detect test framework:** Check `package.json` to identify test framework (Vitest, Jest, Mocha, pytest, etc.). If no test runner found, create skeleton test and report missing runner.
+- **Load test configuration from PROJECT_STRUCTURE.md:**
+  - Read `docs/ai/project/PROJECT_STRUCTURE.md`
+  - Look for "Test Configuration" section → "Unit Tests" subsection
+  - Extract: Framework, Run command, Config file, Test location, File pattern
+  - **If Test Configuration not found:**
+    1. Check `package.json` for test dependencies (vitest, jest, mocha, etc.)
+    2. Check for config files: `vitest.config.*`, `jest.config.*`, `pytest.ini`
+    3. If still not found, ask user using AskUserQuestion:
+       ```
+       Question: Which unit test framework do you want to use?
+       Options:
+         1. Vitest (Recommended for Vite/modern projects)
+         2. Jest (Popular, works with most projects)
+         3. Mocha (Flexible, requires setup)
+         4. pytest (Python projects)
+       ```
+    4. After user selection, suggest running `/generate-standards` to persist the choice
 - **Load standards:**
-  - `docs/ai/project/PROJECT_STRUCTURE.md` for test file placement rules
   - `docs/ai/project/CODE_CONVENTIONS.md` for coding standards
 
-**Source of truth:** Planning doc acceptance criteria + actual source code implementation.
+**Source of truth:** PROJECT_STRUCTURE.md test configuration → planning doc acceptance criteria → source code.
 
 ## Step 2: Scope (logic and component tests only)
 
@@ -45,10 +60,12 @@ Use `docs/ai/testing/feature-{name}.md` as the source of truth.
   - Tests requiring external API calls, database connections, or network mocking
   - Performance/load testing
 - **Dependency isolation (mocking):**
+  - **Prefer `vi.spyOn`/`jest.spyOn`** over complete function overwrites for better type safety
+  - Use spyOn to mock specific methods while preserving original implementation
   - Mock external dependencies (API clients, database connections, file system)
   - Mock imported utilities/hooks if they have side effects
   - Keep internal logic unmocked (test actual implementation)
-  - Use test framework's mocking utilities (vi.mock, jest.mock, unittest.mock)
+  - Use test framework's mocking utilities (vi.mock, jest.mock, unittest.mock) only when spyOn is insufficient
 - Keep tests simple, fast, and deterministic.
 
 ## Step 3: Analyze Code & Generate Tests (automatic)
@@ -59,7 +76,8 @@ Use `docs/ai/testing/feature-{name}.md` as the source of truth.
 - Map: input types → expected outputs → edge cases → error cases
 
 **Generate test files:**
-- Create test file per `PROJECT_STRUCTURE.md` (colocated `*.spec.*` or `__tests__/`)
+- Create test file in `tests/unit/` directory
+- File naming: `{feature-name}.spec.ts` or `{component-name}.spec.ts`
 - Follow naming conventions from `CODE_CONVENTIONS.md`
 
 **Test coverage strategy:**
@@ -76,11 +94,13 @@ Use `docs/ai/testing/feature-{name}.md` as the source of truth.
 
 ## Step 4: Run Tests with Logging (automatic)
 
-**Execute test command** (non-interactive):
-- Vitest: `npx vitest run --passWithNoTests`
-- Jest: `npx jest --ci --passWithNoTests`
-- Mocha: `npx mocha --reporter spec`
-- pytest: `pytest -v --tb=short`
+**Execute test command from PROJECT_STRUCTURE.md configuration:**
+- Use the "Run command" from Test Configuration section
+- If not configured, use framework defaults:
+  - Vitest: `npx vitest run --passWithNoTests`
+  - Jest: `npx jest --ci --passWithNoTests`
+  - Mocha: `npx mocha --reporter spec`
+  - pytest: `pytest -v --tb=short`
 
 **Display output:**
 - Test execution progress and results (pass/fail, timing)
@@ -100,15 +120,19 @@ Use `docs/ai/testing/feature-{name}.md` as the source of truth.
 **Analyze coverage report:**
 - Identify untested branches/lines/functions
 
-**Generate additional tests:**
+**Generate additional tests (max 3 iterations):**
 - Create test cases for uncovered branches/lines/functions
 - Re-run tests with coverage
 - Verify targets met (default: 80% lines, 70% branches)
-- Continue until targets met or all practical cases covered
+- **Loop limit:** Maximum 3 retry attempts to prevent infinite loops
+- If targets not met after 3 attempts:
+  - Report current coverage status to user
+  - List remaining uncovered areas
+  - Stop and let user decide next steps
 
 ## Step 6: Update Testing Doc
 
-Use structure from `docs/ai/testing/feature-template.md` to populate `docs/ai/testing/feature-{name}.md`.
+Use structure from `docs/ai/testing/unit-template.md` to populate `docs/ai/testing/unit-{name}.md`.
 
 Fill with:
 

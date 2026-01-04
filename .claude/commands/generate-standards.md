@@ -22,6 +22,11 @@ Detect project languages/frameworks/libraries from repository metadata:
 - Identify frameworks (React, Vue, Angular, etc.)
 - Identify libraries and tooling (ESLint, Prettier, testing frameworks, etc.)
 - Note any build tools or bundlers in use
+- **Detect test framework/library:**
+  - JavaScript/TypeScript: Vitest, Jest, Mocha, Jasmine, Ava, Tape, etc.
+  - Python: pytest, unittest, nose2, etc.
+  - Other languages: detect from config files or dependencies
+  - Check for test config files: `vitest.config.*`, `jest.config.*`, `pytest.ini`, etc.
 
 **Error handling:**
 - No config files found: Ask user for project type manually
@@ -77,8 +82,9 @@ Analyze repository to infer:
   - Organization under `src/` (by feature/by layer/mixed)
   - Common directories (components/, utils/, services/, etc.)
 - Test file locations/naming if present:
-  - Colocated patterns
-  - Test directory structure
+  - Unit tests: `tests/unit/*.spec.ts` or `tests/unit/*.test.ts`
+  - Integration tests: `tests/integration/*.e2e.spec.ts`
+  - Test docs: `docs/ai/testing/unit-{name}.md` and `integration-{name}.md`
 - Common patterns observed:
   - Repository/Service patterns
   - Factory patterns
@@ -126,6 +132,24 @@ Generate two documents:
 - Design patterns actually observed in codebase
 - Test placement and naming conventions
 - Config/secrets handling summary
+- **Test Configuration section** (critical for `/writing-test` and `/run-test` commands):
+  ```markdown
+  ## Test Configuration
+
+  ### Unit Tests
+  - Framework: [Vitest/Jest/Mocha/pytest/etc.]
+  - Run command: `[npm test / npx vitest run / pytest / etc.]`
+  - Config file: [vitest.config.ts / jest.config.js / pytest.ini / etc.]
+  - Test location: `tests/unit/`
+  - File pattern: `*.spec.ts` or `*.test.ts`
+
+  ### Integration Tests
+  - Framework: [Playwright / Cypress / etc.]
+  - Run command: `npx playwright test`
+  - Config file: `playwright.config.ts`
+  - Test location: `tests/integration/`
+  - File pattern: `*.e2e.spec.ts`
+  ```
 
 **Error handling:**
 - Template directory not found: Use hardcoded minimal template

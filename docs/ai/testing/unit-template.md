@@ -1,10 +1,10 @@
-# Test Plan: {Feature Name}
+# Unit Test Plan: {Feature Name}
 
 Note: All content in this document must be written in English.
 
 ## Test Files Created
-- `path/to/test-file.spec.js` - Tests for [component/function]
-- `path/to/another-test.spec.js` - Tests for [component/function]
+- `tests/unit/test-file.spec.ts` - Tests for [component/function]
+- `tests/unit/another-test.spec.ts` - Tests for [component/function]
 
 ## Unit Tests
 
