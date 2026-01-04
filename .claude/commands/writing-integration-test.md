@@ -31,7 +31,29 @@ Use `docs/ai/testing/integration-{name}.md` as the source of truth.
 
 **Source of truth:** Planning doc acceptance criteria + actual UI behavior.
 
-## Step 2: Scope (UI/Integration tests only)
+## Step 2: Ask Testing Approach
+
+**Tool:** AskUserQuestion
+
+Ask user which approach to use for test exploration and writing:
+
+```
+Question: Which approach do you want to use for integration testing?
+Options:
+  1. Playwright MCP (Recommended) - Interactive browser exploration to discover selectors
+  2. @playwright/test package only - Write tests directly without browser exploration
+```
+
+**If user chooses "Playwright MCP":**
+- Use Playwright MCP tools for UI exploration (Step 3)
+- Then generate test files based on discovered selectors
+
+**If user chooses "@playwright/test package only":**
+- Skip Step 3 (Explore UI)
+- Generate test files directly based on planning doc and code analysis
+- Use best-practice selectors (getByRole, getByLabel, getByText)
+
+## Step 3: Scope (UI/Integration tests only)
 
 - **Focus on:**
   - User journey flows: complete user interactions from start to finish
@@ -54,7 +76,7 @@ Use `docs/ai/testing/integration-{name}.md` as the source of truth.
   - Use `page.goto()` to start from known state
   - Clean up any created data after test (if applicable)
 
-## Step 3: Explore UI with Playwright MCP (optional)
+## Step 4: Explore UI with Playwright MCP (if user chose MCP)
 
 **Pre-requisite: Ensure local server is running**
 - Before exploring, verify the application server is running
@@ -76,7 +98,7 @@ Use Playwright MCP to explore the actual UI and understand element selectors:
 3. Test interactions to verify selectors work
 4. Use discovered selectors in generated test files
 
-## Step 4: Generate Playwright Test Files
+## Step 5: Generate Playwright Test Files
 
 **Test file location:** `tests/integration/` directory
 
@@ -135,7 +157,7 @@ test.describe('{Feature Name}', () => {
 - Navigation: page transitions, back button, deep links
 - Loading states: verify loading indicators appear/disappear
 
-## Step 5: Create Playwright Config (if missing)
+## Step 6: Create Playwright Config (if missing)
 
 **File:** `playwright.config.ts`
 
@@ -174,7 +196,23 @@ export default defineConfig({
 });
 ```
 
-## Step 6: Run Tests & Verify
+## Step 7: Ask User for Next Action
+
+**Tool:** AskUserQuestion
+
+After test files are created, ask user:
+
+```
+Question: Test files have been created. What would you like to do next?
+Options:
+  1. Run tests now (Recommended) - Execute tests and see results
+  2. Skip to next command - Continue without running tests
+```
+
+**If user chooses "Run tests now":** Proceed to Step 8 (Run Tests).
+**If user chooses "Skip":** Jump to Step 9 (Update Integration Testing Doc) with placeholder results.
+
+## Step 8: Run Tests & Verify (if user requested)
 
 **Run commands:**
 ```bash
@@ -196,12 +234,12 @@ npx playwright show-report
 
 **If tests fail:**
 - Analyze failure: selector issue vs actual bug
-- Use `browser_snapshot` via MCP to verify current DOM structure
+- Use `browser_snapshot` via MCP to verify current DOM structure (if MCP approach was chosen)
 - Fix selectors if elements changed
 - **Report UI bug** if behavior doesn't match acceptance criteria
 - Re-run tests after fixing
 
-## Step 7: Update Integration Testing Doc
+## Step 9: Update Integration Testing Doc
 
 Create/update `docs/ai/testing/integration-{name}.md` with:
 
@@ -242,7 +280,7 @@ npx playwright test tests/integration/{feature-name}.e2e.spec.ts
 - Run `npx playwright test --ui` for interactive debugging
 ```
 
-## Step 8: Add npm Script (optional)
+## Step 10: Add npm Script (optional)
 
 Add to `package.json`:
 ```json

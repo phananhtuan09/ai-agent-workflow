@@ -92,7 +92,23 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 - Use Task tool with `subagent_type='general-purpose'`
 - Task prompt: "Generate comprehensive test cases for [function] covering happy path, edge cases, error handling, and parameter combinations"
 
-## Step 4: Run Tests with Logging (automatic)
+## Step 4: Ask User for Next Action
+
+**Tool:** AskUserQuestion
+
+After test files are created, ask user:
+
+```
+Question: Test files have been created. What would you like to do next?
+Options:
+  1. Run tests now (Recommended) - Execute tests and see results
+  2. Skip to next command - Continue without running tests
+```
+
+**If user chooses "Run tests now":** Proceed to Step 5 (Run Tests).
+**If user chooses "Skip":** Jump to Step 7 (Update Testing Doc) with placeholder results.
+
+## Step 5: Run Tests with Logging (if user requested)
 
 **Execute test command from PROJECT_STRUCTURE.md configuration:**
 - Use the "Run command" from Test Configuration section
@@ -115,7 +131,7 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 - Re-run tests after fixing test logic
 - Update testing doc with results
 
-## Step 5: Coverage Gap Analysis (automatic)
+## Step 6: Coverage Gap Analysis (if tests were run)
 
 **Analyze coverage report:**
 - Identify untested branches/lines/functions
@@ -130,7 +146,7 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
   - List remaining uncovered areas
   - Stop and let user decide next steps
 
-## Step 6: Update Testing Doc
+## Step 7: Update Testing Doc
 
 Use structure from `docs/ai/testing/unit-template.md` to populate `docs/ai/testing/unit-{name}.md`.
 
@@ -152,7 +168,7 @@ Fill with:
 
 Ensure all required sections from template are present. Keep the document brief and actionable.
 
-## Step 7: Verify Tests Pass
+## Step 8: Verify Tests Pass (if tests were run)
 
 - Ensure all generated tests pass successfully
 - Ensure coverage targets are met (default: 80% lines, 70% branches)

@@ -151,9 +151,9 @@ After test execution, provide a summary report:
 - [Any follow-up actions needed]
 ```
 
-## Step 6: Update Test Doc (optional)
+## Step 6: Update Test Doc (automatic)
 
-If user confirms, update the test doc with latest results:
+Automatically update the test doc with latest results after each run:
 
 **Tool:** Edit(file_path=test_doc)
 
