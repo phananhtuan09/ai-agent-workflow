@@ -17,8 +17,8 @@ Compare current implementation against planning doc to ensure all requirements a
 ## Step 1: Load Planning Doc
 
 **Tools:**
-- ask user for clarification if feature name not provided
-- read `docs/ai/planning/feature-{name}.md`
+- Ask user for clarification if feature name not provided
+- Read `docs/ai/planning/feature-{name}.md`
 
 **Purpose:** Load planning doc to extract:
 - Acceptance criteria (Given-When-Then scenarios)
@@ -41,11 +41,11 @@ Compare current implementation against planning doc to ensure all requirements a
 4. If no git changes: Ask user for file paths
 
 **Tools:**
-- read `docs/ai/planning/feature-{name}.md` - extract file mentions
-- read `docs/ai/implementation/feature-{name}.md` - fallback
-- run command: `git diff --name-only main` - find changed files
-- search for files matching `src/**/*.{js,ts,py}` - last resort full scan
-- AskUserQuestion - ask user if all else fails
+- Read `docs/ai/planning/feature-{name}.md` - extract file mentions
+- Read `docs/ai/implementation/feature-{name}.md` - fallback
+- Run command: `git diff --name-only main` - find changed files
+- Search for files matching `src/**/*.{js,ts,py}` - last resort full scan
+- Ask user if all else fails
 
 **Output:** List of files to validate against planning doc
 
@@ -61,7 +61,24 @@ Compare current implementation against planning doc to ensure all requirements a
 **Automated process:**
 - Use workspace search and analysis to accomplish this task
 
-**Alternative approach:** If Explore agent unavailable, manually:
+Compare implementation in discovered files against planning doc:
+
+For each completed task marked [x]:
+- Check if corresponding code exists in mentioned files
+- Verify implementation matches task description
+
+For each acceptance criteria:
+- Verify code satisfies the Given-When-Then scenario
+- Check expected behavior is implemented
+
+Identify:
+- Completed tasks [x] with missing/partial implementation
+- Mismatches between planning description and actual code
+- Acceptance criteria not met by code
+
+Return structured report with findings categorized by severity.
+
+**Fallback:** If search unavailable, manually:
 1. Read each file from Step 2
 2. For each completed task `[x]`, search for related code
 3. Compare against acceptance criteria
@@ -74,7 +91,7 @@ Compare current implementation against planning doc to ensure all requirements a
 - **Do NOT** invent or infer alternative logic beyond what docs specify
 
 **Error handling:**
-- Agent timeout: Retry with , then fall back to manual
+- Search timeout: Retry with quick search, then fall back to manual
 - No completed tasks: Report "Nothing to validate"
 - Ambiguous results: Flag for manual review
 

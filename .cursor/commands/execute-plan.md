@@ -21,15 +21,28 @@ Execute the feature plan by implementing tasks from the planning doc and updatin
 
 ---
 
+## Parallel Execution Strategy
+
+**Step 1 substeps (1a/1b/1c) can run in parallel** to optimize context loading:
+
+**Execution plan:**
+- Task 1: Load standards (Step 1a) + Design specs (Step 1b) + Codebase context (Step 1c)
+- Task 2: Phase detection (Step 1d) - depends on planning doc being loaded
+
+Load operations (1a/1b/1c) are independent and can run concurrently after planning doc is loaded.
+
+Expected speedup: 30-40% for context loading phase.
+
+---
 
 ## Step 1: Gather Context
 
 **Tools:**
-- ask user for clarification if feature name not provided
-- read `docs/ai/planning/feature-{name}.md`
-- read `docs/ai/planning/feature-template.md`
-- read `docs/ai/project/CODE_CONVENTIONS.md`
-- read `docs/ai/project/PROJECT_STRUCTURE.md`
+- Ask user for clarification if feature name not provided
+- Read `docs/ai/planning/feature-{name}.md`
+- Read `docs/ai/planning/feature-template.md`
+- Read `docs/ai/project/CODE_CONVENTIONS.md`
+- Read `docs/ai/project/PROJECT_STRUCTURE.md`
 
 **Process:**
 - Ask for feature name if not provided (must be kebab-case)
@@ -127,10 +140,10 @@ Note: Do not include Follow-ups section unless explicitly in current phase.
 ## Step 3: Implement Iteratively (per task)
 
 **Tools:**
-- Read(file_path=...) to check existing files
-- Write(file_path=..., content=...) for new files
-- Edit(file_path=..., old_string=..., new_string=...) for modifications
-- edit `docs/ai/planning/feature-{name}.md` to update checkboxes
+- Read file to check existing files
+- Write file for new files
+- Edit file for modifications
+- Edit `docs/ai/planning/feature-{name}.md` to update checkboxes
 
 **At Phase Boundary** (when starting new phase):
 

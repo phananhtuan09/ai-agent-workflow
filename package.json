@@ -17,7 +17,11 @@
     "workflow",
     "docs",
     "degit",
-    "init"
+    "init",
+    "cursor",
+    "copilot",
+    "claude",
+    "opencode"
   ],
   "dependencies": {
     "degit": "^2.8.4"
@@ -35,6 +39,9 @@
     "cli.js",
     "docs/",
     ".cursor/",
+    ".claude/",
+    ".github/",
+    ".opencode/",
     "AGENTS.md",
     "README.md"
   ]

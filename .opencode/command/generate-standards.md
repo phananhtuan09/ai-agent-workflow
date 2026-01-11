@@ -1,6 +1,6 @@
 ---
-name: generate-standards
 description: Generates/updates code convention and project structure docs from the codebase.
+agent: build
 ---
 
 ## Goal
@@ -8,12 +8,6 @@ description: Generates/updates code convention and project structure docs from t
 Generate or update `docs/ai/project/CODE_CONVENTIONS.md` and `PROJECT_STRUCTURE.md` from the current codebase with brief Q&A refinement.
 
 ## Step 1: Detect Project Context
-
-**Tools:**
-- Search for files matching `**/package.json`
-- Search for files matching `**/pyproject.toml`
-- Search for files matching `**/*.config.{js,ts}`
-- Read each config file found
 
 Detect project languages/frameworks/libraries from repository metadata:
 
@@ -37,8 +31,6 @@ Detect project languages/frameworks/libraries from repository metadata:
 
 ## Step 2: Clarify Scope (3–6 questions max)
 
-**Tool:** Ask user for clarification
-
 Quick classification and targeted questions:
 
 - Languages/frameworks detected: confirm correct? (a/b/other)
@@ -57,10 +49,7 @@ Keep questions short and single-purpose. Stop once sufficient info gathered.
 
 ## Step 3: Auto-Discovery
 
-**Automated process:**
-- Use workspace search and analysis to accomplish this task
-
-Analyze codebase to discover:
+Use @explore to analyze codebase and discover:
 - Naming conventions (variables, functions, classes, constants)
 - Import patterns and ordering style
 - Folder structure organization (feature/layer/mixed)
@@ -92,17 +81,13 @@ Analyze repository to infer:
   - Other architectural patterns
 
 **Error handling:**
-- Search timeout: Fallback to quick Grep-based pattern detection
+- Explore agent timeout: Fallback to quick search-based pattern detection
 - No patterns found: Generate minimal standards template
 - Inconsistent patterns: Document most frequent pattern as primary
 
 ## Step 4: Draft Standards
 
-**Tools:**
-- Search for files matching `docs/ai/project/template-convention/*.md` to find templates
-- Read each matching template
-- Write `docs/ai/project/CODE_CONVENTIONS.md`
-- Write `docs/ai/project/PROJECT_STRUCTURE.md`
+Find templates in `docs/ai/project/template-convention/` and read each matching template.
 
 Generate two documents:
 
@@ -158,11 +143,6 @@ Generate two documents:
 
 ## Step 5: Persist (Update-in-place, Non-destructive)
 
-**Tools:**
-- Read file to check existing content
-- Edit file for updates within managed blocks
-- Write file if file doesn't exist
-
 **Target files:**
 - `docs/ai/project/CODE_CONVENTIONS.md`
 - `docs/ai/project/PROJECT_STRUCTURE.md`
@@ -195,7 +175,7 @@ Generate two documents:
 ### Template Matching Details (Step 4)
 
 **Template loading logic:**
-1. Glob all files in `docs/ai/project/template-convention/`
+1. Search for all files in `docs/ai/project/template-convention/`
 2. Match templates by filename:
    - `common.md` → Always include if present
    - `javascript.md`, `typescript.md`, `python.md` → Match by language

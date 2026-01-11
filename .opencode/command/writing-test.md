@@ -1,6 +1,6 @@
 ---
-name: writing-test
-description: Generates comprehensive unit test files with edge cases, parameter variations, and coverage analysis.
+description: Generates comprehensive unit test files with edge cases and coverage analysis.
+agent: build
 ---
 
 Use `docs/ai/testing/unit-{name}.md` as the source of truth.
@@ -27,9 +27,7 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
   - **If Test Configuration not found:**
     1. Check `package.json` for test dependencies (vitest, jest, mocha, etc.)
     2. Check for config files: `vitest.config.*`, `jest.config.*`, `pytest.ini`
-    3. If still not found, ask user:
-       - Question: Which unit test framework do you want to use?
-       - Options: Vitest (Recommended), Jest, Mocha, pytest
+    3. If still not found, ask user which unit test framework to use
     4. After user selection, suggest running `/generate-standards` to persist the choice
 - **Load standards:**
   - `docs/ai/project/CODE_CONVENTIONS.md` for coding standards
@@ -83,17 +81,16 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 - **Property-based** (if applicable): commutativity, associativity, idempotency
 
 **For complex test suites (>15 test cases):**
-- Use specialized agent for comprehensive test case generation
-- Task prompt: "Generate comprehensive test cases for [function] covering happy path, edge cases, error handling, and parameter combinations"
+- Use @general for comprehensive test case generation
+- Prompt: "Generate comprehensive test cases for [function] covering happy path, edge cases, error handling, and parameter combinations"
 
 ## Step 4: Ask User for Next Action
 
 After test files are created, ask user:
 
-- Question: Test files have been created. What would you like to do next?
-- Options:
-  - Run tests now (Recommended) - Execute tests and see results
-  - Skip to next command - Continue without running tests
+Options:
+1. Run tests now (Recommended) - Execute tests and see results
+2. Skip to next command - Continue without running tests
 
 **If user chooses "Run tests now":** Proceed to Step 5 (Run Tests).
 **If user chooses "Skip":** Jump to Step 7 (Update Testing Doc) with placeholder results.

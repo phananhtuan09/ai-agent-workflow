@@ -1,22 +1,22 @@
 ---
-name: init-chat
-description: Initializes chat by loading and aligning to CLAUDE.md project rules.
+description: Initializes chat by loading and aligning to AGENTS.md project rules.
+agent: plan
 ---
 
 ## Goal
 
-Initialize a new chat by loading and aligning to `CLAUDE.md` so the AI agent consistently follows project rules (workflow, tooling, communication, language mirroring) from the first message.
+Initialize a new chat by loading and aligning to `AGENTS.md` so the AI agent consistently follows project rules (workflow, tooling, communication, language mirroring) from the first message.
 
 ## What this command does
 
-1. Read `CLAUDE.md` and extract the actionable rules.
+1. Read `AGENTS.md` and extract the actionable rules.
 2. Summarize responsibilities and constraints the agent must follow in this session.
 3. Confirm language-mirroring: respond in the user's chat language; default to English if the user's language is unclear or ambiguous.
 4. Acknowledge the 4-phase workflow and TODO discipline for future commands.
 
 ## Steps
 
-1. Open and read `CLAUDE.md` (project root).
+1. Open and read `AGENTS.md` (project root).
 2. Read `docs/ai/project/CODE_CONVENTIONS.md` and `docs/ai/project/PROJECT_STRUCTURE.md` if they exist in the repository.
 3. Produce a short confirmation in the chat including:
    - Workflow alignment: Plan → Implement → Test → Review
