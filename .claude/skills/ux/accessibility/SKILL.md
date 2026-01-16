@@ -14,6 +14,13 @@ description: |
 
   Keywords: accessible, accessibility, WCAG, keyboard, screen reader, ARIA, contrast, a11y
 
+  Do NOT load for:
+  - Visual design/styling only (use design-fundamentals)
+  - Theme/color selection (use theme-factory)
+  - Responsive layout (use design-responsive)
+  - Figma extraction (use figma-design-extraction)
+  - Code quality checks (use quality-code-check)
+
   Focus on making UI usable via keyboard, screen readers, assistive technologies.
 ---
 

@@ -18,6 +18,14 @@ description: |
   - Java (Gradle, Maven)
 
   Focuses on detecting issues early through systematic automated checks.
+
+  Keywords: lint, linting, type check, typecheck, build, quality, validation, eslint, tsc
+
+  Do NOT load for:
+  - Visual design work (use design-fundamentals, design-responsive)
+  - UX patterns (use ux-feedback-patterns, ux-accessibility)
+  - Initial development before implementation is stable
+  - Figma extraction (use figma-design-extraction)
 ---
 
 # Quality Code Check

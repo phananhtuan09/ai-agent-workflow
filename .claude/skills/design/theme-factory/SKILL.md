@@ -4,18 +4,23 @@ description: |
   Interactive UI theme generation when user needs help choosing colors/fonts.
   Generates cohesive themes based on brand personality using color harmony theory.
 
-  Use when user asks for theme/color help OR building UI without design:
+  Use ONLY when user is UNCERTAIN about colors/theme and asks for help:
   - "What theme should I use?" "Help me pick colors" "Generate theme"
   - "What colors work well together?" "Suggest color palette"
   - User uncertain about design direction, needs aesthetic suggestions
-  - Building UI/landing page with no design specs, needs complete theme
+  - Building UI with no design specs AND no color preference
 
   Keywords: theme, color palette, colors, fonts, brand personality, color harmony
 
   Interactive workflow: Ask personality → Present options → Generate custom theme.
   References pre-defined themes in .claude/themes/.
 
-  Do NOT load for: User has clear aesthetic/colors, Figma/design file provided.
+  Do NOT load for:
+  - User already has clear colors/aesthetic in mind (use design-fundamentals)
+  - Figma/design file provided (use figma-design-extraction)
+  - User just needs to apply existing theme
+  - Responsive layout questions (use design-responsive)
+
   Integrates with design-fundamentals: Generates themes following design principles.
 ---
 

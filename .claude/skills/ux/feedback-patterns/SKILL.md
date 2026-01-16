@@ -13,6 +13,13 @@ description: |
 
   Keywords: loading, success, error, form, validation, async, feedback, toast, empty state
 
+  Do NOT load for:
+  - Visual design/styling (use design-fundamentals)
+  - Responsive layout (use design-responsive)
+  - Figma extraction (use figma-design-extraction)
+  - Accessibility-only questions (use ux-accessibility)
+  - Code quality checks (use quality-code-check)
+
   Focus on WHEN to show feedback, WHAT type (toast/inline/modal), HOW LONG (timing).
 ---
 

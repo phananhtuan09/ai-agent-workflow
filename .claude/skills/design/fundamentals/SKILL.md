@@ -1,23 +1,34 @@
 ---
 name: design-fundamentals
 description: |
-  Core design principles for creating distinctive, beautiful UIs with technical excellence.
-  Combines creative direction with practical foundation for memorable, accessible interfaces.
+  Core design principles for implementing beautiful, professional UIs.
+  Ensures consistent quality through spacing, typography, colors, and visual hierarchy.
 
-  Use when building UI without specific design specs (Figma, screenshots, design files):
-  - Creating landing pages, home pages, marketing pages from scratch
-  - Building web apps, dashboards, admin panels without design
-  - Choosing design system: typography, colors, spacing, visual hierarchy
-  - Need to propose complete design (fonts, colors, layout, spacing)
-  - Building distinctive UIs that avoid generic AI aesthetics
+  ALWAYS load when implementing UI/frontend code:
+  - Creating or modifying components, pages, screens
+  - Building landing pages, dashboards, forms, cards, buttons
+  - Any frontend work: HTML, CSS, styling, layouts
+  - Adding new UI elements or updating existing ones
 
-  Keywords: landing page, design system, typography, colors, spacing, visual hierarchy
+  Keywords: UI, frontend, component, page, styling, CSS, layout, button, form, card, dashboard
 
-  Two-part approach:
-  1. Creative Direction: Choose aesthetic tone (minimal, bold, elegant, playful)
-  2. Technical Foundation: Spacing scales, typography specs, WCAG contrast, hierarchy
+  Purpose: Ensure ALL UI implementation follows design best practices for:
+  - Consistent spacing scale (not arbitrary values)
+  - Typography hierarchy (readable, professional)
+  - Color contrast (accessible, WCAG compliant)
+  - Visual hierarchy (clear, intentional)
+  - Avoiding generic AI aesthetics
 
-  Goal: Create UIs that are BOTH beautiful (distinctive, memorable) AND correct (accessible, consistent, professional).
+  Do NOT load for:
+  - Backend-only code (APIs, database, server logic)
+  - Pure logic/algorithm work without UI
+  - DevOps, infrastructure, CLI tools
+
+  Works with other skills:
+  - theme-factory: When user needs help CHOOSING colors/theme
+  - figma-design-extraction: When Figma file provided
+  - design-responsive: For mobile/tablet/responsive specifics
+  - ux-accessibility: For keyboard/screen reader specifics
 ---
 
 # Design Fundamentals

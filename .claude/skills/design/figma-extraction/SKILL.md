@@ -19,6 +19,8 @@ description: |
   - Responsive: mobile/tablet/desktop differences explicitly documented
   - Assets: icons (names, sizes), images (dimensions, alt text), illustrations
 
+  Keywords: Figma, design file, mockup, extract, MCP, design system, specs
+
   Goal: Extract ONCE completely during planning phase. Implementation should never
   need to re-fetch from Figma MCP. Focus on exact values only - no approximations,
   no guessing. Completeness prevents re-work and design inconsistencies.

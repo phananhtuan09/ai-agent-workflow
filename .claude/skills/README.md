@@ -15,7 +15,6 @@ Version: 2.0.0
 ├── design/           # Visual design principles
 │   ├── fundamentals/
 │   ├── responsive/
-│   ├── animations/
 │   ├── figma-extraction/
 │   └── theme-factory/
 │

@@ -13,6 +13,13 @@ description: |
 
   Keywords: responsive, mobile-first, mobile, tablet, desktop, breakpoints, touch, multi-device
 
+  Do NOT load for:
+  - Desktop-only applications without responsive needs
+  - Figma extraction (use figma-design-extraction)
+  - Accessibility-only questions (use ux-accessibility)
+  - Theme/color selection (use theme-factory)
+  - Code quality checks (use quality-code-check)
+
   Mobile-first approach: Design for mobile constraints first, enhance progressively.
   Integrates with design-fundamentals: Apply spacing, typography, color systems responsively.
 ---
