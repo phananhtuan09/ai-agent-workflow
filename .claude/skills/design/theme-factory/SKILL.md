@@ -10,7 +10,8 @@ description: |
   - User uncertain about design direction, needs aesthetic suggestions
   - Building UI with no design specs AND no color preference
 
-  Keywords: theme, color palette, colors, fonts, brand personality, color harmony
+  Keywords: theme, color palette, colors, fonts, brand personality, color harmony,
+            aesthetic, style, visual style, look and feel, beautiful, attractive
 
   Interactive workflow: Ask personality → Present options → Generate custom theme.
   References pre-defined themes in .claude/themes/.

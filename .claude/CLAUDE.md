@@ -55,12 +55,34 @@
 
 ---
 
-## Skill Reporting
+## Skill Reporting (MANDATORY)
 
-At response start, list skills being used:
+**CRITICAL REQUIREMENT - ALWAYS follow this:**
+
+At the START of EVERY response, BEFORE any other content, report skills:
 
 ```
 📚 Skills: skill-name-1, skill-name-2
 ```
 
-Skills are defined in `.claude/skills/`. Use `/skill:name` to request specific skills.
+**Rules:**
+- If skills were activated → List them
+- If NO skills activated → Write: `📚 Skills: none`
+- This line MUST appear in EVERY response, no exceptions
+- Place BEFORE greeting, explanation, or any other content
+
+**Example responses:**
+
+```
+📚 Skills: design-fundamentals, theme-factory
+
+I'll help you create a modern login page...
+```
+
+```
+📚 Skills: none
+
+Sure, I can help you fix that bug...
+```
+
+Skills are defined in `.claude/skills/`.

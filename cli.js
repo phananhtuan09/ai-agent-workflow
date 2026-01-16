@@ -397,12 +397,100 @@ function installClaudeCode() {
     }
   }
 
-  // Download hooks.json (always overwrite to get latest)
-  step("🚚 Downloading Claude Code hooks (.claude/hooks.json)...");
-  try {
-    run(`curl -fsSL ${RAW_BASE}/.claude/hooks.json -o .claude/hooks.json`);
-  } catch (_) {
-    run(`wget -qO .claude/hooks.json ${RAW_BASE}/.claude/hooks.json`);
+  // Create settings.json with hooks (project-level, shareable with team)
+  step("🚚 Setting up Claude Code hooks (.claude/settings.json)...");
+  const claudeSettingsPath = ".claude/settings.json";
+  if (existsSync(claudeSettingsPath)) {
+    skip(`Skipping (already exists): ${claudeSettingsPath}`);
+  } else {
+    const claudeSettings = {
+      hooks: {
+        SessionStart: [
+          {
+            matcher: "startup|resume|clear",
+            hooks: [
+              {
+                type: "command",
+                command: "echo '⚠️ REMINDER: Start EVERY response with: 📚 Skills: [list] or 📚 Skills: none'"
+              }
+            ]
+          }
+        ],
+        PostToolUse: [
+          {
+            matcher: "Write",
+            hooks: [
+              {
+                type: "prompt",
+                prompt: "If the file path contains 'docs/ai/planning/feature-' and ends with '.md', validate this planning document has all required sections: 1. Goal & Acceptance Criteria, 2. Risks & Assumptions, 3. Definition of Done, 4. Implementation Plan (with Summary and Phases), 5. Follow-ups. Return JSON: {\"valid\": true/false, \"missing\": [list of missing sections], \"message\": \"brief validation result\"}. If file path doesn't match, return {\"valid\": true, \"message\": \"skipped - not a planning doc\"}"
+              }
+            ]
+          },
+          {
+            matcher: "Edit",
+            hooks: [
+              {
+                type: "command",
+                command: "if echo \"$TOOL_INPUT\" | grep -q 'docs/ai/planning/feature-'; then echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Task updated in planning doc\" >> .claude/feature-progress.log; fi"
+              }
+            ]
+          }
+        ],
+        PreToolUse: [
+          {
+            matcher: "Edit",
+            hooks: [
+              {
+                type: "prompt",
+                prompt: "If the file path contains 'docs/ai/planning/feature-' and ends with '.md': Check if the agent is starting a new phase. If yes, verify all tasks in the previous phase are marked [x]. Return JSON: {\"canProceed\": true/false, \"message\": \"reason\"}. If file path doesn't match, return {\"canProceed\": true, \"message\": \"skipped - not a planning doc\"}"
+              }
+            ]
+          },
+          {
+            matcher: "Bash",
+            hooks: [
+              {
+                type: "prompt",
+                prompt: "GIT SAFETY CHECK: If command contains 'git ' (git commands like git add, git commit, git push, git pull, git checkout, git branch, git merge, git rebase, git reset, git stash, etc.): Check the ORIGINAL USER PROMPT - did the user EXPLICITLY request git operations? Keywords indicating user wants git: 'commit', 'push', 'git', 'version control', 'save changes', 'create branch'. If user did NOT explicitly request git operations, BLOCK with message 'Git operations require explicit user request. Ask user first.' Return JSON: {\"allow\": true/false, \"reason\": \"explanation\"}. If command does not contain git, return {\"allow\": true, \"reason\": \"not a git command\"}"
+              }
+            ]
+          },
+          {
+            matcher: "Write|Edit",
+            hooks: [
+              {
+                type: "prompt",
+                prompt: "SECURITY CHECK: If file path matches any sensitive pattern: '.env', '.env.*', 'credentials', 'secrets', 'api_key', 'apikey', 'password', 'private_key', 'token', '.pem', '.key', 'auth.json', 'config/prod': WARN user with message '⚠️ SENSITIVE FILE: [filename] - Are you sure you want to modify this file?'. Return JSON: {\"isSensitive\": true/false, \"warning\": \"message if sensitive\", \"allow\": true}. Always allow but warn for sensitive files."
+              }
+            ]
+          }
+        ],
+        Stop: [
+          {
+            matcher: "",
+            hooks: [
+              {
+                type: "command",
+                command: "if command -v notify-send &>/dev/null; then notify-send -i dialog-information 'Claude Code' '✅ Task completed' 2>/dev/null; elif command -v powershell.exe &>/dev/null; then powershell.exe -Command \"[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show('Task completed', 'Claude Code', 'OK', 'Information')\" 2>/dev/null; elif command -v osascript &>/dev/null; then osascript -e 'display notification \"Task completed\" with title \"Claude Code\"' 2>/dev/null; fi; exit 0"
+              }
+            ]
+          }
+        ],
+        Notification: [
+          {
+            matcher: "permission_prompt",
+            hooks: [
+              {
+                type: "command",
+                command: "if command -v notify-send &>/dev/null; then notify-send -u critical -i dialog-warning 'Claude Code' '⚠️ Permission required - check terminal' 2>/dev/null; elif command -v powershell.exe &>/dev/null; then powershell.exe -Command \"[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show('Permission required - check terminal', 'Claude Code', 'OK', 'Warning')\" 2>/dev/null; fi; exit 0"
+              }
+            ]
+          }
+        ]
+      }
+    };
+    writeFileSync(claudeSettingsPath, JSON.stringify(claudeSettings, null, 2));
+    success(`Created: ${claudeSettingsPath}`);
   }
 
   // Download skills folder (always overwrite to get latest)

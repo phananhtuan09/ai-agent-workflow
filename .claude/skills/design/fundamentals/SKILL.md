@@ -9,8 +9,13 @@ description: |
   - Building landing pages, dashboards, forms, cards, buttons
   - Any frontend work: HTML, CSS, styling, layouts
   - Adding new UI elements or updating existing ones
+  - Modern, stunning, elegant, sleek interfaces
+  - Animation, transition, hover effects, motion, interactive elements
 
-  Keywords: UI, frontend, component, page, styling, CSS, layout, button, form, card, dashboard
+  Keywords: UI, frontend, component, page, styling, CSS, layout, button, form,
+            card, dashboard, animation, transition, hover, effect, motion,
+            modern, beautiful, stunning, elegant, sleek, professional,
+            interactive, visual, aesthetic, design, attractive, impressive
 
   Purpose: Ensure ALL UI implementation follows design best practices for:
   - Consistent spacing scale (not arbitrary values)
