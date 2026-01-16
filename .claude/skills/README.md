@@ -12,18 +12,15 @@ Version: 2.0.0
 .claude/skills/
 ├── README.md (this file)
 │
-├── design/           # Visual design principles
-│   ├── fundamentals/
-│   ├── responsive/
-│   ├── figma-extraction/
-│   └── theme-factory/
+├── frontend-design-fundamentals/   # Core design principles
+├── frontend-design-responsive/     # Mobile-first, breakpoints
+├── frontend-design-figma-extraction/  # Extract Figma specs
+├── frontend-design-theme-factory/  # Generate themes
 │
-├── ux/               # User experience patterns
-│   ├── feedback-patterns/
-│   └── accessibility/
+├── ux-feedback-patterns/           # Loading, success, error states
+├── ux-accessibility/               # Keyboard, screen readers, WCAG
 │
-└── architecture/     # Code quality & patterns
-    └── quality-code-check/
+└── quality-code-check/             # Linting, type checking, builds
 ```
 
 ---
@@ -169,31 +166,32 @@ skill-name/
 
 ## 🎨 Current Skills
 
-| Skill | Category | Lines | Purpose |
-|-------|----------|-------|---------|
-| design-fundamentals | design | 277 | Spacing, typography, color, hierarchy |
-| design-responsive | design | 402 | Mobile-first, breakpoints, fluid layouts |
-| figma-design-extraction | design | 385 | Extract complete Figma specs |
-| theme-factory | design | 420 | Generate themes when no design |
-| ux-feedback-patterns | ux | 333 | Loading, success, error states |
-| ux-accessibility | ux | 411 | Keyboard, screen readers, WCAG |
-| quality-code-check | architecture | 268 | Linting, type checking, builds |
+| Skill | Purpose |
+|-------|---------|
+| frontend-design-fundamentals | Spacing, typography, color, visual hierarchy |
+| frontend-design-responsive | Mobile-first, breakpoints, fluid layouts |
+| frontend-design-figma-extraction | Extract complete Figma design specs |
+| frontend-design-theme-factory | Generate themes when no design provided |
+| ux-feedback-patterns | Loading, success, error states |
+| ux-accessibility | Keyboard, screen readers, WCAG |
+| quality-code-check | Linting, type checking, builds |
 
-**Total:** 2,496 lines across 7 skills
+**Total:** 7 skills
 
 ---
 
-## 🎮 Manual Skill Commands
+## 🎮 Manual Skill Invocation
+
+Skills auto-trigger based on keywords in your prompt. Manual invocation:
 
 ```bash
-/skill:design              # Load design-fundamentals
-/skill:responsive          # Load design-responsive
-/skill:figma               # Load figma-design-extraction
-/skill:theme               # Load theme-factory
-/skill:feedback            # Load ux-feedback-patterns
-/skill:accessibility       # Load ux-accessibility
-/skill:a11y                # Alias for accessibility
-/skill:quality             # Load quality-code-check
+/frontend-design-fundamentals    # Core design principles
+/frontend-design-responsive      # Mobile-first responsive
+/frontend-design-figma-extraction   # Extract from Figma
+/frontend-design-theme-factory   # Generate theme
+/ux-feedback-patterns            # Loading/error states
+/ux-accessibility                # WCAG, keyboard nav
+/quality-code-check              # Linting, type checks
 ```
 
 ---

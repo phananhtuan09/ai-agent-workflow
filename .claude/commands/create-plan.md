@@ -145,7 +145,7 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 
 **Trigger:** User mentions "figma", "design file", "mockup", or provides Figma URL (detected in Step 1).
 
-**Use `figma-design-extraction` skill to:**
+**Use `frontend-design-figma-extraction` skill to:**
 - Validate Figma MCP connection
 - Extract design tokens (colors, typography, spacing, shadows, border radius)
 - Extract component specs (states, variants, dimensions, hierarchies)
@@ -170,9 +170,9 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 **Trigger:** Step 4 skipped (no Figma) AND user has NOT provided detailed design description/screenshot.
 
 **Use design skills to guide design decisions:**
-- `design-fundamentals`: Core principles (spacing, typography, color, hierarchy)
-- `theme-factory`: Interactive theme selection based on brand personality
-- `design-responsive`: Mobile-first responsive patterns and breakpoints
+- `frontend-design-fundamentals`: Core principles (spacing, typography, color, hierarchy)
+- `frontend-design-theme-factory`: Interactive theme selection based on brand personality
+- `frontend-design-responsive`: Mobile-first responsive patterns and breakpoints
 
 **Expected workflow:**
 1. Ask about brand personality/preferences if needed

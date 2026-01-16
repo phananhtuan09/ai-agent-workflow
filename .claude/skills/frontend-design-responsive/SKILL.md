@@ -1,5 +1,5 @@
 ---
-name: design-responsive
+name: frontend-design-responsive
 description: |
   Mobile-first responsive design for beautiful, multi-device UIs. Breakpoints, fluid layouts,
   touch optimization, and creative responsive patterns for distinctive experiences across screens.

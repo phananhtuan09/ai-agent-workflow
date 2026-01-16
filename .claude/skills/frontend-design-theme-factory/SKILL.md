@@ -1,5 +1,5 @@
 ---
-name: theme-factory
+name: frontend-design-theme-factory
 description: |
   Interactive UI theme generation when user needs help choosing colors/fonts.
   Generates cohesive themes based on brand personality using color harmony theory.

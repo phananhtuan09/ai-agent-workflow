@@ -1,5 +1,5 @@
 ---
-name: design-fundamentals
+name: frontend-design-fundamentals
 description: |
   Core design principles for implementing beautiful, professional UIs.
   Ensures consistent quality through spacing, typography, colors, and visual hierarchy.

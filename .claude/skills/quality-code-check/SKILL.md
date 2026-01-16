@@ -22,10 +22,10 @@ description: |
   Keywords: lint, linting, type check, typecheck, build, quality, validation, eslint, tsc
 
   Do NOT load for:
-  - Visual design work (use design-fundamentals, design-responsive)
+  - Visual design work (use frontend-design-fundamentals, frontend-design-responsive)
   - UX patterns (use ux-feedback-patterns, ux-accessibility)
   - Initial development before implementation is stable
-  - Figma extraction (use figma-design-extraction)
+  - Figma extraction (use frontend-design-figma-extraction)
 ---
 
 # Quality Code Check

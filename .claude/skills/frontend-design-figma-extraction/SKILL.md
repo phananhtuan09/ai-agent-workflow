@@ -1,5 +1,5 @@
 ---
-name: figma-design-extraction
+name: frontend-design-figma-extraction
 description: |
   Complete Figma design extraction for pixel-perfect implementation.
   Extracts design tokens, component specs, layouts, and responsive behavior systematically.

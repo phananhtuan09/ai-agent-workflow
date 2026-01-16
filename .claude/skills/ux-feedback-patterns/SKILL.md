@@ -14,9 +14,9 @@ description: |
   Keywords: loading, success, error, form, validation, async, feedback, toast, empty state
 
   Do NOT load for:
-  - Visual design/styling (use design-fundamentals)
-  - Responsive layout (use design-responsive)
-  - Figma extraction (use figma-design-extraction)
+  - Visual design/styling (use frontend-design-fundamentals)
+  - Responsive layout (use frontend-design-responsive)
+  - Figma extraction (use frontend-design-figma-extraction)
   - Accessibility-only questions (use ux-accessibility)
   - Code quality checks (use quality-code-check)
 

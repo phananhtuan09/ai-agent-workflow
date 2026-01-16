@@ -74,7 +74,7 @@ At the START of EVERY response, BEFORE any other content, report skills:
 **Example responses:**
 
 ```
-📚 Skills: design-fundamentals, theme-factory
+📚 Skills: frontend-design-fundamentals, frontend-design-theme-factory
 
 I'll help you create a modern login page...
 ```

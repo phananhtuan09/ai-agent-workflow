@@ -672,7 +672,7 @@ After writing, verify:
 #### OpenCode Skills (.opencode/skill/)
 - [x] figma-extraction/SKILL.md - CREATED
 - [x] quality-code-check/SKILL.md - CREATED
-- [x] design-fundamentals/SKILL.md - CREATED
+- [x] frontend-design-fundamentals/SKILL.md - CREATED
 - [x] ux-accessibility/SKILL.md - CREATED
 
 #### OpenCode Agents (.opencode/agent/)
