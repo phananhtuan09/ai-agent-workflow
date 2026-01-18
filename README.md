@@ -4,7 +4,7 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 
 ## Features
 
-- **Multi-Platform Support**: Works with Cursor, GitHub Copilot, Claude Code, and OpenCode
+- **Multi-Platform Support**: Works with Cursor, GitHub Copilot, Claude Code, OpenCode, and Factory Droid
 - **Structured Workflows**: Plan → Implement → Test → Review methodology
 - **14 Pre-built Commands**: Create plans, execute tasks, run tests, code reviews, and more
 - **7 Reusable Skills**: Design fundamentals, accessibility, theme generation, quality checks
@@ -36,6 +36,7 @@ Choose from:
 - **GitHub Copilot** → `.github/prompts/` and `.github/copilot-instructions.md`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`
 - **OpenCode** → `.opencode/command/`, `.opencode/skill/`, `.opencode/agent/`
+- **Factory Droid** → `.factory/commands/`, `.factory/skills/`, `.factory/droids/`
 
 ### Install Specific Tool
 
@@ -48,6 +49,9 @@ npx ai-workflow-init --tool cursor
 
 # Install only OpenCode
 npx ai-workflow-init --tool opencode
+
+# Install only Factory Droid
+npx ai-workflow-init --tool factory
 
 # Install only GitHub Copilot
 npx ai-workflow-init --tool copilot
@@ -372,6 +376,7 @@ AGENTS.md               # Universal AI instructions
 | **GitHub Copilot** | `.github/prompts/*.prompt.md` | - | `.github/copilot-instructions.md` |
 | **Claude Code** | `.claude/commands/*.md` | `.claude/skills/*/SKILL.md` | `.claude/CLAUDE.md`, `.claude/themes/` |
 | **OpenCode** | `.opencode/command/*.md` | `.opencode/skill/*/SKILL.md` | `.opencode/agent/`, `opencode.json` |
+| **Factory Droid** | `.factory/commands/*.md` | `.factory/skills/*/SKILL.md` | `.factory/droids/*.md` |
 
 ---
 
@@ -393,13 +398,13 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 
 ## Platform Compatibility
 
-| Feature | Cursor | Copilot | Claude | OpenCode |
-|---------|--------|---------|--------|----------|
-| Commands | ✅ | ✅ | ✅ | ✅ |
-| Skills | ✅ | ❌ | ✅ | ✅ |
-| Custom Agents | ❌ | ❌ | ❌ | ✅ |
-| AGENTS.md | ✅ | ✅ | ✅ | ✅ |
-| Path-specific rules | ✅ | ✅ | ❌ | ❌ |
+| Feature | Cursor | Copilot | Claude | OpenCode | Factory Droid |
+|---------|--------|---------|--------|----------|---------------|
+| Commands | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Skills | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Custom Agents | ❌ | ❌ | ❌ | ✅ | ✅ (Droids) |
+| AGENTS.md | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Path-specific rules | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -436,7 +441,7 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 
 ## Contributing
 
-This project maintains workflows for 4 AI coding tools. When adding commands:
+This project maintains workflows for 5 AI coding tools. When adding commands:
 
 1. Add to `.claude/commands/` (source of truth)
 2. Run `/sync-workflow` to propagate to other tools

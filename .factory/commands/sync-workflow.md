@@ -1,5 +1,4 @@
 ---
-name: sync-workflow
 description: Syncs Claude Code workflows to Cursor, GitHub Copilot, OpenCode, and Factory Droid formats.
 ---
 
@@ -13,25 +12,11 @@ Sync Claude Code commands/workflows to selected target platforms by:
 
 ## Step 1: Select Target Platforms
 
-**Tool:** AskUserQuestion
-
 Ask user which platforms to sync (multiple selection allowed):
-
-```
-AskUserQuestion(
-  questions=[{
-    "question": "Which platforms do you want to sync to?",
-    "header": "Platforms",
-    "multiSelect": true,
-    "options": [
-      {"label": "Cursor", "description": ".cursor/commands/, .cursor/rules/"},
-      {"label": "GitHub Copilot", "description": ".github/prompts/, copilot-instructions.md"},
-      {"label": "OpenCode", "description": ".opencode/command/, skill/, agent/"},
-      {"label": "Factory Droid", "description": ".factory/commands/, skills/, droids/"}
-    ]
-  }]
-)
-```
+- Cursor: `.cursor/commands/`, `.cursor/rules/`
+- GitHub Copilot: `.github/prompts/`, `copilot-instructions.md`
+- OpenCode: `.opencode/command/`, `skill/`, `agent/`
+- Factory Droid: `.factory/commands/`, `skills/`, `droids/`
 
 ---
 
@@ -81,9 +66,9 @@ Read `.claude/CLAUDE.md` as the primary source.
 **Conversion rules for AGENTS.md:**
 
 1. **Remove Claude-specific syntax:**
-   - Remove `AskUserQuestion(...)` tool references
+   - Remove tool references like `AskUserQuestion(...)`
    - Remove `Task(subagent_type=...)` syntax
-   - Convert `Read/Write/Edit` tool calls to generic instructions
+   - Convert tool calls to generic instructions
    - Remove `.claude/skills/...` paths
 
 2. **Keep universal content:**

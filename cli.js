@@ -220,6 +220,12 @@ const AI_TOOLS = [
     description: "Terminal-based AI coding agent",
     folders: [".opencode/command", ".opencode/skill", ".opencode/agent"],
   },
+  {
+    id: "factory",
+    name: "Factory Droid",
+    description: "Factory AI coding assistant",
+    folders: [".factory/commands", ".factory/skills", ".factory/droids"],
+  },
 ];
 
 // Interactive multi-select using arrow keys
@@ -384,17 +390,13 @@ function installClaudeCode() {
   }
   run(`npx degit ${REPO}/.claude/commands .claude/commands --force`);
 
-  // Download CLAUDE.md (context memory) - only if not exists
+  // Download CLAUDE.md (context memory) - always overwrite to get latest
   step("🚚 Downloading Claude Code context memory (.claude/CLAUDE.md)...");
   const claudeMdPath = ".claude/CLAUDE.md";
-  if (existsSync(claudeMdPath)) {
-    skip(`Skipping (already exists): ${claudeMdPath}`);
-  } else {
-    try {
-      run(`curl -fsSL ${RAW_BASE}/.claude/CLAUDE.md -o ${claudeMdPath}`);
-    } catch (_) {
-      run(`wget -qO ${claudeMdPath} ${RAW_BASE}/.claude/CLAUDE.md`);
-    }
+  try {
+    run(`curl -fsSL ${RAW_BASE}/.claude/CLAUDE.md -o ${claudeMdPath}`);
+  } catch (_) {
+    run(`wget -qO ${claudeMdPath} ${RAW_BASE}/.claude/CLAUDE.md`);
   }
 
   // Create settings.json with hooks (project-level, shareable with team)
@@ -418,49 +420,11 @@ function installClaudeCode() {
         ],
         PostToolUse: [
           {
-            matcher: "Write",
-            hooks: [
-              {
-                type: "prompt",
-                prompt: "If the file path contains 'docs/ai/planning/feature-' and ends with '.md', validate this planning document has all required sections: 1. Goal & Acceptance Criteria, 2. Risks & Assumptions, 3. Definition of Done, 4. Implementation Plan (with Summary and Phases), 5. Follow-ups. Return JSON: {\"valid\": true/false, \"missing\": [list of missing sections], \"message\": \"brief validation result\"}. If file path doesn't match, return {\"valid\": true, \"message\": \"skipped - not a planning doc\"}"
-              }
-            ]
-          },
-          {
             matcher: "Edit",
             hooks: [
               {
                 type: "command",
                 command: "if echo \"$TOOL_INPUT\" | grep -q 'docs/ai/planning/feature-'; then echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Task updated in planning doc\" >> .claude/feature-progress.log; fi"
-              }
-            ]
-          }
-        ],
-        PreToolUse: [
-          {
-            matcher: "Edit",
-            hooks: [
-              {
-                type: "prompt",
-                prompt: "If the file path contains 'docs/ai/planning/feature-' and ends with '.md': Check if the agent is starting a new phase. If yes, verify all tasks in the previous phase are marked [x]. Return JSON: {\"canProceed\": true/false, \"message\": \"reason\"}. If file path doesn't match, return {\"canProceed\": true, \"message\": \"skipped - not a planning doc\"}"
-              }
-            ]
-          },
-          {
-            matcher: "Bash",
-            hooks: [
-              {
-                type: "prompt",
-                prompt: "GIT SAFETY CHECK: If command contains 'git ' (git commands like git add, git commit, git push, git pull, git checkout, git branch, git merge, git rebase, git reset, git stash, etc.): Check the ORIGINAL USER PROMPT - did the user EXPLICITLY request git operations? Keywords indicating user wants git: 'commit', 'push', 'git', 'version control', 'save changes', 'create branch'. If user did NOT explicitly request git operations, BLOCK with message 'Git operations require explicit user request. Ask user first.' Return JSON: {\"allow\": true/false, \"reason\": \"explanation\"}. If command does not contain git, return {\"allow\": true, \"reason\": \"not a git command\"}"
-              }
-            ]
-          },
-          {
-            matcher: "Write|Edit",
-            hooks: [
-              {
-                type: "prompt",
-                prompt: "SECURITY CHECK: If file path matches any sensitive pattern: '.env', '.env.*', 'credentials', 'secrets', 'api_key', 'apikey', 'password', 'private_key', 'token', '.pem', '.key', 'auth.json', 'config/prod': WARN user with message '⚠️ SENSITIVE FILE: [filename] - Are you sure you want to modify this file?'. Return JSON: {\"isSensitive\": true/false, \"warning\": \"message if sensitive\", \"allow\": true}. Always allow but warn for sensitive files."
               }
             ]
           }
@@ -565,6 +529,45 @@ function installOpenCode() {
   }
 }
 
+// Install Factory Droid
+function installFactoryDroid() {
+  step("🚚 Downloading Factory Droid commands (.factory/commands)...");
+  if (!existsSync(".factory/commands")) {
+    mkdirSync(".factory/commands", { recursive: true });
+  }
+
+  // Check if source exists, if not create from Claude commands
+  try {
+    run(`npx degit ${REPO}/.factory/commands .factory/commands --force`);
+  } catch (e) {
+    console.log(`${colors.yellow}⚠️  Factory Droid commands not found in repo, will be synced from Claude Code${colors.reset}`);
+  }
+
+  step("🚚 Downloading Factory Droid skills (.factory/skills)...");
+  if (!existsSync(".factory/skills")) {
+    mkdirSync(".factory/skills", { recursive: true });
+  }
+
+  // Check if source exists, if not create from Claude skills
+  try {
+    run(`npx degit ${REPO}/.factory/skills .factory/skills --force`);
+  } catch (e) {
+    console.log(`${colors.yellow}⚠️  Factory Droid skills not found in repo, will be synced from Claude Code${colors.reset}`);
+  }
+
+  step("🚚 Downloading Factory Droid droids (.factory/droids)...");
+  if (!existsSync(".factory/droids")) {
+    mkdirSync(".factory/droids", { recursive: true });
+  }
+
+  // Check if source exists
+  try {
+    run(`npx degit ${REPO}/.factory/droids .factory/droids --force`);
+  } catch (e) {
+    console.log(`${colors.yellow}⚠️  Factory Droid droids not found in repo, using built-in droids${colors.reset}`);
+  }
+}
+
 async function main() {
   console.log(`
 ${colors.cyan}╔═══════════════════════════════════════════════════════════╗
@@ -631,6 +634,10 @@ ${colors.cyan}╔═════════════════════
   
   if (toolIds.includes("opencode")) {
     installOpenCode();
+  }
+
+  if (toolIds.includes("factory")) {
+    installFactoryDroid();
   }
 
   // Download AGENTS.md (luôn ghi đè)
