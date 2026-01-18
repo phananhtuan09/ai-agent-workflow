@@ -3,6 +3,10 @@ description: Generates a feature planning doc with implementation details.
 agent: build
 ---
 
+## User Request
+
+$ARGUMENTS
+
 ## Goal
 
 Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the template, with goal, acceptance criteria, risks, and detailed implementation phases with pseudo-code.

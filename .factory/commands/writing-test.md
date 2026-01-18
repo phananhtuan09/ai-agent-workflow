@@ -3,6 +3,10 @@ description: Generates comprehensive unit test files with edge cases, parameter 
 argument-hint: <feature-name>
 ---
 
+## User Request
+
+$ARGUMENTS
+
 Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 
 ## Workflow Alignment

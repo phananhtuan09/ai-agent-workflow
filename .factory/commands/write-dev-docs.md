@@ -3,6 +3,10 @@ description: Generates technical documentation about programming techniques in d
 argument-hint: <topic>
 ---
 
+## User Request
+
+$ARGUMENTS
+
 Generate comprehensive documentation about programming techniques.
 
 ## Workflow Alignment

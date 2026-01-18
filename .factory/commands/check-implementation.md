@@ -3,6 +3,10 @@ description: Validates implementation against planning doc.
 argument-hint: <feature-name>
 ---
 
+## User Request
+
+$ARGUMENTS
+
 Compare current implementation against planning doc to ensure all requirements are met and completed tasks have corresponding code.
 
 ## Workflow Alignment

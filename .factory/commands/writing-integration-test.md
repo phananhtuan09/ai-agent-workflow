@@ -3,6 +3,10 @@ description: Generates Playwright E2E test files for UI/integration testing that
 argument-hint: <feature-name>
 ---
 
+## User Request
+
+$ARGUMENTS
+
 Use `docs/ai/testing/integration-{name}.md` as the source of truth.
 
 - **Load template:** Read `docs/ai/testing/integration-template.md` to understand required structure.

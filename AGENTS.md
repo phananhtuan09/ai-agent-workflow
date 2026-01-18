@@ -68,12 +68,26 @@ At the START of EVERY response, BEFORE any other content, report skills:
 ```
 
 **Rules:**
-- If skills were activated → List them
-- If NO skills activated → Write: `📚 Skills: none`
+- If skills apply to the task → List them
+- If NO skills apply → Write: `📚 Skills: none`
 - This line MUST appear in EVERY response, no exceptions
 - Place BEFORE greeting, explanation, or any other content
 
-**Example responses:**
+### How to Identify Applicable Skills
+
+Scan task context for these trigger keywords:
+
+| Skill | Trigger Keywords |
+|-------|------------------|
+| `frontend-design-fundamentals` | UI, frontend, component, styling, CSS, layout, button, form, card, page |
+| `frontend-design-responsive` | responsive, mobile, tablet, breakpoints, multi-device, touch |
+| `frontend-design-theme-factory` | theme, color palette, colors, fonts, brand, aesthetic |
+| `frontend-design-figma-extraction` | Figma, design file, mockup, Figma URL |
+| `quality-code-check` | lint, type check, build, validation, eslint, tsc |
+| `ux-feedback-patterns` | loading, error, form validation, async, toast, empty state |
+| `ux-accessibility` | accessible, WCAG, keyboard, screen reader, ARIA, contrast |
+
+### Example Responses
 
 ```
 📚 Skills: frontend-design-fundamentals, frontend-design-theme-factory
@@ -87,4 +101,4 @@ I'll help you create a modern login page...
 Sure, I can help you fix that bug...
 ```
 
-Skills are defined in the project's skills directory.
+Skills are defined in the project's skills directory (`.claude/skills/`, `.opencode/skill/`, `.factory/skills/`).

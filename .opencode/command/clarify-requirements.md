@@ -3,6 +3,10 @@ description: Clarify and document requirements through iterative Q&A sessions.
 agent: build
 ---
 
+## User Request
+
+$ARGUMENTS
+
 ## Goal
 
 Facilitate requirement gathering through structured Q&A sessions. Output a comprehensive requirement document at `docs/ai/requirements/req-{name}.md` that can be used as input for `/create-plan`.

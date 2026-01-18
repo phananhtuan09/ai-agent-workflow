@@ -3,6 +3,10 @@ description: Executes the planning doc tasks, edits code, and persists notes.
 argument-hint: <feature-name>
 ---
 
+## User Request
+
+$ARGUMENTS
+
 ## Goal
 
 Execute the feature plan by implementing tasks from the planning doc and updating task checkboxes as work progresses.

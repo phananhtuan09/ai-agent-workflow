@@ -3,6 +3,10 @@ description: Executes tests based on test documentation files with summary repor
 agent: build
 ---
 
+## User Request
+
+$ARGUMENTS
+
 ## Goal
 
 Execute tests defined in `docs/ai/testing/` documentation files and provide a summary report.

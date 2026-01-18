@@ -3,6 +3,10 @@ description: Modify plan and code after implementation; support revert or apply 
 agent: build
 ---
 
+## User Request
+
+$ARGUMENTS
+
 ## Goal
 
 Modify a feature plan after partial/full implementation. Support reverting to a previous git state or applying new requirement changes with both code and documentation sync.
