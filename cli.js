@@ -399,62 +399,18 @@ function installClaudeCode() {
     run(`wget -qO ${claudeMdPath} ${RAW_BASE}/.claude/CLAUDE.md`);
   }
 
-  // Create settings.json with hooks (project-level, shareable with team)
-  step("🚚 Setting up Claude Code hooks (.claude/settings.json)...");
+  // Download settings.json from repo (project-level, shareable with team)
+  step("🚚 Downloading Claude Code hooks (.claude/settings.json)...");
   const claudeSettingsPath = ".claude/settings.json";
   if (existsSync(claudeSettingsPath)) {
     skip(`Skipping (already exists): ${claudeSettingsPath}`);
   } else {
-    const claudeSettings = {
-      hooks: {
-        SessionStart: [
-          {
-            matcher: "startup|resume|clear",
-            hooks: [
-              {
-                type: "command",
-                command: "echo '⚠️ REMINDER: Start EVERY response with: 📚 Skills: [list] or 📚 Skills: none'"
-              }
-            ]
-          }
-        ],
-        PostToolUse: [
-          {
-            matcher: "Edit",
-            hooks: [
-              {
-                type: "command",
-                command: "if echo \"$TOOL_INPUT\" | grep -q 'docs/ai/planning/feature-'; then echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Task updated in planning doc\" >> .claude/feature-progress.log; fi"
-              }
-            ]
-          }
-        ],
-        Stop: [
-          {
-            matcher: "",
-            hooks: [
-              {
-                type: "command",
-                command: "if command -v notify-send &>/dev/null; then notify-send -i dialog-information 'Claude Code' '✅ Task completed' 2>/dev/null; elif command -v powershell.exe &>/dev/null; then powershell.exe -Command \"[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show('Task completed', 'Claude Code', 'OK', 'Information')\" 2>/dev/null; elif command -v osascript &>/dev/null; then osascript -e 'display notification \"Task completed\" with title \"Claude Code\"' 2>/dev/null; fi; exit 0"
-              }
-            ]
-          }
-        ],
-        Notification: [
-          {
-            matcher: "permission_prompt",
-            hooks: [
-              {
-                type: "command",
-                command: "if command -v notify-send &>/dev/null; then notify-send -u critical -i dialog-warning 'Claude Code' '⚠️ Permission required - check terminal' 2>/dev/null; elif command -v powershell.exe &>/dev/null; then powershell.exe -Command \"[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); [System.Windows.Forms.MessageBox]::Show('Permission required - check terminal', 'Claude Code', 'OK', 'Warning')\" 2>/dev/null; fi; exit 0"
-              }
-            ]
-          }
-        ]
-      }
-    };
-    writeFileSync(claudeSettingsPath, JSON.stringify(claudeSettings, null, 2));
-    success(`Created: ${claudeSettingsPath}`);
+    try {
+      run(`curl -fsSL ${RAW_BASE}/.claude/settings.json -o ${claudeSettingsPath}`);
+    } catch (_) {
+      run(`wget -qO ${claudeSettingsPath} ${RAW_BASE}/.claude/settings.json`);
+    }
+    success(`Downloaded: ${claudeSettingsPath}`);
   }
 
   // Download skills folder (always overwrite to get latest)

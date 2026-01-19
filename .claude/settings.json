@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo REMINDER: Start EVERY response with: Skills: [list] or Skills: none"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo %TOOL_INPUT% | findstr /C:\"docs/ai/planning/feature-\" >nul 2>&1 && echo [%DATE% %TIME%] Task updated in planning doc >> .claude/feature-progress.log || exit /b 0"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -Command \"Add-Type -AssemblyName System.Windows.Forms; [void][System.Windows.Forms.MessageBox]::Show('Task completed', 'Claude Code', 0, 64)\" 2>nul || notify-send -i dialog-information 'Claude Code' 'Task completed' 2>/dev/null || osascript -e 'display notification \"Task completed\" with title \"Claude Code\"' 2>/dev/null || exit 0"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -Command \"Add-Type -AssemblyName System.Windows.Forms; [void][System.Windows.Forms.MessageBox]::Show('Permission required - check terminal', 'Claude Code', 0, 48)\" 2>nul || notify-send -u critical -i dialog-warning 'Claude Code' 'Permission required' 2>/dev/null || exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
