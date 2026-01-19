@@ -212,7 +212,7 @@ const AI_TOOLS = [
     id: "claude",
     name: "Claude Code",
     description: "Anthropic's AI coding assistant",
-    folders: [".claude/commands", ".claude/skills", ".claude/themes"],
+    folders: [".claude/commands", ".claude/skills", ".claude/themes", ".claude/output-styles", ".claude/agents"],
   },
   {
     id: "opencode",
@@ -426,6 +426,20 @@ function installClaudeCode() {
     mkdirSync(".claude/themes", { recursive: true });
   }
   run(`npx degit ${REPO}/.claude/themes .claude/themes --force`);
+
+  // Download output-styles folder (always overwrite to get latest)
+  step("🚚 Downloading Claude Code output-styles (.claude/output-styles)...");
+  if (!existsSync(".claude/output-styles")) {
+    mkdirSync(".claude/output-styles", { recursive: true });
+  }
+  run(`npx degit ${REPO}/.claude/output-styles .claude/output-styles --force`);
+
+  // Download agents folder (always overwrite to get latest)
+  step("🚚 Downloading Claude Code agents (.claude/agents)...");
+  if (!existsSync(".claude/agents")) {
+    mkdirSync(".claude/agents", { recursive: true });
+  }
+  run(`npx degit ${REPO}/.claude/agents .claude/agents --force`);
 }
 
 // Install OpenCode
@@ -524,6 +538,66 @@ function installFactoryDroid() {
   }
 }
 
+// Check and clone missing .factory subfolders (when .factory already exists)
+function checkAndCloneFactory() {
+  if (!existsSync(".factory")) {
+    return; // .factory doesn't exist, skip
+  }
+
+  step("🔍 Checking for missing .factory subfolders...");
+
+  const factorySubfolders = [
+    { path: ".factory/commands", name: "commands" },
+    { path: ".factory/droids", name: "droids" },
+    { path: ".factory/skills", name: "skills" },
+  ];
+
+  for (const subfolder of factorySubfolders) {
+    if (!existsSync(subfolder.path)) {
+      step(`🚚 Cloning missing subfolder: ${subfolder.path}...`);
+      mkdirSync(subfolder.path, { recursive: true });
+      try {
+        run(`npx degit ${REPO}/${subfolder.path} ${subfolder.path} --force`);
+        success(`Cloned: ${subfolder.path}`);
+      } catch (e) {
+        console.log(`${colors.yellow}⚠️  ${subfolder.path} not found in repo${colors.reset}`);
+      }
+    } else {
+      skip(`Already exists: ${subfolder.path}`);
+    }
+  }
+}
+
+// Check and clone missing .opencode subfolders (when .opencode already exists)
+function checkAndCloneOpenCode() {
+  if (!existsSync(".opencode")) {
+    return; // .opencode doesn't exist, skip
+  }
+
+  step("🔍 Checking for missing .opencode subfolders...");
+
+  const opencodeSubfolders = [
+    { path: ".opencode/agent", name: "agent" },
+    { path: ".opencode/command", name: "command" },
+    { path: ".opencode/skill", name: "skill" },
+  ];
+
+  for (const subfolder of opencodeSubfolders) {
+    if (!existsSync(subfolder.path)) {
+      step(`🚚 Cloning missing subfolder: ${subfolder.path}...`);
+      mkdirSync(subfolder.path, { recursive: true });
+      try {
+        run(`npx degit ${REPO}/${subfolder.path} ${subfolder.path} --force`);
+        success(`Cloned: ${subfolder.path}`);
+      } catch (e) {
+        console.log(`${colors.yellow}⚠️  ${subfolder.path} not found in repo${colors.reset}`);
+      }
+    } else {
+      skip(`Already exists: ${subfolder.path}`);
+    }
+  }
+}
+
 async function main() {
   console.log(`
 ${colors.cyan}╔═══════════════════════════════════════════════════════════╗
@@ -594,6 +668,15 @@ ${colors.cyan}╔═════════════════════
 
   if (toolIds.includes("factory")) {
     installFactoryDroid();
+  }
+
+  // Check and clone missing subfolders for existing .factory and .opencode
+  // This runs regardless of tool selection, in case folders already exist
+  if (!toolIds.includes("factory")) {
+    checkAndCloneFactory();
+  }
+  if (!toolIds.includes("opencode")) {
+    checkAndCloneOpenCode();
   }
 
   // Download AGENTS.md (luôn ghi đè)
