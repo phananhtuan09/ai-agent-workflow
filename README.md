@@ -297,9 +297,90 @@ User: /sync-workflow
 
 ---
 
+## Beads Integration (Optional)
+
+[Beads](https://github.com/steveyegge/beads) is a lightweight issue tracker with first-class dependency support. This workflow integrates seamlessly with Beads for multi-session task management.
+
+### Setup Beads
+
+1. **Install Beads**: Follow the official docs at https://github.com/steveyegge/beads
+
+2. **Setup for Claude Code**:
+   ```bash
+   bd setup claude
+   ```
+
+3. **Verify installation**:
+   ```bash
+   bd doctor
+   ```
+
+### Beads Commands
+
+| Command | Description |
+|---------|-------------|
+| `/beads-breakdown` | Analyze feature → create epic with tasks and dependencies |
+| `/beads-create-epic-plan` | Create high-level epic plan document |
+| `/beads-next` | Show ready tasks, claim a task, set context |
+| `/beads-done` | Close task, sync to git, show next ready tasks |
+| `/beads-status` | Show epic progress, metrics, dependency graph |
+
+---
+
 ## Workflow Examples
 
-### Example 1: New Feature Development
+### Workflow A: With Beads (Multi-session, Dependencies)
+
+Best for: Large features, team collaboration, work that spans multiple sessions.
+
+```
+┌──────────────┐    ┌───────────────────┐    ┌─────────────┐
+│ /beads-      │ → │ /beads-create-    │ → │ /beads-next │
+│ breakdown    │    │ epic-plan         │    │             │
+└──────────────┘    └───────────────────┘    └──────┬──────┘
+                                                    │
+┌──────────────┐    ┌───────────────────┐    ┌──────▼──────┐
+│ /beads-done  │ ← │ /execute-plan     │ ← │ /create-plan│
+│              │    │                   │    │             │
+└──────────────┘    └───────────────────┘    └─────────────┘
+       │
+       └──────→ Loop back to /beads-next for next task
+```
+
+```bash
+# 1. Break down feature into epic with tasks
+/beads-breakdown "User authentication with JWT"
+
+# 2. Create high-level epic plan (architecture, data flow)
+/beads-create-epic-plan
+
+# 3. Claim a ready task
+/beads-next
+
+# 4. Create detailed plan for claimed task
+/create-plan
+
+# 5. Implement the task
+/execute-plan jwt-infrastructure
+
+# 6. Complete task, sync, see next ready tasks
+/beads-done
+
+# 7. Repeat from step 3 for remaining tasks
+/beads-next
+```
+
+### Workflow B: Without Beads (Single-session)
+
+Best for: Small features, quick fixes, solo work.
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│    PLAN     │ → │  IMPLEMENT  │ → │    TEST     │ → │   REVIEW    │
+│             │    │             │    │             │    │             │
+│ /create-plan│    │/execute-plan│    │/writing-test│    │/code-review │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
 
 ```bash
 # 1. Plan the feature
@@ -315,7 +396,20 @@ User: /sync-workflow
 /code-review
 ```
 
-### Example 2: Complex Requirements
+### When to Use Which Workflow?
+
+| Scenario | Recommended Workflow |
+|----------|---------------------|
+| Feature takes < 1 session | **Without Beads** |
+| Feature spans multiple sessions | **With Beads** |
+| Multiple developers on same feature | **With Beads** |
+| Tasks have dependencies | **With Beads** |
+| Quick bug fix | **Without Beads** |
+| Complex epic with 5+ tasks | **With Beads** |
+
+---
+
+### Example: Complex Requirements (Without Beads)
 
 ```bash
 # 1. Clarify requirements first
@@ -331,7 +425,7 @@ User: /sync-workflow
 /check-implementation checkout-flow
 ```
 
-### Example 3: Bug Fix with Tests
+### Example: Bug Fix with Tests (Without Beads)
 
 ```bash
 # 1. Quick plan for the fix

@@ -2,6 +2,25 @@
 
 Note: All content in this document must be written in English.
 
+---
+beads_task: {bd-xxx.n or null}
+beads_epic: {bd-xxx or null}
+epic_plan: {docs/ai/planning/epic-xxx.md or null}
+---
+
+## 0. Beads Context (Optional)
+
+> **Note**: This section is auto-generated when plan is created via `/beads-next` → `/create-plan` workflow. Delete if not using Beads.
+
+- **Epic**: {epic-id} "{Epic Title}"
+- **Task**: {task-id} "{Task Title}"
+- **Epic Plan**: [epic-{name}.md](epic-{name}.md)
+- **Status**: in_progress
+- **Blocked by**: {list or "none"}
+- **Blocks**: {list of dependent tasks or "none"}
+
+---
+
 ## 0. Requirements Reference (Optional)
 
 - **Requirement Doc**: [req-{feature-name}.md](../requirements/req-{feature-name}.md)

@@ -13,6 +13,49 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 - For medium/large tasks, create todos (≤14 words, verb-led). Keep only one `in_progress` item.
 - Update todos immediately after progress; mark completed upon finish.
 
+---
+
+## Step 0: Check Beads Context (Optional Integration)
+
+> **Purpose**: Detect if this plan is for a Beads task. If so, link to epic and inherit context.
+
+**Read:** `.beads/current-task.json`
+
+**If file exists (Beads workflow active):**
+
+```json
+{
+  "task_id": "bd-auth.1",
+  "task_title": "Setup JWT infrastructure",
+  "epic_id": "bd-auth",
+  "epic_title": "User Authentication System",
+  "epic_plan": "docs/ai/planning/epic-auth-system.md"
+}
+```
+
+Set internal flags:
+- `BEADS_MODE = true`
+- `beads_task = task_id`
+- `beads_epic = epic_id`
+- `suggested_title = task_title`
+- `epic_plan_path = epic_plan`
+
+**If epic_plan exists:**
+- Read epic plan for architecture context
+- Extract relevant sections:
+  - Architecture overview (for codebase context)
+  - Key decisions (for constraints)
+  - Data flow (for understanding)
+- Use as additional context in Step 3 (Explore)
+
+**If file does not exist:**
+- `BEADS_MODE = false`
+- Proceed with normal workflow (no Beads integration)
+
+**Output:** Internal state set. No user-visible output for this step.
+
+---
+
 ## Step 1: Analyze User Prompt
 
 **Parse user request to identify:**
@@ -197,6 +240,7 @@ This template defines the required structure and format. Use it as the baseline 
 ## Step 7: Draft the Plan (Auto-generate)
 
 **Using inputs from:**
+- Step 0: Beads context (if BEADS_MODE)
 - Step 2: Scope, acceptance criteria, tasks, DoD
 - Step 3: Codebase patterns (if done)
 - Step 4: Figma design specs (if done)
@@ -207,8 +251,10 @@ This template defines the required structure and format. Use it as the baseline 
 
 Auto-name feature:
 
-- Derive `feature-{name}` from user prompt + Q&A (kebab-case, concise, specific).
-- Example: "Login Page (HTML/CSS)" → `feature-login-page`.
+- **If BEADS_MODE**: Use `suggested_title` from context (kebab-case)
+  - Example: "Setup JWT infrastructure" → `feature-jwt-infrastructure`
+- **If normal mode**: Derive `feature-{name}` from user prompt + Q&A (kebab-case, concise, specific).
+  - Example: "Login Page (HTML/CSS)" → `feature-login-page`.
 
 **If file already exists:**
 1. **Backup existing file** to archive folder:
@@ -233,6 +279,11 @@ mkdir -p docs/ai/planning/archive
 Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 
 **Include these sections** (in suggested order):
+
+0. **Beads Context** (if BEADS_MODE = true):
+   - Task ID and title
+   - Epic ID and title
+   - Link to epic plan
 
 0. **Requirements Reference** (if requirement doc was provided):
    - Link to requirement doc: `[req-{name}.md](../requirements/req-{name}.md)`
@@ -288,9 +339,35 @@ Create the file automatically:
 
 - `docs/ai/planning/feature-{name}.md` - Use complete structure from `feature-template.md`
 
+**If BEADS_MODE = true:**
+- Add frontmatter with Beads metadata:
+  ```yaml
+  ---
+  beads_task: {task_id}
+  beads_epic: {epic_id}
+  epic_plan: {epic_plan_path}
+  ---
+  ```
+- Update Beads task with plan doc reference:
+  ```bash
+  bd update {task_id} --notes "plan: docs/ai/planning/feature-{name}.md"
+  ```
+
 **Notify user:** "Created plan with X phases: [Phase 1], [Phase 2], ..."
 
 ## Step 8: Next Actions
+
+**If BEADS_MODE = true:**
+```
+✓ Created plan: docs/ai/planning/feature-{name}.md
+✓ Linked to Beads task: {task_id}
+
+Next steps:
+  /execute-plan    → Implement this task
+  /beads-status    → View epic progress
+```
+
+**If normal mode:**
 
 Suggest: `/execute-plan` to begin implementation.
 
