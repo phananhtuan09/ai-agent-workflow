@@ -1,45 +1,69 @@
 # Requirement: {Feature Name}
 
+> Generated: {YYYY-MM-DD}
+> Status: Draft | Review | Approved
+> Complexity: Low | Medium | High
+
 Note: All content in this document must be written in English.
 
 ---
 
-## 1. Problem Statement
+## Quick Links
+
+| Document | Status |
+|----------|--------|
+| [BA Analysis](agents/ba-{name}.md) | ✅ Complete / ⏭️ Skipped |
+| [SA Assessment](agents/sa-{name}.md) | ✅ Complete / ⏭️ Skipped |
+| [Domain Research](agents/research-{name}.md) | ✅ Complete / ⏭️ Skipped |
+| [UI/UX Design](agents/uiux-{name}.md) | ✅ Complete / ⏭️ Skipped |
+
+---
+
+## 1. Executive Summary
+
+{3-5 sentences covering: what is being built, why it matters, and how it will be approached}
+
+---
+
+## 2. Problem Statement
 
 ### Context
-[Business/technical context that led to this requirement]
+{Business/technical context that led to this requirement}
 
 ### Problem
-[The specific problem to be solved]
+{The specific problem to be solved}
 
 ### Impact
-[Consequences if not addressed - business value, user pain points]
+{Consequences if not addressed - business value, user pain points}
 
 ---
 
-## 2. User Stories (Optional)
+## 3. Users & User Stories
 
-- As a [role], I want [action], so that [benefit]
-- As a [role], I want [action], so that [benefit]
+### Target Users
 
----
+| User Type | Description | Primary Goals |
+|-----------|-------------|---------------|
+| {User 1} | {Who they are} | {What they want to achieve} |
 
-## 3. Business Rules (Optional)
+### User Stories
 
-| ID | Rule | Description |
-|----|------|-------------|
-| BR-01 | {Rule Name} | {Detailed description} |
-| BR-02 | {Rule Name} | {Detailed description} |
+| ID | Priority | As a... | I want to... | So that... |
+|----|----------|---------|--------------|------------|
+| US-01 | Must | {user} | {action} | {benefit} |
+| US-02 | Must | {user} | {action} | {benefit} |
+| US-03 | Should | {user} | {action} | {benefit} |
 
 ---
 
 ## 4. Functional Requirements
 
-| ID | Requirement | Priority | Notes |
-|----|-------------|----------|-------|
-| FR-01 | {Description} | Must | |
-| FR-02 | {Description} | Should | |
-| FR-03 | {Description} | Could | |
+| ID | Requirement | Priority | Acceptance Criteria |
+|----|-------------|----------|---------------------|
+| FR-01 | {Description} | Must | {How to verify} |
+| FR-02 | {Description} | Must | {How to verify} |
+| FR-03 | {Description} | Should | {How to verify} |
+| FR-04 | {Description} | Could | {How to verify} |
 
 **Priority Legend:**
 - **Must**: Critical for release
@@ -48,25 +72,95 @@ Note: All content in this document must be written in English.
 
 ---
 
-## 5. Non-Functional Requirements (Optional)
+## 5. Business Rules
 
-| Category | Requirement |
-|----------|-------------|
-| **Performance** | {e.g., Response time < 200ms, support 1000 concurrent users} |
-| **Security** | {e.g., Authentication required, data encryption} |
-| **Compatibility** | {e.g., Chrome 90+, Safari 14+, mobile responsive} |
-| **Accessibility** | {e.g., WCAG 2.1 AA compliance} |
-| **Scalability** | {e.g., Handle 10x traffic growth} |
+| ID | Rule | Condition | Action |
+|----|------|-----------|--------|
+| BR-01 | {Rule Name} | When {condition} | Then {action} |
+| BR-02 | {Rule Name} | When {condition} | Then {action} |
 
 ---
 
-## 6. Edge Cases & Constraints (Optional)
+## 6. Technical Assessment
+
+### Feasibility Summary
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| Overall | ✅ Feasible / ⚠️ Conditional / ❌ Issues | {Summary} |
+| Frontend | 🟢 Low / 🟡 Medium / 🔴 High | {Complexity notes} |
+| Backend | 🟢 Low / 🟡 Medium / 🔴 High | {Complexity notes} |
+| Data | 🟢 Low / 🟡 Medium / 🔴 High | {Complexity notes} |
+
+### Recommended Architecture
+
+{Brief description of recommended approach}
+
+### Technology Stack
+
+| Layer | Technology | Reason |
+|-------|------------|--------|
+| {Layer} | {Tech} | {Why} |
+
+### Technical Risks
+
+| ID | Risk | Impact | Likelihood | Mitigation |
+|----|------|--------|------------|------------|
+| TR-01 | {Risk} | High/Med/Low | High/Med/Low | {Mitigation} |
+
+---
+
+## 7. UI/UX Design (if applicable)
+
+### Screen Inventory
+
+| # | Screen | Purpose | Priority |
+|---|--------|---------|----------|
+| 1 | {Screen name} | {Purpose} | Must |
+
+### Key User Flows
+
+{Flow diagram or description}
+
+### Wireframe Reference
+
+See: [UI/UX Design Document](agents/uiux-{name}.md)
+
+---
+
+## 8. Domain Context (if applicable)
+
+### Glossary
+
+| Term | Definition |
+|------|------------|
+| {Term} | {Clear definition in project context} |
+
+### Compliance & Standards
+
+| Standard | Applicability |
+|----------|---------------|
+| {Standard name} | {How it applies} |
+
+---
+
+## 9. Non-Functional Requirements (Optional)
+
+| Category | Requirement |
+|----------|-------------|
+| **Performance** | {e.g., Response time < 200ms} |
+| **Security** | {e.g., Authentication required} |
+| **Compatibility** | {e.g., Chrome 90+, mobile responsive} |
+| **Accessibility** | {e.g., WCAG 2.1 AA compliance} |
+
+---
+
+## 10. Edge Cases & Constraints
 
 ### Edge Cases
 
 | Case | Expected Behavior |
 |------|-------------------|
-| {Edge case description} | {How system should handle it} |
 | {Edge case description} | {How system should handle it} |
 
 ### Constraints
@@ -77,61 +171,73 @@ Note: All content in this document must be written in English.
 
 ---
 
-## 7. Clarifications Log (Optional)
-
-> Questions resolved during requirement gathering sessions
-
-| # | Question | Answer |
-|---|----------|--------|
-| 1 | {Question asked} | {Answer received} |
-| 2 | {Question asked} | {Answer received} |
-
----
-
-## 8. Out of Scope (Optional)
+## 11. Out of Scope
 
 > Explicitly excluded from this requirement
 
 - {Feature/functionality not included}
 - {Deferred to future iteration}
-- {Related but separate concern}
 
 ---
 
-## 9. Acceptance Criteria
+## 12. Open Questions
+
+| ID | Question | Owner | Status |
+|----|----------|-------|--------|
+| Q-01 | {Unresolved question} | {Who decides} | Open |
+
+---
+
+## 13. Acceptance Criteria
 
 ### Scenario 1: {Happy Path - Main Flow}
 
-- **Given** [initial context/state]
-- **When** [action performed]
-- **Then** [expected outcome]
+- **Given** {initial context/state}
+- **When** {action performed}
+- **Then** {expected outcome}
 
-### Scenario 2: {Alternative Flow} (Optional)
+### Scenario 2: {Alternative Flow}
 
-- **Given** [context]
-- **When** [action]
-- **Then** [outcome]
+- **Given** {context}
+- **When** {action}
+- **Then** {outcome}
 
-### Scenario 3: {Error Handling} (Optional)
+### Scenario 3: {Error Handling}
 
-- **Given** [context]
-- **When** [invalid action/error condition]
-- **Then** [error handling behavior]
-
----
-
-## 10. References (Optional)
-
-- **Related Docs**: [links to related requirements, designs, etc.]
-- **External Links**: [Jira tickets, Figma, API docs, etc.]
+- **Given** {context}
+- **When** {invalid action/error condition}
+- **Then** {error handling behavior}
 
 ---
 
-## 11. Glossary (Optional)
+## 14. Implementation Guidance
 
-> Domain-specific terms and definitions. Include only if specialized terminology is used.
+### Suggested Phases
 
-| Term | Definition |
-|------|------------|
-| {Term 1} | {Clear definition in project context} |
-| {Term 2} | {Clear definition in project context} |
+| Phase | Focus | Priority |
+|-------|-------|----------|
+| 1 | {Foundation} | High |
+| 2 | {Core features} | High |
+| 3 | {Enhancement} | Medium |
+
+### Dependencies
+
+| Dependency | Type | Status |
+|------------|------|--------|
+| {Dependency} | Internal/External | Available/Pending |
+
+---
+
+## 15. References
+
+- **Related Docs**: {links to related requirements, designs}
+- **External Links**: {Jira tickets, Figma, API docs}
+- **Agent Outputs**: See Quick Links section
+
+---
+
+## Next Steps
+
+1. [ ] Review this requirement document
+2. [ ] Address open questions
+3. [ ] Run `/create-plan` to generate implementation plan

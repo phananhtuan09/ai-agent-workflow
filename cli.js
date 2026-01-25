@@ -111,7 +111,7 @@ function cloneDocsAI(source, dest) {
       mkdirSync(destSubfolder, { recursive: true });
 
       // Chỉ copy file template và README.md
-      const filesToCopy = ["README.md", "unit-template.md", "req-template.md", "integration-template.md", "feature-template.md"];
+      const filesToCopy = ["README.md", "unit-template.md", "req-template.md", "integration-template.md", "feature-template.md", "epic-template.md"];
 
       for (const file of filesToCopy) {
         const srcFile = path.join(tempSubfolder, file);
@@ -128,6 +128,26 @@ function cloneDocsAI(source, dest) {
         if (!existsSync(archiveDir)) {
           mkdirSync(archiveDir, { recursive: true });
           console.log(`📁 Created archive folder: docs/ai/${subfolder}/archive`);
+        }
+      }
+
+      // Copy templates subfolder for requirements (always overwrite)
+      if (subfolder === "requirements") {
+        const tempTemplates = path.join(tempSubfolder, "templates");
+        const destTemplates = path.join(destSubfolder, "templates");
+
+        if (existsSync(tempTemplates)) {
+          // Xóa folder cũ nếu tồn tại
+          if (existsSync(destTemplates)) {
+            rmSync(destTemplates, { recursive: true, force: true });
+          }
+
+          // Copy folder mới
+          cpSync(tempTemplates, destTemplates, {
+            recursive: true,
+            force: true,
+          });
+          console.log(`📁 Copied templates folder: docs/ai/requirements/templates`);
         }
       }
     }

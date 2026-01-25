@@ -1,287 +1,540 @@
 ---
 name: clarify-requirements
-description: Clarify and document requirements through iterative Q&A sessions. (project)
+description: Requirement Orchestrator - Coordinates BA, SA, Researcher, and UI/UX agents to produce comprehensive requirements.
 ---
 
 ## Goal
 
-Facilitate requirement gathering through structured Q&A sessions. Output a comprehensive requirement document at `docs/ai/requirements/req-{name}.md` that can be used as input for `/create-plan`.
+Orchestrate requirement gathering through specialized agents to produce a comprehensive requirement document at `docs/ai/requirements/req-{name}.md`.
 
-## When to Use
+This command coordinates:
+- **BA Agent**: Business analysis, user stories, functional requirements
+- **SA Agent**: Technical feasibility, architecture recommendations
+- **Researcher Agent**: Domain terminology, external research (conditional)
+- **UI/UX Agent**: Wireframes, screen flows (conditional)
 
-- Complex features requiring multiple clarification rounds
-- Business logic is unclear or needs detailed specification
-- Design decisions need to be documented before planning
-- Stakeholder input needs to be captured and organized
+---
 
 ## Workflow Alignment
 
 - Provide brief status updates (1–3 sentences) before/after important actions.
 - For medium/large tasks, create todos (≤14 words, verb-led). Keep only one `in_progress` item.
 - Update todos immediately after progress; mark completed upon finish.
+- Run agents in parallel where possible to optimize performance.
 
 ---
 
-## Step 1: Analyze Initial Request
+## Step 0: Pre-flight Check
 
-**Parse user request to identify:**
-- **Feature scope**: What is the user trying to build?
-- **Feature type**: Backend-only, Frontend-only, Full-stack, Data/API, etc.
-- **Clarity level**: What's clear vs. ambiguous?
-- **Missing information**: What needs clarification?
-- **Complexity indicators**: Simple (skip this skill) vs. complex (proceed)
-- **Domain complexity**: Detect specialized terminology (finance, medical, legal, etc.)
-- **Existing requirement**: Check if user references existing `req-{name}.md` file
+### Check for Existing Requirement
 
-**If feature is simple** (can be fully specified in 1-2 Q&A rounds):
-- Suggest: "This feature seems straightforward. Consider using `/create-plan` directly."
-- Proceed only if user confirms they want detailed requirement doc.
-
-**If existing requirement doc detected:**
-- Read the existing file: `Read(file_path="docs/ai/requirements/req-{name}.md")`
-- Ask user: "Found existing requirement doc. What would you like to do?"
-  - Options:
-    - "Update existing" → Load content, identify gaps, continue Q&A from where it left off
-    - "Start fresh" → Backup existing to archive, create new
-    - "Review only" → Display current content, ask for specific sections to update
-
-**Output:**
-- List of areas needing clarification
-- Recommended rounds to skip (based on feature type)
-- Flag if Glossary section is needed (domain-specific terms detected)
-- Mode: "new" | "update" | "review"
-
----
-
-## Step 2: Structured Q&A Session
-
-**Purpose:** Gather requirements through focused questions. This step may repeat multiple times.
-
-**Tool:** AskUserQuestion(questions=[...])
-
-### Smart Round Selection
-
-Before each round, evaluate relevance based on:
-- **Feature type** from Step 1
-- **Previous answers** collected
-
-**Skip Round Logic:**
-| Feature Type | Skip Rounds |
-|--------------|-------------|
-| Backend-only / API | Round 2 (User Flows) if no UI |
-| Data processing | Round 4 (Edge Cases) → ask minimal |
-| Simple CRUD | Round 3 (Business Rules) if straightforward |
-| UI-only | Round 5 (Performance/Security) → ask minimal |
-
-**Before skipping, confirm with user:**
-> "Based on your answers, Round {N} ({topic}) seems less relevant for this feature. Should we skip it or cover briefly?"
-
-Options: "Skip entirely", "Cover briefly (1-2 questions)", "Cover in full"
-
----
-
-### Question Categories (ask in priority order, 2-4 questions per round):
-
-### Round 1: Problem & Users (Required)
-1. **Problem Statement**: What specific problem does this solve?
-2. **Target Users**: Who are the primary users? What are their goals?
-3. **Success Metrics**: How will we know this feature is successful?
-
-### Round 2: Functional Requirements (Required)
-4. **Core Functionality**: What are the must-have features?
-5. **User Flows**: What are the main user journeys? *(Skip if backend-only)*
-6. **Inputs/Outputs**: What data goes in? What comes out?
-
-### Round 3: Business Rules & Logic (Conditional)
-7. **Business Rules**: What rules govern the behavior?
-8. **Calculations/Logic**: Any specific formulas or logic?
-9. **Validations**: What validations are needed?
-
-### Round 4: Edge Cases & Constraints (Conditional)
-10. **Edge Cases**: What happens in unusual situations?
-11. **Error Handling**: How should errors be handled?
-12. **Constraints**: Technical, business, or time limitations?
-
-### Round 5: Non-Functional & Scope (Conditional)
-13. **Performance**: Any performance requirements? *(Skip if UI-only)*
-14. **Security**: Authentication, authorization, data protection?
-15. **Out of Scope**: What is explicitly NOT included?
-
----
-
-**Q&A Format:**
-- Use AskUserQuestion with 2-4 options per question
-- Include "I need to think about this" option for complex questions
-- Allow multi-select where appropriate
-
-**After each round:**
-- Summarize what was learned
-- Identify remaining gaps
-- Evaluate if next round is relevant
-- Ask if user wants to continue clarifying or finalize
-
----
-
-## Step 3: Document Clarifications
-
-**After each Q&A round, update internal notes:**
+**If user mentions existing requirement doc:**
 
 ```
-## Clarifications Log
-| # | Question | Answer | Category |
-|---|----------|--------|----------|
-| 1 | {question} | {answer} | {FR/BR/NFR/Edge} |
+Read(file_path="docs/ai/requirements/req-{name}.md")
 ```
 
-**Categorize answers:**
-- **FR**: Functional Requirement
-- **BR**: Business Rule
-- **NFR**: Non-Functional Requirement
-- **Edge**: Edge Case
-- **OOS**: Out of Scope
-- **TERM**: Terminology/Glossary item
+**Ask user:**
+```
+AskUserQuestion(questions=[{
+  question: "Found existing requirement doc. What would you like to do?",
+  header: "Mode",
+  options: [
+    { label: "Update existing", description: "Enhance with new agents, fill gaps" },
+    { label: "Start fresh", description: "Archive current, create new" },
+    { label: "Review only", description: "Show current state, identify gaps" }
+  ],
+  multiSelect: false
+}])
+```
 
-**Track domain terms:**
-- If user uses specialized terms, add to Glossary section
-- Ask for definitions if terms are ambiguous
+- **Update**: Load existing, identify what's missing, run relevant agents
+- **Fresh**: Backup to `archive/`, start from scratch
+- **Review**: Display summary, suggest next steps
 
 ---
 
-## Step 4: Generate Requirement Document
+## Step 1: Analyze User Prompt
 
-**Trigger:** User indicates they're ready to finalize OR all key areas are covered.
+### Parse Request
 
-### Load Template
+Analyze user prompt to determine:
 
-**Tool:** Read(file_path="docs/ai/requirements/req-template.md")
+| Aspect | Detection Method | Output |
+|--------|------------------|--------|
+| **Feature Type** | Keywords: UI, API, page, endpoint, database | `UI` / `API` / `Data` / `Full-stack` |
+| **Complexity** | Scope indicators, number of features | `Simple` / `Medium` / `Complex` |
+| **Domain Terms** | Industry jargon, unfamiliar terms | List of terms needing research |
+| **UI Components** | Mentions of screens, forms, flows | Boolean: needs UI/UX |
+| **Clarity Level** | How specific is the request | `Clear` / `Vague` / `Very Vague` |
 
-**Instructions:**
-1. Read the template file to understand the required structure and format
-2. Use the template as the baseline - follow its section order and formatting exactly
-3. Fill in sections with data collected from Q&A rounds
-4. For optional sections with no data collected → remove the section entirely (don't leave placeholders)
-5. Keep required sections even if minimal data (Problem Statement, Functional Requirements, Acceptance Criteria)
+### Determine Agent Strategy
 
-**Template Section Mapping:**
-| Template Section | Data Source |
-|------------------|-------------|
-| 1. Problem Statement | Round 1: Problem & Users |
-| 2. User Stories | Round 1: Target Users + Round 2: Core Functionality |
-| 3. Business Rules | Round 3: Business Rules |
-| 4. Functional Requirements | Round 2: Core Functionality, Inputs/Outputs |
-| 5. Non-Functional Requirements | Round 5: Performance, Security |
-| 6. Edge Cases & Constraints | Round 4: Edge Cases, Constraints |
-| 7. Clarifications Log | All rounds: Q&A history |
-| 8. Out of Scope | Round 5: Out of Scope |
-| 9. Acceptance Criteria | Derived from Functional Requirements |
-| 10. References | User-provided links |
-| 11. Glossary | Domain terms collected (TERM category) |
+Based on analysis:
 
-### File Naming & Versioning Strategy
+| Scenario | Agents to Run | Execution |
+|----------|---------------|-----------|
+| Simple API feature | BA → SA | Sequential |
+| Complex API feature | BA → SA | Sequential |
+| Simple UI feature | BA + SA (parallel) → UI/UX | Mixed |
+| Complex full-stack | BA → SA → UI/UX | Sequential |
+| Domain-specific | BA + Researcher (parallel) → SA → UI/UX | Mixed |
+| Very vague request | BA only first | Single, then reassess |
+
+### Decision Output
+
+```markdown
+## Prompt Analysis
+
+**Feature**: {derived name}
+**Type**: {UI / API / Full-stack / Data}
+**Complexity**: {Simple / Medium / Complex}
+**Clarity**: {Clear / Vague / Very Vague}
+
+**Agents Required**:
+- [x] BA Agent (always)
+- [x] SA Agent (always)
+- [ ] Researcher Agent (domain terms detected: {list})
+- [ ] UI/UX Agent (UI components needed)
+
+**Execution Plan**:
+1. {Step 1}
+2. {Step 2}
+...
+```
+
+---
+
+## Step 2: Execute BA Agent
+
+**Always runs first (or parallel with Researcher if domain terms detected)**
+
+### Invoke BA Agent
+
+```
+Task(
+  subagent_type='general-purpose',
+  description='BA requirement analysis',
+  prompt="Read agent definition: .claude/agents/requirement-ba.md
+
+Execute the BA Agent workflow for feature: {feature-name}
+
+User's original request:
+---
+{user prompt}
+---
+
+Output to: docs/ai/requirements/agents/ba-{name}.md
+
+Follow all steps in the agent definition. Use AskUserQuestion for Q&A rounds."
+)
+```
+
+### BA Completion Check
+
+After BA completes, verify output exists:
+- `docs/ai/requirements/agents/ba-{name}.md`
+
+Extract key info for next agents:
+- Feature type confirmed
+- User stories
+- Functional requirements
+- Domain terms (if any discovered)
+
+---
+
+## Step 3: Execute Parallel Agents (Conditional)
+
+Based on Step 1 analysis, run applicable agents in parallel.
+
+### 3a: Researcher Agent (if domain terms detected)
+
+```
+Task(
+  subagent_type='general-purpose',
+  description='Domain research',
+  prompt="Read agent definition: .claude/agents/requirement-researcher.md
+
+Research the following terms/concepts for feature: {feature-name}
+
+Terms to research:
+- {term 1}
+- {term 2}
+- {term 3}
+
+Context from BA document: docs/ai/requirements/agents/ba-{name}.md
+
+Output to: docs/ai/requirements/agents/research-{name}.md
+
+Follow all steps in the agent definition.",
+  run_in_background: true
+)
+```
+
+### 3b: SA Agent (always)
+
+```
+Task(
+  subagent_type='general-purpose',
+  description='Solution architecture',
+  prompt="Read agent definition: .claude/agents/requirement-sa.md
+
+Perform technical feasibility assessment for feature: {feature-name}
+
+BA document: docs/ai/requirements/agents/ba-{name}.md
+
+Read project standards:
+- docs/ai/project/CODE_CONVENTIONS.md
+- docs/ai/project/PROJECT_STRUCTURE.md
+
+Output to: docs/ai/requirements/agents/sa-{name}.md
+
+Follow all steps in the agent definition.",
+  run_in_background: true
+)
+```
+
+### Wait for Parallel Agents
+
+If running in background, use TaskOutput to collect results:
+
+```
+TaskOutput(task_id={researcher_task_id}, block=true)
+TaskOutput(task_id={sa_task_id}, block=true)
+```
+
+---
+
+## Step 4: Execute UI/UX Agent (Conditional)
+
+**Only if UI components are needed (detected in Step 1)**
+
+### Check if Needed
+
+UI/UX Agent is needed if:
+- Feature type is `UI` or `Full-stack`
+- BA document mentions screens, forms, pages, dashboards
+- User explicitly mentioned UI/UX in request
+
+### Invoke UI/UX Agent
+
+```
+Task(
+  subagent_type='general-purpose',
+  description='UI/UX design',
+  prompt="Read agent definition: .claude/agents/requirement-uiux.md
+
+Design UI/UX for feature: {feature-name}
+
+BA document: docs/ai/requirements/agents/ba-{name}.md
+SA document: docs/ai/requirements/agents/sa-{name}.md (for constraints)
+
+Output to: docs/ai/requirements/agents/uiux-{name}.md
+
+Follow all steps in the agent definition."
+)
+```
+
+---
+
+## Step 5: Resolve Conflicts (If Any)
+
+### Check for Conflicts
+
+Compare agent outputs for inconsistencies:
+
+| Conflict Type | Detection | Resolution |
+|---------------|-----------|------------|
+| **Feasibility** | SA says not feasible, BA has as must-have | Ask user to adjust priority or scope |
+| **Technical** | SA recommends X, research shows Y is standard | Present both, let user decide |
+| **Scope** | Agents produced different scope understanding | Clarify with user |
+
+### Conflict Resolution
+
+```
+AskUserQuestion(questions=[{
+  question: "Conflict detected: {describe conflict}. How should we proceed?",
+  header: "Resolve",
+  options: [
+    { label: "{Option A}", description: "{Explanation}" },
+    { label: "{Option B}", description: "{Explanation}" },
+    { label: "Discuss further", description: "Need more context" }
+  ],
+  multiSelect: false
+}])
+```
+
+---
+
+## Step 6: Consolidate Final Requirement
+
+### Read Template
+
+```
+Read(file_path="docs/ai/requirements/req-template.md")
+```
+
+### Gather All Agent Outputs
+
+```
+Read(file_path="docs/ai/requirements/agents/ba-{name}.md")
+Read(file_path="docs/ai/requirements/agents/sa-{name}.md")
+Read(file_path="docs/ai/requirements/agents/research-{name}.md")  # if exists
+Read(file_path="docs/ai/requirements/agents/uiux-{name}.md")       # if exists
+```
+
+### Generate Consolidated Document
+
+Create `docs/ai/requirements/req-{name}.md` with:
+
+```markdown
+# Requirement: {Feature Name}
+
+> Generated: {YYYY-MM-DD}
+> Status: Draft | Review | Approved
+> Complexity: {Low / Medium / High}
+
+## Quick Links
+
+| Document | Status |
+|----------|--------|
+| [BA Analysis](agents/ba-{name}.md) | ✅ Complete |
+| [SA Assessment](agents/sa-{name}.md) | ✅ Complete |
+| [Domain Research](agents/research-{name}.md) | {✅ Complete / ⏭️ Skipped} |
+| [UI/UX Design](agents/uiux-{name}.md) | {✅ Complete / ⏭️ Skipped} |
+
+---
+
+## 1. Executive Summary
+
+{Synthesized from all agents - 3-5 sentences covering what, why, how}
+
+---
+
+## 2. Problem Statement
+
+{From BA document}
+
+---
+
+## 3. Users & User Stories
+
+{From BA document - consolidated user stories table}
+
+---
+
+## 4. Functional Requirements
+
+{From BA document - FR table}
+
+---
+
+## 5. Business Rules
+
+{From BA document - BR table}
+
+---
+
+## 6. Technical Assessment
+
+### Feasibility
+{From SA document - feasibility summary}
+
+### Recommended Architecture
+{From SA document - key architecture decisions}
+
+### Technology Stack
+{From SA document - stack table}
+
+### Risks
+{From SA document - risk table}
+
+---
+
+## 7. UI/UX Design (if applicable)
+
+### Screen Inventory
+{From UI/UX document}
+
+### Key Wireframes
+{From UI/UX document - main screens only}
+
+### User Flows
+{From UI/UX document - flow diagrams}
+
+---
+
+## 8. Domain Context (if applicable)
+
+### Glossary
+{From Research document - key terms}
+
+### Compliance & Standards
+{From Research document - relevant standards}
+
+---
+
+## 9. Implementation Guidance
+
+### Suggested Phases
+{From SA document}
+
+### Dependencies
+{From BA + SA documents}
+
+---
+
+## 10. Out of Scope
+
+{From BA document}
+
+---
+
+## 11. Open Questions
+
+{Consolidated from all agents}
+
+---
+
+## 12. Acceptance Criteria
+
+{Derived from FRs - Given/When/Then format}
+
+---
+
+## Next Steps
+
+1. Review this requirement document
+2. Run `/create-plan req-{name}` to generate implementation plan
+3. Address open questions before implementation
+```
+
+### File Naming & Versioning
 
 **Auto-name requirement:**
-- Derive `req-{name}` from feature description (kebab-case, concise)
+- Derive `req-{name}` from feature (kebab-case, concise)
 - Example: "User Authentication Flow" → `req-user-authentication`
 
 **If file already exists:**
-1. **Backup existing file** to archive folder:
-   ```
-   docs/ai/requirements/archive/req-{name}_{timestamp}.md
-   ```
-   - Timestamp format: `YYYYMMDD-HHMMSS`
-   - Example: `archive/req-user-authentication_20250115-143022.md`
-
-2. **Overwrite** the main file: `docs/ai/requirements/req-{name}.md`
-
-3. **Notify user:**
-   > "Previous version backed up to `archive/req-{name}_{timestamp}.md`"
-
-**Create archive folder if not exists:**
-```bash
-mkdir -p docs/ai/requirements/archive
-```
+1. Backup to `docs/ai/requirements/archive/req-{name}_{timestamp}.md`
+2. Overwrite main file
+3. Notify user of backup
 
 ---
 
-### Generate document sections:
+## Step 7: Summary & Next Steps
 
-1. **Problem Statement**: From Round 1 answers
-2. **User Stories**: Derived from users + functionality
-3. **Business Rules**: From Round 3
-4. **Functional Requirements**: From Rounds 2-3, prioritized
-5. **Non-Functional Requirements**: From Round 5
-6. **Edge Cases & Constraints**: From Round 4
-7. **Clarifications Log**: Complete Q&A history
-8. **Out of Scope**: Explicit exclusions
-9. **Acceptance Criteria**: Derived from requirements (Given/When/Then)
-10. **References**: Links to related docs
-11. **Glossary**: Domain-specific terms *(only if terms were collected)*
+### Present Summary
 
-**Write file:**
-- Path: `docs/ai/requirements/req-{name}.md`
-
----
-
-## Step 5: Review & Confirm
-
-**Present summary to user:**
-
-```
+```markdown
 ## Requirement Document Created
 
-**File:** docs/ai/requirements/req-{name}.md
-{If backup created: **Previous version:** archive/req-{name}_{timestamp}.md}
+**File**: docs/ai/requirements/req-{name}.md
 
-### Summary
-- {X} Functional Requirements
-- {Y} Business Rules
-- {Z} Edge Cases documented
-- {N} Clarification rounds completed
-- {M} Rounds skipped (not relevant)
-{If glossary: - {T} Terms defined in Glossary}
+### Agents Executed
+| Agent | Output | Status |
+|-------|--------|--------|
+| BA | ba-{name}.md | ✅ Complete |
+| SA | sa-{name}.md | ✅ Complete |
+| Researcher | research-{name}.md | {✅ / ⏭️ Skipped} |
+| UI/UX | uiux-{name}.md | {✅ / ⏭️ Skipped} |
 
-### Key Requirements
-1. [FR-01] {main requirement}
-2. [FR-02] {second requirement}
-3. [BR-01] {key business rule}
+### Key Findings
+- **Feasibility**: {Feasible / Feasible with changes / Issues}
+- **Complexity**: {Low / Medium / High}
+- **Open Questions**: {count}
 
 ### Next Steps
-1. Review the requirement document
-2. Run `/create-plan` to generate implementation plan
+1. Review requirement: `docs/ai/requirements/req-{name}.md`
+2. Address open questions (if any)
+3. Create plan: `/create-plan` (will auto-link to this requirement)
 ```
 
-**Offer options:**
-- "Review document" → Read and display full content
-- "Continue clarifying" → Return to Step 2
-- "Proceed to planning" → Suggest `/create-plan docs/ai/requirements/req-{name}.md`
+### Offer Options
+
+```
+AskUserQuestion(questions=[{
+  question: "What would you like to do next?",
+  header: "Next",
+  options: [
+    { label: "View full document", description: "Display the consolidated requirement" },
+    { label: "Create plan", description: "Run /create-plan for this requirement" },
+    { label: "Continue refining", description: "Run more Q&A or agent passes" }
+  ],
+  multiSelect: false
+}])
+```
 
 ---
 
-## Step 6: Next Actions
+## Decision Trees
 
-Suggest next steps based on user choice:
+### When to Skip Agents
 
-- **If more clarification needed:** Continue Q&A session
-- **If ready to plan:** `/create-plan` with requirement doc reference
-- **If needs stakeholder review:** Share the requirement doc for review
+```
+Researcher Agent:
+  ├── Domain terms detected? ─── Yes ──▶ Run
+  └── No ──▶ Skip
+
+UI/UX Agent:
+  ├── Feature type UI or Full-stack? ─── Yes ──▶ Run
+  ├── BA mentions screens/forms/pages? ─── Yes ──▶ Run
+  └── No ──▶ Skip
+```
+
+### Complexity Escalation
+
+```
+Simple (1-2 Q&A rounds):
+  └── Consider: "This seems straightforward. Proceed with full agent workflow or quick mode?"
+
+Complex (many unknowns):
+  └── Recommend: "This is complex. Suggest breaking down into smaller requirements."
+```
 
 ---
 
-## Tips for Effective Requirement Gathering
+## Error Handling
 
-1. **Start broad, then narrow**: Begin with problem/users, then dive into specifics
-2. **Confirm understanding**: Summarize after each round
-3. **Document everything**: Even "obvious" decisions should be recorded
-4. **Identify assumptions**: Make implicit assumptions explicit
-5. **Define boundaries**: Clear out-of-scope prevents scope creep
-6. **Skip smartly**: Not every feature needs all rounds - adapt to context
-7. **Capture terminology**: Domain terms prevent miscommunication later
+| Error | Action |
+|-------|--------|
+| Agent fails | Retry once, then proceed without that agent's output |
+| Template not found | Use fallback minimal structure |
+| Conflict unresolved | Document as open question, proceed |
+| User abandons Q&A | Save progress, allow resume |
 
 ---
 
 ## Notes
 
-- This command is designed for iterative use - user can clear chat and resume with the requirement doc
-- The output requirement doc serves as single source of truth for `/create-plan`
-- Requirement doc can be updated later using `/modify-plan` workflow
-- Previous versions are preserved in `archive/` folder for reference
+### Agent Output Files
+
+All agent outputs are saved in `docs/ai/requirements/agents/`:
+- `ba-{name}.md` - Business Analysis
+- `sa-{name}.md` - Solution Architecture
+- `research-{name}.md` - Domain Research
+- `uiux-{name}.md` - UI/UX Design
+
+These provide detailed backup and audit trail for the consolidated `req-{name}.md`.
+
+### Integration with Planning
+
+The consolidated requirement document is designed to be consumed by `/create-plan`:
+- Section mappings are compatible with planning template
+- Technical assessment informs architecture decisions
+- UI/UX wireframes inform implementation phases
+
+### Parallel Execution
+
+Maximize parallelism where possible:
+- BA + Researcher can run in parallel (if both needed)
+- SA can start after BA completes (needs BA output)
+- UI/UX can start after SA completes (needs both outputs)
+
+Optimal parallel execution for full workflow:
+```
+BA ──────────────┐
+                 ├──▶ SA ──────────┐
+Researcher ──────┘                  ├──▶ UI/UX ──▶ Consolidate
+                                    │
+```
