@@ -4,18 +4,16 @@ description: |
   Core design principles for implementing beautiful, professional UIs.
   Ensures consistent quality through spacing, typography, colors, and visual hierarchy.
 
-  ALWAYS load when implementing UI/frontend code:
-  - Creating or modifying components, pages, screens
-  - Building landing pages, dashboards, forms, cards, buttons
-  - Any frontend work: HTML, CSS, styling, layouts
-  - Adding new UI elements or updating existing ones
+  ALWAYS load when implementing UI/frontend VISUAL DESIGN:
+  - Styling components: colors, spacing, typography, shadows
+  - Building layouts: CSS, flexbox, grid, positioning
+  - Creating visual elements: cards, buttons, forms, dashboards
+  - Animation, transition, hover effects, motion
   - Modern, stunning, elegant, sleek interfaces
-  - Animation, transition, hover effects, motion, interactive elements
 
-  Keywords: UI, frontend, component, page, styling, CSS, layout, button, form,
-            card, dashboard, animation, transition, hover, effect, motion,
-            modern, beautiful, stunning, elegant, sleek, professional,
-            interactive, visual, aesthetic, design, attractive, impressive
+  Keywords: styling, CSS, layout, colors, spacing, typography, shadows,
+            animation, transition, hover, visual, aesthetic, design,
+            beautiful, stunning, elegant, sleek, professional
 
   Purpose: Ensure ALL UI implementation follows design best practices for:
   - Consistent spacing scale (not arbitrary values)
@@ -28,8 +26,11 @@ description: |
   - Backend-only code (APIs, database, server logic)
   - Pure logic/algorithm work without UI
   - DevOps, infrastructure, CLI tools
+  - React/Next.js performance optimization (use react-best-practices)
+  - Data fetching, async patterns, bundle optimization (use react-best-practices)
 
   Works with other skills:
+  - react-best-practices: For React performance (NOT styling)
   - theme-factory: When user needs help CHOOSING colors/theme
   - figma-design-extraction: When Figma file provided
   - design-responsive: For mobile/tablet/responsive specifics

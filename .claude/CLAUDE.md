@@ -8,6 +8,11 @@
   - Avoid over-engineering and unnecessary abstractions
   - Don't build for hypothetical futures
 
+- **Readability > Cleverness**
+  - Prefer clear, readable code over clever one-liners
+  - Code is read more often than written - optimize for understanding
+  - If code needs a comment to explain what it does, consider rewriting it
+
 - **Think ahead ONLY for:**
   - **Security**: Input validation, authentication, authorization
   - **Performance**: Scalability bottlenecks, query optimization
@@ -18,9 +23,11 @@
   - ✅ Add input validation for user data (security)
   - ✅ Consider pagination for large datasets (performance)
   - ❌ Don't create abstractions for one-time operations
+  - ❌ Don't write clever one-liners that require mental parsing
 
 ### 2. Deep Understanding
 - If unclear about requirements, edge cases, or expected behavior → **Ask first**
+- Use `AskUserQuestion` tool to ask multiple questions at once (up to 4)
 - Never assume or guess - clarification prevents wasted effort
 - Key questions:
   - "What should happen when X occurs?"
