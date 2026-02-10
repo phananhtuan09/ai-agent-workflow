@@ -3,7 +3,6 @@
 Note: All content in this document must be written in English.
 
 ---
-beads_epic: {bd-xxx or null}
 requirement: {docs/ai/requirements/req-xxx.md or null}
 ---
 
@@ -46,14 +45,10 @@ requirement: {docs/ai/requirements/req-xxx.md or null}
 
 ## 3. Task Breakdown
 
-> **Note**: If using Beads, this table syncs with Beads via `bd` commands. If not using Beads, manage tasks manually.
-
 | # | Task | Priority | Status | Blocked By | Plan Doc |
 |---|------|----------|--------|------------|----------|
 | 1 | {Task title} | P{0-4} | {open/in_progress/closed} | {dependencies or -} | {feature-xxx.md or -} |
 | 2 | {Task title} | P{0-4} | {status} | Task 1 | {-} |
-
-<!-- If using Beads, replace # with Task ID (e.g., bd-xxx.1) -->
 
 ### Dependency Graph
 ```
@@ -61,8 +56,6 @@ Task 1 ──────────────────────┐
                              ▼
 Task 3 ───▶ Task 2 ───▶ Task 4
 ```
-
-<!-- If using Beads, replace Task # with bd-xxx.# -->
 
 ---
 

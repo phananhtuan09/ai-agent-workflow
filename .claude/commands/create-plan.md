@@ -15,47 +15,6 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 
 ---
 
-## Step 0: Check Beads Context (Optional Integration)
-
-> **Purpose**: Detect if this plan is for a Beads task. If so, link to epic and inherit context.
-
-**Read:** `.beads/current-task.json`
-
-**If file exists (Beads workflow active):**
-
-```json
-{
-  "task_id": "bd-auth.1",
-  "task_title": "Setup JWT infrastructure",
-  "epic_id": "bd-auth",
-  "epic_title": "User Authentication System",
-  "epic_plan": "docs/ai/planning/epic-auth-system.md"
-}
-```
-
-Set internal flags:
-- `BEADS_MODE = true`
-- `beads_task = task_id`
-- `beads_epic = epic_id`
-- `suggested_title = task_title`
-- `epic_plan_path = epic_plan`
-
-**If epic_plan exists:**
-- Read epic plan for architecture context
-- Extract relevant sections:
-  - Architecture overview (for codebase context)
-  - Key decisions (for constraints)
-  - Data flow (for understanding)
-- Use as additional context in Step 3 (Explore)
-
-**If file does not exist:**
-- `BEADS_MODE = false`
-- Proceed with normal workflow (no Beads integration)
-
-**Output:** Internal state set. No user-visible output for this step.
-
----
-
 ## Step 1: Analyze User Prompt
 
 **Parse user request to identify:**
@@ -339,37 +298,18 @@ Create the file automatically:
 
 - `docs/ai/planning/feature-{name}.md` - Use complete structure from `feature-template.md`
 
-**If BEADS_MODE = true:**
-- Add frontmatter with Beads metadata:
-  ```yaml
-  ---
-  beads_task: {task_id}
-  beads_epic: {epic_id}
-  epic_plan: {epic_plan_path}
-  ---
-  ```
-- Update Beads task with plan doc reference:
-  ```bash
-  bd update {task_id} --notes "plan: docs/ai/planning/feature-{name}.md"
-  ```
-
 **Notify user:** "Created plan with X phases: [Phase 1], [Phase 2], ..."
 
 ## Step 8: Next Actions
 
-**If BEADS_MODE = true:**
+**Suggest next command:**
+
 ```
 ✓ Created plan: docs/ai/planning/feature-{name}.md
-✓ Linked to Beads task: {task_id}
 
 Next steps:
-  /execute-plan    → Implement this task
-  /beads-status    → View epic progress
+  /execute-plan    → Implement this feature
 ```
-
-**If normal mode:**
-
-Suggest: `/execute-plan` to begin implementation.
 
 Implementation will be driven from `docs/ai/planning/feature-{name}.md`.
 

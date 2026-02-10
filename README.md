@@ -6,7 +6,7 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 
 - **Multi-Platform Support**: Works with Cursor, GitHub Copilot, Claude Code, OpenCode, and Factory Droid
 - **Structured Workflows**: Plan → Implement → Test → Review methodology
-- **14 Pre-built Commands**: Create plans, execute tasks, run tests, code reviews, and more
+- **9 Pre-built Commands**: Create plans, execute tasks, run tests, code reviews, and more
 - **7 Reusable Skills**: Design fundamentals, accessibility, theme generation, quality checks
 - **Universal Standards**: `AGENTS.md` works across all AI tools
 - **Smart Installation**: Protected files, selective updates, no data loss
@@ -297,80 +297,9 @@ User: /sync-workflow
 
 ---
 
-## Beads Integration (Optional)
-
-[Beads](https://github.com/steveyegge/beads) is a lightweight issue tracker with first-class dependency support. This workflow integrates seamlessly with Beads for multi-session task management.
-
-### Setup Beads
-
-1. **Install Beads**: Follow the official docs at https://github.com/steveyegge/beads
-
-2. **Setup for Claude Code**:
-   ```bash
-   bd setup claude
-   ```
-
-3. **Verify installation**:
-   ```bash
-   bd doctor
-   ```
-
-### Beads Commands
-
-| Command | Description |
-|---------|-------------|
-| `/beads-breakdown` | Analyze feature → create epic with tasks and dependencies |
-| `/beads-create-epic-plan` | Create high-level epic plan document |
-| `/beads-next` | Show ready tasks, claim a task, set context |
-| `/beads-done` | Close task, sync to git, show next ready tasks |
-| `/beads-status` | Show epic progress, metrics, dependency graph |
-
----
-
 ## Workflow Examples
 
-### Workflow A: With Beads (Multi-session, Dependencies)
-
-Best for: Large features, team collaboration, work that spans multiple sessions.
-
-```
-┌──────────────┐    ┌───────────────────┐    ┌─────────────┐
-│ /beads-      │ → │ /beads-create-    │ → │ /beads-next │
-│ breakdown    │    │ epic-plan         │    │             │
-└──────────────┘    └───────────────────┘    └──────┬──────┘
-                                                    │
-┌──────────────┐    ┌───────────────────┐    ┌──────▼──────┐
-│ /beads-done  │ ← │ /execute-plan     │ ← │ /create-plan│
-│              │    │                   │    │             │
-└──────────────┘    └───────────────────┘    └─────────────┘
-       │
-       └──────→ Loop back to /beads-next for next task
-```
-
-```bash
-# 1. Break down feature into epic with tasks
-/beads-breakdown "User authentication with JWT"
-
-# 2. Create high-level epic plan (architecture, data flow)
-/beads-create-epic-plan
-
-# 3. Claim a ready task
-/beads-next
-
-# 4. Create detailed plan for claimed task
-/create-plan
-
-# 5. Implement the task
-/execute-plan jwt-infrastructure
-
-# 6. Complete task, sync, see next ready tasks
-/beads-done
-
-# 7. Repeat from step 3 for remaining tasks
-/beads-next
-```
-
-### Workflow B: Without Beads (Single-session)
+### Standard Workflow (Single-session)
 
 Best for: Small features, quick fixes, solo work.
 
@@ -396,20 +325,7 @@ Best for: Small features, quick fixes, solo work.
 /code-review
 ```
 
-### When to Use Which Workflow?
-
-| Scenario | Recommended Workflow |
-|----------|---------------------|
-| Feature takes < 1 session | **Without Beads** |
-| Feature spans multiple sessions | **With Beads** |
-| Multiple developers on same feature | **With Beads** |
-| Tasks have dependencies | **With Beads** |
-| Quick bug fix | **Without Beads** |
-| Complex epic with 5+ tasks | **With Beads** |
-
----
-
-### Example: Complex Requirements (Without Beads)
+### Example: Complex Requirements
 
 ```bash
 # 1. Clarify requirements first
@@ -425,7 +341,7 @@ Best for: Small features, quick fixes, solo work.
 /check-implementation checkout-flow
 ```
 
-### Example: Bug Fix with Tests (Without Beads)
+### Example: Bug Fix with Tests
 
 ```bash
 # 1. Quick plan for the fix

@@ -40,36 +40,6 @@ Expected speedup: 30-40% for context loading phase.
 
 ---
 
-## Step 0: Check Beads Context (Optional Integration)
-
-> **Purpose**: Detect if this plan is for a Beads task. If so, track for final suggestions.
-
-**Read:** `.beads/current-task.json`
-
-**If file exists (Beads workflow active):**
-
-```json
-{
-  "task_id": "bd-auth.1",
-  "task_title": "Setup JWT infrastructure",
-  "epic_id": "bd-auth",
-  "epic_title": "User Authentication System"
-}
-```
-
-Set internal flags:
-- `BEADS_MODE = true`
-- `beads_task_id = task_id`
-- `beads_task_title = task_title`
-
-**If file does not exist:**
-- `BEADS_MODE = false`
-- Proceed with normal workflow (no Beads integration)
-
-**Output:** Internal state set. No user-visible output for this step.
-
----
-
 ## Step 1: Gather Context
 
 **Tools:**
@@ -254,31 +224,20 @@ Only run after ALL phases are marked complete. If incomplete phases remain, skip
 
 ## Step 6: Next Actions
 
-**If BEADS_MODE = true AND all phases complete:**
+**If all phases complete:**
 
 ```
-✓ All phases complete for Beads task: {beads_task_id} "{beads_task_title}"
+✓ All phases complete!
 
 Next steps:
-  /beads-done           → Close task, sync to git, see next ready tasks
-  /beads-status         → View epic progress
-
-Optional quality checks:
   /code-review          → Verify against standards
   /writing-test         → Add test coverage
   /check-implementation → Validate alignment with plan
 ```
 
-**If BEADS_MODE = false AND all phases complete:**
-
-- Suggest running `code-review` to verify against standards
-- Suggest running `writing-test` if edge cases need coverage
-- Suggest running `check-implementation` to validate alignment with planning entries
-
-**If phases remain (both modes):**
+**If phases remain:**
 
 - User runs `/execute-plan` again; Phase detection (Step 1d) will resume correctly
-- **If BEADS_MODE = true:** Remind user task is still in_progress in Beads
 
 ## Notes
 
