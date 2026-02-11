@@ -3,12 +3,18 @@
 Note: All content in this document must be written in English.
 
 ---
-epic_plan: {docs/ai/planning/epic-xxx.md or null}
+epic_plan: null
+requirement: null
 ---
 
-## 0. Requirements Reference (Optional)
+## 0. Related Documents (Optional — remove if no linked docs)
 
-- **Requirement Doc**: [req-{feature-name}.md](../requirements/req-{feature-name}.md)
+| Type | Document |
+|------|----------|
+| Requirement | [req-{name}.md](../requirements/req-{name}.md) |
+| Epic | [epic-{name}.md](epic-{name}.md) |
+
+> **Note**: Remove this entire section if no requirement or epic is linked. This section is added by `/manage-epic` or `/create-plan` when context is provided.
 
 ---
 
@@ -262,30 +268,75 @@ epic_plan: {docs/ai/planning/epic-xxx.md or null}
 
 - [ ] [ACTION] path/to/file — Summary of change
   ```
-  Pseudo-code:
-  - Step 1: describe what will be done
-  - Step 2: validation or key logic
-  - Step 3: output or return value
+  Function: functionName(param1: type, param2: type) OR Endpoint: METHOD /path
+
+  Input validation:
+    - param1: [validation rules, constraints, format]
+    - param2: [validation rules, constraints, format]
+
+  Logic flow:
+    1. [Step with specific values/thresholds]
+    2. [Branching: if X then Y, else Z]
+    3. [External calls: DB queries, API calls with params]
+    4. [Data transformations with format]
+
+  Return: { field1: type, field2: type } | Error(code, message)
+
+  Edge cases:
+    - [Scenario] → [Handler/Response]
+    - [Error case] → [HTTP status + message OR error handling]
+
+  Dependencies: [Other functions/modules/APIs called]
   ```
 
 - [ ] [ACTION] path/to/file — Summary of change
   ```
-  Pseudo-code:
-  - ...
+  Function: ...
+
+  Input validation:
+    - ...
+
+  Logic flow:
+    1. ...
+
+  Return: ...
+
+  Edge cases:
+    - ...
+
+  Dependencies: ...
   ```
 
 ### Phase 2: [Phase Name]
 
 - [ ] [ACTION] path/to/file — Summary of change
   ```
-  Pseudo-code:
-  - ...
+  Function: ...
+
+  Input validation:
+    - ...
+
+  Logic flow:
+    1. ...
+
+  Return: ...
+
+  Edge cases:
+    - ...
+
+  Dependencies: ...
   ```
 
 Notes:
 - ACTION must be one of: ADDED | MODIFIED | DELETED | RENAMED
 - For MODIFIED files, use sub-bullets for each distinct logic change and include line ranges
-- Pseudo-code shows logic structure and key steps, not actual implementation code
+- Pseudo-code format uses structured sections for clarity:
+  - **Function/Endpoint**: Signature or route definition
+  - **Input validation**: All validation rules, data types, constraints
+  - **Logic flow**: Step-by-step with specific values, branches, external calls
+  - **Return**: Success response structure + error formats
+  - **Edge cases**: Error scenarios with handlers (HTTP status, messages, fallbacks)
+  - **Dependencies**: External modules, APIs, database tables
 - Each phase groups related tasks; phases execute sequentially
 - Use only one phase for small features (≤ 5 tasks); use multiple phases for larger features
 

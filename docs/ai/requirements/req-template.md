@@ -240,4 +240,5 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 1. [ ] Review this requirement document
 2. [ ] Address open questions
-3. [ ] Run `/create-plan` to generate implementation plan
+3. [ ] Run `/create-plan` to generate implementation plan (small feature)
+4. [ ] Run `/manage-epic` to break into feature plans (large feature)

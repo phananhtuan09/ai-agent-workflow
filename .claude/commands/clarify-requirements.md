@@ -405,8 +405,9 @@ Create `docs/ai/requirements/req-{name}.md` with:
 ## Next Steps
 
 1. Review this requirement document
-2. Run `/create-plan req-{name}` to generate implementation plan
-3. Address open questions before implementation
+2. Address open questions before implementation
+3. Run `/create-plan` to generate implementation plan (small feature)
+4. Run `/manage-epic` to break into feature plans (large feature)
 ```
 
 ### File Naming & Versioning
@@ -457,8 +458,9 @@ AskUserQuestion(questions=[{
   question: "What would you like to do next?",
   header: "Next",
   options: [
+    { label: "Create plan (small feature)", description: "Run /create-plan — single feature plan" },
+    { label: "Create epic (large feature)", description: "Run /manage-epic — break into multiple feature plans" },
     { label: "View full document", description: "Display the consolidated requirement" },
-    { label: "Create plan", description: "Run /create-plan for this requirement" },
     { label: "Continue refining", description: "Run more Q&A or agent passes" }
   ],
   multiSelect: false

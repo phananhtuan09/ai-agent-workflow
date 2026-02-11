@@ -19,6 +19,7 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 
 **Parse user request to identify:**
 - **Requirement doc reference:** Check if user provided path to `docs/ai/requirements/req-{name}.md`
+- **Epic reference:** Check if user provided path to `docs/ai/planning/epic-{name}.md`
 - **Feature type:** UI/Page, API/Service, Data/Database, Full-stack, Other
 - **Explicit requirements:** Framework, libraries, constraints mentioned
 - **Design context:**
@@ -26,6 +27,13 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
   - Has design description/screenshot? → Skip Steps 4-5
   - No design source? → Flag for Step 5 (theme selection)
 - **Scope hints:** MVP mentions, deadlines, specific exclusions
+
+**If Epic Reference Provided:**
+- Read the epic doc: `Read(file_path="docs/ai/planning/epic-{name}.md")`
+- Extract: requirement link, feature plan list, which plan to create next
+- Read the linked requirement doc (from epic's `requirement` frontmatter)
+- Set `epic_plan` and `requirement` frontmatter in the generated feature plan
+- After creating the feature plan, update the epic's Feature Plans table (status → `open`)
 
 **If Requirement Doc Provided:**
 - Read the requirement doc: `Read(file_path="docs/ai/requirements/req-{name}.md")`
@@ -244,8 +252,11 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
    - Epic ID and title
    - Link to epic plan
 
-0. **Requirements Reference** (if requirement doc was provided):
-   - Link to requirement doc: `[req-{name}.md](../requirements/req-{name}.md)`
+0. **Related Documents** (ONLY if requirement doc or epic was provided — skip entirely if neither exists):
+   - Link to requirement doc: `[req-{name}.md](../requirements/req-{name}.md)` (if exists)
+   - Link to epic: `[epic-{name}.md](epic-{name}.md)` (if exists)
+   - Set `epic_plan` and `requirement` in frontmatter accordingly
+   - If standalone (no req, no epic): set both frontmatter to null and **omit this section**
 
 1. **Codebase Context** (if exploration was done):
    - Similar features found
@@ -286,13 +297,47 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 **For each phase:**
 - Phase name: Descriptive (e.g., "API Endpoints", "UI Components")
 - Tasks list: `[ ] [ACTION] path/to/file — Summary`
-- Pseudo-code: 3-5 lines, natural language, show inputs → logic → outputs
+- Pseudo-code: Structured format with these sections:
   ```
   Example:
-  - Parse username + password from request
-  - Validate password strength → Hash with bcrypt
-  - Store user in database → Return success + user ID
+  Function: POST /api/auth/register(email, password, name)
+
+  Input validation:
+    - email: Valid format (regex), max 255 chars, lowercase
+    - password: Min 8 chars, 1 uppercase, 1 number, 1 special
+    - name: 2-50 chars, alphanumeric + spaces only
+
+  Logic flow:
+    1. Check if email exists in users table → If exists: return 409 Conflict
+    2. Hash password using bcrypt (salt rounds: 10)
+    3. Generate UUID for user_id
+    4. Insert into users table: { id: UUID, email, password_hash, name, created_at: NOW() }
+    5. Create JWT token with payload: { user_id, email } → Expiry: 24h, Secret: from env.JWT_SECRET
+
+  Return:
+    - Success (201): { user_id, email, name, token }
+    - Error: { status: 409/400/500, message, error_code }
+
+  Edge cases:
+    - Email already exists → 409 "Email already registered"
+    - Invalid email format → 400 "Invalid email"
+    - Weak password → 400 "Password must meet requirements"
+    - DB connection error → 500 "Registration failed, try again"
+    - Missing env.JWT_SECRET → 500 (log critical error)
+
+  Dependencies:
+    - bcrypt library (hash password)
+    - jsonwebtoken library (generate JWT)
+    - Database: users table (insert)
   ```
+
+  **Pseudo-code must include:**
+  - Function signature or endpoint route
+  - Input validation rules (types, constraints, formats)
+  - Logic flow with specific values/thresholds
+  - Return types for success + error cases
+  - Edge cases with handlers (HTTP status codes, error messages)
+  - Dependencies (external modules, APIs, DB tables)
 
 Create the file automatically:
 
@@ -325,10 +370,35 @@ Note: Test documentation will be created separately using the `writing-test` com
 **Requirement Doc** (`req-template.md`) focuses on **WHAT**:
 - Problem, Users, Business Rules, Functional Requirements
 
+**Epic Doc** (`epic-template.md`) focuses on **TRACKING**:
+- Links requirement to multiple feature plans
+- Tracks status and dependencies between plans
+
 **Planning Doc** (`feature-template.md`) focuses on **HOW**:
 - Codebase Context, Design, Implementation Phases, Pseudo-code
 
+### Cross-Linking Flow
+
+```
+req-{name}.md  ←→  epic-{name}.md  ←→  feature-{name}.md
+   (WHAT)          (TRACKING)            (HOW)
+```
+
+**Standalone (no epic, no req):**
+- feature-template: `requirement` → null, `epic_plan` → null
+- **Remove** Section 0 "Related Documents" entirely
+
+**With requirement only (no epic):**
+- feature-template: `requirement` → req doc, `epic_plan` → null
+- Include Section 0 with requirement link only
+
+**With epic (and req from epic):**
+- feature-template: `requirement` → req doc, `epic_plan` → epic doc
+- Include Section 0 with both links
+- After creation, update epic's Feature Plans table
+
 When requirement doc exists, planning doc should:
-1. Link to requirement doc (Section 0)
+1. Link to requirement doc and epic (Section 0: Related Documents)
 2. Not duplicate requirement content - reference it instead
 3. Focus on technical implementation details
+4. After creation, update epic's Feature Plans table (if epic exists)
