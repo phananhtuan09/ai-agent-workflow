@@ -419,19 +419,6 @@ function installClaudeCode() {
     run(`wget -qO ${claudeMdPath} ${RAW_BASE}/.claude/CLAUDE.md`);
   }
 
-  // Download settings.json from repo (project-level, shareable with team)
-  step("🚚 Downloading Claude Code hooks (.claude/settings.json)...");
-  const claudeSettingsPath = ".claude/settings.json";
-  if (existsSync(claudeSettingsPath)) {
-    skip(`Skipping (already exists): ${claudeSettingsPath}`);
-  } else {
-    try {
-      run(`curl -fsSL ${RAW_BASE}/.claude/settings.json -o ${claudeSettingsPath}`);
-    } catch (_) {
-      run(`wget -qO ${claudeSettingsPath} ${RAW_BASE}/.claude/settings.json`);
-    }
-    success(`Downloaded: ${claudeSettingsPath}`);
-  }
 
   // Download skills folder (always overwrite to get latest)
   step("🚚 Downloading Claude Code skills (.claude/skills)...");

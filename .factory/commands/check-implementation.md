@@ -3,10 +3,6 @@ description: Validates implementation against planning doc.
 argument-hint: <feature-name>
 ---
 
-## User Request
-
-$ARGUMENTS
-
 Compare current implementation against planning doc to ensure all requirements are met and completed tasks have corresponding code.
 
 ## Workflow Alignment
@@ -20,9 +16,9 @@ Compare current implementation against planning doc to ensure all requirements a
 
 ## Step 1: Load Planning Doc
 
-Ask for feature name if not provided.
-
-Read file: `docs/ai/planning/feature-{name}.md`
+**Tools:**
+- Request orchestrator to ask user if feature name not provided
+- Read(file_path="docs/ai/planning/feature-{name}.md")
 
 **Purpose:** Load planning doc to extract:
 - Acceptance criteria (Given-When-Then scenarios)
@@ -44,10 +40,12 @@ Read file: `docs/ai/planning/feature-{name}.md`
 3. If no implementation doc: Use git diff to find changed files
 4. If no git changes: Ask user for file paths
 
-**Commands:**
-- Extract file mentions from planning doc
-- Fallback: `git diff --name-only main`
-- Last resort: Search for files matching `src/**/*.{js,ts,py}`
+**Tools:**
+- Read(file_path="docs/ai/planning/feature-{name}.md") - extract file mentions
+- Read(file_path="docs/ai/implementation/feature-{name}.md") - fallback
+- Bash(command="git diff --name-only main") - find changed files
+- Glob(pattern="src/**/*.{js,ts,py}") - last resort full scan
+- Request orchestrator to ask user if all else fails
 
 **Output:** List of files to validate against planning doc
 
@@ -60,22 +58,28 @@ Read file: `docs/ai/planning/feature-{name}.md`
 
 ## Step 3: Validate Implementation vs Planning
 
-Search codebase and compare implementation in discovered files against planning doc.
+**Tool:** Task(
+  subagent_type='Explore',
+  thoroughness='medium',
+  prompt="Compare implementation in discovered files against planning doc at docs/ai/planning/feature-{name}.md:
 
-**For each completed task marked [x]:**
-- Check if corresponding code exists in mentioned files
-- Verify implementation matches task description
+    For each completed task marked [x]:
+    - Check if corresponding code exists in mentioned files
+    - Verify implementation matches task description
 
-**For each acceptance criteria:**
-- Verify code satisfies the Given-When-Then scenario
-- Check expected behavior is implemented
+    For each acceptance criteria:
+    - Verify code satisfies the Given-When-Then scenario
+    - Check expected behavior is implemented
 
-**Identify:**
-- Completed tasks [x] with missing/partial implementation
-- Mismatches between planning description and actual code
-- Acceptance criteria not met by code
+    Identify:
+    - Completed tasks [x] with missing/partial implementation
+    - Mismatches between planning description and actual code
+    - Acceptance criteria not met by code
 
-**Fallback:** If automated exploration unavailable, manually:
+    Return structured report with findings categorized by severity."
+)
+
+**Fallback:** If Explore agent unavailable, manually:
 1. Read each file from Step 2
 2. For each completed task `[x]`, search for related code
 3. Compare against acceptance criteria
@@ -88,7 +92,7 @@ Search codebase and compare implementation in discovered files against planning 
 - **Do NOT** invent or infer alternative logic beyond what docs specify
 
 **Error handling:**
-- Timeout: Retry with quick search, then fall back to manual
+- Agent timeout: Retry with thoroughness='quick', then fall back to manual
 - No completed tasks: Report "Nothing to validate"
 - Ambiguous results: Flag for manual review
 

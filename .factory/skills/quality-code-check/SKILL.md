@@ -118,12 +118,12 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 
 ### Project Detection
 
-**Search for project configuration files:**
-- `**/package.json` → JavaScript/TypeScript
-- `**/pyproject.toml` or `**/requirements.txt` → Python
-- `**/go.mod` → Go
-- `**/Cargo.toml` → Rust
-- `**/pom.xml` or `**/build.gradle` → Java
+**Use Glob to detect project type:**
+- Glob(pattern="`**`/package.json") → JavaScript/TypeScript
+- Glob(pattern="`**`/pyproject.toml") or Glob(pattern="`**`/requirements.txt") → Python
+- Glob(pattern="`**`/go.mod") → Go
+- Glob(pattern="`**`/Cargo.toml") → Rust
+- Glob(pattern="`**`/pom.xml") or Glob(pattern="`**`/build.gradle") → Java
 
 ### Language-Specific Commands
 
@@ -221,7 +221,7 @@ mvn compile
 ### Quality Check Sequence
 
 1. **Detect available tools** from project configuration
-   - Search for config files
+   - Use Glob to find config files
    - Identify which tools are available
 
 2. **Run linting** (scoped to changed files when possible)

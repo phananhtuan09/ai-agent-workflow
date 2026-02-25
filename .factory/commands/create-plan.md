@@ -3,10 +3,6 @@ description: Generates a feature planning doc with implementation details.
 argument-hint: <feature-name>
 ---
 
-## User Request
-
-$ARGUMENTS
-
 ## Goal
 
 Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the template, with goal, acceptance criteria, risks, and detailed implementation phases with pseudo-code.
@@ -17,10 +13,13 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 - For medium/large tasks, create todos (≤14 words, verb-led). Keep only one `in_progress` item.
 - Update todos immediately after progress; mark completed upon finish.
 
+---
+
 ## Step 1: Analyze User Prompt
 
 **Parse user request to identify:**
 - **Requirement doc reference:** Check if user provided path to `docs/ai/requirements/req-{name}.md`
+- **Epic reference:** Check if user provided path to `docs/ai/planning/epic-{name}.md`
 - **Feature type:** UI/Page, API/Service, Data/Database, Full-stack, Other
 - **Explicit requirements:** Framework, libraries, constraints mentioned
 - **Design context:**
@@ -29,8 +28,15 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
   - No design source? → Flag for Step 5 (theme selection)
 - **Scope hints:** MVP mentions, deadlines, specific exclusions
 
+**If Epic Reference Provided:**
+- Read the epic doc: `Read(file_path="docs/ai/planning/epic-{name}.md")`
+- Extract: requirement link, feature plan list, which plan to create next
+- Read the linked requirement doc (from epic's `requirement` frontmatter)
+- Set `epic_plan` and `requirement` frontmatter in the generated feature plan
+- After creating the feature plan, update the epic's Feature Plans table (status → `open`)
+
 **If Requirement Doc Provided:**
-- Read the requirement doc: `docs/ai/requirements/req-{name}.md`
+- Read the requirement doc: `Read(file_path="docs/ai/requirements/req-{name}.md")`
 - Extract and map to planning sections:
 
 | Requirement Section | Maps to Planning Section |
@@ -50,10 +56,12 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 - **Include Section 0: Requirements Reference** in planning output with link to requirement doc
 
 **Design Source Priority** (if multiple sources detected):
-1. **Figma URL** (highest priority) → Extract from Figma (Step 4)
+1. **Figma URL** (highest priority) → Extract from Figma MCP (Step 4)
 2. **Screenshot/Image** → Use as visual reference, skip Figma extraction
 3. **Design description** → Use as text reference, skip Figma extraction
-4. **Multiple sources** → Ask user which to prioritize
+4. **Multiple sources** → Request orchestrator to ask user which to prioritize:
+   - Example: "You provided both Figma URL and screenshots. Which should I use as primary design source?"
+   - Options: "Figma design (extract full specs)", "Screenshots (visual reference only)", "Combine both"
 
 **Output:** Internal classification to make Step 2 (Q&A) adaptive.
 
@@ -62,6 +70,8 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 ## Step 2: Clarify Scope (Adaptive Q&A)
 
 **Purpose:** Generate short Q&A (3-7 questions) to clarify scope. Ask only what's missing for Goal/Tasks/Risks/DoD.
+
+**Tool:** Present questions to orchestrator for user clarification
 
 **Q&A Strategy** (based on Step 1 classification):
 - **If feature type clear:** Skip feature type question
@@ -78,6 +88,9 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 6. **Tasks:** 3-7 high-level work items
 7. **Definition of Done:** Build/test/review/docs criteria
 
+**Q&A Format:** Present questions to orchestrator for user clarification with 2-4 options per question.
+- Example: "1. UI library? a) TailwindCSS b) Bootstrap c) Other"
+
 **Collect after Q&A:**
 - Feature name (kebab-case) - Ask if not derivable from prompt
 - Goal, scope, tasks, DoD
@@ -86,24 +99,41 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 
 ## Parallel Execution Strategy
 
-**Steps 3-5 can run in parallel** to optimize performance:
+**Steps 3-5 can run in parallel** to optimize performance *(Steps 4-5 defined below)*:
 
 **Scenario A: No design source**
 - Run in parallel: Step 3 (Explore) + Step 5 (Theme Selection)
+- Use single message with multiple tool calls
 
 **Scenario B: Figma design detected**
 - Run in parallel: Step 3 (Explore) + Step 4 (Figma Extraction)
+- Use single message with multiple tool calls
 
 **Scenario C: Design already provided (screenshot/description)**
 - Run only: Step 3 (Explore) - no parallel execution needed
 
+**Implementation:**
+- Use `run_in_background: true` for long-running Explore agent
+- Launch design-related Skill concurrently
+- Use `TaskOutput` to collect results when both complete
+
+**Example parallel invocation:**
+
+    Launching codebase exploration and design extraction in parallel...
+    - Task 1: Explore agent (medium thoroughness)
+    - Task 2: Figma extraction skill
+
 ---
 
-## Step 3: Research Codebase
+## Step 3: Research Codebase (Explore Agent)
 
 **Purpose:** Understand existing patterns to ensure plan follows project standards and reuses existing features.
 
-Search codebase for patterns related to the feature type. Find similar features, reusable components/utils, architectural patterns.
+**Tool:** Task(
+  subagent_type='Explore',
+  thoroughness='medium',
+  prompt="Explore codebase for patterns related to [feature type]. Find similar features, reusable components/utils, architectural patterns. Return summarized findings only."
+)
 
 **What to explore** (based on feature type from Step 1):
 - **UI/Page:** Component patterns, styling approach, state management
@@ -140,6 +170,7 @@ Search codebase for patterns related to the feature type. Find similar features,
 
 **If extraction fails:**
 - Figma MCP not connected: Ask user to configure MCP or provide design description
+- Extraction fails: Ask user for alternative design source (screenshot, description)
 - Continue to Step 5 for theme selection if needed
 
 **Skip this step if:** No Figma URL/mention detected in Step 1.
@@ -166,7 +197,7 @@ Search codebase for patterns related to the feature type. Find similar features,
 
 ## Step 6: Load Template
 
-Read `docs/ai/planning/feature-template.md`
+**Tool:** Read(file_path="docs/ai/planning/feature-template.md")
 
 - Validate template contains required sections: Goal, Implementation Plan, DoD
 - If template not found: Use fallback minimal structure (Goal → Tasks → DoD)
@@ -176,6 +207,7 @@ This template defines the required structure and format. Use it as the baseline 
 ## Step 7: Draft the Plan (Auto-generate)
 
 **Using inputs from:**
+- Step 0: Beads context (if BEADS_MODE)
 - Step 2: Scope, acceptance criteria, tasks, DoD
 - Step 3: Codebase patterns (if done)
 - Step 4: Figma design specs (if done)
@@ -186,8 +218,10 @@ This template defines the required structure and format. Use it as the baseline 
 
 Auto-name feature:
 
-- Derive `feature-{name}` from user prompt + Q&A (kebab-case, concise, specific).
-- Example: "Login Page (HTML/CSS)" → `feature-login-page`.
+- **If BEADS_MODE**: Use `suggested_title` from context (kebab-case)
+  - Example: "Setup JWT infrastructure" → `feature-jwt-infrastructure`
+- **If normal mode**: Derive `feature-{name}` from user prompt + Q&A (kebab-case, concise, specific).
+  - Example: "Login Page (HTML/CSS)" → `feature-login-page`.
 
 **If file already exists:**
 1. **Backup existing file** to archive folder:
@@ -195,6 +229,7 @@ Auto-name feature:
    docs/ai/planning/archive/feature-{name}_{timestamp}.md
    ```
    - Timestamp format: `YYYYMMDD-HHMMSS`
+   - Example: `archive/feature-login-page_20250115-143022.md`
 
 2. **Overwrite** the main file: `docs/ai/planning/feature-{name}.md`
 
@@ -212,8 +247,16 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 
 **Include these sections** (in suggested order):
 
-0. **Requirements Reference** (if requirement doc was provided):
-   - Link to requirement doc: `[req-{name}.md](../requirements/req-{name}.md)`
+0. **Beads Context** (if BEADS_MODE = true):
+   - Task ID and title
+   - Epic ID and title
+   - Link to epic plan
+
+0. **Related Documents** (ONLY if requirement doc or epic was provided — skip entirely if neither exists):
+   - Link to requirement doc: `[req-{name}.md](../requirements/req-{name}.md)` (if exists)
+   - Link to epic: `[epic-{name}.md](epic-{name}.md)` (if exists)
+   - Set `epic_plan` and `requirement` in frontmatter accordingly
+   - If standalone (no req, no epic): set both frontmatter to null and **omit this section**
 
 1. **Codebase Context** (if exploration was done):
    - Similar features found
@@ -254,7 +297,47 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 **For each phase:**
 - Phase name: Descriptive (e.g., "API Endpoints", "UI Components")
 - Tasks list: `[ ] [ACTION] path/to/file — Summary`
-- Pseudo-code: 3-5 lines, natural language, show inputs → logic → outputs
+- Pseudo-code: Structured format with these sections:
+  ```
+  Example:
+  Function: POST /api/auth/register(email, password, name)
+
+  Input validation:
+    - email: Valid format (regex), max 255 chars, lowercase
+    - password: Min 8 chars, 1 uppercase, 1 number, 1 special
+    - name: 2-50 chars, alphanumeric + spaces only
+
+  Logic flow:
+    1. Check if email exists in users table → If exists: return 409 Conflict
+    2. Hash password using bcrypt (salt rounds: 10)
+    3. Generate UUID for user_id
+    4. Insert into users table: { id: UUID, email, password_hash, name, created_at: NOW() }
+    5. Create JWT token with payload: { user_id, email } → Expiry: 24h, Secret: from env.JWT_SECRET
+
+  Return:
+    - Success (201): { user_id, email, name, token }
+    - Error: { status: 409/400/500, message, error_code }
+
+  Edge cases:
+    - Email already exists → 409 "Email already registered"
+    - Invalid email format → 400 "Invalid email"
+    - Weak password → 400 "Password must meet requirements"
+    - DB connection error → 500 "Registration failed, try again"
+    - Missing env.JWT_SECRET → 500 (log critical error)
+
+  Dependencies:
+    - bcrypt library (hash password)
+    - jsonwebtoken library (generate JWT)
+    - Database: users table (insert)
+  ```
+
+  **Pseudo-code must include:**
+  - Function signature or endpoint route
+  - Input validation rules (types, constraints, formats)
+  - Logic flow with specific values/thresholds
+  - Return types for success + error cases
+  - Edge cases with handlers (HTTP status codes, error messages)
+  - Dependencies (external modules, APIs, DB tables)
 
 Create the file automatically:
 
@@ -264,7 +347,14 @@ Create the file automatically:
 
 ## Step 8: Next Actions
 
-Suggest: `/execute-plan` to begin implementation.
+**Suggest next command:**
+
+```
+✓ Created plan: docs/ai/planning/feature-{name}.md
+
+Next steps:
+  /execute-plan    → Implement this feature
+```
 
 Implementation will be driven from `docs/ai/planning/feature-{name}.md`.
 
@@ -280,10 +370,35 @@ Note: Test documentation will be created separately using the `writing-test` com
 **Requirement Doc** (`req-template.md`) focuses on **WHAT**:
 - Problem, Users, Business Rules, Functional Requirements
 
+**Epic Doc** (`epic-template.md`) focuses on **TRACKING**:
+- Links requirement to multiple feature plans
+- Tracks status and dependencies between plans
+
 **Planning Doc** (`feature-template.md`) focuses on **HOW**:
 - Codebase Context, Design, Implementation Phases, Pseudo-code
 
+### Cross-Linking Flow
+
+```
+req-{name}.md  ←→  epic-{name}.md  ←→  feature-{name}.md
+   (WHAT)          (TRACKING)            (HOW)
+```
+
+**Standalone (no epic, no req):**
+- feature-template: `requirement` → null, `epic_plan` → null
+- **Remove** Section 0 "Related Documents" entirely
+
+**With requirement only (no epic):**
+- feature-template: `requirement` → req doc, `epic_plan` → null
+- Include Section 0 with requirement link only
+
+**With epic (and req from epic):**
+- feature-template: `requirement` → req doc, `epic_plan` → epic doc
+- Include Section 0 with both links
+- After creation, update epic's Feature Plans table
+
 When requirement doc exists, planning doc should:
-1. Link to requirement doc (Section 0)
+1. Link to requirement doc and epic (Section 0: Related Documents)
 2. Not duplicate requirement content - reference it instead
 3. Focus on technical implementation details
+4. After creation, update epic's Feature Plans table (if epic exists)

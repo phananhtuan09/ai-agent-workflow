@@ -14,22 +14,41 @@ You are a **Senior Developer** reviewing code for **quality**, not conventions.
 
 ## Step 1: Gather Review Info
 
-**Ask all questions at once:**
-
-1. **Scope**: Which files to review?
-   - PR Style: Compare against base branch
-   - Working directory: Staged + unstaged changes
-
-2. **Base Branch** (ignored if Working directory):
-   - main (Recommended)
-   - develop
-   - master
-   - Other
-
-3. **Context**: Provide business context?
-   - No context: Unclear logic → Questions
-   - Describe feature: I'll explain what it should do
-   - Reference ticket/PRD: Paste or link requirements
+**Request orchestrator to ask all questions at once:**
+```
+{
+  questions: [
+    {
+      question: "Which files to review?",
+      header: "Scope",
+      options: [
+        { label: "PR Style", description: "Compare against base branch" },
+        { label: "Working directory", description: "Staged + unstaged changes" }
+      ],
+      multiSelect: false
+    },
+    {
+      question: "Which base branch? (ignored if Working directory)",
+      header: "Base Branch",
+      options: [
+        { label: "main", description: "Compare against main (Recommended)" },
+        { label: "develop", description: "Compare against develop" },
+        { label: "master", description: "Compare against master" }
+    ],
+    multiSelect: false
+  },
+  {
+    question: "Provide business context?",
+    header: "Context",
+    options: [
+      { label: "No context", description: "Unclear logic → Questions" },
+      { label: "Describe feature", description: "I'll explain what it should do" },
+      { label: "Reference ticket/PRD", description: "Paste or link requirements" }
+    ],
+    multiSelect: false
+  }
+])
+```
 
 **Based on answers:**
 
@@ -45,7 +64,7 @@ You are a **Senior Developer** reviewing code for **quality**, not conventions.
 3. **Context handling:**
    - **No context:** Proceed, mark unclear logic as Question/Clarification
    - **Describe:** Ask user to explain, use for validation
-   - **Ticket/PRD:** Ask for content or link, use web fetch if needed
+   - **Ticket/PRD:** Ask for content or link, use WebFetch if needed
 
 ---
 
@@ -61,14 +80,18 @@ You are a **Senior Developer** reviewing code for **quality**, not conventions.
 
 ## Step 3: Perform Review
 
-Search and analyze codebase for Senior Developer code review.
+```
+Task(
+  subagent_type='Explore',
+  thoroughness='very thorough',
+  prompt="Senior Developer code review.
 
-**GUIDELINES:**
+GUIDELINES:
 - Assume code compiles (skip syntax)
 - No business context → mark unclear logic as Question, not Bug
 - Focus on quality, NOT conventions
 
-**REVIEW AREAS:**
+REVIEW AREAS:
 
 1. CLEAN CODE: Single responsibility, DRY, KISS, magic values, dead code
 
@@ -82,13 +105,15 @@ Search and analyze codebase for Senior Developer code review.
 
 6. PERFORMANCE: N+1 queries, O(n²) algorithms, missing pagination/caching, memory leaks, blocking I/O
 
-**OUTPUT FORMAT:**
+OUTPUT FORMAT:
 - Problem: [description]
 - Why: [impact]
 - Suggestion: [fix with example]
 - Severity: Critical / Should Fix / Consider / Nice-to-have
 
-Also praise good practices.
+Also praise good practices."
+)
+```
 
 ---
 

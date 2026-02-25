@@ -1,11 +1,6 @@
 ---
 description: Generates comprehensive unit test files with edge cases, parameter variations, and coverage analysis.
-argument-hint: <feature-name>
 ---
-
-## User Request
-
-$ARGUMENTS
 
 Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 
@@ -31,11 +26,15 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
   - **If Test Configuration not found:**
     1. Check `package.json` for test dependencies (vitest, jest, mocha, etc.)
     2. Check for config files: `vitest.config.*`, `jest.config.*`, `pytest.ini`
-    3. If still not found, ask user which framework to use:
-       - Vitest (Recommended for Vite/modern projects)
-       - Jest (Popular, works with most projects)
-       - Mocha (Flexible, requires setup)
-       - pytest (Python projects)
+    3. If still not found, request orchestrator to ask user:
+       ```
+       Question: Which unit test framework do you want to use?
+       Options:
+         1. Vitest (Recommended for Vite/modern projects)
+         2. Jest (Popular, works with most projects)
+         3. Mocha (Flexible, requires setup)
+         4. pytest (Python projects)
+       ```
     4. After user selection, suggest running `/generate-standards` to persist the choice
 - **Load standards:**
   - `docs/ai/project/CODE_CONVENTIONS.md` for coding standards
@@ -60,11 +59,12 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
   - Tests requiring external API calls, database connections, or network mocking
   - Performance/load testing
 - **Dependency isolation (mocking):**
-  - **Prefer spyOn** over complete function overwrites for better type safety
+  - **Prefer `vi.spyOn`/`jest.spyOn`** over complete function overwrites for better type safety
   - Use spyOn to mock specific methods while preserving original implementation
   - Mock external dependencies (API clients, database connections, file system)
   - Mock imported utilities/hooks if they have side effects
   - Keep internal logic unmocked (test actual implementation)
+  - Use test framework's mocking utilities (vi.mock, jest.mock, unittest.mock) only when spyOn is insufficient
 - Keep tests simple, fast, and deterministic.
 
 ## Step 3: Analyze Code & Generate Tests (automatic)
@@ -87,12 +87,18 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 - **Type safety**: wrong types, missing properties
 - **Property-based** (if applicable): commutativity, associativity, idempotency
 
+**For complex test suites (>15 test cases):**
+- Use Task tool with `subagent_type='general-purpose'`
+- Task prompt: "Generate comprehensive test cases for [function] covering happy path, edge cases, error handling, and parameter combinations"
+
 ## Step 4: Ask User for Next Action
+
+**Tool:** Present questions to orchestrator
 
 After test files are created, ask user:
 
 ```
-Test files have been created. What would you like to do next?
+Question: Test files have been created. What would you like to do next?
 Options:
   1. Run tests now (Recommended) - Execute tests and see results
   2. Skip to next command - Continue without running tests

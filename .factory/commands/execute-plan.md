@@ -3,10 +3,6 @@ description: Executes the planning doc tasks, edits code, and persists notes.
 argument-hint: <feature-name>
 ---
 
-## User Request
-
-$ARGUMENTS
-
 ## Goal
 
 Execute the feature plan by implementing tasks from the planning doc and updating task checkboxes as work progresses.
@@ -35,17 +31,28 @@ Execute the feature plan by implementing tasks from the planning doc and updatin
 
 Load operations (1a/1b/1c) are independent and can run concurrently after planning doc is loaded.
 
+**Implementation:**
+- Use single message with multiple Read tool calls
+- Use `run_in_background: true` for long document reads
+- Use `TaskOutput` to collect results when all complete
+
+Expected speedup: 30-40% for context loading phase.
+
 ---
 
 ## Step 1: Gather Context
 
-Ask for feature name if not provided (must be kebab-case).
+**Tools:**
+- Request orchestrator to ask user if feature name not provided
+- Read(file_path="docs/ai/planning/feature-{name}.md")
+- Read(file_path="docs/ai/planning/feature-template.md")
+- Read(file_path="docs/ai/project/CODE_CONVENTIONS.md")
+- Read(file_path="docs/ai/project/PROJECT_STRUCTURE.md")
 
-**Load these files:**
-- Planning doc: `docs/ai/planning/feature-{name}.md`
-- Template: `docs/ai/planning/feature-template.md` (to understand required structure)
-- Standards: `docs/ai/project/CODE_CONVENTIONS.md`
-- Structure: `docs/ai/project/PROJECT_STRUCTURE.md`
+**Process:**
+- Ask for feature name if not provided (must be kebab-case)
+- Load planning doc: `docs/ai/planning/feature-{name}.md`
+- Load template: `docs/ai/planning/feature-template.md` to understand required structure
 
 **Error handling:**
 - Planning doc not found: Cannot proceed, notify user and exit
@@ -137,6 +144,12 @@ Note: Do not include Follow-ups section unless explicitly in current phase.
 
 ## Step 3: Implement Iteratively (per task)
 
+**Tools:**
+- Read(file_path=...) to check existing files
+- Create(file_path=..., content=...) for new files
+- Edit(file_path=..., old_string=..., new_string=...) for modifications
+- Edit(file_path="docs/ai/planning/feature-{name}.md") to update checkboxes
+
 **At Phase Boundary** (when starting new phase):
 
 Refresh context to prevent quality degradation (see Notes for template format):
@@ -211,13 +224,18 @@ Only run after ALL phases are marked complete. If incomplete phases remain, skip
 
 ## Step 6: Next Actions
 
-After all phases complete:
+**If all phases complete:**
 
-- Suggest running `code-review` to verify against standards
-- Suggest running `writing-test` if edge cases need coverage
-- Suggest running `check-implementation` to validate alignment with planning entries
+```
+✓ All phases complete!
 
-If phases remain:
+Next steps:
+  /code-review          → Verify against standards
+  /writing-test         → Add test coverage
+  /check-implementation → Validate alignment with plan
+```
+
+**If phases remain:**
 
 - User runs `/execute-plan` again; Phase detection (Step 1d) will resume correctly
 

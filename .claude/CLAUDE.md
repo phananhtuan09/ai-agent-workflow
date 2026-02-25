@@ -27,7 +27,7 @@
 
 ### 2. Deep Understanding
 - If unclear about requirements, edge cases, or expected behavior → **Ask first**
-- Use `AskUserQuestion` tool to ask multiple questions at once (up to 4)
+- Batch related questions into a single block (avoid asking one at a time)
 - Never assume or guess - clarification prevents wasted effort
 - Key questions:
   - "What should happen when X occurs?"

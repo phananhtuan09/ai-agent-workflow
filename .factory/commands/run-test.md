@@ -1,11 +1,6 @@
 ---
 description: Executes tests based on test documentation files with summary report.
-argument-hint: <test-type>
 ---
-
-## User Request
-
-$ARGUMENTS
 
 ## Goal
 
@@ -19,10 +14,12 @@ Execute tests defined in `docs/ai/testing/` documentation files and provide a su
 
 ## Step 1: Ask Test Type
 
+**Tool:** Present questions to orchestrator for user clarification
+
 Ask user which test type to run:
 
 ```
-Which test type do you want to run?
+Question: Which test type do you want to run?
 Options:
   1. Unit tests (from /writing-test)
   2. Integration tests (from /writing-integration-test)
@@ -31,6 +28,8 @@ Options:
 
 ## Step 2: Ask for Test Doc File
 
+**Tool:** Present questions to orchestrator for user clarification (if not provided as argument)
+
 If user did not provide test doc file path:
 
 1. List available test docs based on selected type:
@@ -38,11 +37,17 @@ If user did not provide test doc file path:
    - Integration tests: `docs/ai/testing/integration-*.md`
    - Both: all `unit-*.md` and `integration-*.md` files
 
-2. Ask user to select which test doc(s) to run
+2. Ask user to select which test doc(s) to run:
+   ```
+   Question: Which test doc do you want to run?
+   Options: [list discovered files]
+   ```
 
 ## Step 3: Parse Test Doc for Test Files
 
-Read the selected test documentation file and extract:
+**Tool:** Read(file_path=selected_test_doc)
+
+Read the test documentation file and extract:
 
 - **Test Files Created** section: list of test file paths
 - **Run Command** section: command to execute tests
@@ -61,16 +66,31 @@ npx vitest run tests/unit/test-file.spec.ts
 
 **Robust file path extraction:**
 Use flexible parsing to handle various formatting:
-- With backticks: ``- `tests/unit/file.spec.ts` - Description``
+- With backticks: `- \`tests/unit/file.spec.ts\` - Description`
 - Without backticks: `- tests/unit/file.spec.ts - Description`
 - With or without description: `- tests/unit/file.spec.ts`
 - Different list markers: `- `, `* `, `1. `
+
+**Regex patterns for extraction:**
+```
+# Pattern 1: With backticks
+`([^`]+\.(?:spec|test|e2e\.spec)\.[jt]sx?)`
+
+# Pattern 2: Without backticks (path followed by space-dash or end of line)
+(?:^[-*\d.]\s*)([^\s`]+\.(?:spec|test|e2e\.spec)\.[jt]sx?)(?:\s|$)
+```
+
+**Fallback parsing:**
+- If regex fails, look for any path containing `tests/unit/` or `tests/integration/`
+- Extract file paths that end with `.spec.ts`, `.test.ts`, or `.e2e.spec.ts`
 
 **Validate extracted files:**
 - Check each file exists before running
 - Report missing files to user (do not fail silently)
 
 ## Step 4: Execute Tests
+
+**Tool:** Bash
 
 Run only the test files listed in the test doc:
 
@@ -132,7 +152,9 @@ After test execution, provide a summary report:
 
 ## Step 6: Update Test Doc (automatic)
 
-Automatically update the test doc with latest results after each run.
+Automatically update the test doc with latest results after each run:
+
+**Tool:** Edit(file_path=test_doc)
 
 Update "Last Run Results" section with:
 - Date/time of run

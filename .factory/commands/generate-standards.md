@@ -8,10 +8,11 @@ Generate or update `docs/ai/project/CODE_CONVENTIONS.md` and `PROJECT_STRUCTURE.
 
 ## Step 1: Detect Project Context
 
-Search for project configuration files:
-- `**/package.json`
-- `**/pyproject.toml`
-- `**/*.config.{js,ts}`
+**Tools:**
+- Glob(pattern="**/package.json")
+- Glob(pattern="**/pyproject.toml")
+- Glob(pattern="**/*.config.{js,ts}")
+- Read(file_path=...) for each config file found
 
 Detect project languages/frameworks/libraries from repository metadata:
 
@@ -35,6 +36,8 @@ Detect project languages/frameworks/libraries from repository metadata:
 
 ## Step 2: Clarify Scope (3–6 questions max)
 
+**Tool:** Present questions to orchestrator for user clarification
+
 Quick classification and targeted questions:
 
 - Languages/frameworks detected: confirm correct? (a/b/other)
@@ -53,12 +56,17 @@ Keep questions short and single-purpose. Stop once sufficient info gathered.
 
 ## Step 3: Auto-Discovery
 
-Search and analyze codebase to discover:
-- Naming conventions (variables, functions, classes, constants)
-- Import patterns and ordering style
-- Folder structure organization (feature/layer/mixed)
-- Test file locations and naming patterns
-- Common architectural patterns (Repository, Factory, Strategy, etc.)
+**Tool:** Task(
+  subagent_type='Explore',
+  thoroughness='medium',
+  prompt="Analyze codebase to discover:
+    - Naming conventions (variables, functions, classes, constants)
+    - Import patterns and ordering style
+    - Folder structure organization (feature/layer/mixed)
+    - Test file locations and naming patterns
+    - Common architectural patterns (Repository, Factory, Strategy, etc.)
+    Return concise summary with 2-3 examples for each category."
+)
 
 Analyze repository to infer:
 
@@ -83,13 +91,17 @@ Analyze repository to infer:
   - Other architectural patterns
 
 **Error handling:**
-- Search timeout: Fallback to quick pattern detection
+- Explore agent timeout: Fallback to quick Grep-based pattern detection
 - No patterns found: Generate minimal standards template
 - Inconsistent patterns: Document most frequent pattern as primary
 
 ## Step 4: Draft Standards
 
-Search for templates in `docs/ai/project/template-convention/*.md`
+**Tools:**
+- Glob(pattern="docs/ai/project/template-convention/*.md") to find templates
+- Read(file_path=...) for each matching template
+- Create(file_path="docs/ai/project/CODE_CONVENTIONS.md", content="...")
+- Create(file_path="docs/ai/project/PROJECT_STRUCTURE.md", content="...")
 
 Generate two documents:
 
@@ -145,6 +157,11 @@ Generate two documents:
 
 ## Step 5: Persist (Update-in-place, Non-destructive)
 
+**Tools:**
+- Read(file_path=...) to check existing content
+- Edit(file_path=..., old_string=..., new_string=...) for updates within managed blocks
+- Create(file_path=..., content=...) if file doesn't exist
+
 **Target files:**
 - `docs/ai/project/CODE_CONVENTIONS.md`
 - `docs/ai/project/PROJECT_STRUCTURE.md`
@@ -177,7 +194,7 @@ Generate two documents:
 ### Template Matching Details (Step 4)
 
 **Template loading logic:**
-1. Search all files in `docs/ai/project/template-convention/`
+1. Glob all files in `docs/ai/project/template-convention/`
 2. Match templates by filename:
    - `common.md` → Always include if present
    - `javascript.md`, `typescript.md`, `python.md` → Match by language

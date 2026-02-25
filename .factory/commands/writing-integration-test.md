@@ -1,11 +1,6 @@
 ---
 description: Generates Playwright E2E test files for UI/integration testing that can be run repeatedly.
-argument-hint: <feature-name>
 ---
-
-## User Request
-
-$ARGUMENTS
 
 Use `docs/ai/testing/integration-{name}.md` as the source of truth.
 
@@ -25,7 +20,7 @@ Use `docs/ai/testing/integration-{name}.md` as the source of truth.
   - User flows and interactions to test
   - UI components and pages involved
   - Acceptance criteria (test alignment)
-- **Verify Playwright MCP:** Confirm `playwright` MCP server is available.
+- **Verify Playwright MCP:** Confirm `playwright` MCP server is available via `/mcp` command.
 - **Check Playwright setup:** Verify `@playwright/test` is installed in `package.json`.
   - If not installed, run: `npm install -D @playwright/test && npx playwright install`
 - **Check for playwright.config:** If missing, create basic config file.
@@ -37,10 +32,12 @@ Use `docs/ai/testing/integration-{name}.md` as the source of truth.
 
 ## Step 2: Ask Testing Approach
 
+**Tool:** Present questions to orchestrator
+
 Ask user which approach to use for test exploration and writing:
 
 ```
-Which approach do you want to use for integration testing?
+Question: Which approach do you want to use for integration testing?
 Options:
   1. Playwright MCP (Recommended) - Interactive browser exploration to discover selectors
   2. @playwright/test package only - Write tests directly without browser exploration
@@ -95,8 +92,8 @@ Use Playwright MCP to explore the actual UI and understand element selectors:
 - `browser_screenshot` - Capture current state
 
 **Exploration workflow:**
-1. Navigate to the page (read BASE_URL from .env or config)
-2. Get element tree via snapshot → use this to find accurate selectors
+1. Navigate to the page: `browser_navigate url="{BASE_URL}/page"` (read BASE_URL from .env or config)
+2. Get element tree: `browser_snapshot` → use this to find accurate selectors
 3. Test interactions to verify selectors work
 4. Use discovered selectors in generated test files
 
@@ -200,10 +197,12 @@ export default defineConfig({
 
 ## Step 7: Ask User for Next Action
 
+**Tool:** Present questions to orchestrator
+
 After test files are created, ask user:
 
 ```
-Test files have been created. What would you like to do next?
+Question: Test files have been created. What would you like to do next?
 Options:
   1. Run tests now (Recommended) - Execute tests and see results
   2. Skip to next command - Continue without running tests
@@ -305,7 +304,23 @@ Add to `package.json`:
 - If feature requires authentication, tests will get stuck on login screen
 - Solutions:
   1. **Use `storageState`**: Save authenticated state to file and reuse across tests
+     ```typescript
+     // Save auth state after login
+     await page.context().storageState({ path: 'playwright/.auth/user.json' });
+
+     // Reuse in playwright.config.ts
+     use: { storageState: 'playwright/.auth/user.json' }
+     ```
   2. **Login in `beforeEach`**: Add login steps before each test
+     ```typescript
+     test.beforeEach(async ({ page }) => {
+       await page.goto('/login');
+       await page.getByLabel('Email').fill('test@example.com');
+       await page.getByLabel('Password').fill('password');
+       await page.getByRole('button', { name: 'Login' }).click();
+       await page.waitForURL('/dashboard');
+     });
+     ```
   3. **API login**: Use API to get auth token, then set cookies/localStorage
 
 **Scope boundaries:**
@@ -318,7 +333,7 @@ Add to `package.json`:
 
 **Comparison with `/writing-test`:**
 | Aspect | `/writing-test` | `/writing-integration-test` |
-|--------|-----------------|---------------------------|
+|--------|-----------------|-------------------|
 | Focus | Unit/logic tests | UI/integration tests |
 | Framework | Vitest/Jest | Playwright |
 | Speed | Fast (ms) | Slower (seconds) |

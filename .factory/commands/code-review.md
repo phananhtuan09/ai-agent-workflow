@@ -15,22 +15,45 @@ You are helping me perform a local code review **before** I push changes.
 
 ## Step 1: Determine Review Scope
 
-**Ask user for scope:**
+**Request orchestrator to ask user for scope:**
 
-Determine what files to review:
-- **PR Style (against base branch)**: Compare current branch against main/master or specified base branch
-- **Working directory changes**: Review staged and unstaged changes in working directory
+Present the following question to determine what files to review:
+```
+{
+  question: "Which files would you like to review?",
+  header: "Review Scope",
+  options: [
+    { label: "Review against a base branch (PR Style)", description: "Compare current branch against main/master or specified base branch" },
+    { label: "Review uncommitted changes (Working directory)", description: "Review staged and unstaged changes in working directory" }
+  ],
+  multiSelect: false
+}
+```
 
 **Based on selection:**
 
 1. **PR Style (against base branch):**
-   - Ask for base branch (main, develop, master, or other)
-   - Run: `git diff <base-branch>...HEAD --name-only` to get changed files
-   - Run: `git diff <base-branch>...HEAD` to get full diff
+   Request orchestrator to ask for base branch:
+   ```
+   {
+     question: "Which base branch should we compare against?",
+     header: "Base Branch",
+     options: [
+       { label: "main", description: "Compare against main branch (Recommended)" },
+       { label: "develop", description: "Compare against develop branch" },
+       { label: "master", description: "Compare against master branch" },
+       { label: "Other", description: "Enter a custom branch name" }
+     ],
+     multiSelect: false
+   }])
+   ```
+   - If user selects "Other", prompt them to enter the branch name
+   - `Bash(command="git diff <base-branch>...HEAD --name-only")` to get changed files
+   - `Bash(command="git diff <base-branch>...HEAD")` to get full diff
 
 2. **Working directory changes:**
-   - Run: `git diff --name-only` for unstaged changes
-   - Run: `git diff --cached --name-only` for staged changes
+   - `Bash(command="git diff --name-only")` for unstaged changes
+   - `Bash(command="git diff --cached --name-only")` for staged changes
    - Combine both lists for full review scope
 
 **Error handling:**
@@ -52,34 +75,38 @@ Run **both** review types automatically. Results are reported **independently** 
 
 ### A1. Load Standards
 
-Read these files:
-- `docs/ai/project/CODE_CONVENTIONS.md`
-- `docs/ai/project/PROJECT_STRUCTURE.md`
+**Tools:**
+- Read(file_path="docs/ai/project/CODE_CONVENTIONS.md")
+- Read(file_path="docs/ai/project/PROJECT_STRUCTURE.md")
 
 **Error handling:**
 - Standards docs not found: Notify user, cannot proceed with Standards Conformance review
 
 ### A2. Scan for Violations
 
-Search files for violations against CODE_CONVENTIONS and PROJECT_STRUCTURE ONLY.
+**Tool:** Task(
+  subagent_type='Explore',
+  thoroughness='medium',
+  prompt="Scan files for violations against CODE_CONVENTIONS and PROJECT_STRUCTURE ONLY.
 
-**STRICT RULES:**
-- Report ONLY violations that are EXPLICITLY stated in the standards docs
-- Do NOT infer additional rules
-- Do NOT suggest improvements beyond what standards require
-- Do NOT provide design opinions
+    STRICT RULES:
+    - Report ONLY violations that are EXPLICITLY stated in the standards docs
+    - Do NOT infer additional rules
+    - Do NOT suggest improvements beyond what standards require
+    - Do NOT provide design opinions
 
-**Check for:**
-- Naming conventions (variables, functions, classes, constants)
-- Import order and grouping
-- Folder structure and module boundaries
-- Test placement and naming
-- File naming patterns
-- Export patterns
+    Check for:
+    - Naming conventions (variables, functions, classes, constants)
+    - Import order and grouping
+    - Folder structure and module boundaries
+    - Test placement and naming
+    - File naming patterns
+    - Export patterns
 
-Return violations with file:line, exact rule violated (quote from docs), and brief description.
+    Return violations with file:line, exact rule violated (quote from docs), and brief description."
+)
 
-**Fallback:** If automated search unavailable, manually read each file and check against standards.
+**Fallback:** If Explore agent unavailable, manually Read each file and check against standards.
 
 ### A3. Standards Report
 
@@ -149,22 +176,26 @@ Return violations with file:line, exact rule violated (quote from docs), and bri
 
 ### B2. Perform Quality Review
 
-Search and review files for quality issues using your reasoning.
+**Tool:** Task(
+  subagent_type='Explore',
+  thoroughness='medium',
+  prompt="Review files for quality issues using your reasoning.
 
-**REASONING MODE - Use judgment to identify:**
-- Logic bugs and edge cases
-- Security vulnerabilities (injection, auth issues, data exposure)
-- Performance problems (N+1 queries, memory leaks, unnecessary loops)
-- Poor error handling (silent failures, swallowed exceptions)
-- Code smells and maintainability issues
-- Missing or weak test coverage
+    REASONING MODE - Use judgment to identify:
+    - Logic bugs and edge cases
+    - Security vulnerabilities (injection, auth issues, data exposure)
+    - Performance problems (N+1 queries, memory leaks, unnecessary loops)
+    - Poor error handling (silent failures, swallowed exceptions)
+    - Code smells and maintainability issues
+    - Missing or weak test coverage
 
-**For each issue:**
-- Explain WHY it's a problem
-- Provide actionable recommendation
-- Mark severity (Critical/Important/Nit)
+    For each issue:
+    - Explain WHY it's a problem
+    - Provide actionable recommendation
+    - Mark severity (Critical/Important/Nit)
 
-Also note GOOD patterns worth praising.
+    Also note GOOD patterns worth praising."
+)
 
 ### B3. Quality Report
 

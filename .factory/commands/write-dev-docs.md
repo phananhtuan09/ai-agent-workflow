@@ -1,11 +1,6 @@
 ---
 description: Generates technical documentation about programming techniques in docs/dev folder.
-argument-hint: <topic>
 ---
-
-## User Request
-
-$ARGUMENTS
 
 Generate comprehensive documentation about programming techniques.
 
@@ -35,18 +30,30 @@ IF command has specific topic (e.g., "memoization", "factory pattern")
 ELSE IF command references conversation ("note this", "this technique", etc.)
   → Extract topic from conversation history
 ELSE (no context available)
-  → Ask user for topic
+  → Request orchestrator to ask user
 ```
 
-**Only ask user when NO context found:**
+**Only request orchestrator to ask user when NO context found:**
 
-If topic is unclear, ask:
-- "What programming technique do you want to document?"
-- Options: Design Pattern, Performance, Testing, Other
+If topic is unclear:
+```
+Question: "What programming technique do you want to document?"
+Header: "Topic"
+Options:
+  - "Design Pattern" - Architecture and design patterns (singleton, factory, observer, etc.)
+  - "Performance" - Optimization techniques (memoization, caching, lazy loading)
+  - "Testing" - Testing strategies and methodologies
+```
 
 If language/framework context is needed and not clear:
-- "What context for this technique?"
-- Options: General, JavaScript/TypeScript, Python, Other
+```
+Question: "What context for this technique?"
+Header: "Context"
+Options:
+  - "General" - Language-agnostic concepts
+  - "JavaScript/TypeScript" - JS/TS specific implementation
+  - "Python" - Python specific implementation
+```
 
 ## Step 2: Research & Structure
 
