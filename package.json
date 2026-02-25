@@ -1,6 +1,6 @@
 {
   "name": "ai-workflow-init",
-  "version": "7.1.0",
+  "version": "7.2.0",
   "description": "Initialize AI workflow docs & commands into any repo with one command",
   "bin": {
     "ai-workflow-init": "./cli.js"
