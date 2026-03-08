@@ -137,7 +137,35 @@ Propose specific technologies:
 
 ---
 
-## Step 5: Risk Assessment
+## Step 5: Technical Edge Cases
+
+**Identify technical edge cases that BA may not cover:**
+
+| Category | What to Check |
+|----------|---------------|
+| **Concurrency** | Multiple users editing same resource, race conditions |
+| **Data boundaries** | Empty states, max limits, overflow, special characters |
+| **Network** | Timeouts, retries, offline handling, partial failures |
+| **Security** | Input sanitization, SQL injection, XSS, CSRF, auth bypass |
+| **Performance** | Large datasets, N+1 queries, memory leaks, slow queries |
+| **Integration** | API downtime, rate limits, schema changes, version mismatches |
+| **State** | Stale data, cache invalidation, session expiry |
+
+**Output format:**
+
+```markdown
+## Technical Edge Cases
+
+| ID | Category | Edge Case | Expected Behavior | Priority |
+|----|----------|-----------|-------------------|----------|
+| TE-01 | Concurrency | Two users edit same record | Last-write-wins / Optimistic locking | Must |
+| TE-02 | Data | Empty dataset on first load | Show empty state with CTA | Should |
+| TE-03 | Network | API timeout after 30s | Show retry option, preserve user input | Must |
+```
+
+---
+
+## Step 6: Risk Assessment
 
 ### Technical Risks
 
@@ -154,7 +182,7 @@ Propose specific technologies:
 
 ---
 
-## Step 6: Implementation Guidance
+## Step 7: Implementation Guidance
 
 ### Suggested Phases
 
@@ -189,7 +217,7 @@ Propose specific technologies:
 
 ---
 
-## Step 7: Generate SA Document
+## Step 8: Generate SA Document
 
 **Read template:** `docs/ai/requirements/templates/sa-template.md`
 
@@ -211,16 +239,20 @@ Propose specific technologies:
    - Technology stack
    - Reuse opportunities
 
-4. **Risk Assessment**
+4. **Technical Edge Cases**
+   - Concurrency, data boundaries, network, security
+   - Expected behavior for each edge case
+
+5. **Risk Assessment**
    - Technical risks with mitigations
    - Complexity flags
 
-5. **Implementation Guidance**
+6. **Implementation Guidance**
    - Suggested phases
    - Dependencies
    - Constraints
 
-6. **Open Technical Questions**
+7. **Open Technical Questions**
    - Items needing POC
    - Items needing research
 
@@ -232,6 +264,7 @@ Before finalizing, verify:
 
 - [ ] All FRs have feasibility assessment
 - [ ] Technology choices are justified
+- [ ] Technical edge cases are identified with expected behavior
 - [ ] Risks are identified with mitigations
 - [ ] Reuse opportunities are identified
 - [ ] Implementation phases are logical

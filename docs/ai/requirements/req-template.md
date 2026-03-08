@@ -155,7 +155,15 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 10. Edge Cases & Constraints
+## 10. Technical Edge Cases
+
+| ID | Category | Edge Case | Expected Behavior | Priority |
+|----|----------|-----------|-------------------|----------|
+| TE-01 | {Concurrency/Data/Network/Security/Performance} | {Description} | {How system should handle it} | Must/Should |
+
+---
+
+## 11. Edge Cases & Constraints
 
 ### Edge Cases
 
@@ -171,7 +179,7 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 11. Out of Scope
+## 12. Out of Scope
 
 > Explicitly excluded from this requirement
 
@@ -180,7 +188,7 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 12. Open Questions
+## 13. Open Questions
 
 | ID | Question | Owner | Status |
 |----|----------|-------|--------|
@@ -188,7 +196,7 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 13. Acceptance Criteria
+## 14. Acceptance Criteria
 
 ### Scenario 1: {Happy Path - Main Flow}
 
@@ -210,7 +218,7 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 14. Implementation Guidance
+## 15. Implementation Guidance
 
 ### Suggested Phases
 
@@ -228,7 +236,34 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 15. References
+## 16. Implementation Readiness Score
+
+**Score**: {0-100}%
+
+| Criteria | Status | Weight |
+|----------|--------|--------|
+| All FRs have testable acceptance criteria | ✅ / ❌ | 20% |
+| No critical open questions | ✅ / ❌ | 20% |
+| Technical risks have mitigations | ✅ / ❌ | 15% |
+| Business rules are explicit | ✅ / ❌ | 15% |
+| Error/edge cases defined | ✅ / ❌ | 15% |
+| UI/UX specs complete (if applicable) | ✅ / ❌ / N/A | 15% |
+
+**Missing for 100%**:
+- {item 1}
+- {item 2}
+
+---
+
+## 17. Changelog
+
+| Date | Change |
+|------|--------|
+| {YYYY-MM-DD} | Initial version |
+
+---
+
+## 18. References
 
 - **Related Docs**: {links to related requirements, designs}
 - **External Links**: {Jira tickets, Figma, API docs}

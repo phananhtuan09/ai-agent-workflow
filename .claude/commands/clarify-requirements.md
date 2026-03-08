@@ -65,21 +65,46 @@ Analyze user prompt to determine:
 | **Feature Type** | Keywords: UI, API, page, endpoint, database | `UI` / `API` / `Data` / `Full-stack` |
 | **Complexity** | Scope indicators, number of features | `Simple` / `Medium` / `Complex` |
 | **Domain Terms** | Industry jargon, unfamiliar terms | List of terms needing research |
-| **UI Components** | Mentions of screens, forms, flows | Boolean: needs UI/UX |
-| **Clarity Level** | How specific is the request | `Clear` / `Vague` / `Very Vague` |
+| **UI Needed** | Mentions of screens, forms, flows, pages | Boolean: needs UI/UX |
+
+### Determine Workflow Mode
+
+Based on Complexity, ask user to confirm mode:
+
+```
+AskUserQuestion(questions=[{
+  question: "Feature complexity detected as {Simple/Medium/Complex}. Which workflow mode?",
+  header: "Mode",
+  options: [
+    { label: "Light mode", description: "BA → SA → Consolidate (fast, low token cost)" },
+    { label: "Full mode", description: "BA → SA → Researcher/UI/UX → Consolidate (thorough)" }
+  ],
+  multiSelect: false
+}])
+```
+
+**Light Mode** (for Simple features or when user prefers speed):
+- Agents: BA → SA → Consolidate
+- Skip Researcher and UI/UX agents
+- Fewer Q&A rounds (1-2 max)
+- Smaller consolidated output
+
+**Full Mode** (for Complex features or when user wants thoroughness):
+- Full agent workflow as described in subsequent steps
+- All conditional agents evaluated
 
 ### Determine Agent Strategy
 
-Based on analysis:
+Based on analysis and mode:
 
-| Scenario | Agents to Run | Execution |
-|----------|---------------|-----------|
-| Simple API feature | BA → SA | Sequential |
-| Complex API feature | BA → SA | Sequential |
-| Simple UI feature | BA + SA (parallel) → UI/UX | Mixed |
-| Complex full-stack | BA → SA → UI/UX | Sequential |
-| Domain-specific | BA + Researcher (parallel) → SA → UI/UX | Mixed |
-| Very vague request | BA only first | Single, then reassess |
+| Scenario | Mode | Agents to Run | Execution |
+|----------|------|---------------|-----------|
+| Simple API feature | Light | BA → SA | Sequential |
+| Simple UI feature | Light | BA → SA | Sequential |
+| Complex API feature | Full | BA → SA | Sequential |
+| Complex full-stack | Full | BA → SA → UI/UX | Sequential |
+| Domain-specific | Full | BA + Researcher (parallel) → SA → UI/UX | Mixed |
+| Any feature | Light | BA → SA | Sequential |
 
 ### Decision Output
 
@@ -89,13 +114,13 @@ Based on analysis:
 **Feature**: {derived name}
 **Type**: {UI / API / Full-stack / Data}
 **Complexity**: {Simple / Medium / Complex}
-**Clarity**: {Clear / Vague / Very Vague}
+**Mode**: {Light / Full}
 
 **Agents Required**:
 - [x] BA Agent (always)
 - [x] SA Agent (always)
-- [ ] Researcher Agent (domain terms detected: {list})
-- [ ] UI/UX Agent (UI components needed)
+- [ ] Researcher Agent (domain terms detected: {list}) — Full mode only
+- [ ] UI/UX Agent (UI components needed) — Full mode only
 
 **Execution Plan**:
 1. {Step 1}
@@ -346,6 +371,9 @@ Create `docs/ai/requirements/req-{name}.md` with:
 ### Technology Stack
 {From SA document - stack table}
 
+### Technical Edge Cases
+{From SA document - edge cases table}
+
 ### Risks
 {From SA document - risk table}
 
@@ -399,6 +427,35 @@ Create `docs/ai/requirements/req-{name}.md` with:
 ## 12. Acceptance Criteria
 
 {Derived from FRs - Given/When/Then format}
+
+---
+
+---
+
+## 13. Implementation Readiness Score
+
+**Score**: {0-100}%
+
+| Criteria | Status | Weight |
+|----------|--------|--------|
+| All FRs have testable acceptance criteria | ✅ / ❌ | 20% |
+| No critical open questions | ✅ / ❌ | 20% |
+| Technical risks have mitigations | ✅ / ❌ | 15% |
+| Business rules are explicit | ✅ / ❌ | 15% |
+| Error/edge cases defined | ✅ / ❌ | 15% |
+| UI/UX specs complete (if applicable) | ✅ / ❌ / N/A | 15% |
+
+**Missing for 100%**:
+- {item 1}
+- {item 2}
+
+---
+
+## 14. Changelog
+
+| Date | Change |
+|------|--------|
+| {YYYY-MM-DD} | Initial version |
 
 ---
 
@@ -488,10 +545,13 @@ UI/UX Agent:
 
 ```
 Simple (1-2 Q&A rounds):
-  └── Consider: "This seems straightforward. Proceed with full agent workflow or quick mode?"
+  └── Default to Light mode. User can override to Full mode.
+
+Medium (2-3 Q&A rounds):
+  └── Ask user to choose Light or Full mode.
 
 Complex (many unknowns):
-  └── Recommend: "This is complex. Suggest breaking down into smaller requirements."
+  └── Default to Full mode. Recommend breaking down into smaller requirements.
 ```
 
 ---
