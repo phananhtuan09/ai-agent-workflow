@@ -121,5 +121,13 @@ requirement: null
     update troubleshooting for Node/network requirements
     ```
 
+- [x] [MODIFIED] `lib/selection.js`, `install.sh`, `README.md` - Preserve arrow-key multi-select when the installer is launched through `curl | bash`.
+  - Pseudo-code:
+    ```js
+    detect a real terminal via /dev/tty when stdio is piped
+    build readline and keypress handling on that terminal stream
+    document that the bootstrap installer supports arrow keys and space selection
+    ```
+
 ## 7. Follow-ups
 - Consider adding automated smoke tests around installer behavior in a temp workspace.

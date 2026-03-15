@@ -50,4 +50,10 @@ if [ -z "${REPO_DIR}" ]; then
   exit 1
 fi
 
-node "${REPO_DIR}/cli.js" "$@"
+# When this script is piped to bash, stdin belongs to the script stream.
+# Reattach the CLI stdio to the user's terminal so arrow-key selection still works.
+if [ ! -t 0 ] && [ -r /dev/tty ] && [ -w /dev/tty ]; then
+  node "${REPO_DIR}/cli.js" "$@" </dev/tty >/dev/tty 2>/dev/tty
+else
+  node "${REPO_DIR}/cli.js" "$@"
+fi
