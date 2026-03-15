@@ -36,14 +36,14 @@ Compare current implementation against planning doc to ensure all requirements a
 
 **Strategy (in order):**
 1. Extract file paths from planning doc task list
-2. If no file paths found: Read implementation doc `docs/ai/implementation/feature-{name}.md`
-3. If no implementation doc: Use git diff to find changed files
-4. If no git changes: Ask user for file paths
+2. If no file paths found: Use git diff or git status to find changed files
+3. If git evidence is too broad: Scan likely source folders
+4. If no reliable file set is found: Ask user for file paths
 
 **Tools:**
 - Read(file_path="docs/ai/planning/feature-{name}.md") - extract file mentions
-- Read(file_path="docs/ai/implementation/feature-{name}.md") - fallback
 - Bash(command="git diff --name-only main") - find changed files
+- Bash(command="git status --short") - fallback change discovery
 - Glob(pattern="src/**/*.{js,ts,py}") - last resort full scan
 - AskUserQuestion - ask user if all else fails
 

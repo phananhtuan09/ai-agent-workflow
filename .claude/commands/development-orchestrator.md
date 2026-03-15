@@ -155,11 +155,9 @@ Use an isolated sub-agent:
 
 ```
 Agent(
-  subagent_type="general-purpose",
+  subagent_type="dev-plan-reviewer",
   description="Review feature plan readiness",
-  prompt="Read agent definition: .claude/agents/dev-plan-reviewer.md
-
-Feature plan: {feature plan path}
+  prompt="Feature plan: {feature plan path}
 Requirement: {req path or none}
 Epic: {epic path or none}
 Orchestrator note: {specific concern if any}
@@ -215,11 +213,9 @@ Use an isolated sub-agent:
 
 ```
 Agent(
-  subagent_type="general-purpose",
+  subagent_type="dev-verifier",
   description="Verify execution results",
-  prompt="Read agent definition: .claude/agents/dev-verifier.md
-
-Feature plan: {feature plan path}
+  prompt="Feature plan: {feature plan path}
 Requirement: {req path or none}
 Epic: {epic path or none}
 Changed files: {list from execute phase}

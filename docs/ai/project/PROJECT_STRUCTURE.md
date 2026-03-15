@@ -9,10 +9,10 @@
   - integration/: integration/E2E test files (`*.e2e.spec.ts`)
 - docs/ai/project/: project docs (structure, conventions, patterns)
 - docs/ai/planning/: epic and feature planning docs
-- docs/ai/implementation/: implementation notes per feature
 - docs/ai/testing/: test plans per feature
   - `unit-{name}.md`: unit test docs (created by `/writing-test`)
   - `integration-{name}.md`: integration test docs (created by `/writing-integration-test`)
+- docs/ai/tooling/: cross-tool workflow mapping and migration references
 
 ## Design Patterns (in use)
 - Pattern A: short description + when to use
@@ -42,20 +42,25 @@
 - Config & secrets handling (if applicable)
 
 ## AI Agent Workflow Assets
-- `.agents/skills/`: Codex-native skill definitions (`SKILL.md` per skill)
-- `.agents/roles/`: worker role prompts used by orchestrated workflows
-- `.agents/themes/`: theme presets and workflow-specific assets for Codex flows
-- `.claude/commands/`: Claude command mirrors for key workflows
-- `.claude/skills/`: Claude skill mirrors and compatibility copies
+- `.claude/`: single source of truth for workflow content and migration inputs
+- `.claude/commands/`: primary workflow commands to author and sync from
+- `.claude/skills/`: primary skill definitions to author and sync from
+- `.claude/agents/`: primary worker-role prompts to author and sync from
+- `.claude/output-styles/`: primary response style definitions to author and sync from
+- `.claude/themes/`: primary theme presets to author and sync from
+- `.claude/scripts/`: reusable workflow scripts to sync from when needed
+- `.agents/skills/`: Codex compatibility copies and native runtime skill mirrors
+- `.agents/roles/`: Codex compatibility copies for worker roles
+- `.agents/themes/`: Codex compatibility copies for theme assets
 
 ## AI Docs Roles (existing only)
 - `docs/ai/project/`: repository-wide conventions and structure; workflow overview and navigation live in `README.md`.
 - `docs/ai/planning/`: epic tracking docs and feature plans; use `epic-template.md` to decompose large requirements and `feature-template.md` to drive task execution.
-- `docs/ai/implementation/`: per-feature implementation notes tracking what changed and why.
 - `docs/ai/testing/`: test plans and results
   - `unit-{name}.md`: unit test docs (from `/writing-test`)
   - `integration-{name}.md`: integration test docs (from `/writing-integration-test`)
   - Run tests via `/run-test` command
+- `docs/ai/tooling/`: cross-tool capability mapping and migration references used by sync workflows
 
 ## Guiding Questions (for AI regeneration)
 - How is the codebase organized by domain/feature vs layers?

@@ -71,7 +71,7 @@ Use `docs/ai/testing/unit-{name}.md` as the source of truth.
 ## Step 3: Analyze Code & Generate Tests (automatic)
 
 **Analyze implementation:**
-- Read files from `docs/ai/implementation/feature-{name}.md` or scan source
+- Read files referenced in `docs/ai/planning/feature-{name}.md`; if the plan does not name files clearly, scan source
 - Identify functions/components: signatures, parameters, return types, exceptions
 - Map: input types → expected outputs → edge cases → error cases
 
