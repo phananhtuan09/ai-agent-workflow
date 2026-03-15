@@ -1,29 +1,10 @@
 ---
 name: react-best-practices
 description: |
-  React and Next.js performance optimization (NOT styling/visual design).
-  Contains rules for async patterns, bundle optimization, and rendering performance.
-
-  Use when working with React/Next.js performance:
-  - Implementing data fetching (client or server-side)
-  - Optimizing bundle size or load times
-  - Working with async operations and Promise handling
-  - Implementing Suspense boundaries or streaming
-  - Reviewing code for performance issues
-
-  Keywords: React, Next.js, performance, optimization, bundle, async, Promise,
-            waterfall, rerender, memo, useMemo, useCallback, Suspense, RSC,
-            server components, client components, SWR, data fetching, cache
-
-  Do NOT load for:
-  - Non-React projects (Vue, Angular, Svelte, etc.)
-  - Backend-only code without React integration
-  - Pure CSS/styling/visual design work (use frontend-design-fundamentals)
-  - UI component styling, colors, spacing (use frontend-design-fundamentals)
-
-  Works with other skills:
-  - frontend-design-fundamentals: For UI/styling best practices
-  - quality-code-check: For linting and type checking
+  React/Next.js performance optimization (NOT styling): async patterns, bundle, rendering performance.
+  Use when: data fetching, bundle optimization, async/Promise handling, Suspense/streaming, performance review.
+  Keywords: React, Next.js, performance, optimization, bundle, async, Promise, waterfall, rerender, memo, useMemo, useCallback, Suspense, RSC, server components, client components, SWR, data fetching, cache
+  Do NOT use for: non-React projects, backend-only, CSS/styling (→ frontend-design-fundamentals).
 ---
 
 # React Best Practices

@@ -1,3 +1,9 @@
+---
+name: Tech Explainer
+description: Adaptive technical explanations tailored to your experience level — from Fresher to Senior
+keep-coding-instructions: false
+---
+
 # Tech Explainer Output Style
 
 This output style is designed for explaining code, technical theories, and programming concepts.

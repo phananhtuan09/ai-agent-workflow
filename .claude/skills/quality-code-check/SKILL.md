@@ -1,31 +1,10 @@
 ---
 name: quality-code-check
 description: |
-  Code quality validation through linting, type checking, and build verification.
-  Multi-language support for automated quality gates.
-
-  Use when validating code quality:
-  - After implementation to validate code meets standards
-  - Before creating pull requests or commits
-  - When debugging build/type/lint issues
-  - User explicitly requests quality checks
-
-  Provides language-specific tool commands and validation workflows for:
-  - JavaScript/TypeScript (ESLint, tsc, build tools)
-  - Python (Ruff, MyPy, Pyright)
-  - Go (golangci-lint, go build)
-  - Rust (Clippy, cargo check/build)
-  - Java (Gradle, Maven)
-
-  Focuses on detecting issues early through systematic automated checks.
-
+  Code quality validation: linting, type checking, build verification. Multi-language (JS/TS/Python/Go/Rust/Java).
+  Use when: validating after implementation, pre-PR/commit checks, debugging lint/build/type issues, user requests quality checks.
   Keywords: lint, linting, type check, typecheck, build, quality, validation, eslint, tsc
-
-  Do NOT load for:
-  - Visual design work (use frontend-design-fundamentals, frontend-design-responsive)
-  - UX patterns (use ux-feedback-patterns, ux-accessibility)
-  - Initial development before implementation is stable
-  - Figma extraction (use frontend-design-figma-extraction)
+  Do NOT use for: visual design, UX patterns, Figma extraction.
 ---
 
 # Quality Code Check

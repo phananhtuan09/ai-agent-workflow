@@ -8,7 +8,7 @@
   - unit/: unit test files (`*.spec.ts`, `*.test.ts`)
   - integration/: integration/E2E test files (`*.e2e.spec.ts`)
 - docs/ai/project/: project docs (structure, conventions, patterns)
-- docs/ai/planning/: feature plans
+- docs/ai/planning/: epic and feature planning docs
 - docs/ai/implementation/: implementation notes per feature
 - docs/ai/testing/: test plans per feature
   - `unit-{name}.md`: unit test docs (created by `/writing-test`)
@@ -41,9 +41,16 @@
 - Import/module conventions
 - Config & secrets handling (if applicable)
 
+## AI Agent Workflow Assets
+- `.agents/skills/`: Codex-native skill definitions (`SKILL.md` per skill)
+- `.agents/roles/`: worker role prompts used by orchestrated workflows
+- `.agents/themes/`: theme presets and workflow-specific assets for Codex flows
+- `.claude/commands/`: Claude command mirrors for key workflows
+- `.claude/skills/`: Claude skill mirrors and compatibility copies
+
 ## AI Docs Roles (existing only)
 - `docs/ai/project/`: repository-wide conventions and structure; workflow overview and navigation live in `README.md`.
-- `docs/ai/planning/`: feature plans using `feature-template.md` with Acceptance Criteria; plans should drive a todo checklist before coding.
+- `docs/ai/planning/`: epic tracking docs and feature plans; use `epic-template.md` to decompose large requirements and `feature-template.md` to drive task execution.
 - `docs/ai/implementation/`: per-feature implementation notes tracking what changed and why.
 - `docs/ai/testing/`: test plans and results
   - `unit-{name}.md`: unit test docs (from `/writing-test`)
@@ -57,4 +64,3 @@
 - Where do configs/secrets live and how are they injected?
 - What is the expected test file placement and naming?
 - Any build/deployment constraints affecting structure (monorepo, packages)?
-

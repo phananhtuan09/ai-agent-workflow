@@ -1,40 +1,10 @@
 ---
 name: frontend-design-fundamentals
 description: |
-  Core design principles for implementing beautiful, professional UIs.
-  Ensures consistent quality through spacing, typography, colors, and visual hierarchy.
-
-  ALWAYS load when implementing UI/frontend VISUAL DESIGN:
-  - Styling components: colors, spacing, typography, shadows
-  - Building layouts: CSS, flexbox, grid, positioning
-  - Creating visual elements: cards, buttons, forms, dashboards
-  - Animation, transition, hover effects, motion
-  - Modern, stunning, elegant, sleek interfaces
-
-  Keywords: styling, CSS, layout, colors, spacing, typography, shadows,
-            animation, transition, hover, visual, aesthetic, design,
-            beautiful, stunning, elegant, sleek, professional
-
-  Purpose: Ensure ALL UI implementation follows design best practices for:
-  - Consistent spacing scale (not arbitrary values)
-  - Typography hierarchy (readable, professional)
-  - Color contrast (accessible, WCAG compliant)
-  - Visual hierarchy (clear, intentional)
-  - Avoiding generic AI aesthetics
-
-  Do NOT load for:
-  - Backend-only code (APIs, database, server logic)
-  - Pure logic/algorithm work without UI
-  - DevOps, infrastructure, CLI tools
-  - React/Next.js performance optimization (use react-best-practices)
-  - Data fetching, async patterns, bundle optimization (use react-best-practices)
-
-  Works with other skills:
-  - react-best-practices: For React performance (NOT styling)
-  - theme-factory: When user needs help CHOOSING colors/theme
-  - figma-design-extraction: When Figma file provided
-  - design-responsive: For mobile/tablet/responsive specifics
-  - ux-accessibility: For keyboard/screen reader specifics
+  Core design principles: spacing, typography, colors, visual hierarchy for professional UIs.
+  Use when: styling components, CSS/flexbox/grid layouts, creating visual elements (cards, buttons, forms, dashboards), animations, hover effects, modern/elegant UI.
+  Keywords: styling, CSS, layout, colors, spacing, typography, shadows, animation, transition, hover, visual, aesthetic, design, beautiful, stunning, elegant, sleek, professional
+  Do NOT use for: backend, DevOps, CLI tools, React/Next.js performance (→ react-best-practices).
 ---
 
 # Design Fundamentals

@@ -31,9 +31,13 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 **If Epic Reference Provided:**
 - Read the epic doc: `Read(file_path="docs/ai/planning/epic-{name}.md")`
 - Extract: requirement link, feature plan list, which plan to create next
+- If the epic table tracks them, also extract `FR Scope` and `Depends On` for the selected feature plan row
 - Read the linked requirement doc (from epic's `requirement` frontmatter)
 - Set `epic_plan` and `requirement` frontmatter in the generated feature plan
-- After creating the feature plan, update the epic's Feature Plans table (status → `open`)
+- After creating the feature plan, update the epic's Feature Plans table
+  - set status → `open`
+  - populate `FR Scope` and `Depends On` when the epic table tracks those columns
+  - preserve the existing table shape when the epic uses the older schema
 
 **If Requirement Doc Provided:**
 - Read the requirement doc: `Read(file_path="docs/ai/requirements/req-{name}.md")`
@@ -257,6 +261,7 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
    - Link to epic: `[epic-{name}.md](epic-{name}.md)` (if exists)
    - Set `epic_plan` and `requirement` in frontmatter accordingly
    - If standalone (no req, no epic): set both frontmatter to null and **omit this section**
+   - If epic context exists, keep the feature plan aligned with the epic row metadata (`FR Scope`, `Depends On`) when those fields are tracked there
 
 1. **Codebase Context** (if exploration was done):
    - Similar features found
@@ -396,9 +401,10 @@ req-{name}.md  ←→  epic-{name}.md  ←→  feature-{name}.md
 - feature-template: `requirement` → req doc, `epic_plan` → epic doc
 - Include Section 0 with both links
 - After creation, update epic's Feature Plans table
-
+  - set status to `open`
+  - refresh `FR Scope` and `Depends On` when those columns exist
 When requirement doc exists, planning doc should:
 1. Link to requirement doc and epic (Section 0: Related Documents)
 2. Not duplicate requirement content - reference it instead
 3. Focus on technical implementation details
-4. After creation, update epic's Feature Plans table (if epic exists)
+4. After creation, update epic's Feature Plans table (if epic exists), including `FR Scope` and `Depends On` when the epic tracks them

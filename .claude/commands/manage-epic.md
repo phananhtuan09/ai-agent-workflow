@@ -98,7 +98,7 @@ Read(file_path="docs/ai/planning/epic-template.md")
 Generate `docs/ai/planning/epic-{name}.md` with:
 - `requirement` frontmatter pointing to the req doc
 - Overview: 1-3 sentences from requirement's executive summary
-- Feature Plans table: proposed feature plans with descriptions
+- Feature Plans table: proposed feature plans with descriptions, plus `FR Scope` and `Depends On` when the epic template tracks them
 - Dependency graph: show dependencies between feature plans
 - Related Documents: link back to requirement
 
@@ -133,11 +133,19 @@ Read(file_path="docs/ai/planning/epic-{name}.md")
 | New feature plan created | Add row to Feature Plans table |
 | Feature plan completed | Update status to `completed` |
 | Feature plan started | Update status to `in_progress` |
+| Feature plan blocked | Update status to `blocked` |
 | Dependency changed | Update dependency graph |
 
 ### 3c: Apply Update
 
 Edit the epic document with the change. Keep all other content intact.
+
+If the epic table contains `FR Scope` or `Depends On` columns:
+- update those values when the new information is available
+
+If the epic table uses the older shape without those columns:
+- preserve the current table shape
+- encode dependency detail in the dependency graph or description instead
 
 ---
 
@@ -148,7 +156,8 @@ When a new feature plan is created (e.g., via `/create-plan`), link it to the ep
 1. Read the epic document
 2. Add the feature plan to the Feature Plans table
 3. Update the feature plan's `epic_plan` frontmatter to point to the epic
-4. Update dependency graph if needed
+4. Populate `FR Scope` and `Depends On` when the epic table tracks them
+5. Update dependency graph if needed
 
 ---
 
@@ -160,8 +169,15 @@ Scan all linked documents and synchronize status:
 2. For each feature plan in the table:
    - Read the feature plan
    - Check if implementation tasks are completed
+   - Detect explicit blockers
    - Update status in epic table
 3. Update requirement doc if all feature plans are completed
+
+**Default status mapping:**
+- No completed implementation tasks yet → `open`
+- Some completed tasks and some remaining → `in_progress`
+- Explicit blocker recorded in the feature plan → `blocked`
+- All implementation tasks complete → `completed`
 
 ---
 
@@ -193,7 +209,7 @@ When creating or updating documents, ensure cross-links are maintained.
 
 ### Creating Epic from Requirement (`/manage-epic`)
 1. Epic: set `requirement` frontmatter → req doc path
-2. Req doc: add "Related Plans" section with epic link (this section doesn't exist by default)
+2. Req doc: add or update the "Related Plans" section with epic link
 
 ### Adding Feature Plan to Epic (`/create-plan` with epic context)
 1. Epic: add row to Feature Plans table
@@ -225,3 +241,4 @@ When creating or updating documents, ensure cross-links are maintained.
 - Feature plans contain all implementation details (via `/create-plan`)
 - Requirement doc contains all WHAT details (via `/clarify-requirements`)
 - Epic bridges the gap: tracks WHICH feature plans implement WHICH requirement
+- Status values supported by the epic template: `open`, `in_progress`, `blocked`, `completed`

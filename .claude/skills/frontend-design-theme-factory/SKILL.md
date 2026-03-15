@@ -2,27 +2,9 @@
 name: frontend-design-theme-factory
 description: |
   Interactive UI theme generation when user needs help choosing colors/fonts.
-  Generates cohesive themes based on brand personality using color harmony theory.
-
-  Use ONLY when user is UNCERTAIN about colors/theme and asks for help:
-  - "What theme should I use?" "Help me pick colors" "Generate theme"
-  - "What colors work well together?" "Suggest color palette"
-  - User uncertain about design direction, needs aesthetic suggestions
-  - Building UI with no design specs AND no color preference
-
-  Keywords: theme, color palette, colors, fonts, brand personality, color harmony,
-            aesthetic, style, visual style, look and feel, beautiful, attractive
-
-  Interactive workflow: Ask personality → Present options → Generate custom theme.
-  References pre-defined themes in .claude/themes/.
-
-  Do NOT load for:
-  - User already has clear colors/aesthetic in mind (use design-fundamentals)
-  - Figma/design file provided (use figma-design-extraction)
-  - User just needs to apply existing theme
-  - Responsive layout questions (use design-responsive)
-
-  Integrates with design-fundamentals: Generates themes following design principles.
+  Use ONLY when user is uncertain: "What theme?", "Help me pick colors", "Suggest color palette", "What colors work together?".
+  Keywords: theme, color palette, colors, fonts, brand personality, color harmony, aesthetic, style, visual style, look and feel, beautiful, attractive
+  Do NOT use for: user has clear colors in mind, Figma provided, applying existing theme, responsive layout.
 ---
 
 # Theme Factory

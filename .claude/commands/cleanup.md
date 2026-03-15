@@ -43,9 +43,7 @@ Options:
 docs/ai/planning/             # epic-*.md, feature-*.md
 docs/ai/planning/archive/     # backup files
 docs/ai/testing/              # unit-*.md, integration-*.md
-docs/ai/requirements/         # req-*.md
-docs/ai/requirements/agents/  # ba-*.md, sa-*.md, research-*.md, uiux-*.md
-docs/ai/requirements/archive/ # backup files
+docs/ai/requirements/archive/ # backup files (requirements main files are never deleted)
 ```
 
 **Based on CLEANUP_SCOPE:**
@@ -56,7 +54,7 @@ docs/ai/requirements/archive/ # backup files
 **Command to find old files (older than RETENTION_DAYS):**
 
 ```bash
-find docs/ai/planning docs/ai/testing docs/ai/requirements -name "*.md" -type f -mtime +{RETENTION_DAYS} 2>/dev/null
+find docs/ai/planning docs/ai/testing docs/ai/requirements/archive -name "*.md" -type f -mtime +{RETENTION_DAYS} 2>/dev/null
 ```
 
 **For archive only:**
@@ -68,7 +66,7 @@ find docs/ai/planning/archive docs/ai/requirements/archive -name "*.md" -type f 
 **For main only (exclude archive):**
 
 ```bash
-find docs/ai/planning docs/ai/testing docs/ai/requirements -name "*.md" -type f -mtime +{RETENTION_DAYS} -not -path "*/archive/*" 2>/dev/null
+find docs/ai/planning docs/ai/testing -name "*.md" -type f -mtime +{RETENTION_DAYS} -not -path "*/archive/*" 2>/dev/null
 ```
 
 ---
@@ -173,8 +171,6 @@ rm "{file_path}"
 | `docs/ai/planning/` | `epic-*.md`, `feature-*.md` |
 | `docs/ai/planning/archive/` | `epic-*_*.md`, `feature-*_*.md` |
 | `docs/ai/testing/` | `unit-*.md`, `integration-*.md` |
-| `docs/ai/requirements/` | `req-*.md` |
-| `docs/ai/requirements/agents/` | `ba-*.md`, `sa-*.md`, `research-*.md`, `uiux-*.md` |
 | `docs/ai/requirements/archive/` | `req-*_*.md` |
 
 ### Excluded from Cleanup

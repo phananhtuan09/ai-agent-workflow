@@ -1,27 +1,10 @@
 ---
 name: frontend-design-responsive
 description: |
-  Mobile-first responsive design for beautiful, multi-device UIs. Breakpoints, fluid layouts,
-  touch optimization, and creative responsive patterns for distinctive experiences across screens.
-
-  Use when building responsive UIs or adapting for mobile/tablet/desktop:
-  - Creating mobile-first layouts, responsive landing pages, web apps
-  - Defining breakpoints and fluid typography (mobile/tablet/desktop sizes)
-  - Optimizing for touch devices, mobile users, smartphone/tablet interactions
-  - Responsive component patterns (navigation, tables, forms, images)
-  - User mentions "mobile", "responsive", "tablet", "multi-device", "touch"
-
+  Mobile-first responsive design: breakpoints, fluid layouts, touch optimization across devices.
+  Use when: building responsive UIs, mobile/tablet/desktop layouts, touch interactions, responsive components.
   Keywords: responsive, mobile-first, mobile, tablet, desktop, breakpoints, touch, multi-device
-
-  Do NOT load for:
-  - Desktop-only applications without responsive needs
-  - Figma extraction (use figma-design-extraction)
-  - Accessibility-only questions (use ux-accessibility)
-  - Theme/color selection (use theme-factory)
-  - Code quality checks (use quality-code-check)
-
-  Mobile-first approach: Design for mobile constraints first, enhance progressively.
-  Integrates with design-fundamentals: Apply spacing, typography, color systems responsively.
+  Do NOT use for: desktop-only apps, Figma extraction, accessibility-only, theme selection.
 ---
 
 # Responsive Design

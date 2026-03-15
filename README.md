@@ -4,11 +4,12 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 
 ## Features
 
-- **Multi-Platform Support**: Works with Cursor, GitHub Copilot, Claude Code, OpenCode, and Factory Droid
+- **Multi-Platform Support**: Works with Codex, Cursor, GitHub Copilot, Claude Code, OpenCode, and Factory Droid
 - **Structured Workflows**: Plan → Implement → Test → Review methodology
 - **9 Pre-built Commands**: Create plans, execute tasks, run tests, code reviews, and more
 - **7 Reusable Skills**: Design fundamentals, accessibility, theme generation, quality checks
 - **Universal Standards**: `AGENTS.md` works across all AI tools
+- **Bootstrap Installer**: One command from GitHub, no npm registry required
 - **Smart Installation**: Protected files, selective updates, no data loss
 
 ## Quick Start
@@ -16,7 +17,11 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 > Requires: [Node.js](https://nodejs.org/) (>= 14)
 
 ```bash
-npx ai-workflow-init
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash
+```
+
+```powershell
+irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.ps1 | iex
 ```
 
 Select your AI tool(s) from the interactive menu using **↑↓** to navigate, **Space** to select, **Enter** to confirm.
@@ -25,15 +30,20 @@ Select your AI tool(s) from the interactive menu using **↑↓** to navigate, *
 
 ## Installation Options
 
-### Interactive Installation (Recommended)
+### Interactive Installation (Recommended, no npm registry)
 
 ```bash
-npx ai-workflow-init
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash
+```
+
+```powershell
+irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.ps1 | iex
 ```
 
 Choose from:
-- **Cursor** → `.cursor/commands/` and `.cursor/rules/`
-- **GitHub Copilot** → `.github/prompts/` and `.github/copilot-instructions.md`
+- **Codex** → `.agents/skills/`, `.agents/themes/`, and root `AGENTS.md`
+- **Cursor** → `.cursor/commands/` and `.cursor/prompts/`
+- **GitHub Copilot** → `.github/prompts/`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`
 - **OpenCode** → `.opencode/command/`, `.opencode/skill/`, `.opencode/agent/`
 - **Factory Droid** → `.factory/commands/`, `.factory/skills/`, `.factory/droids/`
@@ -41,6 +51,48 @@ Choose from:
 ### Install Specific Tool
 
 ```bash
+# Install only Codex
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool codex
+
+# Install only Claude Code
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool claude
+
+# Install only Cursor
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool cursor
+
+# Install only OpenCode
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool opencode
+
+# Install only Factory Droid
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool factory
+
+# Install only GitHub Copilot
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool copilot
+```
+
+```powershell
+# Install only Codex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.ps1))) --tool codex
+```
+
+### Install All Tools
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --all
+```
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.ps1))) --all
+```
+
+### npm Fallback
+
+#### Install Specific Tool
+
+```bash
+# Install only Codex
+npx ai-workflow-init --tool codex
+
 # Install only Claude Code
 npx ai-workflow-init --tool claude
 
@@ -57,7 +109,7 @@ npx ai-workflow-init --tool factory
 npx ai-workflow-init --tool copilot
 ```
 
-### Install All Tools
+#### Install All Tools
 
 ```bash
 npx ai-workflow-init --all
@@ -382,8 +434,9 @@ AGENTS.md               # Universal AI instructions
 
 | Tool | Commands | Skills | Other |
 |------|----------|--------|-------|
-| **Cursor** | `.cursor/commands/*.md` | `.cursor/rules/` | `.cursor/CLAUDE.md` |
-| **GitHub Copilot** | `.github/prompts/*.prompt.md` | - | `.github/copilot-instructions.md` |
+| **Cursor** | `.cursor/commands/*.md` | - | `.cursor/prompts/*.md` |
+| **GitHub Copilot** | `.github/prompts/*.prompt.md` | - | - |
+| **Codex** | - | `.agents/skills/*/SKILL.md` | `.agents/themes/*.theme.json`, `AGENTS.md` |
 | **Claude Code** | `.claude/commands/*.md` | `.claude/skills/*/SKILL.md` | `.claude/CLAUDE.md`, `.claude/themes/` |
 | **OpenCode** | `.opencode/command/*.md` | `.opencode/skill/*/SKILL.md` | `.opencode/agent/`, `opencode.json` |
 | **Factory Droid** | `.factory/commands/*.md` | `.factory/skills/*/SKILL.md` | `.factory/droids/*.md` |
@@ -396,6 +449,7 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 
 | Skill | Description |
 |-------|-------------|
+| `brainstorm-partner` | Read-only brainstorming, bug breakdown, feature logic discovery, and option analysis before implementation |
 | `quality-code-check` | Linting, type checking, build verification |
 | `design-fundamentals` | Typography, colors, spacing, visual hierarchy |
 | `design-responsive` | Mobile-first responsive design, breakpoints |
@@ -408,13 +462,13 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 
 ## Platform Compatibility
 
-| Feature | Cursor | Copilot | Claude | OpenCode | Factory Droid |
-|---------|--------|---------|--------|----------|---------------|
-| Commands | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Skills | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Custom Agents | ❌ | ❌ | ❌ | ✅ | ✅ (Droids) |
-| AGENTS.md | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Path-specific rules | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Feature | Codex | Cursor | Copilot | Claude | OpenCode | Factory Droid |
+|---------|-------|--------|---------|--------|----------|---------------|
+| Commands | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Skills | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Custom Agents | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (Droids) |
+| AGENTS.md | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Path-specific rules | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -422,7 +476,7 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 
 - **Protected Files**: `CODE_CONVENTIONS.md`, `PROJECT_STRUCTURE.md` never overwritten
 - **Selective Updates**: Only templates and README updated
-- **Safe Cloning**: Uses temp directories, no data loss
+- **Temp Bootstrap**: Downloads and extracts in temp directories before syncing
 - **Multi-Select**: Choose exactly which tools you need
 - **Cross-Platform**: Windows, macOS, Linux
 
@@ -442,7 +496,8 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 
 | Issue | Solution |
 |-------|----------|
-| `npx` not found | Install Node.js >= 14 |
+| `node` not found | Install Node.js >= 14 |
+| `tar` not found | Install tar or use the PowerShell installer on Windows |
 | Permission denied | Run in a directory you own |
 | Interactive menu broken | Installer falls back to numbered menu |
 | Network error | Check internet, try VPN if blocked |
@@ -451,7 +506,7 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 
 ## Contributing
 
-This project maintains workflows for 5 AI coding tools. When adding commands:
+This project maintains workflows for 6 AI coding tools. When adding commands:
 
 1. Add to `.claude/commands/` (source of truth)
 2. Run `/sync-workflow` to propagate to other tools

@@ -1,27 +1,10 @@
 ---
 name: ux-accessibility
 description: |
-  Accessibility principles for inclusive design - keyboard navigation, screen readers,
-  ARIA, color contrast, and focus management. WCAG compliance for interfaces usable by all.
-
-  Use when implementing interactive UI components requiring accessibility:
-  - Forms, buttons, links, interactive elements needing keyboard access
-  - Keyboard navigation, focus management, tab order
-  - Screen reader support with semantic HTML and ARIA attributes
-  - Color contrast validation for text/buttons (WCAG AA/AAA standards)
-  - Modals, dialogs, dropdowns needing focus trapping
-  - User mentions "accessible", "WCAG", "disabilities", "keyboard", "screen reader"
-
+  Accessibility: keyboard navigation, screen readers, ARIA, focus management, WCAG compliance.
+  Use when: interactive UI needing keyboard access, screen reader support, ARIA attributes, color contrast, focus trapping, modals/dialogs.
   Keywords: accessible, accessibility, WCAG, keyboard, screen reader, ARIA, contrast, a11y
-
-  Do NOT load for:
-  - Visual design/styling only (use frontend-design-fundamentals)
-  - Theme/color selection (use frontend-design-theme-factory)
-  - Responsive layout (use frontend-design-responsive)
-  - Figma extraction (use frontend-design-figma-extraction)
-  - Code quality checks (use quality-code-check)
-
-  Focus on making UI usable via keyboard, screen readers, assistive technologies.
+  Do NOT use for: visual styling only, theme selection, responsive layout, Figma extraction.
 ---
 
 # UX Accessibility

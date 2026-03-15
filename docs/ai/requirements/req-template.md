@@ -271,6 +271,17 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
+## Related Plans (Optional)
+
+> Remove this section if no epic or feature plans are linked.
+
+| Type | Document | Status | Scope |
+|------|----------|--------|-------|
+| Epic | [epic-{name}.md](../planning/epic-{name}.md) | open/in_progress/blocked/completed | {Requirement-wide tracking} |
+| Feature Plan | [feature-{name}.md](../planning/feature-{name}.md) | open/in_progress/blocked/completed | {FR-01, FR-02} |
+
+---
+
 ## Next Steps
 
 1. [ ] Review this requirement document

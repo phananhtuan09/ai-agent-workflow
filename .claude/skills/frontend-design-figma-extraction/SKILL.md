@@ -1,35 +1,10 @@
 ---
 name: frontend-design-figma-extraction
 description: |
-  Complete Figma design extraction for pixel-perfect implementation.
-  Extracts design tokens, component specs, layouts, and responsive behavior systematically.
-
-  Use when user provides Figma design:
-  - Figma URL or file link provided
-  - User mentions "Figma", "design file", "mockup", or "design system"
-  - During /create-plan phase when design needs extraction
-  - User says "extract from Figma" or references Figma link
-
-  Extract systematically:
-  - Design tokens: ALL colors (hex + usage), typography (sizes, weights, line heights),
-    spacing scale, border radius, shadows, opacity values
-  - Components: ALL states (default, hover, active, focus, disabled, loading, error),
-    ALL variants (size/style/intent), exact dimensions, spacing, visual properties
-  - Layouts: page structure, grid systems (columns, gutters), component hierarchy
-  - Responsive: mobile/tablet/desktop differences explicitly documented
-  - Assets: icons (names, sizes), images (dimensions, alt text), illustrations
-
+  Extracts Figma design specs (tokens, components, layouts, responsive) for pixel-perfect implementation.
+  Use when: Figma URL/link provided; user mentions "Figma", "design file", "mockup", "design system", "extract from Figma"; during /create-plan phase.
   Keywords: Figma, design file, mockup, extract, MCP, design system, specs
-
-  Goal: Extract ONCE completely during planning phase. Implementation should never
-  need to re-fetch from Figma MCP. Focus on exact values only - no approximations,
-  no guessing. Completeness prevents re-work and design inconsistencies.
-
-  Critical for /create-plan workflow. Validates MCP connection before extraction.
-  Documents everything in structured format for /execute-plan to implement accurately.
-
-  Do NOT load for: Building UI without design (use theme-factory), implementing
-  from already-extracted specs, responsive layout questions, or backend work.
+  Do NOT use for: UI without Figma, already-extracted specs, responsive layout only, backend work.
 ---
 
 # Figma Design Extraction

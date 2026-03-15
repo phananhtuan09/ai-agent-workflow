@@ -14,12 +14,14 @@ requirement: {docs/ai/requirements/req-xxx.md or null}
 
 ## 2. Feature Plans
 
-| # | Feature Plan | Priority | Status | Description |
-|---|-------------|----------|--------|-------------|
-| 1 | [feature-{name}-part1.md](feature-{name}-part1.md) | P{0-4} | open | {Brief description} |
-| 2 | [feature-{name}-part2.md](feature-{name}-part2.md) | P{0-4} | open | {Brief description} |
+| # | Feature Plan | Priority | Status | FR Scope | Depends On | Description |
+|---|-------------|----------|--------|----------|------------|-------------|
+| 1 | [feature-{name}-part1.md](feature-{name}-part1.md) | P{0-4} | open | FR-01, FR-02 | - | {Brief description} |
+| 2 | [feature-{name}-part2.md](feature-{name}-part2.md) | P{0-4} | open | FR-03 | feature-{name}-part1 | {Brief description} |
 
-**Status values:** `open` | `in_progress` | `completed`
+**Status values:** `open` | `in_progress` | `blocked` | `completed`
+
+Use `-` for `FR Scope` or `Depends On` when the workflow does not need that level of tracking.
 
 ---
 

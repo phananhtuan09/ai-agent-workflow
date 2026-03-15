@@ -16,16 +16,14 @@
     "ai",
     "workflow",
     "docs",
-    "degit",
+    "bootstrap",
     "init",
+    "codex",
     "cursor",
     "copilot",
     "claude",
     "opencode"
   ],
-  "dependencies": {
-    "degit": "^2.8.4"
-  },
   "engines": {
     "node": ">=14"
   },
@@ -37,7 +35,11 @@
   },
   "files": [
     "cli.js",
+    "lib/",
+    "install.sh",
+    "install.ps1",
     "docs/",
+    ".agents/",
     ".cursor/",
     ".claude/",
     ".github/",

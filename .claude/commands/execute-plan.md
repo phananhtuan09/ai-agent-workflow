@@ -222,7 +222,22 @@ Only run after ALL phases are marked complete. If incomplete phases remain, skip
 - Persistent failures: Document issues, proceed with caution
 - See Notes section for manual commands if needed
 
-## Step 6: Next Actions
+## Step 6: Sync Epic Status (When Linked)
+
+After the current run, inspect the planning doc frontmatter.
+
+If `epic_plan` is non-null:
+- sync the linked epic before final next actions
+- update the feature plan status using this mapping:
+  - some work complete and tasks remain → `in_progress`
+  - explicit blocked task or blocker note → `blocked`
+  - all implementation tasks complete → `completed`
+- skip this entire step for standalone feature plans with no epic link
+
+Recommended invocation:
+- run `/manage-epic` in sync mode using the linked epic and current feature plan
+
+## Step 7: Next Actions
 
 **If all phases complete:**
 
@@ -230,6 +245,7 @@ Only run after ALL phases are marked complete. If incomplete phases remain, skip
 ✓ All phases complete!
 
 Next steps:
+  /manage-epic         → Sync epic status (if linked)
   /code-review          → Verify against standards
   /writing-test         → Add test coverage
   /check-implementation → Validate alignment with plan
@@ -238,6 +254,7 @@ Next steps:
 **If phases remain:**
 
 - User runs `/execute-plan` again; Phase detection (Step 1d) will resume correctly
+- If the plan is linked to an epic, sync epic status before resuming or handing off
 
 ## Notes
 
