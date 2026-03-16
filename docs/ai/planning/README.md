@@ -18,6 +18,9 @@ This directory contains planning documents for both epics and individual feature
 - Small or self-contained requirement: use `create-plan`
 - Large requirement with multiple slices or dependencies: use `manage-epic` first, then create feature plans under that epic
 - If you want one entry point that routes planning and execution for you, use `development-orchestrator`
+- `development-orchestrator` now starts by selecting a run mode:
+  - `docs-only`: generate or refresh the planning docs needed for review, then stop before implementation
+  - `all`: run planning, review, implementation, verification, and sync in one pass
 
 ### Creating a Feature Plan
 Use the `create-plan` command to generate a new feature plan:

@@ -27,6 +27,7 @@ Optional:
 
 - direct user scope notes
 - blocker notes
+- explicit orchestrator run mode: `docs-only` or `all`
 - explicit instruction to plan only, execute only, or sync only
 
 ## Required Context
@@ -83,11 +84,34 @@ This skill must work with and without optional orchestrator-specific template ch
 
 Standalone `create-plan` and `execute-plan` flows must remain valid.
 
+## Run Modes
+
+Before routing, ask the user to choose the orchestrator run mode unless the prompt already selected one explicitly.
+
+For Codex, ask directly in one concise numbered prompt:
+
+1. `docs-only` - generate or refresh the planning docs needed for review, then stop before implementation
+2. `all` - run the full workflow end to end with no further confirmation prompts
+
+Mode rules:
+
+- `docs-only`:
+  - requirement input -> create or refresh the epic when needed, then generate every feature plan doc needed for review
+  - epic input -> create or refresh all missing or stale feature plans tracked by the epic, not just the next ready slice
+  - feature-plan input -> review and fix the selected plan doc only
+  - stop before `execute`, implementation `verify`, and post-implementation `sync`
+- `all`:
+  - run `route -> plan -> plan-review -> execute -> verify -> sync` in one pass
+  - after the initial mode choice, do not ask follow-up confirmation questions
+  - treat `warn` as auto-continue and report it
+  - treat any later ambiguity that would materially change behavior as `fail` and stop
+
 ## Context Packet
 
 Before handing work to another skill or worker, create a bounded packet with:
 
 - `Mode`: `route`, `plan`, `plan-review`, `execute`, `verify`, or `sync`
+- `Run Mode`: `docs-only` or `all`
 - `Input Artifact`: `requirement`, `epic`, or `feature-plan`
 - `Goal`: one concrete outcome
 - `Source of Truth`: exact doc paths
@@ -139,25 +163,49 @@ Choose `manage-epic` when one or more of these are true:
 
 Otherwise choose `create-plan` directly.
 
+If the run mode is `docs-only` and the requirement routes to `manage-epic`:
+
+- create or refresh the epic first
+- then generate or refresh all feature plans required by that epic
+- stop after plan docs are ready for review
+- if decomposition still needs user approval, stop and ask before creating downstream plans
+
+If the run mode is `docs-only` and the requirement routes directly to `create-plan`:
+
+- create or refresh the single feature plan
+- stop after plan review
+
 ### Epic input
 
-Choose the next plan in this order:
+If the run mode is `docs-only`:
+
+- iterate the epic's tracked slices in dependency order
+- create or refresh every missing or stale feature plan doc needed for review
+- stop after the plan docs are ready for review
+
+If the run mode is `all`, choose the next plan in this order:
 
 1. first `in_progress` plan without a blocking issue
 2. first `open` plan whose dependencies are complete
 3. if no plan is ready, stop and report why
 
-If the selected feature plan does not exist yet, run `create-plan` for that slice before execution.
+If the run mode is `all` and the selected feature plan does not exist yet, run `create-plan` for that slice before execution.
 
 ### Feature plan input
 
-Run `plan-review` before implementation unless the user explicitly asks to skip it.
+Run `plan-review` first.
 
-If the review passes, run `execute-plan`.
+If the run mode is `docs-only`, stop after plan review and any deterministic plan fixes.
 
-After execution, always run `verify` and then `sync` when an epic link exists.
+If the run mode is `all` and the review passes, run `execute-plan`.
+
+After `all` mode execution, always run `verify` and then `sync` when an epic link exists.
 
 ## Workflow
+
+### 0. Choose mode
+
+Ask the user to choose `docs-only` or `all` unless the mode is already explicit in the prompt.
 
 ### 1. Route
 
@@ -179,8 +227,8 @@ For requirement-driven work:
 
 For epic-driven work:
 
-- select the next slice
-- create or refresh the corresponding feature plan when needed
+- in `docs-only`, generate or refresh all feature plan docs needed for review
+- in `all`, select the next ready slice and create or refresh that feature plan when needed
 
 ### 3. Plan review
 
@@ -192,11 +240,19 @@ Validate that the selected feature plan has:
 - concrete file targets
 - validation expectations
 
-If the plan fails review, fix the plan before execution.
+If the plan fails review, fix the plan before execution or stop with the missing information.
+
+In `docs-only`:
+
+- run plan review on each generated or selected feature plan
+- apply deterministic plan-doc fixes when safe
+- stop after reporting any remaining warnings for human review
 
 When `spawn_agent` is available, delegate this step to `dev_plan_reviewer` with a read-only packet unless the worker is explicitly allowed to patch the plan.
 
 ### 4. Execute
+
+Skip this step entirely in `docs-only`.
 
 Pass only the selected feature plan, linked requirement and epic paths, and the relevant acceptance criteria slice.
 
@@ -205,6 +261,8 @@ Do not execute more than one feature plan at a time.
 Keep execution in the primary orchestrator thread unless you later add a dedicated execution agent with a strict single-writer contract.
 
 ### 5. Verify
+
+Skip this step entirely in `docs-only`.
 
 Check:
 
@@ -218,6 +276,8 @@ Use `quality-code-check` when lint, type, build, or test work becomes the main t
 When `spawn_agent` is available, delegate the verification summary to `dev_verifier` after execution and validation complete.
 
 ### 6. Sync
+
+Skip this step in `docs-only` unless a plan-generation step must update safe cross-links while writing docs.
 
 When `epic_plan` exists:
 
@@ -247,9 +307,11 @@ Do not silently skip to another feature plan.
 
 Report:
 
+- run mode used
 - input artifact and route chosen
 - gates passed, warned, or failed
 - files created or updated
+- skipped steps
 - next resume point
 - blockers or assumptions
 

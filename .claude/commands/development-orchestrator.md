@@ -20,9 +20,38 @@ Core responsibilities:
 ## Workflow Alignment
 
 - Provide brief status updates (1–3 sentences) before and after important actions.
-- For medium/large work, create orchestration todos for macro phases: Route, Gate, Plan, Review, Execute, Verify, Sync.
+- For medium/large work, create orchestration todos for macro phases: Mode, Route, Gate, Plan, Review, Execute, Verify, Sync.
 - Keep exactly one orchestration todo `in_progress`.
 - Use planning doc checkboxes for implementation task state; use command todos only for orchestration phase state.
+
+---
+
+## Step 0: Select Run Mode
+
+Use `AskUserQuestion` for this step unless the user already selected the mode explicitly in the same request.
+
+Supported modes:
+- `docs-only`: generate or refresh all planning docs needed for review, then stop before implementation
+- `all`: run the full workflow end to end with no more user questions after this mode selection
+
+Required prompt:
+
+```
+AskUserQuestion(questions=[{
+  question: "Which development-orchestrator mode should I run?",
+  header: "Run Mode",
+  options: [
+    { label: "docs-only", description: "Generate or refresh all planning docs for review, then stop before coding" },
+    { label: "all", description: "Run planning, review, execution, verification, and sync in one pass with no more questions" }
+  ],
+  multiSelect: false
+}])
+```
+
+Mode rules:
+- In `all`, do not ask follow-up confirmation questions. `warn` auto-continues, `fail` stops.
+- In `all`, if artifact detection or scope is still materially ambiguous after reading the docs on disk, stop and report the blocker instead of asking again.
+- In `docs-only`, you may still use `AskUserQuestion` for genuinely blocking clarification, but prefer generating reviewable docs over opening extra Q&A.
 
 ---
 
@@ -35,7 +64,11 @@ Read the user input and identify one of:
 - epic doc path: `docs/ai/planning/epic-{name}.md`
 - feature plan path: `docs/ai/planning/feature-{name}.md`
 
-If the artifact type or intent is ambiguous, ask the user:
+If the artifact type or intent is ambiguous:
+- in `docs-only`, ask the user with `AskUserQuestion`
+- in `all`, stop and report the exact missing artifact or ambiguity
+
+`docs-only` prompt:
 
 ```
 AskUserQuestion(questions=[{
@@ -44,7 +77,7 @@ AskUserQuestion(questions=[{
   options: [
     { label: "Requirement", description: "Start from a req doc and plan the work" },
     { label: "Epic", description: "Pick the next feature plan from an epic" },
-    { label: "Feature Plan", description: "Review and execute one feature plan" }
+    { label: "Feature Plan", description: "Work from one feature plan doc" }
   ],
   multiSelect: false
 }])
@@ -67,7 +100,8 @@ Then read linked docs as needed:
 
 Rules:
 - If the input is a requirement and it already links to an existing epic, route to the epic flow instead of creating a duplicate epic.
-- If the input is an epic, choose the next ready feature plan:
+- If the input is an epic and mode is `docs-only`, iterate all tracked slices in dependency order and ensure each reviewable feature plan doc exists.
+- If the input is an epic and mode is `all`, choose the next ready feature plan:
   1. first `in_progress` plan without an explicit blocker
   2. else first `open` plan whose dependencies are complete
   3. else stop and report why no plan is ready
@@ -97,7 +131,11 @@ If the gate fails:
 - stop
 - report the exact missing input or ambiguity
 
-If the gate warns, ask the user:
+If the gate warns:
+- in `all`, continue automatically and include the warning in the final report
+- in `docs-only`, ask the user only when the warning would change what docs should be generated
+
+`docs-only` confirmation prompt:
 
 ```
 AskUserQuestion(questions=[{
@@ -130,22 +168,32 @@ Use this heuristic for `manage-epic`:
 - likely implementation exceeds three phases
 - requirement clearly decomposes into dependent slices
 
-If using epic breakdown approval:
-1. Enter plan mode
-2. Run `Skill(manage-epic)` to propose and confirm the breakdown
-3. Exit plan mode after approval and write the epic to disk
+If epic breakdown approval is needed:
+1. In `docs-only`, enter plan mode, run `Skill(manage-epic)` to propose and confirm the breakdown, then exit plan mode after approval and write the epic to disk
+2. In `all`, stop and report the unresolved breakdown instead of asking another question
+
+Mode-specific behavior:
+- In `docs-only`, if the work routes to `manage-epic`, create or refresh the epic and then generate or refresh every feature plan listed in that epic before stopping.
+- In `docs-only`, if the work routes directly to `create-plan`, generate or refresh the single feature plan and stop after plan review.
+- In `all`, continue past planning into review, execution, verification, and sync.
 
 ### 3b: Epic input
 
-If the selected feature plan file does not exist yet:
-- use `Skill(create-plan)` with the epic path so the new plan links back to the epic and requirement
+If mode is `docs-only`:
+- create or refresh every missing or stale feature plan tracked by the epic
+- stop after plan review summarizes the generated docs
 
-If the selected feature plan already exists:
-- proceed to plan review
+If mode is `all`:
+- if the selected feature plan file does not exist yet, use `Skill(create-plan)` with the epic path so the new plan links back to the epic and requirement
+- if the selected feature plan already exists, proceed to plan review
 
 ### 3c: Feature plan input
 
 Skip directly to plan review.
+
+Mode-specific behavior:
+- `docs-only` → stop after plan review and any safe plan-doc fixes
+- `all` → continue to execution when review is pass or warn
 
 ---
 
@@ -167,19 +215,21 @@ Return the concise review summary only."
 ```
 
 Interpret results:
-- `fail` → stop execution until the plan is fixed
-- `warn` → ask the user whether to continue
-- `pass` → continue to execution
+- `fail` → stop until the plan doc is fixed
+- `warn` in `docs-only` → keep the docs for human review and report the warnings
+- `warn` in `all` → continue automatically
+- `pass` in `docs-only` → stop after the review summary
+- `pass` in `all` → continue to execution
 
-Warn confirmation:
+`docs-only` confirmation prompt only when a warning blocks doc generation:
 
 ```
 AskUserQuestion(questions=[{
-  question: "Plan review found warnings. Continue to execution?",
+  question: "Plan review found warnings that block a clean docs handoff. Keep the generated docs for manual review?",
   header: "Review",
   options: [
-    { label: "Continue", description: "Execute with the current plan warnings" },
-    { label: "Stop", description: "Pause and revise the plan first" }
+    { label: "Keep docs", description: "Stop here and let the team review the current docs" },
+    { label: "Stop", description: "Pause and revise the plan docs first" }
   ],
   multiSelect: false
 }])
@@ -188,6 +238,8 @@ AskUserQuestion(questions=[{
 ---
 
 ## Step 5: Execute
+
+Skip this step entirely in `docs-only`.
 
 Run:
 
@@ -209,6 +261,8 @@ Rules:
 
 ## Step 6: Verify
 
+Skip this step entirely in `docs-only`.
+
 Use an isolated sub-agent:
 
 ```
@@ -227,26 +281,14 @@ Return the concise verification summary only."
 
 Interpret results:
 - `fail` → stop and report the resume point
-- `warn` → ask the user whether to continue to sync
+- `warn` in `all` → continue automatically to sync
 - `pass` → continue to sync
-
-Warn confirmation:
-
-```
-AskUserQuestion(questions=[{
-  question: "Verification found warnings. Continue to sync status?",
-  header: "Verify",
-  options: [
-    { label: "Continue", description: "Sync docs and statuses with the current warnings" },
-    { label: "Stop", description: "Pause and address the warnings first" }
-  ],
-  multiSelect: false
-}])
-```
 
 ---
 
 ## Step 7: Sync
+
+In `docs-only`, do not run post-implementation sync. Only keep cross-links accurate while generating planning docs.
 
 When the feature plan frontmatter contains a non-null `epic_plan`:
 
@@ -272,22 +314,25 @@ Skip this step entirely for standalone feature plans with no epic link.
 ## Step 8: Final Response
 
 Report:
+- run mode used
 - input artifact and route chosen
 - gate result
 - files created or updated
-- current feature plan status
+- skipped steps
+- current feature plan status or review status
 - epic sync result when applicable
 - next resume point or next command
 
 Recommended next actions:
-- `/development-orchestrator` again to continue the next ready slice
+- `docs-only` result → review the generated docs, then run `/development-orchestrator` again in `all` mode
+- `all` result → `/development-orchestrator` again to continue the next ready slice
 - `/execute-plan` directly only when the user intentionally wants to bypass orchestration
 
 ---
 
 ## Notes
 
-- Keep user interaction in the command layer. Do not ask the user questions inside worker agents.
+- Keep user interaction in the command layer. For Claude Code, mode selection must use `AskUserQuestion`. Do not ask the user questions inside worker agents.
 - Worker agents must read `.claude/agents/*`, which in turn read shared `.agents/roles/*` files.
 - Do not silently skip from one feature plan to another after a failure.
 - The planning doc remains the source of truth for implementation task state.
