@@ -221,5 +221,5 @@ When creating or updating documents, ensure cross-links are maintained.
 
 - Epic is purely a tracking document — no architecture or implementation details
 - Feature plans contain all implementation details (via `/create-plan`)
-- Requirement doc contains all WHAT details (via `/clarify-requirements`)
+- Requirement doc contains all WHAT details (via `/requirements-orchestrator`)
 - Epic bridges the gap: tracks WHICH feature plans implement WHICH requirement

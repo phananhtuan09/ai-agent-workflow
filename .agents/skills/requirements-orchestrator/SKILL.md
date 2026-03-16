@@ -1,9 +1,9 @@
 ---
-name: clarify-requirements
+name: requirements-orchestrator
 description: Use when the user wants to clarify a feature request into requirement docs, coordinate BA/SA/Researcher/UI/UX sub-work, and produce `docs/ai/requirements/req-{name}.md` plus agent artifacts.
 ---
 
-# Clarify Requirements
+# Requirements Orchestrator
 
 Use this skill to turn a vague or partial feature request into a structured requirement package in `docs/ai/requirements/`.
 
@@ -52,6 +52,26 @@ The orchestrator is responsible for:
 - resolving contradictions before writing the final requirement doc
 
 Treat each role as a worker with its own bounded context. If Codex multi-agent is available, spawn real sub-agents. If it is not available, simulate the same worker boundary yourself by following the role file and restricting yourself to that role's declared inputs and outputs while producing its artifact.
+
+## Codex Multi-Agent Contract
+
+This repository registers named Codex agents in `.codex/config.toml`.
+
+Use these exact agent names when `spawn_agent` is available:
+
+- `requirement_ba`
+- `requirement_sa`
+- `requirement_researcher`
+- `requirement_uiux`
+
+Delegation rules:
+
+- Prefer real sub-agents over solo simulation when `spawn_agent` is available.
+- Spawn only the agents selected by the routing logic in this skill.
+- Keep the orchestrator as the only writer of the final consolidated requirement doc.
+- Worker agents may write only their own role artifact.
+- Wait for spawned workers to finish before consolidating.
+- If a spawn fails, retry once with a tighter packet. If it still fails, continue solo and preserve the same handoff boundaries.
 
 ## Codex Tool Mapping
 
@@ -141,26 +161,41 @@ The post-BA decision overrides the initial prompt-only routing matrix.
 
 Before invoking any worker, prepare a minimal input package.
 
+Every packet must include:
+
+- `Role`: exact Codex agent name
+- `Feature Name`: kebab-case feature identifier
+- `Goal`: one concrete outcome
+- `Allowed Writes`: exact artifact path for that worker
+- `Required Reads`: exact file paths the worker should load first
+- `Inputs`: only the facts, paths, and answers needed for this role
+- `Non-Goals`: explicit out-of-scope items
+- `Stop If`: ambiguity that would materially change scope or output correctness
+
 #### BA handoff
 
+- `Role`: `requirement_ba`
 - original user prompt
 - existing requirement doc if present
 - any direct user answers gathered during clarification
 
 #### SA handoff
 
+- `Role`: `requirement_sa`
 - BA output path
 - project standards paths
 - short note listing areas that need feasibility focus
 
 #### Researcher handoff
 
+- `Role`: `requirement_researcher`
 - BA output path when available
 - exact terms, standards, libraries, or APIs to research
 - short note explaining why research is needed
 
 #### UI/UX handoff
 
+- `Role`: `requirement_uiux`
 - BA output path
 - SA output path when available
 - any design notes or screenshots
@@ -180,8 +215,12 @@ Use this DAG:
 
 Execution strategy:
 
-- if Codex multi-agent is available, spawn workers according to the DAG above
-- if multi-agent is not available, execute the same DAG serially while preserving the same handoff boundaries
+- if `spawn_agent` is available, use the named agents from the Codex Multi-Agent Contract
+- spawn `requirement_ba` first and wait for its artifact before deciding downstream work
+- after BA, spawn `requirement_sa`
+- when research is selected, spawn `requirement_researcher` in parallel with `requirement_sa`
+- when UI/UX is selected, prefer spawning `requirement_uiux` after SA completes unless the BA artifact is sufficient and SA adds no relevant constraint
+- if `spawn_agent` is not available, execute the same DAG serially while preserving the same handoff boundaries
 - do not invent extra worker roles unless the user explicitly asks for them
 
 Produce only the files that apply. Do not create placeholder docs for skipped roles.

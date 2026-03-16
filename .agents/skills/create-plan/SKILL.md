@@ -35,9 +35,10 @@ If the user supplied a requirement doc, read it.
 
 If the user supplied an epic doc:
 
-- Read the epic doc first
-- Find its linked requirement doc if present
-- Read that requirement doc too
+- read the epic doc first
+- read its linked requirement doc if present
+- capture any tracked row metadata such as `FR Scope` and `Depends On`
+- plan to set feature-plan frontmatter `epic_plan` and `requirement`
 
 ### 2. Normalize scope
 
@@ -69,19 +70,29 @@ Look for:
 - naming and file placement patterns
 - validation, error handling, and testing conventions
 
-Keep only actionable findings. If nothing useful exists, omit the "Codebase Context" section.
+Keep only actionable findings. If nothing useful exists, omit the `Codebase Context` section.
 
 ### 4. Resolve design input
 
-If the user supplied a Figma URL, design file, or mockup, use `frontend-design-figma-extraction`.
+If the user supplied a Figma URL, treat design extraction as a separate phase.
+
+Derive the expected file:
+
+- `docs/ai/requirements/figma-{name}.md`
+
+Then:
+
+- if the file exists and `status: complete`, read it and use it for `2a. Design Specifications`
+- if the file exists and `status: partial`, warn that specs are incomplete and proceed only with available data
+- if the file does not exist, tell the user to run `/extract-figma {url} {name}` first instead of guessing design values
+
+If the user already supplied screenshots or detailed design notes, use those directly and skip theme generation.
 
 If the task is UI-heavy and no design source exists, use the minimal relevant design skills:
 
 - `frontend-design-fundamentals`
 - `frontend-design-theme-factory`
 - `frontend-design-responsive`
-
-If the user already supplied screenshots or detailed design notes, use those directly and skip theme generation.
 
 Only include one design section in the plan:
 
@@ -90,7 +101,7 @@ Only include one design section in the plan:
 
 Never include both.
 
-### 5. Derive the feature name
+### 5. Derive the feature name and output path
 
 Create a concise kebab-case feature name from the prompt and loaded context.
 
@@ -98,15 +109,15 @@ Output path:
 
 - `docs/ai/planning/feature-{name}.md`
 
-If that file already exists:
+If the file already exists:
 
-- back it up to `docs/ai/planning/archive/feature-{name}_{timestamp}.md`
-- then overwrite the main file with the refreshed plan
+- create `docs/ai/planning/archive/` if needed
+- back up the existing file to `docs/ai/planning/archive/feature-{name}_{timestamp}.md`
+- then overwrite the main file
 
 ### 6. Draft the plan
 
 Follow `docs/ai/planning/feature-template.md` closely.
-
 The plan must be written in English.
 
 Include:
@@ -120,21 +131,27 @@ Include:
 7. `Implementation Plan`
 8. `Follow-ups`
 
+Related-doc and frontmatter rules:
+
+- if standalone, set `requirement: null` and `epic_plan: null`, then omit `Related Documents`
+- if only a requirement exists, link it and leave `epic_plan: null`
+- if epic context exists, link both docs and align the plan with the epic row metadata when that table tracks `FR Scope` and `Depends On`
+
 Implementation Plan rules:
 
-- Use one phase for small work with 5 tasks or fewer
-- Use 2-3 phases for medium work with 6-12 tasks
-- Use 3-5 phases for larger work
-- Each task must use checkbox format: `[ ] [ACTION] path/to/file - Summary`
+- use one phase for small work with 5 tasks or fewer
+- use 2-3 phases for medium work with 6-12 tasks
+- use 3-5 phases for larger work
+- each task must use checkbox format: `[ ] [ACTION] path/to/file - Summary`
 - `ACTION` must be one of `ADDED`, `MODIFIED`, `DELETED`, `RENAMED`
-- Add structured pseudo-code under each task when it changes behavior
+- add structured pseudo-code under each task when it changes behavior
 
 Pseudo-code should cover:
 
 - function or endpoint signature
-- input validation
+- input validation with concrete constraints
 - logic flow
-- return shape
+- return shape for success and failure
 - edge cases
 - dependencies
 
@@ -142,6 +159,13 @@ Pseudo-code should cover:
 
 If an epic doc is linked and it clearly tracks feature plans, add or update the new plan entry there.
 
+When the epic uses the newer table shape, also refresh:
+
+- status -> `open`
+- `FR Scope`
+- `Depends On`
+
+Preserve the existing table shape when the epic still uses the older schema.
 Do not modify unrelated docs.
 
 ### 8. Final response
@@ -152,6 +176,7 @@ Report:
 - the feature name
 - phase count and phase names
 - any assumptions that materially shaped the plan
+- any archive path created when an existing plan was replaced
 
 ## Quality Bar
 
@@ -160,3 +185,4 @@ Report:
 - Keep phases dependency-ordered
 - Avoid speculative future work outside current scope
 - Match existing repository patterns whenever they exist
+- Use pre-extracted Figma docs instead of ad-hoc design guessing

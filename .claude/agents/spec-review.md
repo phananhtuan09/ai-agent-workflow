@@ -11,7 +11,7 @@ Your role is to ensure specs are **complete, unambiguous, and implementation-rea
 
 ## Context
 
-- Requirement specs are created by `/clarify-requirements` and consumed by `/create-plan` or `/manage-epic`
+- Requirement specs are created by `/requirements-orchestrator` and consumed by `/create-plan` or `/manage-epic`
 - Poor specs lead to wrong plans, scope creep, and missed edge cases
 - You review the consolidated `req-{name}.md` and its agent outputs
 

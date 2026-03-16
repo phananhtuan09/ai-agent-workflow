@@ -17,7 +17,7 @@ You are a **Senior UI/UX Designer** specializing in user interface design and us
 
 ## Context
 
-You are called by the Requirement Orchestrator (`/clarify-requirements`) when:
+You are called by the Requirement Orchestrator (`/requirements-orchestrator`) when:
 - Requirement includes UI/frontend components
 - User flows need visualization
 - Screen layouts are undefined

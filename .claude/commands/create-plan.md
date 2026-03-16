@@ -110,8 +110,9 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 - Use single message with multiple tool calls
 
 **Scenario B: Figma design detected**
-- Run in parallel: Step 3 (Explore) + Step 4 (Figma Extraction)
+- Run in parallel: Step 3 (Explore) + Step 4 (Read figma-{name}.md)
 - Use single message with multiple tool calls
+- Note: No skill invocation needed — Step 4 only reads the pre-extracted file
 
 **Scenario C: Design already provided (screenshot/description)**
 - Run only: Step 3 (Explore) - no parallel execution needed
@@ -155,27 +156,44 @@ Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the
 - New project (no similar patterns exist)
 - User says "fresh start"
 
-## Step 4: Extract Figma Design (Optional)
+## Step 4: Load Figma Design Specs (Optional)
 
 **Trigger:** User mentions "figma", "design file", "mockup", or provides Figma URL (detected in Step 1).
 
-**Use `frontend-design-figma-extraction` skill to:**
-- Validate Figma MCP connection
-- Extract design tokens (colors, typography, spacing, shadows, border radius)
-- Extract component specs (states, variants, dimensions, hierarchies)
-- Extract responsive breakpoints (mobile/tablet/desktop)
-- Document extraction in planning doc format
+**Design extraction is a separate phase** — run `/extract-figma` before `/create-plan`.
+
+**What to do:**
+
+1. **Derive the figma file name** from the Figma URL or user-provided name (kebab-case slug, same as used in `/extract-figma`).
+
+2. **Check if pre-extracted file exists:**
+   ```
+   Read(file_path="docs/ai/requirements/figma-{name}.md")
+   ```
+
+3. **If file exists:**
+   - Check frontmatter `status` field:
+     - `complete` → Load and use the full file content for Section 2a
+     - `partial` → Warn user: "Figma specs are partial (some sections not extracted). Proceeding with available data. Run `/extract-figma {url} {name}` to complete extraction."
+   - Extract from the file:
+     - Design Tokens section → include in planning doc Section 2a
+     - Component Specifications section → include in planning doc Section 2a
+     - Responsive Specifications section → include in planning doc Section 2a
+   - Include reference (URL, frame name, date) from frontmatter
+
+4. **If file does NOT exist:**
+   - Inform user:
+     > "No Figma extraction found for `figma-{name}.md`. Run `/extract-figma {url} {name}` first, then re-run `/create-plan`."
+   - Ask user how to proceed:
+     - Option A: "I'll run `/extract-figma` now, then continue" → stop and wait
+     - Option B: "Provide design description manually" → skip to Step 5
+     - Option C: "Continue without design" → skip to Step 5
 
 **Expected output:** "Design Specifications" section in planning doc with:
-- Reference (file name, frame, link, timestamp)
-- Design Tokens (complete palette, typography scale, spacing scale)
-- Component Breakdown (all components with detailed specs)
-- Responsive Specs (breakpoints and layout changes)
-
-**If extraction fails:**
-- Figma MCP not connected: Ask user to configure MCP or provide design description
-- Extraction fails: Ask user for alternative design source (screenshot, description)
-- Continue to Step 5 for theme selection if needed
+- Reference (file path link, frame name, extraction date, status)
+- Design Tokens (from figma-{name}.md)
+- Component Breakdown (from figma-{name}.md)
+- Responsive Specs (from figma-{name}.md)
 
 **Skip this step if:** No Figma URL/mention detected in Step 1.
 

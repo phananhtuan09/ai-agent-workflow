@@ -39,82 +39,16 @@ requirement: null
 
 ---
 
-## 2a. Design Specifications
+## 2a. Design Specifications (Optional)
 
-> **Note**: This section is for design specifications from any source (Figma, screenshot, detailed description, etc.). Include only if design source was provided.
-> **Important**: Use EITHER Section 2a (Design Specifications) OR Section 2b (Theme Specification), not both. Delete the unused section.
+> **Note**: Include only if a Figma extraction file exists. Use EITHER Section 2a OR Section 2b, not both. Delete the unused section.
 
-### Reference
-- **File**: {Figma file name}
-- **Frame**: {Frame name/ID}
-- **Link**: {Figma URL}
-- **Extracted**: {date/time}
+- **Figma specs**: [figma-{name}.md](../requirements/figma-{name}.md)
+- **Frame**: {frame name}
+- **Status**: complete / partial
 
-### Design Tokens
-
-**Colors**:
-- Primary: #{hex} (Usage: buttons, links, key actions)
-- Secondary: #{hex} (Usage: secondary actions)
-- Accent: #{hex} (Usage: highlights, badges)
-- Neutral-50: #{hex}
-- Neutral-100: #{hex}
-- [... all colors with usage notes]
-
-**Typography**:
-- Heading 1: {font-family}, {size}px, {weight}, {line-height}
-- Heading 2: {font-family}, {size}px, {weight}, {line-height}
-- Body: {font-family}, {size}px, {weight}, {line-height}
-- Caption: {font-family}, {size}px, {weight}, {line-height}
-
-**Spacing Scale**: {4, 8, 16, 24, 32, 48, 64}px
-
-**Border Radius**: {4, 8, 12, 16}px
-
-**Shadows**:
-- sm: {shadow definition}
-- md: {shadow definition}
-- lg: {shadow definition}
-
-### Component Breakdown
-
-**{Component Name}** (Figma ID: {component-id})
-- **States**: default, hover, active, disabled, loading, error
-- **Variants**: primary, secondary, outline, ghost
-- **Dimensions**: {width}px × {height}px (or min/max)
-- **Specifications**:
-  - Padding: {top}px {right}px {bottom}px {left}px
-  - Border: {width}px solid {color}
-  - Border radius: {value}px
-  - Typography: {style from above}
-  - Colors:
-    - Background: #{hex}
-    - Text: #{hex}
-    - Border: #{hex}
-  - States:
-    - Hover: {changes}
-    - Active: {changes}
-    - Disabled: {changes}
-
-[Repeat for each component in the design]
-
-### Responsive Specifications
-
-**Mobile (320-640px)**:
-- Layout: {description}
-- Component adjustments: {what changes}
-- Typography scaling: {changes}
-
-**Tablet (641-1024px)**:
-- Layout: {description}
-- Component adjustments: {what changes}
-
-**Desktop (1025px+)**:
-- Layout: {description}
-- Component adjustments: {what changes}
-
-### Assets
-- Icons: {list icon names and sources}
-- Images: {list image URLs or file references}
+> Refer to the linked file for design tokens, component specs, responsive breakpoints, and validation notes.
+> Run `/extract-figma` if the file does not exist yet.
 
 ---
 

@@ -55,6 +55,22 @@ Optional worker prompts live in:
 
 Use them when the work is large enough to benefit from explicit worker boundaries. Otherwise simulate the same boundary yourself.
 
+## Codex Multi-Agent Contract
+
+This repository registers named Codex agents in `.codex/config.toml`.
+
+Use these exact agent names when `spawn_agent` is available:
+
+- `dev_plan_reviewer`
+- `dev_verifier`
+
+Execution policy:
+
+- Keep one primary writer for requirement, epic, feature-plan, and implementation edits.
+- Use sub-agents for review and verification, where parallel read-heavy work is safe.
+- Do not run more than one write-heavy implementation worker at a time.
+- If a spawned review or verification agent fails, retry once with a tighter packet, then continue solo if needed.
+
 ## Compatibility Contract
 
 This skill must work with and without optional orchestrator-specific template changes.
@@ -82,6 +98,12 @@ Before handing work to another skill or worker, create a bounded packet with:
 - `Stop If`: ambiguity that would materially change behavior
 
 Do not forward full conversation history when the packet is sufficient.
+
+When delegating to Codex agents, also include:
+
+- `Role`: exact agent name from the Codex Multi-Agent Contract
+- `Allowed Writes`: exact file paths the worker may edit, or `none` for read-only verification
+- `Linked Docs`: exact requirement, epic, and feature-plan paths relevant to this step
 
 ## Readiness Gate
 
@@ -172,11 +194,15 @@ Validate that the selected feature plan has:
 
 If the plan fails review, fix the plan before execution.
 
+When `spawn_agent` is available, delegate this step to `dev_plan_reviewer` with a read-only packet unless the worker is explicitly allowed to patch the plan.
+
 ### 4. Execute
 
 Pass only the selected feature plan, linked requirement and epic paths, and the relevant acceptance criteria slice.
 
 Do not execute more than one feature plan at a time.
+
+Keep execution in the primary orchestrator thread unless you later add a dedicated execution agent with a strict single-writer contract.
 
 ### 5. Verify
 
@@ -188,6 +214,8 @@ Check:
 - blockers are recorded explicitly when work could not finish
 
 Use `quality-code-check` when lint, type, build, or test work becomes the main task.
+
+When `spawn_agent` is available, delegate the verification summary to `dev_verifier` after execution and validation complete.
 
 ### 6. Sync
 

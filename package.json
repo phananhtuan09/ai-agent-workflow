@@ -40,6 +40,7 @@
     "install.ps1",
     "docs/",
     ".agents/",
+    ".codex/",
     ".cursor/",
     ".claude/",
     ".github/",

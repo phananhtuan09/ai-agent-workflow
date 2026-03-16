@@ -6,11 +6,16 @@ description: Use when the user asks to implement work from an existing feature p
 # Execute Plan
 
 Use this skill to implement a feature from its planning doc with small, reviewable changes.
+By default, continue through all remaining incomplete phases in order until the feature is complete or a real blocker stops progress.
+Only limit execution to a single phase when the user explicitly asks for one phase, a specific phase, or a resume point that should not advance further.
 
 ## Inputs
 
 - Feature name in kebab-case, or a direct path to the planning doc
 - Existing planning doc: `docs/ai/planning/feature-{name}.md`
+- Optional execution scope:
+  - all remaining incomplete phases in order by default
+  - a single named or implied phase only when the user explicitly requests it
 
 ## Codex Tool Mapping
 
@@ -36,21 +41,24 @@ If the planning doc contains codebase context, use it to find the right files an
 
 Do not re-run Figma extraction during execution unless the user explicitly asks.
 
-### 2. Detect the current phase
+### 2. Detect execution scope and phases
 
 Parse the planning doc and identify:
 
 - total phases
-- the last fully completed phase
-- the first phase with unchecked items
+- completed phases
+- incomplete phases in order
+- whether the user requested a specific phase or a single-phase resume
 
 If the doc has no explicit phases, treat the entire `Implementation Plan` section as one phase.
 
-Skip completed phases. Work from the first incomplete phase only unless the user asks otherwise.
+Skip completed phases.
+Default to executing every remaining incomplete phase in order.
+Limit execution to one phase only when the user explicitly says to stop after that phase or names a specific phase to resume.
 
 ### 3. Build the task queue
 
-Convert incomplete tasks from the current phase into active todos.
+Convert incomplete tasks from the execution scope into active todos.
 
 Rules:
 
@@ -58,10 +66,13 @@ Rules:
 - preserve task order unless dependencies require a different order
 - note blockers before editing
 - ignore `Follow-ups` unless the user explicitly asks for them
+- when running all phases, queue work phase by phase in plan order instead of mixing tasks across phases
 
 If the plan and codebase are out of sync, update the plan first when the correction is obvious. If not obvious, ask.
 
 ### 4. Implement task by task
+
+Work phase by phase through the execution scope.
 
 For each task:
 
@@ -77,7 +88,8 @@ Implementation rules:
 - follow design/theme constraints from the planning doc when present
 - reuse existing patterns before creating new abstractions
 - keep changes incremental and within plan scope
-- do not silently expand scope across future phases
+- do not silently expand scope beyond the requested execution scope
+- after finishing one incomplete phase, continue directly into the next incomplete phase when the default all-phases scope is active
 
 ### 5. Validate incrementally
 
@@ -92,14 +104,15 @@ Prefer project-native checks such as:
 
 Use `quality-code-check` when lint, typecheck, build, or validation debugging becomes the main task.
 
-Fix issues caused by your changes before moving on.
+Fix issues caused by your changes before moving to the next task or phase.
 
 ### 6. Handle completion state
 
-After the current phase:
+After each completed phase in the execution scope:
 
-- if more phases remain, report the next resume point
+- if more in-scope phases remain, continue automatically unless the user explicitly asked for a single phase
 - if all phases are complete, run final quality checks and summarize results
+- if work stops early because of a blocker, report the blocker, affected phase, and exact resume point
 - if the planning doc frontmatter contains a non-null `epic_plan`, sync the linked epic after this run
   - use `in_progress` when some work is complete and more tasks remain
   - use `blocked` only when the plan is explicitly blocked
@@ -122,4 +135,5 @@ Ask only when:
 - Do not rework already-complete phases unless the user asks
 - Do not leave completed code without matching checkbox updates
 - Prefer a few verified edits over a broad speculative refactor
+- Default behavior is to finish all remaining phases in the plan unless the user narrows the scope or a blocker prevents further progress
 - Surface blockers explicitly with file references and reasons

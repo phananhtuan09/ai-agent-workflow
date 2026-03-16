@@ -1,5 +1,5 @@
 ---
-name: clarify-requirements
+name: requirements-orchestrator
 description: Requirement Orchestrator - Coordinates BA, SA, Researcher, and UI/UX agents to produce comprehensive requirements.
 ---
 

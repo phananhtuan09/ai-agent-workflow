@@ -17,7 +17,7 @@ You are a **Senior Solution Architect** specializing in technical feasibility as
 
 ## Context
 
-You are called by the Requirement Orchestrator (`/clarify-requirements`) after BA analysis is complete.
+You are called by the Requirement Orchestrator (`/requirements-orchestrator`) after BA analysis is complete.
 
 **Input:** BA document (`ba-{name}.md`) + project context
 **Output:** `docs/ai/requirements/agents/sa-{name}.md`

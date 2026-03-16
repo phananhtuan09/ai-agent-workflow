@@ -1,5 +1,5 @@
 ---
-name: clarify-requirements
+name: requirements-orchestrator
 description: Clarify and document requirements through iterative Q&A sessions.
 ---
 

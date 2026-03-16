@@ -41,7 +41,7 @@ irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/insta
 ```
 
 Choose from:
-- **Codex** → `.agents/skills/`, `.agents/themes/`, and root `AGENTS.md`
+- **Codex** → `.agents/skills/`, `.agents/roles/`, `.agents/themes/`, `.codex/`, and root `AGENTS.md`
 - **Cursor** → `.cursor/commands/` and `.cursor/prompts/`
 - **GitHub Copilot** → `.github/prompts/`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`
@@ -152,13 +152,13 @@ User: User authentication with JWT tokens
   - Definition of done
 ```
 
-#### `/clarify-requirements` - Gather Requirements
+#### `/requirements-orchestrator` - Gather Requirements
 Structured Q&A to document complex requirements.
 
 **Use Case:** Complex features needing stakeholder input or business logic clarification.
 
 ```
-User: /clarify-requirements
+User: /requirements-orchestrator
 AI: What feature needs clarification?
 User: E-commerce checkout flow
 
@@ -381,7 +381,7 @@ Best for: Small features, quick fixes, solo work.
 
 ```bash
 # 1. Clarify requirements first
-/clarify-requirements
+/requirements-orchestrator
 
 # 2. Create plan from requirements
 /create-plan docs/ai/requirements/req-checkout-flow.md
@@ -436,7 +436,7 @@ AGENTS.md               # Universal AI instructions
 |------|----------|--------|-------|
 | **Cursor** | `.cursor/commands/*.md` | - | `.cursor/prompts/*.md` |
 | **GitHub Copilot** | `.github/prompts/*.prompt.md` | - | - |
-| **Codex** | - | `.agents/skills/*/SKILL.md` | `.agents/themes/*.theme.json`, `AGENTS.md` |
+| **Codex** | - | `.agents/skills/*/SKILL.md` | `.agents/roles/*.md`, `.agents/themes/*.theme.json`, `.codex/`, `AGENTS.md` |
 | **Claude Code** | `.claude/commands/*.md` | `.claude/skills/*/SKILL.md` | `.claude/CLAUDE.md`, `.claude/themes/` |
 | **OpenCode** | `.opencode/command/*.md` | `.opencode/skill/*/SKILL.md` | `.opencode/agent/`, `opencode.json` |
 | **Factory Droid** | `.factory/commands/*.md` | `.factory/skills/*/SKILL.md` | `.factory/droids/*.md` |
