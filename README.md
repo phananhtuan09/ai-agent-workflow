@@ -234,6 +234,22 @@ User: /writing-integration-test login-page
 → Uses stable selectors (getByRole, getByLabel)
 ```
 
+#### `/test-web-orchestrator` - Orchestrate Web UI Tests
+Run a multi-agent web testing workflow from flexible spec, plan, Figma, and runtime inputs.
+
+**Use Case:** Spec-driven browser testing with UI validation, runtime probing, and verification.
+
+```
+User: /test-web-orchestrator
+AI: Attach your spec, planning doc, Figma, or runtime notes
+User: [attaches feature-login.md + figma-login.md]
+
+→ Creates docs/ai/testing/web-login.md
+→ Creates tests/web/login.spec.ts
+→ Uses analyst/ui-mapper/runtime-probe/verifier roles
+→ Verifies button, input, validation, navigation, and UI state behavior
+```
+
 #### `/run-test` - Execute Tests
 Run tests from test documentation files.
 

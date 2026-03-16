@@ -70,9 +70,8 @@ When implementing features (`execute-plan`), follow these standards:
 - Project structure: `PROJECT_STRUCTURE.md`
 - Planning template: `../planning/feature-template.md`
 - Implementation template: `../implementation/feature-template.md`
-- Testing template: `../testing/feature-template.md`
+- Testing templates: `../testing/unit-template.md`, `../testing/integration-template.md`, `../testing/web-template.md`
 
 ---
 
 **Note**: These standards are project-specific and should reflect actual patterns in your codebase. Regenerate when codebase evolves significantly.
-

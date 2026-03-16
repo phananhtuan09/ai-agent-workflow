@@ -24,7 +24,8 @@ Question: Which test type do you want to run?
 Options:
   1. Unit tests (from /writing-test)
   2. Integration tests (from /writing-integration-test)
-  3. Both
+  3. Web tests (from /test-web-orchestrator)
+  4. Multiple types
 ```
 
 ## Step 2: Ask for Test Doc File
@@ -36,7 +37,8 @@ If user did not provide test doc file path:
 1. List available test docs based on selected type:
    - Unit tests: `docs/ai/testing/unit-*.md`
    - Integration tests: `docs/ai/testing/integration-*.md`
-   - Both: all `unit-*.md` and `integration-*.md` files
+   - Web tests: `docs/ai/testing/web-*.md`
+   - Multiple types: all selected `unit-*.md`, `integration-*.md`, and `web-*.md` files
 
 2. Ask user to select which test doc(s) to run:
    ```
@@ -82,7 +84,7 @@ Use flexible parsing to handle various formatting:
 ```
 
 **Fallback parsing:**
-- If regex fails, look for any path containing `tests/unit/` or `tests/integration/`
+- If regex fails, look for any path containing `tests/unit/`, `tests/integration/`, or `tests/web/`
 - Extract file paths that end with `.spec.ts`, `.test.ts`, or `.e2e.spec.ts`
 
 **Validate extracted files:**
@@ -108,6 +110,11 @@ npx jest tests/unit/[file1] tests/unit/[file2] ...
 ```bash
 npx playwright test tests/integration/[file1] tests/integration/[file2] ...
 ```
+
+**For Web Tests (browser workflow):**
+- Prefer the exact `Run Command` extracted from the selected `web-*.md` file
+- If the doc lists a specific test file, run only that file
+- If the doc does not contain a run command, fail and ask the user to refresh the web doc via `/test-web-orchestrator`
 
 **Execution rules:**
 - Only run files explicitly listed in the test doc
@@ -168,13 +175,15 @@ Update "Last Run Results" section with:
 - This command only runs tests listed in test documentation
 - Does NOT discover or run tests outside the specified doc
 - Provides focused execution for feature-specific testing
-- Use `/writing-test` or `/writing-integration-test` to generate test docs first
+- Use `/writing-test`, `/writing-integration-test`, or `/test-web-orchestrator` to generate test docs first
 
 **Test type detection:**
 - `unit-*.md` → Unit tests in `tests/unit/` (Vitest/Jest)
 - `integration-*.md` → Integration tests in `tests/integration/` (Playwright)
+- `web-*.md` → Browser UI tests in `tests/web/` or the engine-specific location recorded in the doc
 
-**If both types selected:**
+**If multiple types are selected:**
 1. Run unit tests first
 2. Run integration tests second
-3. Combine results in single report
+3. Run web tests third
+4. Combine results in single report

@@ -341,3 +341,8 @@ Add to `package.json`:
 | Scope | Functions, components | User flows, pages |
 | Output | `tests/unit/*.spec.ts` | `tests/integration/*.e2e.spec.ts` |
 | Run command | `npm test` | `npx playwright test` |
+
+**When to use `/test-web-orchestrator` instead:**
+- The workflow must read mixed inputs such as spec docs, feature plans, Figma, and runtime notes
+- You want multi-agent analysis before generating browser tests
+- You want a dedicated `docs/ai/testing/web-{name}.md` rerun artifact and post-run verification flow

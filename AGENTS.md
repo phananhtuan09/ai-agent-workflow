@@ -114,6 +114,7 @@ Skills provide specialized guidance for recurring task types. Use them when the 
 | `prompt-leverage` | $prompt-leverage, refine prompt, normalize request, execution brief, reusable prompt |
 | `react-best-practices` | React, Next.js, performance, async, Suspense, rendering, bundle |
 | `quality-code-check` | lint, type check, build, validation, eslint, tsc |
+| `test-web-orchestrator` | test web orchestrator, web ui test, browser test, playwright e2e, cypress e2e, ui automation, figma-driven test |
 | `ux-feedback-patterns` | loading, error, form validation, async, toast, empty state |
 | `ux-accessibility` | accessible, WCAG, keyboard, screen reader, ARIA, contrast |
 
@@ -121,7 +122,7 @@ Skills provide specialized guidance for recurring task types. Use them when the 
 
 - `docs/ai/planning/`: epic tracking docs, feature plans, and execution checklists
 - `docs/ai/requirements/`: requirement discovery docs
-- `docs/ai/testing/`: unit/integration test plans and results
+- `docs/ai/testing/`: unit/integration/web test plans and results
 - `docs/ai/project/`: repository-wide standards and structure
 
 When working in this repository:

@@ -31,3 +31,23 @@ nickname_candidates = ["PlanReview", "Reviewer"]
 description = "Post-implementation verifier for feature plans. Checks acceptance coverage and status sync safety."
 config_file = "agents/dev-verifier.toml"
 nickname_candidates = ["Verify", "Verifier"]
+
+[agents.test_web_analyst]
+description = "Normalizes spec, plan, Figma, and runtime inputs into a bounded web-test intent artifact."
+config_file = "agents/test-web-analyst.toml"
+nickname_candidates = ["WebAnalyst", "Intent"]
+
+[agents.test_web_ui_mapper]
+description = "Maps routes, UI states, and selector strategy for browser-based web testing."
+config_file = "agents/test-web-ui-mapper.toml"
+nickname_candidates = ["UIMap", "Selectors"]
+
+[agents.test_web_runtime_probe]
+description = "Assesses runtime reachability, auth, and browser-test prerequisites for web test orchestration."
+config_file = "agents/test-web-runtime-probe.toml"
+nickname_candidates = ["Probe", "Runtime"]
+
+[agents.test_web_verifier]
+description = "Classifies web test execution results as product bugs, selector drift, runtime blockers, or coverage gaps."
+config_file = "agents/test-web-verifier.toml"
+nickname_candidates = ["WebVerify", "Triage"]

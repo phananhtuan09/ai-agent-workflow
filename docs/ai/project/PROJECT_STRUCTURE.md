@@ -7,11 +7,13 @@
 - tests/: all test files
   - unit/: unit test files (`*.spec.ts`, `*.test.ts`)
   - integration/: integration/E2E test files (`*.e2e.spec.ts`)
+  - web/: orchestrated browser UI test files (`*.spec.ts`)
 - docs/ai/project/: project docs (structure, conventions, patterns)
 - docs/ai/planning/: epic and feature planning docs
 - docs/ai/testing/: test plans per feature
   - `unit-{name}.md`: unit test docs (created by `/writing-test`)
   - `integration-{name}.md`: integration test docs (created by `/writing-integration-test`)
+  - `web-{name}.md`: browser UI test docs (created by `/test-web-orchestrator`)
 - docs/ai/tooling/: cross-tool workflow mapping and migration references
 
 ## Design Patterns (in use)
@@ -20,7 +22,7 @@
 
 ## Test Configuration
 
-> This section is used by `/writing-test`, `/writing-integration-test`, and `/run-test` commands.
+> This section is used by `/writing-test`, `/writing-integration-test`, `/test-web-orchestrator`, and `/run-test` commands.
 > Run `/generate-standards` to auto-detect and populate this section.
 
 ### Unit Tests
@@ -36,6 +38,13 @@
 - Config file: `playwright.config.ts`
 - Test location: `tests/integration/`
 - File pattern: `*.e2e.spec.ts`
+
+### Web Tests
+- Framework: [Playwright/Cypress/WebdriverIO/etc.]
+- Run command: `npx playwright test tests/web/*.spec.ts`
+- Config file: `playwright.config.ts` or equivalent
+- Test location: `tests/web/`
+- File pattern: `*.spec.ts`
 
 ## Notes
 - Import/module conventions
@@ -59,6 +68,7 @@
 - `docs/ai/testing/`: test plans and results
   - `unit-{name}.md`: unit test docs (from `/writing-test`)
   - `integration-{name}.md`: integration test docs (from `/writing-integration-test`)
+  - `web-{name}.md`: browser UI test docs (from `/test-web-orchestrator`)
   - Run tests via `/run-test` command
 - `docs/ai/tooling/`: cross-tool capability mapping and migration references used by sync workflows
 

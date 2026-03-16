@@ -42,7 +42,7 @@ Options:
 ```
 docs/ai/planning/             # epic-*.md, feature-*.md
 docs/ai/planning/archive/     # backup files
-docs/ai/testing/              # unit-*.md, integration-*.md
+docs/ai/testing/              # unit-*.md, integration-*.md, web-*.md
 docs/ai/requirements/archive/ # backup files (requirements main files are never deleted)
 ```
 
@@ -88,6 +88,7 @@ find docs/ai/planning docs/ai/testing -name "*.md" -type f -mtime +{RETENTION_DA
 | docs/ai/planning/feature-login.md | 2025-01-10 | 15 days |
 | docs/ai/planning/archive/feature-auth_20250105.md | 2025-01-05 | 20 days |
 | docs/ai/testing/unit-auth.md | 2025-01-12 | 13 days |
+| docs/ai/testing/web-login.md | 2025-01-14 | 11 days |
 
 **Total: X files**
 ```
@@ -170,7 +171,7 @@ rm "{file_path}"
 |-----------|----------|
 | `docs/ai/planning/` | `epic-*.md`, `feature-*.md` |
 | `docs/ai/planning/archive/` | `epic-*_*.md`, `feature-*_*.md` |
-| `docs/ai/testing/` | `unit-*.md`, `integration-*.md` |
+| `docs/ai/testing/` | `unit-*.md`, `integration-*.md`, `web-*.md` |
 | `docs/ai/requirements/archive/` | `req-*_*.md` |
 
 ### Excluded from Cleanup

@@ -84,7 +84,8 @@ Analyze repository to infer:
 - Test file locations/naming if present:
   - Unit tests: `tests/unit/*.spec.ts` or `tests/unit/*.test.ts`
   - Integration tests: `tests/integration/*.e2e.spec.ts`
-  - Test docs: `docs/ai/testing/unit-{name}.md` and `integration-{name}.md`
+  - Web tests: `tests/web/*.spec.ts`
+  - Test docs: `docs/ai/testing/unit-{name}.md`, `integration-{name}.md`, and `web-{name}.md`
 - Common patterns observed:
   - Repository/Service patterns
   - Factory patterns
@@ -132,7 +133,7 @@ Generate two documents:
 - Design patterns actually observed in codebase
 - Test placement and naming conventions
 - Config/secrets handling summary
-- **Test Configuration section** (critical for `/writing-test` and `/run-test` commands):
+- **Test Configuration section** (critical for `/writing-test`, `/writing-integration-test`, `/test-web-orchestrator`, and `/run-test` commands):
   ```markdown
   ## Test Configuration
 
@@ -149,6 +150,13 @@ Generate two documents:
   - Config file: `playwright.config.ts`
   - Test location: `tests/integration/`
   - File pattern: `*.e2e.spec.ts`
+
+  ### Web Tests
+  - Framework: [Playwright / Cypress / WebdriverIO / etc.]
+  - Run command: `npx playwright test tests/web/*.spec.ts`
+  - Config file: `playwright.config.ts` or equivalent
+  - Test location: `tests/web/`
+  - File pattern: `*.spec.ts`
   ```
 
 **Error handling:**
