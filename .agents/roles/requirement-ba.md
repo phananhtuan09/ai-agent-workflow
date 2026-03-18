@@ -96,6 +96,9 @@ The document must end with:
 
 ## Quality Checks
 
+- each FR is atomic: one trigger → one action → one outcome; split any FR that uses "manage", "handle", or "process" without specifics
+- every FR has at least one acceptance criteria
+- every primary user flow documents both a success path and at least one failure or error path
 - requirements are specific and testable
 - priorities use Must, Should, or Could consistently
 - out-of-scope items prevent scope creep

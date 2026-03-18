@@ -169,6 +169,9 @@ Before finalizing, verify:
 - [ ] Problem statement is clear and specific
 - [ ] All user types are identified
 - [ ] User stories cover main flows
+- [ ] Each main user flow documents at least one failure or error path
+- [ ] Each FR is atomic: one trigger → one action → one outcome (split any FR using vague verbs like "manage", "handle all", "process" without specifics)
+- [ ] Every FR has at least one Acceptance Criteria entry
 - [ ] Functional requirements are testable
 - [ ] Business rules are explicit
 - [ ] Out of scope is clearly defined

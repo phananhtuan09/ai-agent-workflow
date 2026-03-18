@@ -63,8 +63,15 @@ Read the user input and identify one of:
 - requirement doc path: `docs/ai/requirements/req-{name}.md`
 - epic doc path: `docs/ai/planning/epic-{name}.md`
 - feature plan path: `docs/ai/planning/feature-{name}.md`
+- plain-text description with no artifact path (see quick task rule below)
 
-If the artifact type or intent is ambiguous:
+**Quick task rule:** If no artifact path is found and the request describes a self-contained change — single concern, clear expected outcome, no cross-cutting dependencies — treat it as a quick task:
+- skip spec file creation
+- create a minimal inline plan (goal + expected outcome + files affected, ≤ 5 steps)
+- proceed directly to execution
+- skip Step 3 (Planning Route) and go straight to Step 5 (Execute)
+
+If the artifact type or intent is ambiguous after applying the quick task rule:
 - in `docs-only`, ask the user with `AskUserQuestion`
 - in `all`, stop and report the exact missing artifact or ambiguity
 
@@ -112,6 +119,15 @@ Rules:
 ## Step 2: Readiness Gate
 
 Classify the current state as `fail`, `warn`, or `pass`.
+
+### Proportionality
+
+Match required spec depth to task size before applying the gate:
+- **Quick task** (single concern, clear outcome, ≤ 5 steps, no cross-cutting dependencies): minimal inline plan is sufficient — do not require a spec file, AC list, or epic
+- **Standard task** (3–10 behaviors, no epic needed): a feature plan doc is sufficient
+- **Large task** (multi-deliverable, cross-layer, or dependent slices): full spec + epic required
+
+Apply `fail` / `warn` / `pass` relative to the expected depth for that task size, not against the full spec bar.
 
 ### Fail when
 - the target artifact cannot be found
@@ -336,3 +352,4 @@ Recommended next actions:
 - Worker agents must read `.claude/agents/*`, which in turn read shared `.agents/roles/*` files.
 - Do not silently skip from one feature plan to another after a failure.
 - The planning doc remains the source of truth for implementation task state.
+- **Clarification limit:** Do not ask the user more than two clarification rounds. If the input is still ambiguous after two rounds, stop and report the exact missing information as a blocker — do not loop further.

@@ -22,6 +22,13 @@ Accept one of:
 - epic doc path: `docs/ai/planning/epic-{name}.md`
 - feature plan path: `docs/ai/planning/feature-{name}.md`
 - a feature name that can be resolved to one of the above
+- plain-text description with no artifact path (see quick task rule below)
+
+**Quick task rule:** If no artifact path is found and the request describes a self-contained change — single concern, clear expected outcome, no cross-cutting dependencies — treat it as a quick task:
+- skip spec file creation
+- create a minimal inline plan (goal + expected outcome + files affected, ≤ 5 steps)
+- proceed directly to `execute`
+- skip the `plan` and `plan-review` stages
 
 Optional:
 
@@ -132,6 +139,15 @@ When delegating to Codex agents, also include:
 ## Readiness Gate
 
 Before planning or executing, classify findings as `fail`, `warn`, or `pass`.
+
+### Proportionality
+
+Match required spec depth to task size before applying the gate:
+- **Quick task** (single concern, clear outcome, ≤ 5 steps, no cross-cutting dependencies): minimal inline plan is sufficient — do not require a spec file, AC list, or epic
+- **Standard task** (3–10 behaviors, no epic needed): a feature plan doc is sufficient
+- **Large task** (multi-deliverable, cross-layer, or dependent slices): full spec + epic required
+
+Apply `fail` / `warn` / `pass` relative to the expected depth for that task size, not against the full spec bar.
 
 Fail when:
 
@@ -322,3 +338,4 @@ Report:
 - no implementation begins from an unready plan
 - epic and feature-plan status stay aligned when an epic is in play
 - standalone planning or execution still works without this orchestrator
+- **Clarification limit:** Do not ask the user more than two clarification rounds. If the input is still ambiguous after two rounds, stop and report the exact missing information as a blocker — do not loop further.

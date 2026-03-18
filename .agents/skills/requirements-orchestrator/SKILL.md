@@ -14,6 +14,8 @@ Operate as a requirement team lead. Your job is to decide which specialist roles
 - A feature request, bug scope, or product idea
 - Optional existing requirement doc: `docs/ai/requirements/req-{name}.md`
 - Optional design notes, screenshots, or external references
+- Optional tech constraints: existing stack, performance budget, timeline, or deployment limits
+- Optional related artifacts: Figma frame paths, epic path, API documentation links
 
 ## Required Context
 
@@ -136,6 +138,8 @@ The BA output is the source of truth for:
 - open questions
 
 Ask the user concise follow-up questions only when a wrong assumption would change scope, user flow, or acceptance criteria.
+
+Cap at two clarification rounds. After two rounds, mark remaining unknowns as `[ASSUMPTION]` and continue.
 
 ### 4. Re-evaluate role selection after BA
 

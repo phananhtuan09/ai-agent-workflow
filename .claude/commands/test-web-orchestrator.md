@@ -156,6 +156,17 @@ Runtime probe policy:
 - if browser tooling is unavailable but the selected mode does not require execution, skip with warning
 - if execution is required and runtime prerequisites are materially broken, stop with `fail`
 
+Tooling:
+- Claude Code: use MCP Playwright tools (`browser_snapshot`, `browser_navigate`, `browser_click`, etc.)
+- Codex / shell-only: use `playwright-cli` commands (`goto`, `snapshot`, `click`, `route`)
+
+Do not write assertions in this step. The probe only observes and records.
+
+Required probe output:
+- confirmed selector map: element description → observed selector
+- reachability report: which routes are live, which return error or redirect
+- auth state snapshot if the flow requires login
+
 Execution order:
 1. Analyst always runs first.
 2. UI Mapper and Runtime Probe may run in parallel after Analyst.
@@ -172,7 +183,7 @@ The final web doc must include:
 - runtime assumptions
 - routes under test
 - scenario map
-- selector strategy
+- selector strategy with confidence level (probe-grounded / ui-mapper / static-inferred)
 - run command
 - artifacts
 - issues found
@@ -195,11 +206,18 @@ Skip this step in `docs-only` and `verify-only`.
 Create or refresh `tests/web/{name}.spec.ts`.
 
 Authoring rules:
-- prefer role, label, and visible-text selectors
-- treat `data-testid` as a fallback
-- keep tests deterministic and scenario-focused
+- use `@playwright/test` conventions
+- selectors must be grounded in probe or UI mapper output — never guessed:
+  - probe ran → use confirmed selector from probe artifact
+  - only UI mapper ran → use selector from UI mapper artifact
+  - neither ran → use `getByRole`, `getByLabel`, or `getByText` only; never invent `data-testid` values or CSS class names
+- every test must assert a visible outcome, not only perform actions
+- each test covers exactly one user journey from entry point to observable result
+- declare API strategy explicitly as a comment at the top of the test file:
+  - `mock` — use `page.route()` to intercept; do not call real backend
+  - `real` — requires stable data seed; document the seed command in the web doc
+  - never mix mock and real calls within the same test suite
 - use the resolved engine
-- if the engine is `playwright`, use `@playwright/test` conventions by default
 
 ---
 

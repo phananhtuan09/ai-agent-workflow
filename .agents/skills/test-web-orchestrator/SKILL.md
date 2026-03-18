@@ -221,6 +221,9 @@ If the selected mode requires an actual run and runtime prerequisites are materi
 - fail the gate
 - stop before execution
 
+Tooling for this step follows the Browser Tooling Strategy — Phase 1.
+The probe artifact must include a confirmed selector map and a reachability report.
+
 ### Verifier
 
 Run `test_web_verifier` after test execution in `all` mode.
@@ -232,6 +235,55 @@ The verifier must classify the result as:
 - selector drift
 - runtime/environment blocker
 - flaky or incomplete test coverage
+
+## Browser Tooling Strategy
+
+Use two distinct tools across two distinct phases. Never mix them in the same step.
+
+### Phase 1 — Exploration (runtime-probe)
+
+Use a lightweight browser CLI, not the full test framework:
+
+- **Claude Code**: use active MCP Playwright tools (`browser_snapshot`, `browser_navigate`,
+  `browser_click`, etc.)
+- **Codex / shell-only**: use `playwright-cli` commands (`goto`, `snapshot`, `click`, `route`)
+
+Goals of this phase:
+- confirm the app is reachable and auth succeeds
+- capture actual selectors from live DOM snapshots
+- validate that expected routes and UI states exist before authoring
+
+Output this phase must produce:
+- a confirmed selector map: element description → observed selector
+- a reachability report: which routes are live, which return error or redirect
+- auth state if the flow requires login
+
+Do not write assertions in this phase. The probe only observes and records.
+
+### Phase 2 — Authoring (test file generation)
+
+Use `@playwright/test` to generate `tests/web/{name}.spec.ts`.
+
+Rules:
+- every selector must be grounded in probe output or UI mapper output — never guessed
+- if probe did not run, use `getByRole`, `getByLabel`, or `getByText` only; never invent
+  `data-testid` values, CSS class names, or nth-child paths
+- every test must assert a visible outcome, not only perform actions
+- each test covers exactly one user journey from entry point to observable result
+- declare API strategy explicitly at the top of the test file:
+  - `mock` — use `page.route()` to intercept; do not call real backend
+  - `real` — requires stable data seed; document the seed command in the web doc
+  - never mix mock and real calls within the same test suite
+
+### Selector Grounding Decision
+
+| Probe ran | UI mapper ran | Selector to use | Confidence |
+|-----------|---------------|-----------------|------------|
+| yes       | any           | confirmed selector from probe artifact | high |
+| no        | yes           | selector from UI mapper artifact        | medium |
+| no        | no            | `getByRole` / `getByLabel` / `getByText` only | low |
+
+Record the confidence level in the web doc `Selector Strategy` section.
 
 ## Workflow
 
@@ -295,6 +347,12 @@ In `author-only` and `all`:
 
 - create or refresh `docs/ai/testing/web-{name}.md`
 - create or refresh `tests/web/{name}.spec.ts`
+
+Authoring constraints:
+- follow the Browser Tooling Strategy — Phase 2 selector grounding rules
+- if probe output is available, read `docs/ai/testing/agents/web-runtime-{name}.md` before
+  writing any selector
+- record which selectors are probe-grounded vs statically inferred in the web doc
 
 Idempotency rules:
 
@@ -369,3 +427,5 @@ Report:
 - routing decisions are grounded in the analyst artifact
 - authoring and execution do not guess missing runtime requirements
 - the final web doc is useful as a rerun source of truth
+- selectors in the generated test file are grounded in probe or UI mapper output, not guessed
+- API strategy (mock or real) is declared explicitly and consistent across the test suite

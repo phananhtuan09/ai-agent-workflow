@@ -190,9 +190,9 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ## 13. Open Questions
 
-| ID | Question | Owner | Status |
-|----|----------|-------|--------|
-| Q-01 | {Unresolved question} | {Who decides} | Open |
+| ID | Question | Owner | Due Date | Status | Blocking |
+|----|----------|-------|----------|--------|----------|
+| Q-01 | {Unresolved question} | {Who decides} | {YYYY-MM-DD} | Open | Yes/No |
 
 ---
 

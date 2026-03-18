@@ -56,6 +56,18 @@ AskUserQuestion(questions=[{
 
 ## Step 1: Analyze User Prompt
 
+### Extract Structured Context
+
+Before analyzing, extract any structured context the user provided:
+
+| Slot | Value | Source |
+|------|-------|--------|
+| **Tech constraints** | Existing stack, perf budget, timeline | User prompt or ask |
+| **Related artifacts** | Figma paths, epic path, API docs links | User prompt or skip |
+| **Feature boundary** | What is explicitly in vs out | User prompt or ask |
+
+If tech constraints or feature boundary are missing and the feature is Medium/Complex, ask before running agents.
+
 ### Parse Request
 
 Analyze user prompt to determine:
@@ -92,6 +104,7 @@ AskUserQuestion(questions=[{
 **Full Mode** (for Complex features or when user wants thoroughness):
 - Full agent workflow as described in subsequent steps
 - All conditional agents evaluated
+- Max 3 Q&A rounds total; after round 3 mark remaining unknowns as [ASSUMPTION] and continue
 
 ### Determine Agent Strategy
 
