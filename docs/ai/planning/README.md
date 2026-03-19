@@ -21,6 +21,9 @@ This directory contains planning documents for both epics and individual feature
 - `development-orchestrator` now starts by selecting a run mode:
   - `docs-only`: generate or refresh the planning docs needed for review, then stop before implementation
   - `all`: run planning, review, implementation, verification, and sync in one pass
+  - Before execution, it also detects both task type (`new-feature`, `bug-fix`, `refactor`, `upgrade`, `delete`) and task size (`quick`, `standard`, `large`)
+  - Plain-text requests are no longer executed purely because they look small; they must first pass the task-type gate
+  - Ambiguous or likely multi-file work can trigger a bounded investigation step before planning or coding
 
 ### Creating a Feature Plan
 Use the `create-plan` command to generate a new feature plan:

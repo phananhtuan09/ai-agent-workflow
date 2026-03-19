@@ -117,7 +117,21 @@ Capture exact values for:
 - states: default, hover, active, focus, disabled, loading, error, success when present
 - variants: size, style, intent
 - responsive differences by breakpoint
-- icons, images, and export-sensitive assets
+- icons, images, and export-sensitive assets:
+  - For each icon: node ID, library (Heroicons/Lucide/Custom), container size, icon size, color, placeholder path (`{ICONS_PATH}/{name}.svg`), export format SVG
+  - For each image: node ID, container size, object-fit, aspect ratio, border-radius, placeholder path (`{IMAGES_PATH}/{name}.{ext}`), export format
+  - Icon spec example:
+    ```
+    Icon: chevron-right | Node ID: 123:456 | Container: 24×24px | Color: #374151 | Path: {ICONS_PATH}/chevron-right.svg
+    ```
+  - Image spec example:
+    ```
+    Image: hero-banner | Node ID: 789:012 | Container: 1440×480px | object-fit: cover | Path: {IMAGES_PATH}/hero-banner.jpg | Format: JPG 2x
+    ```
+  - Produce a consolidated Assets Export Table at the end of the Assets section:
+    - First line defines the symbolic vars: `ICONS_PATH = (replace with project path)` and `IMAGES_PATH = (replace with project path)`
+    - Table columns: Name | Node ID | Type | Dimensions | Color | Placeholder Path | Format
+    - Dev replaces the two vars once per project — no other changes needed
 
 ### 5. Write the output file
 

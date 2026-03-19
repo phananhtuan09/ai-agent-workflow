@@ -76,6 +76,7 @@ Use these exact agent names when `spawn_agent` is available:
 - `test_web_analyst`
 - `test_web_ui_mapper`
 - `test_web_runtime_probe`
+- `test_web_qc`
 - `test_web_verifier`
 
 Execution policy:
@@ -119,13 +120,14 @@ Mode rules:
 
 Before handing work to another worker, create a bounded packet with:
 
-- `Mode`: `analyze`, `ui-map`, `runtime-probe`, `author`, or `verify`
+- `Mode`: `analyze`, `ui-map`, `runtime-probe`, `qc`, `author`, or `verify`
 - `Run Mode`: `docs-only`, `author-only`, `verify-only`, or `all`
 - `Feature Name`
 - `Goal`: one concrete outcome
 - `Behavior Sources`: exact doc paths or user notes that define expected behavior
 - `UI Sources`: exact doc paths or URLs that define UI structure or states
 - `Runtime Sources`: exact doc paths, URLs, config paths, or notes needed to run the app or tests
+- `Runtime Config`: confirmed base URL/port, auth strategy (storageState path / test credentials / none), env variables
 - `Constraints`: explicit non-goals, blockers, and known limitations
 - `Allowed Writes`: exact file paths the worker may edit, or `none`
 - `Validation`: exact commands or evidence expectations for this step
@@ -171,6 +173,7 @@ Fail when:
 - verification is requested but no existing web doc or test file can be found
 - a runtime run is required and the app target, engine, or auth path is missing in a way that prevents execution
 - unresolved open questions would materially change test coverage or target route selection
+- baseURL has two or more conflicting candidates that cannot be resolved from config alone
 
 Warn when:
 
@@ -185,6 +188,16 @@ Pass when:
 
 ## Routing Rules
 
+### Runtime Prerequisites
+
+Before running the analyst, confirm runtime prerequisites with the user:
+
+- base URL or port
+- auth strategy: storageState path, test credentials, or no auth needed
+- env variables if any
+
+Record confirmed values in the `Runtime Config` field of the Context Packet.
+
 ### Analyst
 
 Run `test_web_analyst` first on every mode.
@@ -195,6 +208,19 @@ The analyst artifact is the source of truth for:
 - behavior coverage strength
 - runtime assumptions
 - routing signals for downstream workers
+
+### QC
+
+Run `test_web_qc` after the analyst on every mode.
+
+The QC agent reads the application codebase and the analyst artifact to produce formal, source-grounded test cases.
+The QC artifact is the source of truth for test case scope before authoring begins.
+
+### Scope Confirmation
+
+After QC, present the test case list from the QC artifact to the user.
+Ask the user to approve the scope or exclude specific test cases before proceeding to ui-mapper, probe, or authoring.
+Record any excluded test cases in `Constraints`.
 
 ### UI Mapper
 
@@ -298,9 +324,20 @@ Ask for the run mode unless it was already made explicit.
 - resolve the output paths:
   - `docs/ai/testing/web-{name}.md`
   - `docs/ai/testing/agents/web-analyst-{name}.md`
+  - `docs/ai/testing/agents/web-qc-{name}.md`
   - `docs/ai/testing/agents/web-ui-map-{name}.md`
   - `docs/ai/testing/agents/web-runtime-{name}.md`
   - `tests/web/{name}.spec.ts`
+
+### 1.5. Confirm runtime prerequisites
+
+Ask the user:
+
+- base URL or port for the app under test
+- auth strategy: storageState path, test credentials (username/password), or no auth needed
+- any required env variables
+
+Record confirmed answers as `Runtime Config` in the Context Packet. Fail the gate if baseURL remains ambiguous after this step.
 
 ### 2. Gate
 
@@ -314,15 +351,27 @@ Ask for the run mode unless it was already made explicit.
 - re-read the analyst artifact from disk
 - use its `Routing Signals` section to decide whether to spawn `ui-mapper` and `runtime-probe`
 
+### 3.5. QC — codebase analysis
+
+- run `test_web_qc`
+- re-read the QC artifact from disk
+
+### 3.6. Scope confirmation
+
+- present the test case list from the QC artifact to the user
+- ask the user to approve all cases or exclude specific ones
+- record excluded cases in `Constraints` before proceeding
+
 ### 4. Run downstream workers
 
 Use this DAG:
 
 1. `analyst` runs first
-2. after `analyst`, `ui-mapper` and `runtime-probe` may run in parallel because both depend on the analyst artifact
-3. authoring waits for all selected worker outputs
-4. execution waits for authoring
-5. verification waits for execution
+2. after `analyst`, run `qc` to read codebase and produce test cases
+3. after `qc` and scope confirmation, `ui-mapper` and `runtime-probe` may run in parallel because both depend on the analyst artifact
+4. authoring waits for all selected worker outputs
+5. execution waits for authoring
+6. verification waits for execution
 
 If `spawn_agent` is unavailable, preserve the same boundaries and execute serially.
 

@@ -161,10 +161,36 @@ After user selects, proceed to Step 4 (section detail extraction).
      - Typography used
      - Border and border-radius
      - Shadow per state
-     - Icon names and sizes
+     - **Icons and images** (see format below)
    - Document component hierarchy (which components nest inside others)
    - Update the placeholder for this section in the file
    - Check off this section in Extraction Status
+
+   **Icon spec format** (within component spec):
+   ```markdown
+   **Icon: {icon-name}**
+   - Figma Node ID: {node-id}
+   - Library: {Heroicons / Lucide / Custom / etc.}
+   - Container: {W}×{H}px, {flex center / inline / etc.}
+   - Icon size: {W}×{H}px
+   - Color: {hex} (apply via CSS `color` or SVG `fill`)
+   - Placeholder path: `{ICONS_PATH}/{icon-name}.svg`
+   - Export format: SVG
+   ```
+
+   **Image spec format** (within component spec):
+   ```markdown
+   **Image: {image-name}**
+   - Figma Node ID: {node-id}
+   - Container: {W}×{H}px
+   - object-fit: {cover / contain / fill}
+   - Aspect ratio: {W:H}
+   - Border-radius: {value}
+   - Placeholder path: `{IMAGES_PATH}/{image-name}.{ext}`
+   - Export format: {JPG 2x / PNG / WebP}
+   ```
+
+   > `{ICONS_PATH}` and `{IMAGES_PATH}` are defined at the top of the Assets Export Table. Dev replaces them once per project.
 
 **After each section extraction:**
 - Update the file (replace placeholder with real content)
@@ -195,7 +221,11 @@ Extract all sections in one pass without asking. Cover everything:
 3. **Design Tokens**: Complete colors, typography, spacing, shadows, border-radius
 4. **Components**: Every unique component with all states and variants
 5. **Responsive Specs**: For each breakpoint, document layout and component changes
-6. **Assets**: All icons (name, library, size, color), images (dimensions, format)
+6. **Assets**: For every icon and image:
+   - Name, Figma node ID, type (icon/image), dimensions, color (icons), object-fit (images)
+   - Placeholder path using symbolic vars: `{ICONS_PATH}/{name}.svg` or `{IMAGES_PATH}/{name}.{ext}`
+   - Export format: SVG for icons, JPG 2x or PNG for images
+   - Produce a consolidated export table at the end of the Assets section (see format below)
 7. **Interaction Patterns**: Animation durations, easing, triggered properties
 8. **Validation Notes**: Critical design decisions that are easy to miss
 
@@ -213,6 +243,22 @@ Extract all sections in one pass without asking. Cover everything:
 - [ ] All component variants documented
 - [ ] Responsive layout changes explicitly noted per breakpoint
 - [ ] No guessed or approximate values — exact only
+- [ ] Every icon: node ID, container size, icon size, color, placeholder path documented
+- [ ] Every image: node ID, container size, object-fit, aspect ratio, placeholder path documented
+- [ ] Assets section contains a consolidated export table:
+  ```markdown
+  ## Assets Export Table
+  > Replace `{ICONS_PATH}` and `{IMAGES_PATH}` with your project's actual asset folders.
+  > Export each asset from Figma by node ID and place at the path. No layout changes needed.
+  >
+  > ICONS_PATH = (e.g. src/assets/icons, public/icons)
+  > IMAGES_PATH = (e.g. src/assets/images, public/images)
+
+  | Name | Node ID | Type | Dimensions | Color | Placeholder Path | Format |
+  |------|---------|------|-----------|-------|-----------------|--------|
+  | chevron-right | 123:456 | Icon | 24×24 | #374151 | {ICONS_PATH}/chevron-right.svg | SVG |
+  | hero-banner | 789:012 | Image | 1440×480 | — | {IMAGES_PATH}/hero-banner.jpg | JPG 2x |
+  ```
 
 **Set frontmatter:**
 ```yaml

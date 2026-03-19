@@ -20,7 +20,7 @@ Primary outputs:
 ## Workflow Alignment
 
 - Provide brief status updates before and after important actions.
-- For medium or large work, create orchestration todos for macro phases: Mode, Normalize, Gate, Analyze, Map, Probe, Author, Execute, Verify.
+- For medium or large work, create orchestration todos for macro phases: Mode, Normalize, RuntimePrereqs, Gate, Analyze, QC, ScopeConfirm, Map, Probe, Author, Execute, Verify.
 - Keep exactly one orchestration todo `in_progress`.
 - Keep the orchestrator as the only writer of the final web doc and generated test file.
 
@@ -81,6 +81,7 @@ Rules:
 - Resolve output paths:
   - `docs/ai/testing/web-{name}.md`
   - `docs/ai/testing/agents/web-analyst-{name}.md`
+  - `docs/ai/testing/agents/web-qc-{name}.md`
   - `docs/ai/testing/agents/web-ui-map-{name}.md`
   - `docs/ai/testing/agents/web-runtime-{name}.md`
   - `tests/web/{name}.spec.ts`
@@ -90,6 +91,44 @@ Read:
 - `docs/ai/project/CODE_CONVENTIONS.md`
 - `docs/ai/project/PROJECT_STRUCTURE.md`
 - `docs/ai/testing/README.md`
+
+---
+
+## Step 1.5: Confirm Runtime Prerequisites
+
+Use `AskUserQuestion` for this step unless the user already provided all values explicitly.
+
+Required prompt:
+
+```text
+AskUserQuestion(questions=[
+  {
+    question: "What is the base URL or port for the app under test?",
+    header: "Base URL",
+    options: [
+      { label: "http://localhost:3000", description: "Default Next.js dev port" },
+      { label: "http://localhost:5173", description: "Default Vite dev port" },
+      { label: "http://localhost:4200", description: "Default Angular dev port" },
+      { label: "Other / not sure", description: "I'll provide it or check the config" }
+    ],
+    multiSelect: false
+  },
+  {
+    question: "What auth strategy should the tests use?",
+    header: "Auth Strategy",
+    options: [
+      { label: "storageState file", description: "Reuse a saved Playwright auth state file" },
+      { label: "Test credentials", description: "Provide username and password for login" },
+      { label: "No auth needed", description: "The tested flows do not require login" }
+    ],
+    multiSelect: false
+  }
+])
+```
+
+Record the confirmed values as `Runtime Config` in the Context Packet.
+
+If the base URL cannot be resolved after this step (e.g., user selects "Other / not sure" and no config file disambiguates), fail the gate rather than guessing.
 
 ---
 
@@ -112,6 +151,7 @@ Classify the current state as `fail`, `warn`, or `pass`.
 - `verify-only` is requested but no existing web doc or test file can be found
 - runtime execution is required and app target, engine, or auth path is missing in a way that prevents execution
 - unresolved open questions would materially change test coverage or route selection
+- base URL has two or more conflicting candidates that cannot be resolved after Step 1.5
 
 ### Warn when
 - authoring falls back to the default `playwright` engine
@@ -142,6 +182,42 @@ Required routing signals:
 
 ---
 
+## Step 3.5: QC — Codebase Analysis
+
+Invoke `.claude/agents/test-web-qc.md`.
+
+Pass a handoff packet that includes:
+- analyst artifact path
+- app source paths to read (route files, page components, form components, auth guards, API hooks) — derive from the codebase based on the feature name and analyst routing signals
+
+Re-read `docs/ai/testing/agents/web-qc-{name}.md` from disk after the agent completes.
+
+---
+
+## Step 3.6: Scope Confirmation
+
+Use `AskUserQuestion` to present the test case list from the QC artifact and ask the user to confirm or trim the scope.
+
+Required prompt structure:
+
+```text
+AskUserQuestion(questions=[{
+  question: "The QC agent found the following test cases. Which ones should be included in this run?",
+  header: "Test Scope",
+  options: [
+    { label: "All test cases", description: "Run all {N} test cases identified by QC" },
+    { label: "Exclude specific cases", description: "I'll name which to skip in the Other field" }
+  ],
+  multiSelect: false
+}])
+```
+
+If the user excludes specific cases, record them in `Constraints` before proceeding to UI Mapper and Runtime Probe.
+
+In `all` mode, if the user already confirmed scope and a test case list is in the QC artifact with no ambiguity, you may skip this question and auto-continue — treat it as `pass`.
+
+---
+
 ## Step 4: Run Conditional Workers
 
 ### UI Mapper
@@ -155,6 +231,7 @@ Invoke `.claude/agents/test-web-runtime-probe.md` only when the analyst artifact
 Runtime probe policy:
 - if browser tooling is unavailable but the selected mode does not require execution, skip with warning
 - if execution is required and runtime prerequisites are materially broken, stop with `fail`
+- before executing any interaction that could create, modify, or delete app data, use `AskUserQuestion` to confirm the user consents before proceeding
 
 Tooling:
 - Claude Code: use MCP Playwright tools (`browser_snapshot`, `browser_navigate`, `browser_click`, etc.)
@@ -169,8 +246,10 @@ Required probe output:
 
 Execution order:
 1. Analyst always runs first.
-2. UI Mapper and Runtime Probe may run in parallel after Analyst.
-3. Authoring waits for all selected worker outputs.
+2. QC runs after Analyst to produce formal test cases.
+3. Scope confirmation happens after QC.
+4. UI Mapper and Runtime Probe may run in parallel after scope is confirmed.
+5. Authoring waits for all selected worker outputs.
 
 ---
 

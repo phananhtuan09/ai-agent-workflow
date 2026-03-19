@@ -22,6 +22,11 @@ description = "UI/UX analyst for requirement discovery. Defines screens, flows, 
 config_file = "agents/requirement-uiux.toml"
 nickname_candidates = ["UIUX", "UX"]
 
+[agents.task_investigator]
+description = "Read-only task investigator for ambiguous development requests. Detects task type, scope, and blocking gaps."
+config_file = "agents/task-investigator.toml"
+nickname_candidates = ["Investigate", "Triage"]
+
 [agents.dev_plan_reviewer]
 description = "Implementation-readiness reviewer for feature plans. Returns pass, warn, or fail with concrete fixes."
 config_file = "agents/dev-plan-reviewer.toml"
@@ -51,3 +56,8 @@ nickname_candidates = ["Probe", "Runtime"]
 description = "Classifies web test execution results as product bugs, selector drift, runtime blockers, or coverage gaps."
 config_file = "agents/test-web-verifier.toml"
 nickname_candidates = ["WebVerify", "Triage"]
+
+[agents.test_web_qc]
+description = "Reads application codebase and analyst artifact to produce formal test cases grounded in source code."
+config_file = "agents/test-web-qc.toml"
+nickname_candidates = ["QC", "TestCases"]

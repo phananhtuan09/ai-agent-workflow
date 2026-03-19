@@ -68,6 +68,8 @@ When tooling is available, inspect enough to record:
 - failed network requests
 - obvious mismatches between expected labels and observed UI
 
+If the flow requires interaction that could create, modify, or delete application data, confirm with the orchestrator whether the user has consented before proceeding.
+
 ### 4. Write runtime artifact
 
 Include:

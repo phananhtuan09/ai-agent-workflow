@@ -1,16 +1,17 @@
 ---
 name: development-orchestrator
-description: Use when the user wants one orchestration workflow to route requirement, epic, and feature-plan artifacts across planning and implementation with readiness gates, verification, and status sync.
+description: Use when the user wants one orchestration workflow to route requirement, epic, and feature-plan artifacts across planning and implementation with readiness gates, investigation, verification, and status sync.
 ---
 
 # Development Orchestrator
 
 Use this skill as the control plane for planning and implementation.
 
-The orchestrator does not replace `manage-epic`, `create-plan`, or `execute-plan`. It sits above them and does four things:
+The orchestrator does not replace `manage-epic`, `create-plan`, or `execute-plan`. It sits above them and does five things:
 
 - route the current artifact to the right workflow
-- package minimal context for each worker
+- classify the work by task type and task size before execution
+- investigate scope when the prompt is too thin to trust
 - enforce readiness and verification gates
 - sync status across requirement, epic, and feature-plan docs
 
@@ -22,13 +23,7 @@ Accept one of:
 - epic doc path: `docs/ai/planning/epic-{name}.md`
 - feature plan path: `docs/ai/planning/feature-{name}.md`
 - a feature name that can be resolved to one of the above
-- plain-text description with no artifact path (see quick task rule below)
-
-**Quick task rule:** If no artifact path is found and the request describes a self-contained change — single concern, clear expected outcome, no cross-cutting dependencies — treat it as a quick task:
-- skip spec file creation
-- create a minimal inline plan (goal + expected outcome + files affected, ≤ 5 steps)
-- proceed directly to `execute`
-- skip the `plan` and `plan-review` stages
+- plain-text description with no artifact path
 
 Optional:
 
@@ -36,6 +31,7 @@ Optional:
 - blocker notes
 - explicit orchestrator run mode: `docs-only` or `all`
 - explicit instruction to plan only, execute only, or sync only
+- spec paths, bug reports, screenshots, or hinted files
 
 ## Required Context
 
@@ -58,10 +54,11 @@ If `manage-epic` is unavailable, fall back to `.claude/commands/manage-epic.md`.
 
 Optional worker prompts live in:
 
+- `.agents/roles/task-investigator.md`
 - `.agents/roles/dev-plan-reviewer.md`
 - `.agents/roles/dev-verifier.md`
 
-Use them when the work is large enough to benefit from explicit worker boundaries. Otherwise simulate the same boundary yourself.
+Use them when the work is large enough or ambiguous enough to benefit from explicit worker boundaries. Otherwise simulate the same boundary yourself.
 
 ## Codex Multi-Agent Contract
 
@@ -69,15 +66,16 @@ This repository registers named Codex agents in `.codex/config.toml`.
 
 Use these exact agent names when `spawn_agent` is available:
 
+- `task_investigator`
 - `dev_plan_reviewer`
 - `dev_verifier`
 
 Execution policy:
 
 - Keep one primary writer for requirement, epic, feature-plan, and implementation edits.
-- Use sub-agents for review and verification, where parallel read-heavy work is safe.
+- Use sub-agents for read-heavy investigation, review, and verification when safe.
 - Do not run more than one write-heavy implementation worker at a time.
-- If a spawned review or verification agent fails, retry once with a tighter packet, then continue solo if needed.
+- If a spawned investigation, review, or verification agent fails, retry once with a tighter packet, then continue solo if needed.
 
 ## Compatibility Contract
 
@@ -106,23 +104,105 @@ Mode rules:
   - requirement input -> create or refresh the epic when needed, then generate every feature plan doc needed for review
   - epic input -> create or refresh all missing or stale feature plans tracked by the epic, not just the next ready slice
   - feature-plan input -> review and fix the selected plan doc only
+  - plain-text input -> generate the minimum planning artifact needed for the detected task size, then stop before implementation
   - stop before `execute`, implementation `verify`, and post-implementation `sync`
 - `all`:
-  - run `route -> plan -> plan-review -> execute -> verify -> sync` in one pass
+  - run `route -> classify -> investigate -> gate -> plan -> plan-review -> execute -> verify -> sync` in one pass
   - after the initial mode choice, do not ask follow-up confirmation questions
   - treat `warn` as auto-continue and report it
   - treat any later ambiguity that would materially change behavior as `fail` and stop
+
+## Classification Model
+
+Classify every run on two independent axes before planning or executing:
+
+- `Task Type`: `new-feature`, `bug-fix`, `refactor`, `upgrade`, or `delete`
+- `Task Size`: `quick`, `standard`, or `large`
+
+These axes are independent:
+
+- a bug fix can be `quick` or `large`
+- a refactor can be `quick` or `large`
+- task size decides document depth
+- task type decides minimum context needed before execution
+
+Do not auto-execute a plain-text prompt only because it looks short. A `quick` task still has to pass the type-specific gate.
+
+## Task Type Gate
+
+Before planning or executing, confirm the minimum required information for the detected task type:
+
+| Type | Minimum required before execute |
+| --- | --- |
+| `new-feature` | integration point, one existing pattern file or module to follow, and an explicit out-of-scope boundary |
+| `bug-fix` | symptom or error description, expected versus actual behavior, and a reproduction path |
+| `refactor` | explicit behavior-preserved contract, validation or test coverage plan, and a scope boundary |
+| `upgrade` | target dependency or API change, behavior to preserve, and a caller or dependent list |
+| `delete` | remove versus disable decision, dependency trace, and the intended safety or rollback boundary |
+
+If these minimums are missing:
+
+- use the investigation report as the primary source to fill them
+- if a minimum is still missing after investigation, ask the user once for the remaining blocking gaps
+- do not assume or infer minimums without investigation evidence
+
+## Investigation Policy
+
+Always run investigation for plain-text input before proceeding to the task-type gate or planning. The investigation result is the primary source for fulfilling task-type minimums — do not infer or assume minimums without it.
+
+Investigate locally (read 1–2 files yourself) when:
+- the artifact is a well-formed feature plan or requirement doc with clear scope
+- the task is unambiguously single-file and the first likely file confirms full scope
+
+Spawn `task_investigator` when any of these are true:
+
+- the input is plain text (always)
+- task type is ambiguous after reading the prompt and core docs
+- the prompt names a symptom but not the owning module or integration point
+- the scope is still unclear after reading one or two likely files
+- multi-file or cross-layer impact is likely, especially for `refactor`, `upgrade`, or `delete`
+- the user supplied spec files, logs, or hints that need bounded triage before planning
+
+The investigator is read-only and must return this fixed structure:
+
+```markdown
+## Investigation Report
+
+**Task Type:** bug-fix | refactor | new-feature | upgrade | delete
+**Confidence:** high | medium | low
+**Scope:** single-file | multi-file | cross-layer
+
+### Files Read
+- `path/to/file.ts` - why it was read
+
+### Known (from codebase)
+- fact 1
+
+### Unclear (blocking)
+- gap 1
+
+### Questions for User
+1. question only when a blocking gap remains
+
+### Recommended Next Step
+proceed | ask-user | escalate-to-spec
+```
+
+Use the report to decide whether to continue, ask the user, or escalate from plain prompt to planning docs.
 
 ## Context Packet
 
 Before handing work to another skill or worker, create a bounded packet with:
 
-- `Mode`: `route`, `plan`, `plan-review`, `execute`, `verify`, or `sync`
+- `Mode`: `route`, `investigate`, `plan`, `plan-review`, `execute`, `verify`, or `sync`
 - `Run Mode`: `docs-only` or `all`
-- `Input Artifact`: `requirement`, `epic`, or `feature-plan`
+- `Input Artifact`: `requirement`, `epic`, `feature-plan`, or `plain-text`
+- `Task Type`: detected type plus confidence
+- `Task Size`: `quick`, `standard`, or `large`
 - `Goal`: one concrete outcome
-- `Source of Truth`: exact doc paths
-- `Acceptance Criteria Slice`: only the scenarios relevant to this step
+- `Source of Truth`: exact doc paths, files, specs, or prompt snippets
+- `Known Facts`: only the facts relevant to this step
+- `Blocking Gaps`: unresolved items that still matter
 - `Allowed Files`: files the worker may edit
 - `Non-Goals`: explicit out-of-scope items
 - `Validation`: exact commands or validation expectations
@@ -133,26 +213,28 @@ Do not forward full conversation history when the packet is sufficient.
 When delegating to Codex agents, also include:
 
 - `Role`: exact agent name from the Codex Multi-Agent Contract
-- `Allowed Writes`: exact file paths the worker may edit, or `none` for read-only verification
+- `Allowed Writes`: exact file paths the worker may edit, or `none` for read-only investigation and verification
 - `Linked Docs`: exact requirement, epic, and feature-plan paths relevant to this step
 
 ## Readiness Gate
 
-Before planning or executing, classify findings as `fail`, `warn`, or `pass`.
+After task-type minimums are satisfied, classify findings as `fail`, `warn`, or `pass`.
 
 ### Proportionality
 
 Match required spec depth to task size before applying the gate:
-- **Quick task** (single concern, clear outcome, ≤ 5 steps, no cross-cutting dependencies): minimal inline plan is sufficient — do not require a spec file, AC list, or epic
-- **Standard task** (3–10 behaviors, no epic needed): a feature plan doc is sufficient
-- **Large task** (multi-deliverable, cross-layer, or dependent slices): full spec + epic required
+
+- **Quick task**: single concern, clear outcome, no cross-cutting dependency chain, and a minimal inline plan is sufficient
+- **Standard task**: multiple behaviors or files but no epic needed, so a feature plan doc is sufficient
+- **Large task**: multi-deliverable, cross-layer, or dependency-ordered slices, so full spec plus epic is required
 
 Apply `fail` / `warn` / `pass` relative to the expected depth for that task size, not against the full spec bar.
 
 Fail when:
 
 - the core behavior or feature boundary is missing
-- no acceptance criteria exist for non-trivial work
+- task-type minimum information is still missing
+- no acceptance criteria or behavior contract exist for non-trivial work
 - unresolved open questions would materially change implementation
 - the target artifact cannot be found
 
@@ -161,6 +243,7 @@ Warn when:
 - out-of-scope is missing but the implementation boundary is still clear
 - dependency order is implied but not explicit
 - risks exist without concrete mitigation yet
+- validation is thin but still sufficient for the current scope
 
 Pass when:
 
@@ -217,27 +300,70 @@ If the run mode is `all` and the review passes, run `execute-plan`.
 
 After `all` mode execution, always run `verify` and then `sync` when an epic link exists.
 
+### Plain-text input
+
+Investigation must complete before using plain text as the source of truth.
+
+- `quick` + investigation complete + gate `pass` -> create a minimal inline plan and proceed directly to `execute`
+- `standard` -> create or refresh a feature plan doc before execution
+- `large` -> create or refresh the requirement, epic, and feature-plan docs before execution
+
+Escalate a plain-text request when:
+
+- the investigator recommends `escalate-to-spec`
+- the task is `large`
+- the task is `new-feature` with unclear boundaries
+- the task is `refactor`, `upgrade`, or `delete` with multi-file impact and no explicit contract
+
+Escalation action: stop execution; surface the missing spec as a blocker; ask the user to provide a requirement doc path or confirm that a new requirement doc should be created — do not proceed to planning or execution.
+
 ## Workflow
 
 ### 0. Choose mode
 
 Ask the user to choose `docs-only` or `all` unless the mode is already explicit in the prompt.
 
-### 1. Route
+### 1. Route and classify
 
 Identify the artifact type and linked documents:
 
 - requirement linked to epic
 - epic linked to requirement and feature plans
-- feature plan linked to requirement or epic via frontmatter
+- feature plan linked to requirement or epic via frontmatter — only when the frontmatter field is non-null and the file exists on disk
+- plain-text prompt with optional hints, specs, or file paths
 
-Re-read the files from disk instead of relying on chat memory.
+Re-read files from disk instead of relying on chat memory.
 
-### 2. Plan
+Then:
+
+- detect `Task Type`
+- estimate `Task Size`
+- load the first one or two likely code files when that helps confirm scope
+- for plain-text input, always defer routing decision to after investigation
+
+### 2. Investigate gaps
+
+For plain-text input, always run investigation before proceeding. For artifact-backed input, run when scope or impact is unclear.
+
+- run `task_investigator` with a read-only packet
+- read the report once
+- `Recommended Next Step: proceed` and `Unclear` is empty → continue to gate
+- `Recommended Next Step: ask-user` or blocking gaps remain → use the investigator's `Questions for User` to ask the user once; treat the answer as final context
+- `Recommended Next Step: escalate-to-spec` → stop; report the missing spec as a blocker; ask the user to provide a requirement doc path or confirm a new requirement doc should be created — do not proceed to execution
+- `Confidence: low` with non-empty `Unclear` → treat as `ask-user` regardless of the recommended step
+
+### 3. Apply gates
+
+Run the `Task Type Gate` first, then the proportional `Readiness Gate`.
+
+- `fail` -> stop and report the exact missing input
+- `warn` in `all` -> continue automatically and report the warning
+- `warn` in `docs-only` -> continue unless the warning changes which docs should be generated
+
+### 4. Plan
 
 For requirement-driven work:
 
-- run the readiness gate
 - choose `manage-epic` or `create-plan`
 - pass only the requirement and direct constraints
 
@@ -246,12 +372,19 @@ For epic-driven work:
 - in `docs-only`, generate or refresh all feature plan docs needed for review
 - in `all`, select the next ready slice and create or refresh that feature plan when needed
 
-### 3. Plan review
+For plain-text work:
+
+- keep `quick` tasks inline
+- create the smallest durable artifact that makes the task execution-safe
+
+### 5. Plan review
+
+Skip this step for inline `quick` tasks that intentionally do not create a durable feature plan doc.
 
 Validate that the selected feature plan has:
 
 - a clear goal
-- testable acceptance criteria
+- testable acceptance criteria or explicit behavior-preserved contract
 - dependency-ordered phases
 - concrete file targets
 - validation expectations
@@ -266,24 +399,24 @@ In `docs-only`:
 
 When `spawn_agent` is available, delegate this step to `dev_plan_reviewer` with a read-only packet unless the worker is explicitly allowed to patch the plan.
 
-### 4. Execute
+### 6. Execute
 
 Skip this step entirely in `docs-only`.
 
-Pass only the selected feature plan, linked requirement and epic paths, and the relevant acceptance criteria slice.
+Pass only the selected feature plan, linked requirement and epic paths, the relevant acceptance criteria or behavior contract, and the investigator facts that still matter.
 
 Do not execute more than one feature plan at a time.
 
 Keep execution in the primary orchestrator thread unless you later add a dedicated execution agent with a strict single-writer contract.
 
-### 5. Verify
+### 7. Verify
 
 Skip this step entirely in `docs-only`.
 
 Check:
 
 - touched code matches the current plan tasks
-- acceptance criteria are still covered
+- acceptance criteria or preserved behavior are still covered
 - validation ran at the smallest useful scope first
 - blockers are recorded explicitly when work could not finish
 
@@ -291,7 +424,7 @@ Use `quality-code-check` when lint, type, build, or test work becomes the main t
 
 When `spawn_agent` is available, delegate the verification summary to `dev_verifier` after execution and validation complete.
 
-### 6. Sync
+### 8. Sync
 
 Skip this step in `docs-only` unless a plan-generation step must update safe cross-links while writing docs.
 
@@ -308,7 +441,7 @@ Status mapping:
 - explicit blocker -> `blocked`
 - all tasks complete -> `completed`
 
-### 7. Failure handling
+### 9. Failure handling
 
 If execution or verification fails mid-phase:
 
@@ -325,6 +458,8 @@ Report:
 
 - run mode used
 - input artifact and route chosen
+- detected task type and task size
+- whether investigation was used
 - gates passed, warned, or failed
 - files created or updated
 - skipped steps
@@ -334,8 +469,11 @@ Report:
 ## Quality Bar
 
 - routing decisions are explainable from repository artifacts
+- task type and task size are both explicit before execution
+- quick plain-text tasks do not bypass type-specific minimum context
+- investigation stays bounded and read-only
 - worker context stays bounded
 - no implementation begins from an unready plan
 - epic and feature-plan status stay aligned when an epic is in play
 - standalone planning or execution still works without this orchestrator
-- **Clarification limit:** Do not ask the user more than two clarification rounds. If the input is still ambiguous after two rounds, stop and report the exact missing information as a blocker — do not loop further.
+- **Clarification limit:** do not ask the user more than two clarification rounds; if the input is still ambiguous after two rounds, stop and report the exact missing information as a blocker
