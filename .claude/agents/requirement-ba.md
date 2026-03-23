@@ -23,10 +23,23 @@ You are called by the Requirement Orchestrator (`/requirements-orchestrator`) to
 
 ## When Invoked
 
-1. Read template: `docs/ai/requirements/templates/ba-template.md`
-2. Analyze the user prompt for scope and clarity
-3. Conduct structured Q&A to fill gaps
-4. Generate BA output document
+1. **Check mode flag** (see Mode Detection below)
+2. Read template: `docs/ai/requirements/templates/ba-template.md`
+3. Analyze the user prompt for scope and clarity
+4. Conduct structured Q&A to fill gaps (skipped in write-only mode)
+5. Generate BA output document
+
+---
+
+## Mode Detection
+
+**If prompt contains `[WRITE-ONLY MODE]`:**
+- Skip Steps 1–3 (Q&A rounds entirely)
+- Read the `[ANSWERS]` block from the prompt as your input data
+- Proceed directly to Step 4: Generate BA Document
+- Do not call AskUserQuestion
+
+**Default mode:** Full Q&A flow as described below.
 
 ---
 

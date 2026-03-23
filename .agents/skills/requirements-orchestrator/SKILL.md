@@ -19,13 +19,14 @@ Operate as a requirement team lead. Your job is to decide which specialist roles
 
 ## Required Context
 
-Read these files before drafting or delegating work:
+Read these files before starting. Pass their content inline to workers instead of asking workers to re-read them:
 
-- `docs/ai/requirements/req-template.md`
-- `docs/ai/project/CODE_CONVENTIONS.md`
-- `docs/ai/project/PROJECT_STRUCTURE.md`
+- `docs/ai/requirements/req-template.md` — used by orchestrator during consolidation
+- `docs/ai/project/CODE_CONVENTIONS.md` — passed inline to SA handoff
+- `docs/ai/project/PROJECT_STRUCTURE.md` — passed inline to SA handoff
+- `AGENTS.md` — passed inline to SA handoff (if exists)
 
-Read these templates when producing or validating role outputs:
+Do not read role templates upfront. Workers load their own templates from:
 
 - `docs/ai/requirements/templates/ba-template.md`
 - `docs/ai/requirements/templates/sa-template.md`
@@ -122,9 +123,19 @@ Choose the role set with this routing matrix:
 
 Do not ask the user which roles to run unless the prompt is ambiguous enough that the product boundary itself is unclear.
 
-### 3. Run BA first
+### 3. Clarify then run BA
 
-Load `.agents/roles/requirement-ba.md`.
+**Clarification first, spawn second.** Ask follow-up questions yourself before invoking BA, so BA runs in write-only mode with complete inputs.
+
+Ask the user only when a wrong assumption would change scope, user flow, or acceptance criteria. Tailor questions to the specific feature — avoid generic questions. After each round, decide: are there still blockers that would prevent BA from writing a clear document? If no, proceed.
+
+Cap at two clarification rounds. After two rounds, mark remaining unknowns as `[ASSUMPTION]` and continue.
+
+Once answers are collected, load `.agents/roles/requirement-ba.md` and spawn BA with the full input package:
+
+- original user prompt
+- collected clarification answers
+- existing requirement doc if present
 
 Produce `docs/ai/requirements/agents/ba-{name}.md`.
 
@@ -136,10 +147,6 @@ The BA output is the source of truth for:
 - business rules
 - out-of-scope items
 - open questions
-
-Ask the user concise follow-up questions only when a wrong assumption would change scope, user flow, or acceptance criteria.
-
-Cap at two clarification rounds. After two rounds, mark remaining unknowns as `[ASSUMPTION]` and continue.
 
 ### 4. Re-evaluate role selection after BA
 
@@ -187,7 +194,7 @@ Every packet must include:
 
 - `Role`: `requirement_sa`
 - BA output path
-- project standards paths
+- inline project context (content of `CODE_CONVENTIONS.md`, `PROJECT_STRUCTURE.md`, `AGENTS.md` read by the orchestrator — SA does not need to read these files itself)
 - short note listing areas that need feasibility focus
 
 #### Researcher handoff

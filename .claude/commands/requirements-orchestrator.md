@@ -98,7 +98,7 @@ AskUserQuestion(questions=[{
 **Light Mode** (for Simple features or when user prefers speed):
 - Agents: BA → SA → Consolidate
 - Skip Researcher and UI/UX agents
-- Fewer Q&A rounds (1-2 max)
+- Q&A: focus on critical unknowns only, stop when BA has enough to write
 - Smaller consolidated output
 
 **Full Mode** (for Complex features or when user wants thoroughness):
@@ -116,7 +116,7 @@ Based on analysis and mode:
 | Simple UI feature | Light | BA → SA | Sequential |
 | Complex API feature | Full | BA → SA | Sequential |
 | Complex full-stack | Full | BA → SA → UI/UX | Sequential |
-| Domain-specific | Full | BA + Researcher (parallel) → SA → UI/UX | Mixed |
+| Domain-specific | Full | BA → (SA + Researcher parallel) → UI/UX | Mixed |
 | Any feature | Light | BA → SA | Sequential |
 
 ### Decision Output
@@ -145,26 +145,43 @@ Based on analysis and mode:
 
 ## Step 2: Execute BA Agent
 
-**Always runs first (or parallel with Researcher if domain terms detected)**
+**Orchestrator handles Q&A directly — avoids expensive sub-agent resume pattern.**
 
-### Invoke BA Agent
+### 2a: Orchestrator Q&A
+
+Collect requirements directly — **do not delegate Q&A to the BA sub-agent** (avoids expensive resume pattern).
+
+Conduct Q&A rounds yourself using `AskUserQuestion`. Tailor questions and options to the specific feature. Apply judgment on how many rounds are needed:
+
+| Mode | Guidance |
+|------|----------|
+| Light | Focus on unknowns critical for BA to write the document. Stop when you have enough. |
+| Full | Deeper exploration. After round 3, mark remaining unknowns as `[ASSUMPTION]` and continue. |
+
+After each round, decide: are there still blockers that would prevent BA from writing a clear document? If yes, ask another round. If no, proceed.
+
+After collecting all answers, record them as a structured `[ANSWERS]` block and proceed to spawn.
+
+### 2b: Spawn BA Agent (write-only)
 
 ```
 Task(
-  subagent_type='general-purpose',
+  subagent_type='requirement-ba',
   description='BA requirement analysis',
-  prompt="Read agent definition: .claude/agents/requirement-ba.md
+  prompt="[WRITE-ONLY MODE] - Answers already collected. Skip Q&A steps entirely.
 
-Execute the BA Agent workflow for feature: {feature-name}
+Feature: {feature-name}
 
 User's original request:
 ---
 {user prompt}
 ---
 
-Output to: docs/ai/requirements/agents/ba-{name}.md
+[ANSWERS]
+{paste collected answers here}
+[/ANSWERS]
 
-Follow all steps in the agent definition. Use AskUserQuestion for Q&A rounds."
+Output to: docs/ai/requirements/agents/ba-{name}.md"
 )
 ```
 
@@ -189,11 +206,9 @@ Based on Step 1 analysis, run applicable agents in parallel.
 
 ```
 Task(
-  subagent_type='general-purpose',
+  subagent_type='requirement-researcher',
   description='Domain research',
-  prompt="Read agent definition: .claude/agents/requirement-researcher.md
-
-Research the following terms/concepts for feature: {feature-name}
+  prompt="Research the following terms/concepts for feature: {feature-name}
 
 Terms to research:
 - {term 1}
@@ -202,32 +217,53 @@ Terms to research:
 
 Context from BA document: docs/ai/requirements/agents/ba-{name}.md
 
-Output to: docs/ai/requirements/agents/research-{name}.md
-
-Follow all steps in the agent definition.",
+Output to: docs/ai/requirements/agents/research-{name}.md",
   run_in_background: true
 )
 ```
 
 ### 3b: SA Agent (always)
 
+Before spawning SA, pre-read project context files in the orchestrator (cheap, predictable cost). This replaces codebase exploration and ensures SA recommendations fit the actual stack.
+
+```
+Read(file_path="docs/ai/project/CODE_CONVENTIONS.md")   # capture as {conventions_content}
+Read(file_path="docs/ai/project/PROJECT_STRUCTURE.md")  # capture as {structure_content}
+Read(file_path="AGENTS.md")                              # capture as {agents_content}, if exists
+```
+
+If a file doesn't exist, use `"(not available)"` as its placeholder.
+
+Pass all captured content inline. SA agent does not need to read any files — use `[LIGHT MODE]` flag for both Light and Full mode (Explore sub-agent is never needed when context is provided):
+
 ```
 Task(
-  subagent_type='general-purpose',
+  subagent_type='requirement-sa',
   description='Solution architecture',
-  prompt="Read agent definition: .claude/agents/requirement-sa.md
+  prompt="[LIGHT MODE] - Use inline project context below. Do not run codebase Explore sub-agent.
 
 Perform technical feasibility assessment for feature: {feature-name}
 
 BA document: docs/ai/requirements/agents/ba-{name}.md
 
-Read project standards:
-- docs/ai/project/CODE_CONVENTIONS.md
-- docs/ai/project/PROJECT_STRUCTURE.md
+[INLINE PROJECT CONTEXT]
+CODE_CONVENTIONS.md:
+---
+{conventions_content}
+---
 
-Output to: docs/ai/requirements/agents/sa-{name}.md
+PROJECT_STRUCTURE.md:
+---
+{structure_content}
+---
 
-Follow all steps in the agent definition.",
+AGENTS.md:
+---
+{agents_content}
+---
+[/INLINE PROJECT CONTEXT]
+
+Output to: docs/ai/requirements/agents/sa-{name}.md",
   run_in_background: true
 )
 ```
@@ -258,18 +294,14 @@ UI/UX Agent is needed if:
 
 ```
 Task(
-  subagent_type='general-purpose',
+  subagent_type='requirement-uiux',
   description='UI/UX design',
-  prompt="Read agent definition: .claude/agents/requirement-uiux.md
-
-Design UI/UX for feature: {feature-name}
+  prompt="Design UI/UX for feature: {feature-name}
 
 BA document: docs/ai/requirements/agents/ba-{name}.md
 SA document: docs/ai/requirements/agents/sa-{name}.md (for constraints)
 
-Output to: docs/ai/requirements/agents/uiux-{name}.md
-
-Follow all steps in the agent definition."
+Output to: docs/ai/requirements/agents/uiux-{name}.md"
 )
 ```
 
@@ -608,8 +640,13 @@ Maximize parallelism where possible:
 
 Optimal parallel execution for full workflow:
 ```
-BA ──────────────┐
-                 ├──▶ SA ──────────┐
-Researcher ──────┘                  ├──▶ UI/UX ──▶ Consolidate
-                                    │
+Q&A (orchestrator)
+    ↓
+BA (write-only)
+    ↓
+SA ──────────────┐
+                  ├──▶ UI/UX ──▶ Consolidate
+Researcher ──────┘
 ```
+
+SA and Researcher both depend on BA output — run them in parallel after BA completes.

@@ -24,12 +24,22 @@ You are called by the Requirement Orchestrator (`/requirements-orchestrator`) af
 
 ## When Invoked
 
-1. Read BA document: `docs/ai/requirements/agents/ba-{name}.md`
-2. Read project standards:
-   - `docs/ai/project/CODE_CONVENTIONS.md`
-   - `docs/ai/project/PROJECT_STRUCTURE.md`
-3. Explore codebase for similar patterns
-4. Generate SA assessment document
+1. **Check mode flag** (see Mode Detection below)
+2. Read BA document: `docs/ai/requirements/agents/ba-{name}.md`
+3. Read project standards (skip if `[INLINE PROJECT CONTEXT]` block is provided)
+4. Explore codebase for similar patterns (skip in light mode)
+5. Generate SA assessment document
+
+---
+
+## Mode Detection
+
+**If prompt contains `[LIGHT MODE]`:**
+- Skip the `Explore` sub-agent in Step 2 entirely
+- Use the `[INLINE PROJECT CONTEXT]` block from the prompt instead of reading project files
+- Do not call `Task(subagent_type='Explore', ...)`
+
+**Default mode:** Full flow including Explore sub-agent.
 
 ---
 
@@ -49,11 +59,13 @@ You are called by the Requirement Orchestrator (`/requirements-orchestrator`) af
 
 ## Step 2: Assess Project Context
 
-**Read project standards:**
+**If `[LIGHT MODE]` flag is present:** Use the `[INLINE PROJECT CONTEXT]` block from the prompt. Skip file reads and skip the Explore sub-agent below.
+
+**Otherwise, read project standards:**
 - `docs/ai/project/CODE_CONVENTIONS.md` - coding patterns
 - `docs/ai/project/PROJECT_STRUCTURE.md` - architecture
 
-**Explore codebase for:**
+**Explore codebase for** (full mode only):
 
 ```
 Task(
