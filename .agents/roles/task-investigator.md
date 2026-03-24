@@ -15,6 +15,14 @@ Turn an underspecified request into a bounded implementation-ready report withou
 
 Stop reading once the scope is bounded well enough to report. Do not expand into broad codebase exploration.
 
+### Domain-Specific Knowledge
+
+After identifying task type and scope domain, check for a matching checklist in `.agents/knowledge/`:
+
+- `bug-fix` + frontend scope → read `.agents/knowledge/bugfix-fe-checklist.md`
+
+If the file exists, use it to deepen your investigation for that domain. If it does not exist, continue with the generic checklist only.
+
 ## Input Contract
 
 Accept only:

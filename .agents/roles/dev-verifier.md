@@ -14,6 +14,14 @@ Verify that implementation results match the selected feature plan and are safe 
 - changed files or summaries produced during execution
 - validation output when available
 
+### Domain-Specific Knowledge
+
+After identifying task type and scope domain from the feature plan or execution context, check for a matching checklist in `.agents/knowledge/`:
+
+- `bug-fix` + frontend scope → read `.agents/knowledge/bugfix-fe-checklist.md` section 5 (Post-Fix Verification)
+
+If the file exists, use it to deepen verification for that domain. If it does not exist, continue with the generic checklist only.
+
 ## Input Contract
 
 Accept only:
