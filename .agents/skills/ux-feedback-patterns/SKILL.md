@@ -1,6 +1,10 @@
 ---
 name: ux-feedback-patterns
-description: Use when implementing user-facing loading, success, error, empty, validation, retry, or async interaction states so the UI clearly communicates what is happening.
+description: |
+  User feedback patterns: loading states, success/error messages, form validation, empty states.
+  Use when: form submissions, async loading indicators, error handling flows, empty state designs.
+  Keywords: loading, success, error, form, validation, async, feedback, toast, empty state, API call
+  Do NOT use for: visual styling, responsive layout, Figma extraction, accessibility-only.
 ---
 
 # UX Feedback Patterns
@@ -234,12 +238,6 @@ Every user action needs feedback in one or more states:
 - Be helpful, suggest next steps
 - Be human, avoid technical jargon
 - Don't blame user
-
-### Accessibility
-- Use ARIA live regions for dynamic messages
-- Associate errors with form fields
-- Provide text alternatives for visual indicators
-- Don't rely on color alone
 
 ### Consistency
 - Same pattern for same action across app

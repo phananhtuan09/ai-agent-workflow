@@ -239,12 +239,6 @@ Every user action needs feedback in one or more states:
 - Be human, avoid technical jargon
 - Don't blame user
 
-### Accessibility
-- Use ARIA live regions for dynamic messages
-- Associate errors with form fields
-- Provide text alternatives for visual indicators
-- Don't rely on color alone
-
 ### Consistency
 - Same pattern for same action across app
 - Predictable feedback locations

@@ -470,7 +470,6 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 | `design-fundamentals` | Typography, colors, spacing, visual hierarchy |
 | `design-responsive` | Mobile-first responsive design, breakpoints |
 | `theme-factory` | Interactive theme generation based on brand |
-| `ux-accessibility` | WCAG compliance, keyboard navigation, ARIA |
 | `ux-feedback-patterns` | Loading states, error messages, validation |
 | `figma-design-extraction` | Extract design specs from Figma |
 

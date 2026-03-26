@@ -1,6 +1,10 @@
 ---
 name: frontend-design-theme-factory
-description: Use when the user needs help choosing a visual theme, palette, typography direction, or brand aesthetic and no design system or Figma spec already exists.
+description: |
+  Theme/color selection when user has no aesthetic direction and wants agent to decide.
+  Use when: user is uncertain — "suggest colors", "what theme", "help me choose", "you pick".
+  Keywords: suggest theme, suggest colors, what theme, what colors, help choose, help pick, no direction, you choose, recommend colors
+  Do NOT use for: user has colors/style in mind, applying existing theme.
 ---
 
 # Theme Factory
@@ -93,6 +97,28 @@ Example:
 - Semantic colors ensure accessibility
 - Neutrals provide visual breathing room
 
+### Dark Mode Variant
+
+**Derive dark palette from the same hue — don't invent new colors.**
+
+| Role | Light mode | Dark mode |
+|------|-----------|-----------|
+| Page background | neutral-50 | neutral-950 |
+| Surface (card/panel) | neutral-100 | neutral-900 |
+| Surface hover | neutral-200 | neutral-800 |
+| Body text | neutral-700 | neutral-200 |
+| Heading text | neutral-900 | neutral-50 |
+| Border | neutral-200 | neutral-700 |
+| Primary action | primary-600 | primary-400 |
+| Primary text on surface | primary-700 | primary-300 |
+
+**Key rules:**
+- Primary hue stays the same — only shift lightness (600→400 for dark)
+- Semantic colors (success/error/warning) lighten ~100-200 steps in dark mode
+- Never use the same shade for both modes — always invert the scale direction
+
+---
+
 ### 2. Typography
 
 **See design-fundamentals for typography pairing principles.**
@@ -123,6 +149,34 @@ Theme should define:
 - Stronger shadows for cards/modals (modern, bold)
 - No shadows for flat design (minimalist)
 - Define elevation system (subtle/medium/strong)
+
+---
+
+## Contrast Check
+
+**WCAG AA minimums (required):**
+- Normal text (< 18px): **4.5:1**
+- Large text (≥ 18px bold / ≥ 24px): **3:1**
+- UI components (buttons, inputs, icons): **3:1**
+
+**Must-check pairs for every theme:**
+
+| Pair | Target | Common failure |
+|------|--------|---------------|
+| Body text on page background | 4.5:1 | Light gray text on white |
+| Heading on page background | 4.5:1 | Medium neutral on light neutral |
+| White text on primary button | 4.5:1 | Light primaries (yellow, lime) |
+| Primary text on white | 4.5:1 | Mid-range primaries (400-500) |
+| Placeholder text on input | 3:1 | neutral-400 on white |
+
+**Quick mental check — the 4.5:1 rule of thumb:**
+- Dark text on light bg: text must be ≤ neutral-600 on neutral-50
+- Light text on dark bg: text must be ≥ neutral-200 on neutral-900
+- Primary-500 on white usually **fails** — use primary-600 or darker for text/icons
+
+**If primary color is light (yellow, lime, teal-300):**
+- Never use as button background with white text → use dark text instead
+- Or shift to primary-700 for text, primary-600 for buttons
 
 ---
 
@@ -193,10 +247,23 @@ Theme should define:
 - Full scale: 50-900 shades
 
 **Semantic:**
-- Success: [hex]
-- Error: [hex]
-- Warning: [hex]
-- Info: [hex]
+- Success: [hex] / dark: [hex]
+- Error: [hex] / dark: [hex]
+- Warning: [hex] / dark: [hex]
+- Info: [hex] / dark: [hex]
+
+### Dark Mode Palette
+- Background: [hex] (neutral-950)
+- Surface: [hex] (neutral-900)
+- Body text: [hex] (neutral-200)
+- Heading: [hex] (neutral-50)
+- Border: [hex] (neutral-700)
+- Primary action: [hex] (primary-400)
+
+### Contrast Verification
+- Body text / background: [ratio]:1 ✓/✗
+- White / primary button: [ratio]:1 ✓/✗
+- Primary text / white: [ratio]:1 ✓/✗
 
 ### Typography
 - Heading: [Font family], [weight], [line-height]
@@ -276,6 +343,9 @@ Theme should define:
 - [ ] Shadow system defined
 - [ ] Theme documented in planning doc
 - [ ] All colors pass WCAG AA contrast
+- [ ] Key contrast pairs verified (text/bg, white/primary, primary/white)
+- [ ] Dark mode palette derived (neutral scale inverted, primary shifted)
+- [ ] Dark mode semantic colors adjusted (+100-200 steps lighter)
 
 ---
 

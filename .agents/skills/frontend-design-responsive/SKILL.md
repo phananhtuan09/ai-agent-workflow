@@ -1,6 +1,10 @@
 ---
 name: frontend-design-responsive
-description: Use when the task involves responsive or mobile-first UI behavior, breakpoints, touch targets, fluid layouts, adaptive navigation, or multi-device support.
+description: |
+  Mobile-first responsive design: breakpoints, fluid layouts, touch optimization.
+  Use when: user mentions responsive, mobile, tablet, multiple devices, or touch.
+  Keywords: responsive, mobile, tablet, desktop, breakpoints, multi-device, viewport, screen size, touch
+  Do NOT use for: desktop-only, general styling (→ frontend-design-fundamentals).
 ---
 
 # Responsive Design
@@ -26,22 +30,6 @@ Design for mobile first, enhance for larger screens.
 ---
 
 ## Creative Responsive Patterns
-
-### Maintain Aesthetic Across Devices
-
-**Principle:** Your chosen aesthetic (from design-fundamentals) should feel consistent across all screen sizes.
-
-**Minimal/Refined aesthetic:**
-- Mobile: Generous whitespace, elegant typography
-- Desktop: Maximum whitespace, elevated elegance
-
-**Bold/Vibrant aesthetic:**
-- Mobile: Strong colors, compact energy
-- Desktop: Full boldness, dramatic scale
-
-**Playful/Friendly aesthetic:**
-- Mobile: Rounded shapes, cozy spacing
-- Desktop: Full playfulness with space for delight
 
 ### Beyond Stack→Row: Creative Layouts
 
@@ -256,25 +244,6 @@ Design for mobile first, enhance for larger screens.
 - Mobile: Tighter spacing (conserve space)
 - Desktop: Generous spacing (utilize available space)
 - Maintain spacing scale ratios from design-fundamentals
-
----
-
-## Performance Considerations
-
-### Lazy Loading
-
-**Load content as needed:**
-- Images below fold
-- Heavy components (charts, maps)
-- Large lists (virtual scrolling)
-
-### Image Optimization
-
-**Best practices:**
-- Use appropriate formats (WebP, AVIF)
-- Serve different sizes per device
-- Compress images aggressively
-- Use CDN for delivery
 
 ---
 

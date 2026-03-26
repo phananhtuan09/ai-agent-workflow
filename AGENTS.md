@@ -116,7 +116,6 @@ Skills provide specialized guidance for recurring task types. Use them when the 
 | `quality-code-check` | lint, type check, build, validation, eslint, tsc |
 | `test-web-orchestrator` | test web orchestrator, web ui test, browser test, playwright e2e, cypress e2e, ui automation, figma-driven test |
 | `ux-feedback-patterns` | loading, error, form validation, async, toast, empty state |
-| `ux-accessibility` | accessible, WCAG, keyboard, screen reader, ARIA, contrast |
 
 ## Repository Conventions
 

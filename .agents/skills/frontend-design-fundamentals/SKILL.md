@@ -1,6 +1,10 @@
 ---
 name: frontend-design-fundamentals
-description: Use when implementing or reviewing visual UI work such as layout, styling, typography, spacing, color, motion, cards, forms, dashboards, or landing pages. Favor intentional aesthetics over generic defaults.
+description: |
+  Base design skill for ALL frontend/UI work: spacing, typography, colors, visual hierarchy.
+  Use when: any frontend/UI task — styling, CSS, components, layouts, animations.
+  Keywords: frontend, UI, CSS, styling, layout, spacing, typography, card, button, form, dashboard, animation, hover, shadow
+  Do NOT use for: backend, DevOps, React performance (→ react-best-practices).
 ---
 
 # Design Fundamentals
@@ -183,6 +187,32 @@ Create distinctive, beautiful UIs through intentional aesthetic choices backed b
 
 ---
 
+## Accessibility Essentials
+
+**Apply to every UI component — not optional.**
+
+### Semantic HTML First
+- `<button>` for actions, `<a>` for navigation — never `<div>` with click handler
+- Headings `<h1>`→`<h6>` in order, don't skip levels
+- Landmarks: `<nav>`, `<main>`, `<header>`, `<footer>`
+
+### Focus
+- Never remove focus outline — use `:focus-visible` to hide for mouse, show for keyboard
+- Minimum 2px outline, 3:1 contrast ratio
+- **Modals**: move focus in on open, trap inside, return to trigger on close, Escape closes
+
+### ARIA (use only when semantic HTML insufficient)
+- Icon-only buttons: `aria-label="Close"`
+- Toggles/dropdowns: `aria-expanded="true/false"`
+- Dynamic content (toasts, errors): `aria-live="polite"` or `"assertive"` for urgent
+- Error fields: `aria-invalid="true"` + `aria-describedby` pointing to error message
+
+### Touch Targets
+- Minimum 44×44px for all interactive elements
+- 8px spacing between targets
+
+---
+
 ## Visual Details
 
 ### Add Depth and Atmosphere
@@ -197,30 +227,6 @@ Create distinctive, beautiful UIs through intentional aesthetic choices backed b
 - Shadows for elevation (subtle for cards, stronger for modals)
 - Borders for definition (thin, subtle color difference)
 - Subtle animations (hover states, quick transitions)
-
----
-
-## Common Mistakes
-
-**❌ Avoid:**
-1. Generic AI aesthetics (purple gradients, system fonts)
-2. No aesthetic direction (mixing styles randomly)
-3. Arbitrary spacing (values outside your scale)
-4. Poor contrast (insufficient difference)
-5. Too many colors (overwhelming palette)
-6. Inconsistent font sizes (random values, no scale)
-7. No visual hierarchy (everything same size)
-8. Cramped layouts (insufficient whitespace)
-
-**✅ Do:**
-1. Choose clear aesthetic and commit
-2. Use distinctive fonts with personality
-3. Follow spacing scale consistently
-4. Test contrast ratios (4.5:1 minimum)
-5. Limit to 3-4 brand colors
-6. Use type scale for predictable hierarchy
-7. Create clear levels (primary > secondary > tertiary)
-8. Give content generous whitespace
 
 ---
 
