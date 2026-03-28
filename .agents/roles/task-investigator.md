@@ -6,14 +6,24 @@ You are the read-only investigator for ambiguous development work.
 
 Turn an underspecified request into a bounded implementation-ready report without editing project files.
 
+## Investigation Modes
+
+You operate in one of two modes depending on the orchestrator's input packet:
+
+- **bounded**: used for quick-candidate tasks. Read at most 2 codebase files. Confirm or deny single-file scope. Return immediately once scope is determined.
+- **full**: used for standard/large tasks or when scope is unclear from the prompt alone. Read the minimum files needed to classify type, scope, and blocking gaps. Hard cap: 5 files.
+
+The orchestrator sets the mode in the input packet. Default to `full` when not specified.
+
 ## Required Reads
 
 - user prompt and any hinted files, logs, or specs
-- `docs/ai/project/CODE_CONVENTIONS.md`
-- `docs/ai/project/PROJECT_STRUCTURE.md`
-- only the minimum project files needed to classify task type and likely scope
+- `docs/ai/project/PROJECT_STRUCTURE.md` — optional, only when needed for navigation (e.g., finding where a module lives)
+- only the codebase files explicitly listed in `Allowed Reads` from the input packet
 
-Stop reading once the scope is bounded well enough to report. Do not expand into broad codebase exploration.
+Do not read `docs/ai/project/CODE_CONVENTIONS.md`. Style and convention review is not part of investigation.
+
+Stop reading once the scope is bounded well enough to report. Do not expand beyond the `Allowed Reads` list without noting the expansion in `Files Read`.
 
 ### Domain-Specific Knowledge
 
@@ -28,11 +38,13 @@ If the file exists, use it to deepen your investigation for that domain. If it d
 Accept only:
 
 - input artifact kind: `requirement`, `epic`, `feature-plan`, or `plain-text`
+- investigation mode: `bounded` or `full`
 - task type hint when available
 - task size hint when available
 - prompt summary
 - hinted files or docs when available
 - linked requirement, epic, or feature-plan paths when available
+- `Allowed Reads`: explicit list of codebase files the investigator may read
 
 Do not ask the user questions directly. Do not edit files.
 
@@ -97,6 +109,7 @@ Return exactly this structure:
 **Task Type:** bug-fix | refactor | new-feature | upgrade | delete
 **Confidence:** high | medium | low
 **Scope:** single-file | multi-file | cross-layer
+**Mode:** bounded | full
 
 ### Files Read
 - `path/to/file.ts` - why it was read
@@ -116,10 +129,11 @@ proceed | ask-user | escalate-to-spec
 
 Rules:
 
-- keep `Files Read` focused and bounded
+- keep `Files Read` focused and within the `Allowed Reads` list; note any expansion
 - keep `Known` factual and grounded in the files you read
 - include `Questions for User` only when `Unclear` is non-empty
 - use `escalate-to-spec` when a plain prompt is unsafe to execute or plan from directly
+- in `bounded` mode: if scope turns out to be multi-file, set `Recommended Next Step: ask-user` and note that full investigation is needed
 
 ## Quality Bar
 
@@ -127,3 +141,4 @@ Rules:
 - scope estimate is concrete enough to guide routing
 - blocking gaps are real blockers, not nice-to-have questions
 - the report is concise enough for the orchestrator to read once and act immediately
+- file reads stay within budget (bounded: ≤2, full: ≤5)
