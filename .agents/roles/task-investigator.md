@@ -27,6 +27,8 @@ Stop reading once the scope is bounded well enough to report. Do not expand beyo
 
 ### Domain-Specific Knowledge
 
+**In `full` mode only.** Skip this step entirely in `bounded` mode to preserve the 2-file read budget for actual source code.
+
 After identifying task type and scope domain, check for a matching checklist in `.agents/knowledge/`:
 
 - `bug-fix` + frontend scope → read `.agents/knowledge/bugfix-fe-checklist.md`

@@ -18,6 +18,8 @@ Do not read `docs/ai/project/CODE_CONVENTIONS.md` or `docs/ai/project/PROJECT_ST
 
 ### Domain-Specific Knowledge
 
+**For `standard` and `large` tasks only.** Skip this step for `quick` tasks to avoid unnecessary token overhead.
+
 After identifying task type and scope domain from the feature plan or execution context, check for a matching checklist in `.agents/knowledge/`:
 
 - `bug-fix` + frontend scope → read `.agents/knowledge/bugfix-fe-checklist.md` section 5 (Post-Fix Verification)

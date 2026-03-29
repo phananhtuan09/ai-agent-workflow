@@ -22,6 +22,14 @@ Accept only:
 - SA output path when available
 - explicit design notes or references from the user
 - short orchestrator note naming which flows or screens need design definition
+- `[UIUX_ANSWERS]` block with pre-collected design decisions from the orchestrator
+
+**If `[WRITE-ONLY MODE]` flag is present in the prompt:**
+- Do not ask the user any questions. Use `[UIUX_ANSWERS]` block for design decisions.
+- If a decision is still unclear after reading BA, SA, and answers, mark it as an Open Question in the output document and proceed.
+
+**If `[WRITE-ONLY MODE]` flag is absent:**
+- Ask concise clarifying questions via `AskUserQuestion` only when a wrong assumption would materially change a key screen or flow. Prefer one short batch over many rounds.
 
 Do not redesign product scope. Work within BA requirements and SA constraints.
 

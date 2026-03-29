@@ -34,18 +34,5 @@
       "Bash(git restore *)",
       "Bash(git clean *)"
     ]
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume|clear",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo REMINDER: Start EVERY response with: Skills: [list] or Skills: none"
-          }
-        ]
-      }
-    ]
   }
 }

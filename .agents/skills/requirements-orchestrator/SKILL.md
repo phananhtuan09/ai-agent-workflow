@@ -121,6 +121,17 @@ Choose the role set with this routing matrix:
 | Screens, forms, dashboards, flows, navigation, states, or user-facing interactions | BA + SA + UI/UX |
 | Both research and UI concerns | BA + SA + Researcher + UI/UX |
 
+**Select workflow mode** based on detected complexity. Recommend to the user and allow override — do not ask if the signal is unambiguous:
+
+| Complexity | Default Mode | When to escalate |
+|------------|--------------|-----------------|
+| Simple | Light (BA + SA only) | User explicitly requests research or UI |
+| Medium | Light | Domain terms detected or UI signals present → escalate to Full |
+| Complex | Full (all selected roles) | User prefers speed → downgrade to Light |
+
+**Light mode**: BA → SA-lite → Consolidate. Skip Researcher and UI/UX unless explicitly needed.
+**Full mode**: BA → SA (lite or full, see SA handoff) → Researcher/UI/UX → Consolidate. All conditional roles evaluated.
+
 Do not ask the user which roles to run unless the prompt is ambiguous enough that the product boundary itself is unclear.
 
 ### 3. Clarify then run BA
@@ -129,7 +140,12 @@ Do not ask the user which roles to run unless the prompt is ambiguous enough tha
 
 Ask the user only when a wrong assumption would change scope, user flow, or acceptance criteria. Tailor questions to the specific feature — avoid generic questions. After each round, decide: are there still blockers that would prevent BA from writing a clear document? If no, proceed.
 
-Cap at two clarification rounds. After two rounds, mark remaining unknowns as `[ASSUMPTION]` and continue.
+Cap at two clarification rounds for Light mode, three for Full mode. When unknowns remain after the cap, classify each one before continuing:
+
+| Unknown type | Label | Rule |
+|---|---|---|
+| UI labels, placeholder text, non-critical defaults | `[SAFE ASSUMPTION]` | Auto-pass. Record in BA doc. |
+| API contracts, permissions, business rules, data schema, integration behavior | `[NEEDS CONFIRMATION]` | Do NOT auto-pass. Carry as an explicit Open Question. Ask user before consolidating. |
 
 Once answers are collected, load `.agents/roles/requirement-ba.md` and spawn BA with the full input package:
 
@@ -190,12 +206,45 @@ Every packet must include:
 - existing requirement doc if present
 - any direct user answers gathered during clarification
 
+**After BA completes, verify mandatory sections before proceeding.** If any are missing, retry BA once with a note identifying the gap. If still missing after retry, flag section as `incomplete` in the final doc and continue:
+
+| Section | Required |
+|---------|----------|
+| Problem Statement | ✅ |
+| Users & User Stories | ✅ |
+| Functional Requirements | ✅ |
+| Business Rules | ✅ |
+| Out of Scope | ✅ |
+| Open Questions | ✅ |
+| Handoff Summary | ✅ |
+
 #### SA handoff
 
 - `Role`: `requirement_sa`
 - BA output path
 - inline project context (content of `CODE_CONVENTIONS.md`, `PROJECT_STRUCTURE.md`, `AGENTS.md` read by the orchestrator — SA does not need to read these files itself)
 - short note listing areas that need feasibility focus
+- SA mode flag (see below)
+
+**Select SA mode based on workflow mode and complexity:**
+
+| Workflow Mode | Complexity | SA Flag | SA Behavior |
+|---------------|------------|---------|-------------|
+| Light | Any | `[LIGHT MODE]` | Inline context only. No repo inspection. |
+| Full | Simple / Medium | `[LIGHT MODE]` | Inline context only. No repo inspection. |
+| Full | Complex | `[SA-FULL MODE]` | Inline context as baseline. Up to 5 targeted Glob/Grep searches to validate integration points or find reuse candidates. No open-ended exploration. |
+
+**Inline context freshness check:** If `PROJECT_STRUCTURE.md` has no `last_updated` field or is older than 30 days, add warning `⚠️ Inline context may be stale` to the SA handoff note and prefer `[SA-FULL MODE]`.
+
+**After SA completes, verify mandatory sections** — same retry policy as BA:
+
+| Section | Required |
+|---------|----------|
+| Requirements Analysis | ✅ |
+| Technical Recommendations | ✅ |
+| Risk Assessment | ✅ |
+| Open Technical Questions | ✅ |
+| Handoff Summary | ✅ |
 
 #### Researcher handoff
 
@@ -203,14 +252,19 @@ Every packet must include:
 - BA output path when available
 - exact terms, standards, libraries, or APIs to research
 - short note explaining why research is needed
+- **fetch budget**: max 2 URLs per term; prefer official or primary sources; skip pages where relevant content cannot be found within the first meaningful section
 
 #### UI/UX handoff
+
+Before spawning UI/UX, **pre-collect design context** from the user directly (same pattern as BA clarification). Ask only what would materially change screen layout or interaction model — target device, whether to follow an existing design system, and any known design constraints surfaced in SA output. Record collected answers as `[UIUX_ANSWERS]`.
 
 - `Role`: `requirement_uiux`
 - BA output path
 - SA output path when available
+- `[UIUX_ANSWERS]` block with pre-collected design decisions
 - any design notes or screenshots
 - short note listing the flows or screens that need definition
+- `[WRITE-ONLY MODE]` flag — UI/UX must not ask the user additional questions; mark unresolvable items as Open Questions in its output
 
 Each worker should receive only its handoff package plus its role definition.
 
@@ -221,8 +275,9 @@ Use this DAG:
 1. BA runs first.
 2. After BA completes, SA always runs.
 3. Researcher may run in parallel with SA because both depend only on BA output.
-4. UI/UX runs after SA when technical constraints matter. If the UI request is trivial and SA adds no relevant constraint, UI/UX may run after BA, but prefer BA -> SA -> UI/UX.
-5. Consolidation runs only after all selected worker outputs are complete.
+4. **After SA completes and before spawning UI/UX: run a BA↔SA consistency check.** Compare BA and SA outputs for feasibility gaps (BA Must-have vs SA Not-feasible), scope mismatches, assumption conflicts, and any `[NEEDS CONFIRMATION]` items still unresolved. Resolve blocking conflicts with the user before spawning UI/UX — do not let UI/UX build on a broken foundation. Non-blocking conflicts can be noted and carried forward.
+5. UI/UX runs after SA when technical constraints matter. If the UI request is trivial and SA adds no relevant constraint, UI/UX may run after BA, but prefer BA → SA → UI/UX.
+6. Consolidation runs only after all selected worker outputs are complete.
 
 Execution strategy:
 
@@ -230,7 +285,8 @@ Execution strategy:
 - spawn `requirement_ba` first and wait for its artifact before deciding downstream work
 - after BA, spawn `requirement_sa`
 - when research is selected, spawn `requirement_researcher` in parallel with `requirement_sa`
-- when UI/UX is selected, prefer spawning `requirement_uiux` after SA completes unless the BA artifact is sufficient and SA adds no relevant constraint
+- after SA completes, run the BA↔SA consistency check before spawning `requirement_uiux`
+- when UI/UX is selected, spawn `requirement_uiux` after SA completes and conflicts are resolved
 - if `spawn_agent` is not available, execute the same DAG serially while preserving the same handoff boundaries
 - do not invent extra worker roles unless the user explicitly asks for them
 
@@ -247,6 +303,9 @@ The orchestrator must read worker artifacts from disk and build a consolidation 
 - open questions per role
 - follow-on role signals discovered by BA
 - contradictions across roles
+- any `[NEEDS CONFIRMATION]` assumptions still unresolved
+
+**Verify each artifact's mandatory sections.** Check for the sections listed in each handoff's completion check table. If a mandatory section is missing: retry the worker once with a note identifying the gap. If still incomplete after retry, mark the section as `incomplete` in the final doc and proceed — do not fabricate content.
 
 Do not rely on memory of intermediate reasoning. Use the files as the source of truth.
 
@@ -260,8 +319,23 @@ Look for:
 - Research guidance that changes BA language or SA approach
 - UI proposals that conflict with technical constraints
 - missing acceptance criteria, missing edge cases, or contradictory assumptions
+- `[NEEDS CONFIRMATION]` items that were never resolved
 
 When the conflict materially changes scope or implementation, ask the user a direct question. Otherwise, resolve it in favor of the most concrete project constraint and record the assumption.
+
+**Conflict resolution rule for `[NEEDS CONFIRMATION]` items**: if still unresolved at consolidation, list them in `Open Questions` with a `⚠️ BLOCKS IMPLEMENTATION` tag. Do not silently convert them to `[SAFE ASSUMPTION]`.
+
+### Failure handling
+
+| Failure | Action |
+|---------|--------|
+| Worker artifact missing or empty | Retry once with note on gap. If still missing, flag as `incomplete` and continue without fabricating. |
+| Mandatory section absent after retry | Mark section `incomplete` in final doc. Do not block consolidation. |
+| Researcher finds no results for a term | Skip the term. Note as "unresearched" in the domain context section. |
+| SA↔BA conflict on a Must-have FR | Run BA↔SA consistency check (step 6.4). Ask user before spawning UI/UX. |
+| `[NEEDS CONFIRMATION]` unresolved at consolidation | Add `⚠️ BLOCKS IMPLEMENTATION` tag in Open Questions. Do not auto-pass. |
+| Inline context stale (>30 days, no last_updated) | Prefer SA-full. Add `⚠️ SA output based on potentially stale inline context — validate against repo before implementation` to Technical Assessment. |
+| spawn_agent unavailable | Execute same DAG serially. Preserve handoff boundaries. Do not merge worker contexts. |
 
 ### 9. Consolidate final requirement
 

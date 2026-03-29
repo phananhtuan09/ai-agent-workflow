@@ -81,30 +81,37 @@ Analyze user prompt to determine:
 
 ### Determine Workflow Mode
 
-Based on Complexity, ask user to confirm mode:
+Auto-select mode based on detected complexity, then notify user and allow override:
+
+| Detected Complexity | Recommended Mode | Reason |
+|---------------------|-----------------|--------|
+| Simple | Light | Few unknowns, no domain terms, no UI |
+| Medium | Light | Bounded scope; upgrade if domain terms or UI detected |
+| Complex | Full | Many unknowns, cross-layer, domain terms, or UI involved |
 
 ```
 AskUserQuestion(questions=[{
-  question: "Feature complexity detected as {Simple/Medium/Complex}. Which workflow mode?",
+  question: "Detected: {complexity}. Recommended: {Light/Full} mode — {reason}. Confirm or override?",
   header: "Mode",
   options: [
-    { label: "Light mode", description: "BA → SA → Consolidate (fast, low token cost)" },
-    { label: "Full mode", description: "BA → SA → Researcher/UI/UX → Consolidate (thorough)" }
+    { label: "Use recommended ({Light/Full})", description: "{reason}" },
+    { label: "Switch to {other mode}", description: "Override recommendation" }
   ],
   multiSelect: false
 }])
 ```
 
-**Light Mode** (for Simple features or when user prefers speed):
-- Agents: BA → SA → Consolidate
+**Light Mode** (Simple features or user override):
+- Agents: BA → SA-lite → Consolidate
 - Skip Researcher and UI/UX agents
 - Q&A: focus on critical unknowns only, stop when BA has enough to write
 - Smaller consolidated output
 
-**Full Mode** (for Complex features or when user wants thoroughness):
+**Full Mode** (Complex features or user override):
 - Full agent workflow as described in subsequent steps
 - All conditional agents evaluated
-- Max 3 Q&A rounds total; after round 3 mark remaining unknowns as [ASSUMPTION] and continue
+- SA runs as SA-full (may inspect repo selectively)
+- Max 3 Q&A rounds total; after round 3 classify remaining unknowns as `[SAFE ASSUMPTION]` or `[NEEDS CONFIRMATION]` and continue
 
 ### Determine Agent Strategy
 
@@ -156,9 +163,16 @@ Conduct Q&A rounds yourself using `AskUserQuestion`. Tailor questions and option
 | Mode | Guidance |
 |------|----------|
 | Light | Focus on unknowns critical for BA to write the document. Stop when you have enough. |
-| Full | Deeper exploration. After round 3, mark remaining unknowns as `[ASSUMPTION]` and continue. |
+| Full | Deeper exploration. After round 3, classify remaining unknowns (see below) and continue. |
 
 After each round, decide: are there still blockers that would prevent BA from writing a clear document? If yes, ask another round. If no, proceed.
+
+**Assumption classification** — when an unknown cannot be resolved via Q&A:
+
+| Type | Label | Rule |
+|------|-------|------|
+| UI labels, placeholder text, non-critical defaults | `[SAFE ASSUMPTION]` | Auto-pass. Note in BA doc. |
+| API contracts, permissions, business rules, data schema, integration behavior | `[NEEDS CONFIRMATION]` | Do NOT auto-pass. Surface as Open Question. Orchestrator must ask user before consolidating. |
 
 After collecting all answers, record them as a structured `[ANSWERS]` block and proceed to spawn.
 
@@ -190,11 +204,26 @@ Output to: docs/ai/requirements/agents/ba-{name}.md"
 After BA completes, verify output exists:
 - `docs/ai/requirements/agents/ba-{name}.md`
 
+**Verify mandatory sections** — if any are missing, retry BA agent once with note "Missing section: {X}":
+
+| Section | Required |
+|---------|----------|
+| Problem Statement | ✅ |
+| Users & User Stories | ✅ |
+| Functional Requirements | ✅ |
+| Business Rules | ✅ |
+| Out of Scope | ✅ |
+| Open Questions | ✅ |
+| Handoff Summary | ✅ |
+
+If still missing after retry → proceed but flag as `incomplete` in the consolidated doc.
+
 Extract key info for next agents:
 - Feature type confirmed
 - User stories
 - Functional requirements
 - Domain terms (if any discovered)
+- Any `[NEEDS CONFIRMATION]` assumptions surfaced by BA
 
 ---
 
@@ -224,7 +253,7 @@ Output to: docs/ai/requirements/agents/research-{name}.md",
 
 ### 3b: SA Agent (always)
 
-Before spawning SA, pre-read project context files in the orchestrator (cheap, predictable cost). This replaces codebase exploration and ensures SA recommendations fit the actual stack.
+Before spawning SA, pre-read project context files in the orchestrator (cheap, predictable cost).
 
 ```
 Read(file_path="docs/ai/project/CODE_CONVENTIONS.md")   # capture as {conventions_content}
@@ -234,13 +263,57 @@ Read(file_path="AGENTS.md")                              # capture as {agents_co
 
 If a file doesn't exist, use `"(not available)"` as its placeholder.
 
-Pass all captured content inline. SA agent does not need to read any files — use `[LIGHT MODE]` flag for both Light and Full mode (Explore sub-agent is never needed when context is provided):
+**Check inline context freshness:** If `PROJECT_STRUCTURE.md` has no `last_updated` field or was last updated >30 days ago, log a warning: `⚠️ Inline context may be stale. SA output should be validated against actual repo.` and consider escalating to SA-full.
+
+**Select SA mode based on workflow mode:**
+
+| Workflow Mode | Feature Complexity | SA Mode | SA Behavior |
+|---------------|--------------------|---------|-------------|
+| Light | Any | SA-lite | Use inline context only. Skip repo inspection. |
+| Full | Simple / Medium | SA-lite | Use inline context only. Skip repo inspection. |
+| Full | Complex | SA-full | Use inline context as baseline. May run up to 5 targeted Glob/Grep searches to validate integration points or find reuse candidates. |
+
+**SA-lite prompt:**
 
 ```
 Task(
   subagent_type='requirement-sa',
   description='Solution architecture',
   prompt="[LIGHT MODE] - Use inline project context below. Do not run codebase Explore sub-agent.
+
+Perform technical feasibility assessment for feature: {feature-name}
+
+BA document: docs/ai/requirements/agents/ba-{name}.md
+
+[INLINE PROJECT CONTEXT]
+CODE_CONVENTIONS.md:
+---
+{conventions_content}
+---
+
+PROJECT_STRUCTURE.md:
+---
+{structure_content}
+---
+
+AGENTS.md:
+---
+{agents_content}
+---
+[/INLINE PROJECT CONTEXT]
+
+Output to: docs/ai/requirements/agents/sa-{name}.md",
+  run_in_background: true
+)
+```
+
+**SA-full prompt (Full mode + Complex only):**
+
+```
+Task(
+  subagent_type='requirement-sa',
+  description='Solution architecture (full)',
+  prompt="[SA-FULL MODE] - Use inline context as baseline. You may run up to 5 targeted Glob/Grep searches to validate integration points or find reuse candidates. Do not do open-ended codebase exploration.
 
 Perform technical feasibility assessment for feature: {feature-name}
 
@@ -277,6 +350,48 @@ TaskOutput(task_id={researcher_task_id}, block=true)
 TaskOutput(task_id={sa_task_id}, block=true)
 ```
 
+**Verify SA mandatory sections** — if any are missing, retry SA agent once with note "Missing section: {X}":
+
+| Section | Required |
+|---------|----------|
+| Requirements Analysis | ✅ |
+| Technical Recommendations | ✅ |
+| Risk Assessment | ✅ |
+| Open Technical Questions | ✅ |
+| Handoff Summary | ✅ |
+
+---
+
+## Step 3.5: BA↔SA Consistency Check
+
+**Run before spawning UI/UX** — catch conflicts early to avoid wasted UI/UX work.
+
+Compare `ba-{name}.md` and `sa-{name}.md` for:
+
+| Conflict Type | Example | Action |
+|---------------|---------|--------|
+| Feasibility gap | BA marks FR as Must-have, SA marks as Not feasible | Ask user to adjust priority or drop FR before continuing |
+| Scope mismatch | BA describes 3 screens, SA only addresses 1 data flow | Clarify which scope is authoritative |
+| Assumption conflict | BA assumes real-time sync, SA plans batch processing | Surface to user; cannot auto-resolve |
+| `[NEEDS CONFIRMATION]` items | Business rules from Q&A flagged as unresolved | Ask user before spawning UI/UX |
+
+If no conflicts → proceed to Step 4.
+
+If conflicts found:
+
+```
+AskUserQuestion(questions=[{
+  question: "BA↔SA conflict: {describe conflict}. Resolve before UI/UX proceeds?",
+  header: "Resolve",
+  options: [
+    { label: "{Option A}", description: "{Explanation}" },
+    { label: "{Option B}", description: "{Explanation}" },
+    { label: "Accept as open question", description: "Proceed with conflict noted in final doc" }
+  ],
+  multiSelect: false
+}])
+```
+
 ---
 
 ## Step 4: Execute UI/UX Agent (Conditional)
@@ -290,16 +405,54 @@ UI/UX Agent is needed if:
 - BA document mentions screens, forms, pages, dashboards
 - User explicitly mentioned UI/UX in request
 
+### Pre-collect UI/UX Design Context
+
+Before spawning, collect design decisions directly — same pattern as BA Q&A. Tailor questions to the feature's screens and flows identified in the BA document.
+
+Typical questions to ask (adapt as needed):
+
+```
+AskUserQuestion(questions=[
+  {
+    question: "What is the primary target device for this feature?",
+    header: "Device",
+    options: [
+      { label: "Desktop only", description: "No responsive requirement" },
+      { label: "Desktop + mobile", description: "Responsive layout needed" },
+      { label: "Mobile first", description: "Mobile is primary, desktop secondary" }
+    ],
+    multiSelect: false
+  },
+  {
+    question: "Should the UI follow an existing design system or use a new pattern?",
+    header: "Design system",
+    options: [
+      { label: "Follow existing patterns", description: "Reuse current components" },
+      { label: "New pattern is fine", description: "UI/UX can propose fresh approach" }
+    ],
+    multiSelect: false
+  }
+])
+```
+
+After collecting answers, record them as `[UIUX_ANSWERS]` and proceed to spawn.
+
 ### Invoke UI/UX Agent
 
 ```
 Task(
   subagent_type='requirement-uiux',
   description='UI/UX design',
-  prompt="Design UI/UX for feature: {feature-name}
+  prompt="[WRITE-ONLY MODE] - Design context already collected. Skip Q&A steps entirely.
+
+Design UI/UX for feature: {feature-name}
 
 BA document: docs/ai/requirements/agents/ba-{name}.md
 SA document: docs/ai/requirements/agents/sa-{name}.md (for constraints)
+
+[UIUX_ANSWERS]
+{paste collected design answers here}
+[/UIUX_ANSWERS]
 
 Output to: docs/ai/requirements/agents/uiux-{name}.md"
 )
@@ -605,10 +758,15 @@ Complex (many unknowns):
 
 | Error | Action |
 |-------|--------|
-| Agent fails | Retry once, then proceed without that agent's output |
+| Agent fails | Retry once with note on what was missing, then proceed without that agent's output |
+| Agent output file empty or missing sections | Retry once with "Missing section: {X}", flag as `incomplete` if still missing |
 | Template not found | Use fallback minimal structure |
-| Conflict unresolved | Document as open question, proceed |
+| Conflict unresolved after AskUser | Document as open question, proceed — do not block |
 | User abandons Q&A | Save progress, allow resume |
+| Researcher finds no results for a term | Skip that term, note as "unresearched" in domain context section |
+| SA output conflicts heavily with BA (unfeasible Must-haves) | Run Step 3.5 conflict resolution before proceeding; do not spawn UI/UX on broken foundation |
+| `[NEEDS CONFIRMATION]` items still unresolved at consolidation | List them explicitly in Section 11 (Open Questions) with `⚠️ BLOCKS IMPLEMENTATION` tag |
+| Inline context stale (>30 days) and SA-lite used | Add `⚠️ SA output based on potentially stale inline context — validate against repo before implementation` to Section 6 |
 
 ---
 

@@ -27,7 +27,7 @@ This directory contains planning documents for both epics and individual feature
 
 ### Creating a Feature Plan
 Use the `create-plan` command to generate a new feature plan:
-- Command: Available in `.cursor/commands/`, `.claude/commands/`, or `.github/prompts/`
+- Command: Available in `.claude/commands/`
 - Output: `docs/ai/planning/feature-{name}.md`
 - Template: `docs/ai/planning/feature-template.md`
 

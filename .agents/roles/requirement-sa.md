@@ -10,10 +10,19 @@ Assess feasibility and implementation direction, then write `docs/ai/requirement
 
 - `docs/ai/requirements/agents/ba-{name}.md`
 - `docs/ai/requirements/templates/sa-template.md`
-- `docs/ai/project/CODE_CONVENTIONS.md`
-- `docs/ai/project/PROJECT_STRUCTURE.md`
 
-Inspect the codebase for reusable patterns before proposing new structure.
+**If `[LIGHT MODE]` flag is present in the prompt:**
+- Use `[INLINE PROJECT CONTEXT]` block directly. Do not read `CODE_CONVENTIONS.md` or `PROJECT_STRUCTURE.md` from disk — the orchestrator has already provided them inline.
+- Skip codebase inspection (Step 2 below). Proceed directly to Step 3.
+
+**If `[SA-FULL MODE]` flag is present in the prompt:**
+- Use `[INLINE PROJECT CONTEXT]` as baseline.
+- You may run **up to 5 targeted Glob or Grep searches** to validate integration points or find reuse candidates mentioned in the BA document.
+- Do not do open-ended codebase exploration. Each search must have a specific goal (e.g., "find existing auth middleware", "check if pagination hook exists").
+
+**If neither flag is present:**
+- Read `docs/ai/project/CODE_CONVENTIONS.md` and `docs/ai/project/PROJECT_STRUCTURE.md` from disk.
+- Inspect the codebase for reusable patterns before proposing new structure.
 
 ## Input Contract
 
@@ -46,7 +55,11 @@ Extract:
 
 ### 2. Inspect the repo
 
-Look for:
+**Skip this step if `[LIGHT MODE]` flag is present** — use the `[INLINE PROJECT CONTEXT]` from the prompt instead.
+
+**If `[SA-FULL MODE]` flag is present** — run up to 5 targeted searches only. Each search must target a specific integration point or reuse candidate named in the BA document (e.g., `Glob("**/auth/**")`, `Grep("useAuth")`). Stop when you have enough to assess feasibility. Do not explore broadly.
+
+If neither flag is present, look for:
 
 - similar features or flows
 - reusable components, services, hooks, or utilities

@@ -19,10 +19,8 @@
     "bootstrap",
     "init",
     "codex",
-    "cursor",
-    "copilot",
     "claude",
-    "opencode"
+    "antigravity"
   ],
   "engines": {
     "node": ">=14"
@@ -41,10 +39,7 @@
     "docs/",
     ".agents/",
     ".codex/",
-    ".cursor/",
     ".claude/",
-    ".github/",
-    ".opencode/",
     "AGENTS.md",
     "README.md"
   ]

@@ -36,6 +36,9 @@ Do not broaden research scope unless a discovered issue clearly changes the requ
 - browse when the information could be outdated or source attribution matters
 - link sources in the output document
 - explain relevance to this project instead of dumping raw notes
+- **fetch at most 2 URLs per term** — pick the most authoritative source first
+- **when fetching a page, read only what is needed**: use `head_limit` or stop reading once the relevant section is found; do not process full documentation sites
+- if a page is unexpectedly large (>5000 chars of irrelevant content before reaching the answer), skip it and use the next source
 
 ## Workflow
 
