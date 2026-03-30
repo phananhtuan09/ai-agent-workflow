@@ -188,13 +188,13 @@ After collecting all answers, compress into a structured `[ANSWERS]` block befor
 [/ANSWERS]
 ```
 
-### 2b: Spawn BA Agent (write-first contract)
+### 2b: Spawn BA Agent
 
 ```
 Task(
   subagent_type='requirement-ba',
   description='BA requirement analysis',
-  prompt="[WRITE-FIRST CONTRACT] - Answers already collected. Skip Q&A steps entirely.
+  prompt="[COMPACT RETURN CONTRACT] - Answers already collected. Skip Q&A steps entirely.
 
 Feature: {feature-name}
 
@@ -207,22 +207,33 @@ User's original request:
 {paste structured ANSWERS block here}
 [/ANSWERS]
 
-Write the full document directly to: docs/ai/requirements/agents/ba-{name}.md
-Do NOT return the full document content in your response.
-Return ONLY:
-- status: success | failed
-- written_file_path: {path}
-- handoff_summary: 5–10 bullets covering problem, users, key FRs, business rules, open questions
-- validation_warnings: any missing sections or assumptions flagged"
+[OUTPUT CONTRACT]
+Max 200 lines. Prefer tables and bullets over prose.
+No rationale paragraphs. No repetition of the original prompt.
+Mandatory sections (in order): Problem Statement, Users & User Stories,
+Functional Requirements, Business Rules, Out of Scope, Open Questions, Handoff Summary.
+
+Structure your response exactly as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (5-10 bullets: problem, users, key FRs, business rules, open questions)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full document content}
+[/DOC]
+
+Output file path: docs/ai/requirements/agents/ba-{name}.md"
 )
 ```
 
 ### BA Completion Check
 
-After BA completes, verify output exists:
-- `docs/ai/requirements/agents/ba-{name}.md`
+After BA completes:
+1. The orchestrator extracts `[HANDOFF_SUMMARY]` from the response — this is the only part kept in active working memory.
+2. Write the `[DOC]` block to `docs/ai/requirements/agents/ba-{name}.md`.
+3. Do not re-read the BA file in downstream steps unless a Step 6b trigger applies.
 
-**Verify mandatory sections** — if any are missing, retry BA agent once with note "Missing section: {X}":
+**Verify mandatory sections** — if any are missing from the doc, retry BA agent once with note "Missing section: {X}":
 
 | Section | Required |
 |---------|----------|
@@ -236,7 +247,7 @@ After BA completes, verify output exists:
 
 If still missing after retry → proceed but flag as `incomplete` in the consolidated doc.
 
-Extract key info for next agents from the `handoff_summary` returned by BA (already in orchestrator context):
+Extract key info for next agents from the `[HANDOFF_SUMMARY]` already in orchestrator context:
 - Feature type confirmed
 - User stories
 - Functional requirements
@@ -264,16 +275,19 @@ Terms to research:
 
 Context from BA document: docs/ai/requirements/agents/ba-{name}.md
 
-Output to: docs/ai/requirements/agents/research-{name}.md
+[OUTPUT CONTRACT]
+Max 180 lines. Bullets only — no long paragraphs.
 
-[WRITE-FIRST CONTRACT]
-Write the full document directly to the target file path.
-Do NOT return the full document content.
-Return ONLY:
-- status: success | failed
-- written_file_path: {path}
-- handoff_summary: 6–10 bullets covering key domain findings, standards, terminology clarifications, compliance notes
-- validation_warnings: any terms with no results (note as unresearched)",
+Structure your response exactly as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (6-10 bullets: key findings, standards, terminology, compliance notes)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full research document}
+[/DOC]
+
+Output file path: docs/ai/requirements/agents/research-{name}.md",
   run_in_background: true
 )
 ```
@@ -329,16 +343,21 @@ AGENTS.md:
 ---
 [/INLINE PROJECT CONTEXT]
 
-Output to: docs/ai/requirements/agents/sa-{name}.md
+[OUTPUT CONTRACT]
+Max 250 lines. Tables and bullets only — no prose paragraphs.
+Mandatory sections: Requirements Analysis, Technical Recommendations,
+Risk Assessment, Open Technical Questions, Handoff Summary.
 
-[WRITE-FIRST CONTRACT]
-Write the full document directly to the target file path.
-Do NOT return the full document content.
-Return ONLY:
-- status: success | failed
-- written_file_path: {path}
-- handoff_summary: 8–12 bullets covering feasibility verdict, key architecture decisions, stack choices, risks, open technical questions
-- validation_warnings: any missing sections"
+Structure your response exactly as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (8-12 bullets: feasibility verdict, architecture decisions, stack, risks, open questions)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full document content}
+[/DOC]
+
+Output file path: docs/ai/requirements/agents/sa-{name}.md"
 )
 ```
 
@@ -371,16 +390,21 @@ AGENTS.md:
 ---
 [/INLINE PROJECT CONTEXT]
 
-Output to: docs/ai/requirements/agents/sa-{name}.md
+[OUTPUT CONTRACT]
+Max 250 lines. Tables and bullets only — no prose paragraphs.
+Mandatory sections: Requirements Analysis, Technical Recommendations,
+Risk Assessment, Open Technical Questions, Handoff Summary.
 
-[WRITE-FIRST CONTRACT]
-Write the full document directly to the target file path.
-Do NOT return the full document content.
-Return ONLY:
-- status: success | failed
-- written_file_path: {path}
-- handoff_summary: 8–12 bullets covering feasibility verdict, key architecture decisions, stack choices, risks, open technical questions
-- validation_warnings: any missing sections",
+Structure your response exactly as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (8-12 bullets: feasibility verdict, architecture decisions, stack, risks, open questions)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full document content}
+[/DOC]
+
+Output file path: docs/ai/requirements/agents/sa-{name}.md",
   run_in_background: true
 )
 ```
@@ -414,16 +438,22 @@ AGENTS.md:
 ---
 [/INLINE PROJECT CONTEXT]
 
-Output to: docs/ai/requirements/agents/sa-{name}.md
+[OUTPUT CONTRACT]
+Max 300 lines (SA-full may run searches, slightly more room than SA-lite).
+Tables and bullets only — no prose paragraphs.
+Mandatory sections: Requirements Analysis, Technical Recommendations,
+Risk Assessment, Open Technical Questions, Handoff Summary.
 
-[WRITE-FIRST CONTRACT]
-Write the full document directly to the target file path.
-Do NOT return the full document content.
-Return ONLY:
-- status: success | failed
-- written_file_path: {path}
-- handoff_summary: 8–12 bullets covering feasibility verdict, key architecture decisions, stack choices, risks, open technical questions
-- validation_warnings: any missing sections",
+Structure your response exactly as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (8-12 bullets: feasibility verdict, architecture decisions, stack, risks, open questions)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full document content}
+[/DOC]
+
+Output file path: docs/ai/requirements/agents/sa-{name}.md",
   run_in_background: true
 )
 ```
@@ -436,7 +466,12 @@ SA and Researcher run in background. **Only wait for SA** before proceeding — 
 TaskOutput(task_id={sa_task_id}, block=true)
 ```
 
-Researcher continues in background. Its handoff summary will be passed to UI/UX if available when UI/UX spawns; otherwise UI/UX proceeds with BA + SA only. Full Researcher doc is consumed only at consolidation (Step 6).
+**SA recovery fallback** — SA may complete while UI/UX Q&A is in progress. If `TaskOutput` returns an error or "No task found":
+1. Check if `docs/ai/requirements/agents/sa-{name}.md` already exists on disk.
+2. If yes → read only the `## Handoff Summary` section from the file. SA completed successfully.
+3. If no → SA failed. Retry SA once as foreground (non-background) before proceeding.
+
+Do NOT use bash scripts or tmp-file extraction to recover SA content — if the file exists on disk, read it directly with Read tool.
 
 **Verify SA mandatory sections** — if any are missing, retry SA agent once with note "Missing section: {X}":
 
@@ -529,18 +564,23 @@ After collecting answers, record them as `[UIUX_ANSWERS]` and proceed to spawn.
 
 ### Invoke UI/UX Agent
 
-Before spawning, check if Researcher has completed. If yes, extract the `## Handoff Summary` section from `research-{name}.md` and pass it inline. If Researcher is still running, proceed without it — UI/UX does not block on full research doc.
+Before spawning, pass BA and SA `[HANDOFF_SUMMARY]` bullets directly inline — do NOT pass file paths for UI/UX to read. Also check if Researcher has completed; if yes, pass its `[HANDOFF_SUMMARY]` inline too. UI/UX does not block on Researcher.
 
 ```
 Task(
   subagent_type='requirement-uiux',
   description='UI/UX design',
-  prompt="[WRITE-FIRST CONTRACT] - Design context already collected. Skip Q&A steps entirely.
+  prompt="[COMPACT RETURN CONTRACT] - Design context already collected. Skip Q&A steps entirely.
 
 Design UI/UX for feature: {feature-name}
 
-BA document: docs/ai/requirements/agents/ba-{name}.md
-SA document: docs/ai/requirements/agents/sa-{name}.md (for constraints)
+[BA_SUMMARY]
+{paste BA handoff summary bullets here}
+[/BA_SUMMARY]
+
+[SA_SUMMARY]
+{paste SA handoff summary bullets here}
+[/SA_SUMMARY]
 
 [RESEARCH_CONTEXT - if available]
 {paste research handoff summary here, or "(not yet available)"}
@@ -550,29 +590,30 @@ SA document: docs/ai/requirements/agents/sa-{name}.md (for constraints)
 {paste collected design answers here}
 [/UIUX_ANSWERS]
 
-Output to: docs/ai/requirements/agents/uiux-{name}.md
-
-[OUTPUT CONTRACT - STRICT]
-- Max 180 lines
-- Max 2200 words
-- Sections allowed (in order):
+[OUTPUT CONTRACT - HARD LIMIT]
+You MUST stay within 180 lines. This is a hard limit — not a guideline.
+If you exceed 180 lines, you are violating the contract. Cut before returning.
+Max 2200 words.
+Sections allowed (in order):
   1. Screen goals (what each screen achieves)
   2. Main user flow (step-by-step, bullets)
   3. Wireframe notes (ASCII or text-based per screen)
   4. Key states (loading / empty / error per screen)
   5. Handoff summary (10 bullets max)
-- Do NOT include long rationale paragraphs
-- Do NOT repeat content already in BA/SA docs
-- Prefer bullets over prose
+Do NOT include long rationale paragraphs.
+Do NOT repeat content already in BA/SA docs.
+Prefer bullets over prose.
 
-[WRITE-FIRST CONTRACT]
-Write the full document directly to the target file path.
-Do NOT return the full document content.
-Return ONLY:
-- status: success | failed
-- written_file_path: {path}
-- handoff_summary: 8–10 bullets covering screens, key flows, states, design decisions
-- validation_warnings: any missing sections or constraints exceeded"
+Structure your response exactly as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (8-10 bullets: screens, key flows, states, design decisions)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full UI/UX document — must be ≤180 lines}
+[/DOC]
+
+Output file path: docs/ai/requirements/agents/uiux-{name}.md"
 )
 ```
 
@@ -623,7 +664,7 @@ Read(file_path="docs/ai/requirements/req-template.md")
 
 **Step 6a: Use handoff_summaries from context first**
 
-All agents used WRITE-FIRST CONTRACT → their `handoff_summary` values are already in orchestrator context from Step 2–4 return values. **Do not Read any agent file in this step unless Step 6b trigger applies.**
+All agents used COMPACT RETURN CONTRACT → their `[HANDOFF_SUMMARY]` blocks are already in orchestrator context from Step 2–4 return values. **Do not Read any agent file in this step unless Step 6b trigger applies.**
 
 If an agent was retried or failed and handoff_summary is not in context, extract it by reading only the `## Handoff Summary` section:
 ```

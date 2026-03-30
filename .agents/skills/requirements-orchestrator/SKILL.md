@@ -273,28 +273,56 @@ Every packet must include:
 Before spawning UI/UX, **pre-collect design context** from the user directly (same pattern as BA clarification). Ask only what would materially change screen layout or interaction model — target device, whether to follow an existing design system, and any known design constraints surfaced in SA output. Record collected answers as `[UIUX_ANSWERS]`.
 
 - `Role`: `requirement_uiux`
-- BA output path
-- SA output path when available
-- Researcher `Handoff Summary` section only — if Researcher has completed; do not wait for Researcher if it is still running
+- BA `[HANDOFF_SUMMARY]` bullets (inline — do NOT pass file path; worker must not read BA artifact)
+- SA `[HANDOFF_SUMMARY]` bullets (inline — do NOT pass file path; worker must not read SA artifact)
+- Researcher `[HANDOFF_SUMMARY]` bullets (inline only if Researcher has completed; do not wait for Researcher if still running)
 - `[UIUX_ANSWERS]` block with pre-collected design decisions
 - any design notes or screenshots
 - short note listing the flows or screens that need definition
 - `[WRITE-ONLY MODE]` flag — UI/UX must not ask the user additional questions; mark unresolvable items as Open Questions in its output
 
-**UI/UX output contract (enforce in handoff note):**
+**UI/UX output contract (enforce in handoff note as [OUTPUT CONTRACT - HARD LIMIT]):**
 ```
-[OUTPUT CONTRACT - STRICT]
-- Max 180 lines
-- Max 2200 words
-- Sections allowed (in order):
+[OUTPUT CONTRACT - HARD LIMIT]
+You MUST stay within 180 lines. This is a hard limit — not a guideline.
+If you exceed 180 lines, you are violating the contract. Cut before returning.
+Max 2200 words.
+Sections allowed (in order):
   1. Screen goals (what each screen achieves)
   2. Main user flow (step-by-step, bullets)
   3. Wireframe notes (ASCII or text-based per screen)
   4. Key states (loading / empty / error per screen)
   5. Handoff summary (10 bullets max)
-- Do NOT include long rationale paragraphs
-- Do NOT repeat content already in BA/SA docs
-- Prefer bullets over prose
+Do NOT include long rationale paragraphs.
+Do NOT repeat content already in BA/SA docs.
+Prefer bullets over prose.
+
+Structure your response as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (8-10 bullets: screens, key flows, states, design decisions)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full UI/UX document — must be ≤180 lines}
+[/DOC]
+```
+
+Also add SA output contract to SA handoff note:
+```
+[SA OUTPUT CONTRACT]
+SA-lite: Max 250 lines. Tables and bullets only.
+SA-full: Max 300 lines. Tables and bullets only.
+Mandatory sections: Requirements Analysis, Technical Recommendations,
+Risk Assessment, Open Technical Questions, Handoff Summary.
+
+Structure your response as:
+[HANDOFF_SUMMARY]
+- {bullet 1}
+- ... (8-12 bullets: feasibility verdict, architecture decisions, stack, risks, open questions)
+[/HANDOFF_SUMMARY]
+[DOC]
+{full document content}
+[/DOC]
 ```
 
 Each worker should receive only its handoff package plus its role definition.
@@ -329,7 +357,9 @@ Produce only the files that apply. Do not create placeholder docs for skipped ro
 
 **Read Handoff Summary sections first — do not load full artifact files into working memory unless needed.**
 
-For each completed worker, read only the `## Handoff Summary` section of its artifact. Use these summaries to build the consolidation picture. Open the full artifact file only when a Step 8 conflict requires exact wording to verify, or when a specific section (e.g., FR table, acceptance criteria) must be reproduced verbatim in the final doc.
+For each completed worker, read only the `## Handoff Summary` section of its artifact (or extract the `[HANDOFF_SUMMARY]` block from the worker's response if still in context). Use these summaries to build the consolidation picture. Open the full artifact file only when a Step 8 conflict requires exact wording to verify, or when a specific section must be reproduced verbatim in the final doc.
+
+**SA recovery**: If SA was run in parallel and its artifact is not yet in working memory, read only the Handoff Summary section from disk rather than loading the full file. Do NOT use bash scripts or tmp-file extraction to recover SA content — read the file directly.
 
 Build a consolidation summary from handoff summaries with:
 
