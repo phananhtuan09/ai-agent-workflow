@@ -147,10 +147,24 @@ Cap at two clarification rounds for Light mode, three for Full mode. When unknow
 | UI labels, placeholder text, non-critical defaults | `[SAFE ASSUMPTION]` | Auto-pass. Record in BA doc. |
 | API contracts, permissions, business rules, data schema, integration behavior | `[NEEDS CONFIRMATION]` | Do NOT auto-pass. Carry as an explicit Open Question. Ask user before consolidating. |
 
-Once answers are collected, load `.agents/roles/requirement-ba.md` and spawn BA with the full input package:
+Once answers are collected, compress them into a structured `[ANSWERS]` block before spawning. Raw Q&A is not forwarded downstream — only this block is passed to BA:
+
+```
+[ANSWERS]
+- Goal: {what the feature achieves}
+- Target users: {who uses it}
+- Main flows: {primary user journeys, bullet list}
+- Constraints: {tech stack, performance, security, timeline}
+- Non-goals: {explicitly out of scope}
+- Open questions: {unresolved items with [SAFE ASSUMPTION] or [NEEDS CONFIRMATION] labels}
+- Decisions made: {choices locked in during clarification}
+[/ANSWERS]
+```
+
+Load `.agents/roles/requirement-ba.md` and spawn BA with the full input package:
 
 - original user prompt
-- collected clarification answers
+- `[ANSWERS]` block above
 - existing requirement doc if present
 
 Produce `docs/ai/requirements/agents/ba-{name}.md`.
@@ -261,10 +275,27 @@ Before spawning UI/UX, **pre-collect design context** from the user directly (sa
 - `Role`: `requirement_uiux`
 - BA output path
 - SA output path when available
+- Researcher `Handoff Summary` section only — if Researcher has completed; do not wait for Researcher if it is still running
 - `[UIUX_ANSWERS]` block with pre-collected design decisions
 - any design notes or screenshots
 - short note listing the flows or screens that need definition
 - `[WRITE-ONLY MODE]` flag — UI/UX must not ask the user additional questions; mark unresolvable items as Open Questions in its output
+
+**UI/UX output contract (enforce in handoff note):**
+```
+[OUTPUT CONTRACT - STRICT]
+- Max 180 lines
+- Max 2200 words
+- Sections allowed (in order):
+  1. Screen goals (what each screen achieves)
+  2. Main user flow (step-by-step, bullets)
+  3. Wireframe notes (ASCII or text-based per screen)
+  4. Key states (loading / empty / error per screen)
+  5. Handoff summary (10 bullets max)
+- Do NOT include long rationale paragraphs
+- Do NOT repeat content already in BA/SA docs
+- Prefer bullets over prose
+```
 
 Each worker should receive only its handoff package plus its role definition.
 
@@ -272,21 +303,23 @@ Each worker should receive only its handoff package plus its role definition.
 
 Use this DAG:
 
-1. BA runs first.
-2. After BA completes, SA always runs.
-3. Researcher may run in parallel with SA because both depend only on BA output.
-4. **After SA completes and before spawning UI/UX: run a BA↔SA consistency check.** Compare BA and SA outputs for feasibility gaps (BA Must-have vs SA Not-feasible), scope mismatches, assumption conflicts, and any `[NEEDS CONFIRMATION]` items still unresolved. Resolve blocking conflicts with the user before spawning UI/UX — do not let UI/UX build on a broken foundation. Non-blocking conflicts can be noted and carried forward.
-5. UI/UX runs after SA when technical constraints matter. If the UI request is trivial and SA adds no relevant constraint, UI/UX may run after BA, but prefer BA → SA → UI/UX.
-6. Consolidation runs only after all selected worker outputs are complete.
+1. BA runs first. Wait for its artifact before deciding downstream roles.
+2. After BA completes, re-evaluate role selection (step 4).
+3. **Light mode**: SA runs sequentially (foreground) after BA — no parallelism needed. Proceed directly to consolidation after SA.
+4. **Full mode**: After BA completes, SA always runs. Researcher may run in parallel with SA because both depend only on BA output.
+5. **After SA completes and before spawning UI/UX: run a BA↔SA consistency check.** Compare BA and SA `Handoff Summary` sections for feasibility gaps (BA Must-have vs SA Not-feasible), scope mismatches, assumption conflicts, and any `[NEEDS CONFIRMATION]` items still unresolved. Resolve blocking conflicts with the user before spawning UI/UX — do not let UI/UX build on a broken foundation. Non-blocking conflicts can be noted and carried forward.
+6. **UI/UX spawns after SA only — it does NOT wait for Researcher.** If Researcher has already completed, pass its `Handoff Summary` section to UI/UX inline. If Researcher is still running, proceed with BA + SA context only. UI/UX must not block on Researcher completion.
+7. Consolidation runs after all selected worker outputs are complete (including Researcher if it was still running when UI/UX started).
 
 Execution strategy:
 
 - if `spawn_agent` is available, use the named agents from the Codex Multi-Agent Contract
 - spawn `requirement_ba` first and wait for its artifact before deciding downstream work
-- after BA, spawn `requirement_sa`
-- when research is selected, spawn `requirement_researcher` in parallel with `requirement_sa`
+- **Light mode**: spawn `requirement_sa` sequentially, wait for completion, then consolidate
+- **Full mode**: after BA, spawn `requirement_sa` and (if needed) `requirement_researcher` in parallel
 - after SA completes, run the BA↔SA consistency check before spawning `requirement_uiux`
-- when UI/UX is selected, spawn `requirement_uiux` after SA completes and conflicts are resolved
+- when UI/UX is selected, spawn `requirement_uiux` after SA completes — pass Researcher handoff summary inline only if already available
+- wait for all background workers (Researcher) to complete before final consolidation
 - if `spawn_agent` is not available, execute the same DAG serially while preserving the same handoff boundaries
 - do not invent extra worker roles unless the user explicitly asks for them
 
@@ -294,11 +327,15 @@ Produce only the files that apply. Do not create placeholder docs for skipped ro
 
 ### 7. Collect worker results
 
-The orchestrator must read worker artifacts from disk and build a consolidation summary with:
+**Read Handoff Summary sections first — do not load full artifact files into working memory unless needed.**
+
+For each completed worker, read only the `## Handoff Summary` section of its artifact. Use these summaries to build the consolidation picture. Open the full artifact file only when a Step 8 conflict requires exact wording to verify, or when a specific section (e.g., FR table, acceptance criteria) must be reproduced verbatim in the final doc.
+
+Build a consolidation summary from handoff summaries with:
 
 - roles executed
 - outputs created
-- key decisions per role
+- key decisions per role (from handoff summary)
 - blockers per role
 - open questions per role
 - follow-on role signals discovered by BA
@@ -309,17 +346,18 @@ The orchestrator must read worker artifacts from disk and build a consolidation 
 
 Do not rely on memory of intermediate reasoning. Use the files as the source of truth.
 
-### 8. Resolve conflicts
+### 8. Resolve post-UI/UX conflicts
 
-Compare role outputs before consolidation.
+**Scope**: This step handles only conflicts that could NOT have been caught in the BA↔SA consistency check (step 6.5). Do NOT re-check BA↔SA here — that was already resolved before UI/UX was spawned.
 
-Look for:
+Check for:
 
-- BA requirement marked must-have but SA says not feasible
-- Research guidance that changes BA language or SA approach
-- UI proposals that conflict with technical constraints
-- missing acceptance criteria, missing edge cases, or contradictory assumptions
-- `[NEEDS CONFIRMATION]` items that were never resolved
+- Researcher findings that change BA language or override SA approach (e.g., different standard than SA recommended)
+- UI/UX scope creep — screens or flows designed that were not covered in BA FRs
+- UI/UX proposals that conflict with SA technical constraints
+- `[NEEDS CONFIRMATION]` items that were never resolved across any worker
+
+Use handoff summaries from Researcher and UI/UX (already in working memory) to detect these. Open full files only when exact wording is needed to confirm a conflict.
 
 When the conflict materially changes scope or implementation, ask the user a direct question. Otherwise, resolve it in favor of the most concrete project constraint and record the assumption.
 

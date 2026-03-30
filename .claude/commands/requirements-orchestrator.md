@@ -119,12 +119,12 @@ Based on analysis and mode:
 
 | Scenario | Mode | Agents to Run | Execution |
 |----------|------|---------------|-----------|
-| Simple API feature | Light | BA → SA | Sequential |
-| Simple UI feature | Light | BA → SA | Sequential |
-| Complex API feature | Full | BA → SA | Sequential |
-| Complex full-stack | Full | BA → SA → UI/UX | Sequential |
-| Domain-specific | Full | BA → (SA + Researcher parallel) → UI/UX | Mixed |
-| Any feature | Light | BA → SA | Sequential |
+| Simple API feature | Light | BA → SA | BA sequential; SA foreground |
+| Simple UI feature | Light | BA → SA | BA sequential; SA foreground |
+| Complex API feature | Full | BA → SA | BA sequential; SA background |
+| Complex full-stack | Full | BA → SA → UI/UX | BA sequential; SA background; UI/UX after SA |
+| Domain-specific | Full | BA → (SA + Researcher) → UI/UX | BA sequential; SA + Researcher background parallel; UI/UX after SA only |
+| Any feature | Light | BA → SA | BA sequential; SA foreground |
 
 ### Decision Output
 
@@ -174,15 +174,27 @@ After each round, decide: are there still blockers that would prevent BA from wr
 | UI labels, placeholder text, non-critical defaults | `[SAFE ASSUMPTION]` | Auto-pass. Note in BA doc. |
 | API contracts, permissions, business rules, data schema, integration behavior | `[NEEDS CONFIRMATION]` | Do NOT auto-pass. Surface as Open Question. Orchestrator must ask user before consolidating. |
 
-After collecting all answers, record them as a structured `[ANSWERS]` block and proceed to spawn.
+After collecting all answers, compress into a structured `[ANSWERS]` block before spawning. Raw Q&A is not forwarded downstream — only this block is passed to agents.
 
-### 2b: Spawn BA Agent (write-only)
+```
+[ANSWERS]
+- Goal: {what the feature achieves}
+- Target users: {who uses it}
+- Main flows: {primary user journeys, bullet list}
+- Constraints: {tech stack, performance, security, timeline}
+- Non-goals: {explicitly out of scope}
+- Open questions: {unresolved items with [SAFE ASSUMPTION] or [NEEDS CONFIRMATION] labels}
+- Decisions made: {choices locked in during Q&A}
+[/ANSWERS]
+```
+
+### 2b: Spawn BA Agent (write-first contract)
 
 ```
 Task(
   subagent_type='requirement-ba',
   description='BA requirement analysis',
-  prompt="[WRITE-ONLY MODE] - Answers already collected. Skip Q&A steps entirely.
+  prompt="[WRITE-FIRST CONTRACT] - Answers already collected. Skip Q&A steps entirely.
 
 Feature: {feature-name}
 
@@ -192,10 +204,16 @@ User's original request:
 ---
 
 [ANSWERS]
-{paste collected answers here}
+{paste structured ANSWERS block here}
 [/ANSWERS]
 
-Output to: docs/ai/requirements/agents/ba-{name}.md"
+Write the full document directly to: docs/ai/requirements/agents/ba-{name}.md
+Do NOT return the full document content in your response.
+Return ONLY:
+- status: success | failed
+- written_file_path: {path}
+- handoff_summary: 5–10 bullets covering problem, users, key FRs, business rules, open questions
+- validation_warnings: any missing sections or assumptions flagged"
 )
 ```
 
@@ -218,7 +236,7 @@ After BA completes, verify output exists:
 
 If still missing after retry → proceed but flag as `incomplete` in the consolidated doc.
 
-Extract key info for next agents:
+Extract key info for next agents from the `handoff_summary` returned by BA (already in orchestrator context):
 - Feature type confirmed
 - User stories
 - Functional requirements
@@ -246,7 +264,16 @@ Terms to research:
 
 Context from BA document: docs/ai/requirements/agents/ba-{name}.md
 
-Output to: docs/ai/requirements/agents/research-{name}.md",
+Output to: docs/ai/requirements/agents/research-{name}.md
+
+[WRITE-FIRST CONTRACT]
+Write the full document directly to the target file path.
+Do NOT return the full document content.
+Return ONLY:
+- status: success | failed
+- written_file_path: {path}
+- handoff_summary: 6–10 bullets covering key domain findings, standards, terminology clarifications, compliance notes
+- validation_warnings: any terms with no results (note as unresearched)",
   run_in_background: true
 )
 ```
@@ -273,7 +300,7 @@ If a file doesn't exist, use `"(not available)"` as its placeholder.
 | Full | Simple / Medium | SA-lite | Use inline context only. Skip repo inspection. |
 | Full | Complex | SA-full | Use inline context as baseline. May run up to 5 targeted Glob/Grep searches to validate integration points or find reuse candidates. |
 
-**SA-lite prompt:**
+**SA-lite prompt — Light mode (foreground, no background):**
 
 ```
 Task(
@@ -302,7 +329,58 @@ AGENTS.md:
 ---
 [/INLINE PROJECT CONTEXT]
 
-Output to: docs/ai/requirements/agents/sa-{name}.md",
+Output to: docs/ai/requirements/agents/sa-{name}.md
+
+[WRITE-FIRST CONTRACT]
+Write the full document directly to the target file path.
+Do NOT return the full document content.
+Return ONLY:
+- status: success | failed
+- written_file_path: {path}
+- handoff_summary: 8–12 bullets covering feasibility verdict, key architecture decisions, stack choices, risks, open technical questions
+- validation_warnings: any missing sections"
+)
+```
+
+**SA-lite prompt — Full mode (background, parallel with Researcher):**
+
+```
+Task(
+  subagent_type='requirement-sa',
+  description='Solution architecture',
+  prompt="[LIGHT MODE] - Use inline project context below. Do not run codebase Explore sub-agent.
+
+Perform technical feasibility assessment for feature: {feature-name}
+
+BA document: docs/ai/requirements/agents/ba-{name}.md
+
+[INLINE PROJECT CONTEXT]
+CODE_CONVENTIONS.md:
+---
+{conventions_content}
+---
+
+PROJECT_STRUCTURE.md:
+---
+{structure_content}
+---
+
+AGENTS.md:
+---
+{agents_content}
+---
+[/INLINE PROJECT CONTEXT]
+
+Output to: docs/ai/requirements/agents/sa-{name}.md
+
+[WRITE-FIRST CONTRACT]
+Write the full document directly to the target file path.
+Do NOT return the full document content.
+Return ONLY:
+- status: success | failed
+- written_file_path: {path}
+- handoff_summary: 8–12 bullets covering feasibility verdict, key architecture decisions, stack choices, risks, open technical questions
+- validation_warnings: any missing sections",
   run_in_background: true
 )
 ```
@@ -336,19 +414,29 @@ AGENTS.md:
 ---
 [/INLINE PROJECT CONTEXT]
 
-Output to: docs/ai/requirements/agents/sa-{name}.md",
+Output to: docs/ai/requirements/agents/sa-{name}.md
+
+[WRITE-FIRST CONTRACT]
+Write the full document directly to the target file path.
+Do NOT return the full document content.
+Return ONLY:
+- status: success | failed
+- written_file_path: {path}
+- handoff_summary: 8–12 bullets covering feasibility verdict, key architecture decisions, stack choices, risks, open technical questions
+- validation_warnings: any missing sections",
   run_in_background: true
 )
 ```
 
 ### Wait for Parallel Agents
 
-If running in background, use TaskOutput to collect results:
+SA and Researcher run in background. **Only wait for SA** before proceeding — UI/UX does not need the full Researcher doc.
 
 ```
-TaskOutput(task_id={researcher_task_id}, block=true)
 TaskOutput(task_id={sa_task_id}, block=true)
 ```
+
+Researcher continues in background. Its handoff summary will be passed to UI/UX if available when UI/UX spawns; otherwise UI/UX proceeds with BA + SA only. Full Researcher doc is consumed only at consolidation (Step 6).
 
 **Verify SA mandatory sections** — if any are missing, retry SA agent once with note "Missing section: {X}":
 
@@ -366,7 +454,9 @@ TaskOutput(task_id={sa_task_id}, block=true)
 
 **Run before spawning UI/UX** — catch conflicts early to avoid wasted UI/UX work.
 
-Compare `ba-{name}.md` and `sa-{name}.md` for:
+Use `handoff_summary` from BA and SA already in orchestrator context (from WRITE-FIRST CONTRACT return values). Do NOT read full files for this check — summaries are sufficient. Only open full files if a conflict requires exact wording to verify.
+
+Compare BA and SA handoff_summaries for:
 
 | Conflict Type | Example | Action |
 |---------------|---------|--------|
@@ -439,38 +529,70 @@ After collecting answers, record them as `[UIUX_ANSWERS]` and proceed to spawn.
 
 ### Invoke UI/UX Agent
 
+Before spawning, check if Researcher has completed. If yes, extract the `## Handoff Summary` section from `research-{name}.md` and pass it inline. If Researcher is still running, proceed without it — UI/UX does not block on full research doc.
+
 ```
 Task(
   subagent_type='requirement-uiux',
   description='UI/UX design',
-  prompt="[WRITE-ONLY MODE] - Design context already collected. Skip Q&A steps entirely.
+  prompt="[WRITE-FIRST CONTRACT] - Design context already collected. Skip Q&A steps entirely.
 
 Design UI/UX for feature: {feature-name}
 
 BA document: docs/ai/requirements/agents/ba-{name}.md
 SA document: docs/ai/requirements/agents/sa-{name}.md (for constraints)
 
+[RESEARCH_CONTEXT - if available]
+{paste research handoff summary here, or "(not yet available)"}
+[/RESEARCH_CONTEXT]
+
 [UIUX_ANSWERS]
 {paste collected design answers here}
 [/UIUX_ANSWERS]
 
-Output to: docs/ai/requirements/agents/uiux-{name}.md"
+Output to: docs/ai/requirements/agents/uiux-{name}.md
+
+[OUTPUT CONTRACT - STRICT]
+- Max 180 lines
+- Max 2200 words
+- Sections allowed (in order):
+  1. Screen goals (what each screen achieves)
+  2. Main user flow (step-by-step, bullets)
+  3. Wireframe notes (ASCII or text-based per screen)
+  4. Key states (loading / empty / error per screen)
+  5. Handoff summary (10 bullets max)
+- Do NOT include long rationale paragraphs
+- Do NOT repeat content already in BA/SA docs
+- Prefer bullets over prose
+
+[WRITE-FIRST CONTRACT]
+Write the full document directly to the target file path.
+Do NOT return the full document content.
+Return ONLY:
+- status: success | failed
+- written_file_path: {path}
+- handoff_summary: 8–10 bullets covering screens, key flows, states, design decisions
+- validation_warnings: any missing sections or constraints exceeded"
 )
 ```
 
 ---
 
-## Step 5: Resolve Conflicts (If Any)
+## Step 5: Resolve Post-UI/UX Conflicts (If Any)
+
+**Scope**: Check only conflicts that could NOT have been caught in Step 3.5 — specifically: Researcher vs BA/SA, and UI/UX vs BA/SA. Do NOT re-check BA↔SA (already handled in Step 3.5).
+
+Use handoff_summaries from Researcher and UI/UX already in orchestrator context. Only read full files if exact wording is needed to resolve a conflict.
 
 ### Check for Conflicts
 
-Compare agent outputs for inconsistencies:
+Compare Researcher and UI/UX handoff_summaries against BA/SA handoff_summaries for:
 
 | Conflict Type | Detection | Resolution |
 |---------------|-----------|------------|
-| **Feasibility** | SA says not feasible, BA has as must-have | Ask user to adjust priority or scope |
-| **Technical** | SA recommends X, research shows Y is standard | Present both, let user decide |
-| **Scope** | Agents produced different scope understanding | Clarify with user |
+| **Researcher overrides SA** | Research finds different standard than SA recommended | Present both, let user decide |
+| **UI/UX scope creep** | UI/UX designed screens not covered in BA FRs | Clarify if scope was intentionally expanded |
+| **UI/UX infeasible** | UI/UX proposed something SA marked as not feasible | Ask user to drop or defer |
 
 ### Conflict Resolution
 
@@ -497,13 +619,29 @@ AskUserQuestion(questions=[{
 Read(file_path="docs/ai/requirements/req-template.md")
 ```
 
-### Gather All Agent Outputs
+### Gather Agent Outputs — Summary-First Pattern
+
+**Step 6a: Use handoff_summaries from context first**
+
+All agents used WRITE-FIRST CONTRACT → their `handoff_summary` values are already in orchestrator context from Step 2–4 return values. **Do not Read any agent file in this step unless Step 6b trigger applies.**
+
+If an agent was retried or failed and handoff_summary is not in context, extract it by reading only the `## Handoff Summary` section:
+```
+# Read the file and locate the ## Handoff Summary heading — read only those lines
+Read(file_path="docs/ai/requirements/agents/ba-{name}.md", offset={handoff_summary_start_line}, limit=30)
+```
+
+**Step 6b: Selective drill-down** — only open the full file when:
+- There is a conflict between agents that needs exact wording to verify
+- A section (e.g., FR table, acceptance criteria) must be reproduced verbatim in the final doc
+- A `[NEEDS CONFIRMATION]` item requires full original context
 
 ```
-Read(file_path="docs/ai/requirements/agents/ba-{name}.md")
-Read(file_path="docs/ai/requirements/agents/sa-{name}.md")
-Read(file_path="docs/ai/requirements/agents/research-{name}.md")  # if exists
-Read(file_path="docs/ai/requirements/agents/uiux-{name}.md")       # if exists
+# Only read full file when a Step 6b trigger applies:
+Read(file_path="docs/ai/requirements/agents/ba-{name}.md")       # only if needed
+Read(file_path="docs/ai/requirements/agents/sa-{name}.md")       # only if needed
+Read(file_path="docs/ai/requirements/agents/research-{name}.md") # only if needed
+Read(file_path="docs/ai/requirements/agents/uiux-{name}.md")     # only if needed — caution: may be large
 ```
 
 ### Generate Consolidated Document
@@ -792,19 +930,23 @@ The consolidated requirement document is designed to be consumed by `/create-pla
 ### Parallel Execution
 
 Maximize parallelism where possible:
-- BA + Researcher can run in parallel (if both needed)
-- SA can start after BA completes (needs BA output)
-- UI/UX can start after SA completes (needs both outputs)
+- SA + Researcher both run in background after BA completes (parallel)
+- UI/UX starts after SA completes — does NOT wait for Researcher
+- Researcher handoff summary is passed to UI/UX only if it finishes before UI/UX spawns
+- Consolidation uses handoff summaries first; opens full docs only for selective drill-down
 
 Optimal parallel execution for full workflow:
 ```
-Q&A (orchestrator)
+Q&A (orchestrator) → compress to [ANSWERS] block
     ↓
-BA (write-only)
+BA (write-first contract) → returns handoff_summary
     ↓
-SA ──────────────┐
-                  ├──▶ UI/UX ──▶ Consolidate
-Researcher ──────┘
+SA ──────────────────────── (background)
+Researcher ─────────────── (background)
+    ↓ (wait SA only)
+UI/UX (write-first, strict 180-line contract)
+    ↓
+Consolidate (summary-first → selective drill-down)
 ```
 
-SA and Researcher both depend on BA output — run them in parallel after BA completes.
+Researcher continues in background during UI/UX. Its handoff summary is included if available at UI/UX spawn time; full doc is read at consolidation only if needed.
