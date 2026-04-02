@@ -365,6 +365,7 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 Create the file automatically:
 
 - `docs/ai/planning/feature-{name}.md` - Use complete structure from `feature-template.md`
+- Set `status: draft` in the frontmatter of the generated file.
 
 **Notify user:** "Created plan with X phases: [Phase 1], [Phase 2], ..."
 

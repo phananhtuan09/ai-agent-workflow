@@ -1,244 +1,95 @@
 ---
 name: manage-epic
-description: Create or update epic - tracks feature plans for a requirement.
+description: Sync epic status from feature plans and report progress.
 ---
 
 ## Goal
 
-Manage epic documents that link requirements to feature plans. An epic is a simple tracking document that lists all feature plans needed to fulfill a requirement.
+Read all feature plans linked to an epic, sync their status into the epic table, and report overall progress.
 
-**When to use:**
-- A requirement is too large for a single feature plan
-- You need to break a requirement into multiple feature plans
-- You need to update an epic with new feature plans or status changes
+This command does not create or restructure epics. Epic creation is handled by `/development-orchestrator`.
 
 ---
 
 ## Workflow Alignment
 
 - Provide brief status updates (1–3 sentences) before/after important actions.
-- For medium/large tasks, create todos (≤14 words, verb-led). Keep only one `in_progress` item.
-- Update todos immediately after progress; mark completed upon finish.
+- Create todos only for medium/large epics (many plans). Keep one `in_progress` item.
 
 ---
 
-## Step 1: Detect Mode
+## Step 1: Load Epic
 
-**Parse user input to determine mode:**
-
-| Input | Mode | Action |
-|-------|------|--------|
-| Requirement doc path provided | **Create** | Create new epic from requirement |
-| Epic doc path provided | **Update** | Update existing epic |
-| Feature plan path + epic path | **Link** | Add feature plan to epic |
-| No specific path | **Ask** | Ask user what they want to do |
-
-**If unclear, ask:**
-
-```
-AskUserQuestion(questions=[{
-  question: "What would you like to do with the epic?",
-  header: "Mode",
-  options: [
-    { label: "Create new epic", description: "Break a requirement into feature plans" },
-    { label: "Update epic", description: "Add feature plan or update status" },
-    { label: "Sync status", description: "Update status of all linked documents" }
-  ],
-  multiSelect: false
-}])
-```
-
----
-
-## Step 2: Create Mode
-
-### 2a: Read Requirement
-
-```
-Read(file_path="docs/ai/requirements/req-{name}.md")
-```
-
-Extract:
-- Feature name
-- Functional requirements (FR table)
-- Implementation guidance / suggested phases
-- Complexity level
-
-### 2b: Break into Feature Plans
-
-Analyze the requirement and propose how to break it into feature plans.
-
-**Guidelines:**
-- Each feature plan should be independently implementable
-- Group by: feature area, layer (frontend/backend), or dependency order
-- Aim for 2-6 feature plans per epic
-- Each plan should map to specific FRs from the requirement
-
-**Ask user to confirm breakdown:**
-
-```
-AskUserQuestion(questions=[{
-  question: "Here's the proposed breakdown. Does this look right?",
-  header: "Breakdown",
-  options: [
-    { label: "Looks good", description: "Create epic with this breakdown" },
-    { label: "Adjust", description: "I want to modify the breakdown" },
-    { label: "Fewer plans", description: "Merge some plans together" }
-  ],
-  multiSelect: false
-}])
-```
-
-### 2c: Load Template & Generate Epic
-
-```
-Read(file_path="docs/ai/planning/epic-template.md")
-```
-
-Generate `docs/ai/planning/epic-{name}.md` with:
-- `requirement` frontmatter pointing to the req doc
-- Overview: 1-3 sentences from requirement's executive summary
-- Feature Plans table: proposed feature plans with descriptions, plus `FR Scope` and `Depends On` when the epic template tracks them
-- Dependency graph: show dependencies between feature plans
-- Related Documents: link back to requirement
-
-**Auto-name:** Derive from requirement name (kebab-case).
-- Example: `req-user-authentication.md` → `epic-user-authentication.md`
-
-**If file already exists:**
-1. Backup to `docs/ai/planning/archive/epic-{name}_{timestamp}.md`
-2. Overwrite main file
-3. Notify user of backup
-
-### 2d: Update Requirement Doc
-
-After creating epic, update the requirement doc's frontmatter and Related Plans section:
-- Set `epic_plan` in frontmatter
-- Update Related Plans table with epic link
-
----
-
-## Step 3: Update Mode
-
-### 3a: Read Current Epic
+Ask for epic name if not provided.
 
 ```
 Read(file_path="docs/ai/planning/epic-{name}.md")
 ```
 
-### 3b: Determine Update Type
-
-| Trigger | Action |
-|---------|--------|
-| New feature plan created | Add row to Feature Plans table |
-| Feature plan completed | Update status to `completed` |
-| Feature plan started | Update status to `in_progress` |
-| Feature plan blocked | Update status to `blocked` |
-| Dependency changed | Update dependency graph |
-
-### 3c: Apply Update
-
-Edit the epic document with the change. Keep all other content intact.
-
-If the epic table contains `FR Scope` or `Depends On` columns:
-- update those values when the new information is available
-
-If the epic table uses the older shape without those columns:
-- preserve the current table shape
-- encode dependency detail in the dependency graph or description instead
+If not found → stop and report path tried.
 
 ---
 
-## Step 4: Link Mode
+## Step 2: Read All Linked Feature Plans
 
-When a new feature plan is created (e.g., via `/create-plan`), link it to the epic:
+For each plan row in the epic's Feature Plans table:
 
-1. Read the epic document
-2. Add the feature plan to the Feature Plans table
-3. Update the feature plan's `epic_plan` frontmatter to point to the epic
-4. Populate `FR Scope` and `Depends On` when the epic table tracks them
-5. Update dependency graph if needed
-
----
-
-## Step 5: Sync Status
-
-Scan all linked documents and synchronize status:
-
-1. Read the epic document
-2. For each feature plan in the table:
-   - Read the feature plan
-   - Check if implementation tasks are completed
-   - Detect explicit blockers
-   - Update status in epic table
-3. Update requirement doc if all feature plans are completed
-
-**Default status mapping:**
-- No completed implementation tasks yet → `open`
-- Some completed tasks and some remaining → `in_progress`
-- Explicit blocker recorded in the feature plan → `blocked`
-- All implementation tasks complete → `completed`
-
----
-
-## Step 6: Summary & Next Steps
-
-```markdown
-## Epic Updated
-
-**File**: docs/ai/planning/epic-{name}.md
-
-### Feature Plans
-| # | Plan | Status |
-|---|------|--------|
-| 1 | feature-{name}-part1.md | {status} |
-| 2 | feature-{name}-part2.md | {status} |
-
-### Next Steps
-- `/create-plan` → Create a feature plan listed in this epic
-- `/execute-plan` → Implement a feature plan
-- `/manage-epic` → Update status or add feature plans
+```
+Read(file_path="docs/ai/planning/feature-{plan-name}.md")
 ```
 
----
+Extract from each plan:
+- `status` field from frontmatter
+- Total task count and completed task count (checkbox `[x]` vs `[ ]`)
+- Any explicit blocker note
 
-## Cross-Linking Rules
-
-When creating or updating documents, ensure cross-links are maintained.
-**Only add links when they exist — never add placeholder/null links.**
-
-### Creating Epic from Requirement (`/manage-epic`)
-1. Epic: set `requirement` frontmatter → req doc path
-2. Req doc: add or update the "Related Plans" section with epic link
-
-### Adding Feature Plan to Epic (`/create-plan` with epic context)
-1. Epic: add row to Feature Plans table
-2. Feature plan: set `epic_plan` frontmatter → epic path
-3. Feature plan: set `requirement` frontmatter → req doc path (from epic)
-4. Feature plan: include Section 0 "Related Documents" with both links
-
-### Creating Feature Plan standalone (`/create-plan` without epic or req)
-1. Feature plan: frontmatter `epic_plan` = null, `requirement` = null
-2. Feature plan: **remove** Section 0 "Related Documents" entirely
-3. No cross-linking needed
+If a plan file is not found → mark that row as `missing` in the report; continue with others.
 
 ---
 
-## Error Handling
+## Step 3: Sync Epic Table
 
-| Error | Action |
-|-------|--------|
-| Requirement doc not found | Ask user for path or create requirement first |
-| Epic already exists | Ask: update existing or create new (backup old) |
-| Feature plan not found | Skip link, warn user |
-| Template not found | Use minimal structure from this command |
+Update each row's status in the epic's Feature Plans table using this mapping:
+
+| Feature plan status | Epic row status |
+|---------------------|-----------------|
+| `draft` | `open` |
+| `reviewed` | `open` |
+| `executed` | `completed` |
+| Any status + explicit blocker noted in plan | `blocked` |
+
+Apply the update by editing the epic file directly.
+
+---
+
+## Step 4: Report Progress
+
+After syncing, output a concise progress summary:
+
+```
+Epic: epic-{name}.md
+
+Feature Plans
+─────────────────────────────────────────
+  feature-{a}    completed   ████████ 8/8
+  feature-{b}    open        ░░░░░░░░ 0/6
+  feature-{c}    open        ░░░░░░░░ 0/4
+─────────────────────────────────────────
+  Progress: 1/3 plans complete
+
+Next to implement: feature-{b}
+  Run: /execute-plan {b}
+```
+
+If all plans are `completed` → report epic as fully done.
+
+If any plan is `missing` → list them separately and warn user.
 
 ---
 
 ## Notes
 
-- Epic is purely a tracking document — no architecture or implementation details
-- Feature plans contain all implementation details (via `/create-plan`)
-- Requirement doc contains all WHAT details (via `/requirements-orchestrator`)
-- Epic bridges the gap: tracks WHICH feature plans implement WHICH requirement
-- Status values supported by the epic template: `open`, `in_progress`, `blocked`, `completed`
+- This command is read-and-sync only. It does not generate new plans or modify plan content.
+- Run after each `/execute-plan` to keep the epic table current.
+- Status values in epic table: `open`, `in_progress`, `blocked`, `completed`.
+- `in_progress` is set only when `execute-plan` is actively mid-run (partially executed plan). For a clean before/after snapshot, `open` and `completed` are sufficient.

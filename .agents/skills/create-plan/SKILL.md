@@ -119,6 +119,7 @@ If the file already exists:
 
 Follow `docs/ai/planning/feature-template.md` closely.
 The plan must be written in English.
+Set `status: draft` in the frontmatter of the generated file.
 
 Include:
 

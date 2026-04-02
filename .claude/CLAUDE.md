@@ -34,9 +34,9 @@
   - "Is this the expected flow: A → B → C?"
 
 ### 3. Multiple Options When Appropriate
-- Present 2-3 solution options with clear trade-offs
-- Format: "Option 1: [approach] - Pros: [...] Cons: [...]"
-- Let user choose based on their priorities
+- Only offer options when there is a **genuine trade-off** that depends on user priorities — not to seem thorough
+- Each option must carry a real cost: "Option A is faster but harder to change later; Option B takes longer but stays flexible"
+- If one option is clearly better, recommend it directly instead of listing alternatives
 
 ---
 

@@ -222,20 +222,18 @@ Only run after ALL phases are marked complete. If incomplete phases remain, skip
 - Persistent failures: Document issues, proceed with caution
 - See Notes section for manual commands if needed
 
-## Step 6: Sync Epic Status (When Linked)
+## Step 6: Update Plan Status and Sync Epic (When Linked)
 
-After the current run, inspect the planning doc frontmatter.
+After quality checks pass, update the feature plan frontmatter `status` field:
+
+- Some work complete and tasks remain → keep `reviewed` (do not change)
+- All implementation tasks complete → set `status: executed`
+
+Then inspect the `epic_plan` frontmatter field.
 
 If `epic_plan` is non-null:
-- sync the linked epic before final next actions
-- update the feature plan status using this mapping:
-  - some work complete and tasks remain → `in_progress`
-  - explicit blocked task or blocker note → `blocked`
-  - all implementation tasks complete → `completed`
-- skip this entire step for standalone feature plans with no epic link
-
-Recommended invocation:
-- run `/manage-epic` in sync mode using the linked epic and current feature plan
+- run `/manage-epic {epic-name}` to sync the epic table and report progress
+- skip for standalone feature plans with no epic link
 
 ## Step 7: Next Actions
 

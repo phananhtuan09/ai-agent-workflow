@@ -113,10 +113,9 @@ After each completed phase in the execution scope:
 - if more in-scope phases remain, continue automatically unless the user explicitly asked for a single phase
 - if all phases are complete, run final quality checks and summarize results
 - if work stops early because of a blocker, report the blocker, affected phase, and exact resume point
-- if the planning doc frontmatter contains a non-null `epic_plan`, sync the linked epic after this run
-  - use `in_progress` when some work is complete and more tasks remain
-  - use `blocked` only when the plan is explicitly blocked
-  - use `completed` when all implementation tasks are complete
+- when all implementation tasks are complete, set `status: executed` in the feature plan frontmatter
+- when work stops mid-plan, keep `status: reviewed` (do not change)
+- if the planning doc frontmatter contains a non-null `epic_plan`, invoke `manage-epic` to sync the linked epic after this run
   - skip this entirely for standalone feature plans with no epic link
 
 Keep the planning doc as the canonical progress tracker.

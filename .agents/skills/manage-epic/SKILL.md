@@ -1,170 +1,78 @@
 ---
 name: manage-epic
-description: Use when the user wants to create, update, link, or sync an epic doc in `docs/ai/planning/epic-{name}.md` so one requirement can track multiple feature plans.
+description: Use when the user wants to sync epic status from feature plans and report overall progress.
 ---
 
 # Manage Epic
 
-Use this skill to maintain the tracking layer between a requirement and its feature plans.
+Use this skill to read all feature plans linked to an epic, sync their status into the epic table, and report progress.
 
-An epic is intentionally lightweight. It tracks:
-
-- which feature plans belong to a requirement
-- the execution order between those plans
-- the current status of each plan
-
-Do not put architecture or task-level implementation details in the epic. Those belong in feature plans.
+This skill does not create or restructure epics. Epic creation is handled by the `development-orchestrator` skill.
 
 ## Inputs
 
-- Requirement doc path: `docs/ai/requirements/req-{name}.md`
 - Epic doc path: `docs/ai/planning/epic-{name}.md`
-- Optional feature plan path: `docs/ai/planning/feature-{name}.md`
-
-## Required Context
-
-Read these files before editing:
-
-- `docs/ai/planning/epic-template.md`
-- `docs/ai/project/CODE_CONVENTIONS.md`
-- `docs/ai/project/PROJECT_STRUCTURE.md`
-
-When available, also read:
-
-- linked requirement doc
-- linked feature plan docs already listed in the epic
-
-## Compatibility Contract
-
-This skill must work in both orchestration-driven and standalone workflows.
-
-- If a requirement doc does not yet have a `Related Plans` section, add or refresh it when the epic doc exists and has been written to disk.
-- If the epic template includes `FR Scope` or `Depends On` columns, populate them.
-- If those columns do not exist, preserve the base table shape and encode the same information in the description or dependency graph.
-- Never require downstream skills to use the epic. Standalone feature plans remain valid.
-
-## Modes
-
-Infer the mode from the provided artifacts:
-
-| Input | Mode | Action |
-|-------|------|--------|
-| Requirement doc only | `create` | Create or refresh an epic from the requirement |
-| Epic doc only | `update` | Update plan rows, descriptions, or dependency graph |
-| Epic doc + feature plan | `link` | Link or refresh one feature plan entry |
-| Epic doc + linked feature plans | `sync` | Recompute statuses from the linked plans |
-
-Ask the user a direct question only when the intended mode is genuinely unclear.
 
 ## Workflow
 
-### 1. Pre-flight
+### 1. Load epic
 
-Derive a concise kebab-case name from the requirement or epic path.
-
-Expected output:
+Read:
 
 - `docs/ai/planning/epic-{name}.md`
 
-If the epic already exists and will be materially rewritten:
+If not found → stop and report path tried.
 
-- read it first
-- back it up to `docs/ai/planning/archive/epic-{name}_{timestamp}.md`
-- then overwrite the main file
+### 2. Read all linked feature plans
 
-### 2. Create mode
+For each plan row in the epic's Feature Plans table:
 
-Read the requirement doc and extract:
+- read `docs/ai/planning/feature-{plan-name}.md`
+- extract `status` field from frontmatter
+- extract total task count and completed task count (checkbox `[x]` vs `[ ]`)
+- note any explicit blocker recorded in the plan
 
-- executive summary
-- functional requirements
-- implementation guidance
-- complexity signals
-- open questions that constrain decomposition
+If a plan file is not found → mark that row as `missing` in the report; continue with others.
 
-Break the requirement into 2-6 feature plans only when the requirement is too large for a single plan.
+### 3. Sync epic table
 
-Prefer grouping by:
+Update each row's status in the epic's Feature Plans table:
 
-- feature area
-- dependency order
-- clear frontend/backend splits
-- independently shippable slices
+| Feature plan status | Epic row status |
+|---------------------|-----------------|
+| `draft` | `open` |
+| `reviewed` | `open` |
+| `executed` | `completed` |
+| Any status + explicit blocker noted in plan | `blocked` |
 
-For each proposed feature plan, capture:
+Apply the update by editing the epic file directly.
 
-- plan name
-- short description
-- priority
-- mapped FRs when the requirement makes that possible
-- dependencies on earlier plans when needed
+### 4. Report progress
 
-Ask the user for confirmation only when the breakdown would materially change scope or delivery order.
+After syncing, output a concise progress summary:
 
-### 3. Update mode
+```
+Epic: epic-{name}.md
 
-Preserve all content that does not need to change.
+Feature Plans
+─────────────────────────────────────────
+  feature-{a}    completed   ████████ 8/8
+  feature-{b}    open        ░░░░░░░░ 0/6
+  feature-{c}    open        ░░░░░░░░ 0/4
+─────────────────────────────────────────
+  Progress: 1/3 plans complete
 
-Supported updates:
+Next to implement: feature-{b}
+  Run: execute-plan {b}
+```
 
-- add a new feature plan row
-- change a plan status
-- adjust description or priority
-- update the dependency graph
-- refresh `FR Scope` or `Depends On` values when those columns exist
+If all plans are `completed` → report epic as fully done.
 
-### 4. Link mode
-
-When a feature plan is created or refreshed:
-
-1. read the epic doc
-2. add or update the row for that feature plan
-3. keep the feature plan frontmatter aligned with the epic and requirement paths
-4. update the dependency graph only when the new plan changes actual execution order
-
-### 5. Sync mode
-
-Re-read each linked feature plan from disk and derive its epic status from the plan state.
-
-Default mapping:
-
-- has unchecked tasks and no completed tasks yet -> `open`
-- has both completed and incomplete tasks -> `in_progress`
-- documents an unresolved blocker -> `blocked`
-- all implementation tasks complete -> `completed`
-
-If a plan is missing, keep the epic row and mark the issue in the changelog or summary.
-
-When all linked feature plans are `completed`, update the requirement doc to reflect that the requirement is fully planned or implemented when the surrounding workflow tracks that state.
-
-### 6. Cross-linking rules
-
-Only add links when the target file exists.
-
-When creating an epic from a requirement:
-
-- set epic frontmatter `requirement`
-- add or refresh a `Related Plans` section in the requirement doc when safe to do so
-
-When linking a feature plan:
-
-- ensure feature plan frontmatter points to the epic and requirement when those docs exist
-- keep the feature plan `Related Documents` section aligned with those frontmatter values
-
-### 7. Final response
-
-Report:
-
-- created or updated epic path
-- mode used
-- feature plans currently tracked
-- statuses changed
-- any unresolved decomposition questions
+If any plan is `missing` → list them separately and warn user.
 
 ## Quality Bar
 
-- the epic stays tracking-focused
-- each feature plan row is independently understandable
-- dependency order is explicit
-- cross-links are accurate
-- the workflow still works when feature plans are created outside an epic
+- this skill is read-and-sync only; it does not generate new plans or modify plan content
+- status values used in epic table: `open`, `blocked`, `completed`
+- cross-links are not modified; only the status column in the Feature Plans table is updated
+- the workflow still works when feature plans are created or executed outside this skill

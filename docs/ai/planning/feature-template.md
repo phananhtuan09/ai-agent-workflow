@@ -5,6 +5,8 @@ Note: All content in this document must be written in English.
 ---
 epic_plan: null
 requirement: null
+status: draft
+# status values: draft | reviewed | executed
 ---
 
 ## 0. Related Documents (Optional — remove if no linked docs)
