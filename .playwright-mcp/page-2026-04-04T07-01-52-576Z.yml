@@ -1,0 +1,558 @@
+- generic [ref=e2]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - button "Guide" [ref=e9] [cursor=pointer]:
+          - generic [ref=e12]:
+            - img
+        - generic [ref=e13]:
+          - link "YouTube Home" [ref=e14] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e19]:
+              - img
+          - generic [ref=e20]: VN
+        - button "Skip navigation" [ref=e24] [cursor=pointer]:
+          - generic [ref=e25]: Skip navigation
+      - generic [ref=e29]:
+        - search [ref=e30]:
+          - generic [ref=e31]:
+            - combobox "Search" [expanded] [ref=e34]
+            - button "Search" [ref=e35] [cursor=pointer]:
+              - generic [ref=e38]:
+                - img
+        - generic [ref=e40]:
+          - button "Search with your voice" [ref=e42] [cursor=pointer]:
+            - generic [ref=e46]:
+              - img
+          - tooltip "tooltip"
+      - generic [ref=e51]:
+        - button "Settings" [ref=e56] [cursor=pointer]:
+          - generic [ref=e59]:
+            - img
+        - link "Sign in" [ref=e62] [cursor=pointer]:
+          - /url: https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252Fwatch%253Fv%253D2COkMJPHINY&hl=en&ec=65620
+          - generic [ref=e66]:
+            - img
+          - generic [ref=e67]: Sign in
+  - main [ref=e72]:
+    - generic [ref=e73]:
+      - generic [ref=e75]:
+        - complementary [ref=e82]:
+          - generic "YouTube Video Player" [ref=e85]:
+            - button "Play" [ref=e89] [cursor=pointer]:
+              - img
+            - generic [ref=e90]:
+              - generic [ref=e91] [cursor=pointer]:
+                - slider "Seek slider" [ref=e92]
+                - generic:
+                  - generic:
+                    - generic:
+                      - slider "Click or scroll the panel for the precise seeking."
+              - generic [ref=e125]:
+                - generic [ref=e126]:
+                  - button "Pause (k)" [ref=e127] [cursor=pointer]:
+                    - img
+                  - generic [ref=e128]:
+                    - button "Mute (m)" [ref=e130] [cursor=pointer]:
+                      - img
+                    - slider "Volume"
+                  - button "0 Minutes 0 Seconds of 15 Minutes 33 Seconds" [ref=e134] [cursor=pointer]: 0:00 / 15:33
+                  - button "The AI Chief of Staff Most People Aren’t Building" [ref=e136] [cursor=pointer]:
+                    - generic "The AI Chief of Staff Most People Aren’t Building" [ref=e137]
+                    - generic [ref=e138]:
+                      - img
+                - generic [ref=e139]:
+                  - generic [ref=e140]:
+                    - button "Autoplay is on" [ref=e141] [cursor=pointer]
+                    - button "Subtitles/closed captions unavailable" [ref=e144] [cursor=pointer]:
+                      - generic [ref=e145]:
+                        - img
+                    - button "Settings" [ref=e146] [cursor=pointer]:
+                      - img
+                  - generic [ref=e147]:
+                    - button "Theater mode (t)" [ref=e148] [cursor=pointer]:
+                      - img
+                    - button "Full screen (f)" [ref=e149] [cursor=pointer]:
+                      - img
+        - generic [ref=e150]:
+          - generic [ref=e152]:
+            - heading "The AI System Most People Aren’t Building (Claude Code + Obsidian)" [level=1] [ref=e154]
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - generic [ref=e157]:
+                  - link [ref=e158] [cursor=pointer]:
+                    - /url: /@RickMulready
+                  - generic [ref=e160]:
+                    - generic "Rick Mulready" [ref=e164]:
+                      - link "Rick Mulready" [ref=e165] [cursor=pointer]:
+                        - /url: /@RickMulready
+                    - generic "107 thousand subscribers" [ref=e166]: 107K subscribers
+                - generic [ref=e170]:
+                  - button "Subscribe to Rick Mulready." [ref=e172] [cursor=pointer]:
+                    - generic [ref=e173]: Subscribe
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                    - generic:
+                      - img
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - generic [ref=e185]:
+                    - button "like this video along with 307 other people" [ref=e189] [cursor=pointer]:
+                      - generic [ref=e193]:
+                        - img
+                      - generic [ref=e194]: "307"
+                    - button "Dislike this video" [ref=e201] [cursor=pointer]:
+                      - generic [ref=e205]:
+                        - img
+                  - button "Share" [ref=e211] [cursor=pointer]:
+                    - generic [ref=e215]:
+                      - img
+                    - generic [ref=e216]: Share
+                - generic [ref=e220]:
+                  - button "Save to playlist" [ref=e223] [cursor=pointer]:
+                    - generic [ref=e227]:
+                      - img
+                    - generic [ref=e228]: Save
+                  - generic [ref=e233]:
+                    - button "Download" [ref=e235] [cursor=pointer]:
+                      - generic [ref=e239]:
+                        - img
+                      - generic [ref=e240]: Download
+                    - tooltip "tooltip"
+                - button "More actions" [ref=e245] [cursor=pointer]:
+                  - generic [ref=e249]:
+                    - img
+            - generic [ref=e255] [cursor=pointer]:
+              - generic [ref=e256]:
+                - generic [ref=e258]: 11K views 1 day ago
+                - tooltip "tooltip"
+              - generic [ref=e259]:
+                - generic [ref=e260]:
+                  - generic [ref=e263]:
+                    - text: "Full AI team + unlimited support:"
+                    - link "https://www.skool.com/ai-playbook/about" [ref=e265]:
+                      - /url: https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqblE3b2ZJaGVxN2Q4Vks3Z3FkZVNzUmRXTHU4UXxBQ3Jtc0ttWVFhLUs4eUFlZTNrWEkxbndkRHUxUUdPZTVRVXJPVmxRNjhaZWt6WVJwMHdCVzJub3NPYzN6M3dJQ01XX2NHMmZOR2dXSF8wWFhfcWZ6dDBrTGFjQ3dteHdIdWlDeXZpbmwxNkJIWkJwUVFhU2gyYw&q=https%3A%2F%2Fwww.skool.com%2Fai-playbook%2Fabout&v=2COkMJPHINY
+                    - text: Most business owners use 5-10 different tools — Slack, email, calendar, tasks, docs. None of them talk to each other. None of them know your business.
+                  - generic: …
+                - button "...more" [ref=e266]
+          - text: •
+      - generic [ref=e346]:
+        - generic [ref=e348] [cursor=pointer]:
+          - link [ref=e349]:
+            - /url: /watch?v=HCwfRe5EHGQ&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e356]: 14:52
+          - generic [ref=e358]:
+            - generic [ref=e359]:
+              - heading "5 Mind-Blowing Use Cases of Claude Skills 14 minutes, 52 seconds" [level=3] [ref=e360]:
+                - link "5 Mind-Blowing Use Cases of Claude Skills 14 minutes, 52 seconds" [ref=e361]:
+                  - /url: /watch?v=HCwfRe5EHGQ&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: 5 Mind-Blowing Use Cases of Claude Skills
+              - generic [ref=e363]:
+                - generic [ref=e365]: Rick Mulready
+                - generic [ref=e366]:
+                  - generic [ref=e367]: 130K views
+                  - generic [ref=e368]: •
+                  - generic [ref=e369]: 4 months ago
+            - button "More actions" [ref=e372]:
+              - generic [ref=e376]:
+                - img
+        - generic [ref=e381] [cursor=pointer]:
+          - link [ref=e382]:
+            - /url: /watch?v=FtCdYhspm7w&pp=ugUEEgJlbg%3D%3D
+            - generic [ref=e389]: 26:53
+          - generic [ref=e391]:
+            - generic [ref=e392]:
+              - heading "I Broke Down Anthropic's $2.5 Billion Leak. Your Agent Is Missing 12 Critical Pieces. 26 minutes" [level=3] [ref=e393]:
+                - link "I Broke Down Anthropic's $2.5 Billion Leak. Your Agent Is Missing 12 Critical Pieces. 26 minutes" [ref=e394]:
+                  - /url: /watch?v=FtCdYhspm7w&pp=ugUEEgJlbg%3D%3D
+                  - text: I Broke Down Anthropic's $2.5 Billion Leak. Your Agent Is Missing 12 Critical Pieces.
+              - generic [ref=e396]:
+                - generic [ref=e398]: AI News & Strategy Daily | Nate B Jones
+                - generic [ref=e399]:
+                  - generic [ref=e400]: 66K views
+                  - generic [ref=e401]: •
+                  - generic [ref=e402]: 17 hours ago
+                - generic [ref=e407]: New
+            - button "More actions" [ref=e410]:
+              - generic [ref=e414]:
+                - img
+        - generic [ref=e419] [cursor=pointer]:
+          - link [ref=e420]:
+            - /url: /watch?v=_E4ZT1h7MZs
+            - generic [ref=e427]: 14:55
+          - generic [ref=e429]:
+            - generic [ref=e430]:
+              - heading "I was hacked... 14 minutes, 55 seconds" [level=3] [ref=e431]:
+                - link "I was hacked... 14 minutes, 55 seconds" [ref=e432]:
+                  - /url: /watch?v=_E4ZT1h7MZs
+                  - text: I was hacked...
+              - generic [ref=e434]:
+                - generic [ref=e436]:
+                  - text: Matthew Berman
+                  - img [ref=e439]:
+                    - generic [ref=e441]:
+                      - img
+                - generic [ref=e442]:
+                  - generic [ref=e443]: 27K views
+                  - generic [ref=e444]: •
+                  - generic [ref=e445]: 10 hours ago
+                - generic [ref=e450]: New
+            - button "More actions" [ref=e453]:
+              - generic [ref=e457]:
+                - img
+        - generic [ref=e462] [cursor=pointer]:
+          - link [ref=e463]:
+            - /url: /watch?v=49V-5Ock8LU&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+            - generic [ref=e470]: 18:57
+          - generic [ref=e472]:
+            - generic [ref=e473]:
+              - heading "18 Claude Code Token Hacks in 18 Minutes 18 minutes" [level=3] [ref=e474]:
+                - link "18 Claude Code Token Hacks in 18 Minutes 18 minutes" [ref=e475]:
+                  - /url: /watch?v=49V-5Ock8LU&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+                  - text: 18 Claude Code Token Hacks in 18 Minutes
+              - generic [ref=e477]:
+                - generic [ref=e479]:
+                  - text: Nate Herk | AI Automation
+                  - img [ref=e482]:
+                    - generic [ref=e484]:
+                      - img
+                - generic [ref=e485]:
+                  - generic [ref=e486]: 66K views
+                  - generic [ref=e487]: •
+                  - generic [ref=e488]: 2 days ago
+                - generic [ref=e493]: New
+            - button "More actions" [ref=e496]:
+              - generic [ref=e500]:
+                - img
+        - generic [ref=e505] [cursor=pointer]:
+          - link [ref=e506]:
+            - /url: /watch?v=MsQACpcuTkU
+            - generic [ref=e513]: 33:44
+          - generic [ref=e515]:
+            - generic [ref=e516]:
+              - heading "You've Been Using AI the Hard Way (Use This Instead) 33 minutes" [level=3] [ref=e517]:
+                - link "You've Been Using AI the Hard Way (Use This Instead) 33 minutes" [ref=e518]:
+                  - /url: /watch?v=MsQACpcuTkU
+                  - text: You've Been Using AI the Hard Way (Use This Instead)
+              - generic [ref=e520]:
+                - generic [ref=e522]:
+                  - text: NetworkChuck
+                  - img [ref=e525]:
+                    - generic [ref=e527]:
+                      - img
+                - generic [ref=e528]:
+                  - generic [ref=e529]: 1.8M views
+                  - generic [ref=e530]: •
+                  - generic [ref=e531]: 5 months ago
+            - button "More actions" [ref=e534]:
+              - generic [ref=e538]:
+                - img
+        - generic [ref=e543] [cursor=pointer]:
+          - link [ref=e544]:
+            - /url: /watch?v=GTjACKMujwA&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e551]: 18:21
+          - generic [ref=e553]:
+            - generic [ref=e554]:
+              - heading "How to Prompt Better Than 99% of People 18 minutes" [level=3] [ref=e555]:
+                - link "How to Prompt Better Than 99% of People 18 minutes" [ref=e556]:
+                  - /url: /watch?v=GTjACKMujwA&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: How to Prompt Better Than 99% of People
+              - generic [ref=e558]:
+                - generic [ref=e560]: Rick Mulready
+                - generic [ref=e561]:
+                  - generic [ref=e562]: 10K views
+                  - generic [ref=e563]: •
+                  - generic [ref=e564]: 5 months ago
+            - button "More actions" [ref=e567]:
+              - generic [ref=e571]:
+                - img
+        - generic [ref=e576] [cursor=pointer]:
+          - link [ref=e577]:
+            - /url: /watch?v=IYF4NtECX3s&pp=ugUEEgJlbg%3D%3D
+            - generic [ref=e584]: 21:00
+          - generic [ref=e586]:
+            - generic [ref=e587]:
+              - 'heading "Claude: From Beginner To Pro In 21 Minutes 21 minutes" [level=3] [ref=e588]':
+                - 'link "Claude: From Beginner To Pro In 21 Minutes 21 minutes" [ref=e589]':
+                  - /url: /watch?v=IYF4NtECX3s&pp=ugUEEgJlbg%3D%3D
+                  - text: "Claude: From Beginner To Pro In 21 Minutes"
+              - generic [ref=e591]:
+                - generic [ref=e593]: AI Edge
+                - generic [ref=e594]:
+                  - generic [ref=e595]: 4K views
+                  - generic [ref=e596]: •
+                  - generic [ref=e597]: 11 hours ago
+                - generic [ref=e602]: New
+            - button "More actions" [ref=e605]:
+              - generic [ref=e609]:
+                - img
+        - generic [ref=e614] [cursor=pointer]:
+          - link [ref=e615]:
+            - /url: /watch?v=h2P7Q2sI_nM&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e622]: 19:29
+          - generic [ref=e624]:
+            - generic [ref=e625]:
+              - 'heading "Don’t Waste Money: Which AI Subscription Is Worth It? 19 minutes" [level=3] [ref=e626]':
+                - 'link "Don’t Waste Money: Which AI Subscription Is Worth It? 19 minutes" [ref=e627]':
+                  - /url: /watch?v=h2P7Q2sI_nM&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: "Don’t Waste Money: Which AI Subscription Is Worth It?"
+              - generic [ref=e629]:
+                - generic [ref=e631]: Rick Mulready
+                - generic [ref=e632]:
+                  - generic [ref=e633]: 218K views
+                  - generic [ref=e634]: •
+                  - generic [ref=e635]: 2 months ago
+            - button "More actions" [ref=e638]:
+              - generic [ref=e642]:
+                - img
+        - generic [ref=e647] [cursor=pointer]:
+          - link [ref=e648]:
+            - /url: /watch?v=XRU-CjzYt_o&pp=ugUEEgJlbg%3D%3D
+            - generic [ref=e655]: 16:07
+          - generic [ref=e657]:
+            - generic [ref=e658]:
+              - heading "Why I Switched From ChatGPT to Claude (without losing anything) 16 minutes" [level=3] [ref=e659]:
+                - link "Why I Switched From ChatGPT to Claude (without losing anything) 16 minutes" [ref=e660]:
+                  - /url: /watch?v=XRU-CjzYt_o&pp=ugUEEgJlbg%3D%3D
+                  - text: Why I Switched From ChatGPT to Claude (without losing anything)
+              - generic [ref=e662]:
+                - generic [ref=e664]:
+                  - text: Dan Martell
+                  - img [ref=e667]:
+                    - generic [ref=e669]:
+                      - img
+                - generic [ref=e670]:
+                  - generic [ref=e671]: 151K views
+                  - generic [ref=e672]: •
+                  - generic [ref=e673]: 1 day ago
+                - generic [ref=e678]: New
+            - button "More actions" [ref=e681]:
+              - generic [ref=e685]:
+                - img
+        - generic [ref=e690] [cursor=pointer]:
+          - link [ref=e691]:
+            - /url: /watch?v=BZ1hs2ZcnJc&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+            - generic [ref=e698]: 31:05
+          - generic [ref=e700]:
+            - generic [ref=e701]:
+              - 'heading "AI News: Anthropic Leak is Bigger Than You Think 31 minutes" [level=3] [ref=e702]':
+                - 'link "AI News: Anthropic Leak is Bigger Than You Think 31 minutes" [ref=e703]':
+                  - /url: /watch?v=BZ1hs2ZcnJc&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+                  - text: "AI News: Anthropic Leak is Bigger Than You Think"
+              - generic [ref=e705]:
+                - generic [ref=e707]:
+                  - text: Matt Wolfe
+                  - img [ref=e710]:
+                    - generic [ref=e712]:
+                      - img
+                - generic [ref=e713]:
+                  - generic [ref=e714]: 44K views
+                  - generic [ref=e715]: •
+                  - generic [ref=e716]: 16 hours ago
+                - generic [ref=e721]: New
+            - button "More actions" [ref=e724]:
+              - generic [ref=e728]:
+                - img
+        - generic [ref=e733] [cursor=pointer]:
+          - link [ref=e734]:
+            - /url: /watch?v=-xid_9WijQ0&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e741]: 18:40
+          - generic [ref=e743]:
+            - generic [ref=e744]:
+              - heading "Claude Cowork Just Changed How You Do Marketing 18 minutes" [level=3] [ref=e745]:
+                - link "Claude Cowork Just Changed How You Do Marketing 18 minutes" [ref=e746]:
+                  - /url: /watch?v=-xid_9WijQ0&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: Claude Cowork Just Changed How You Do Marketing
+              - generic [ref=e748]:
+                - generic [ref=e750]: Rick Mulready
+                - generic [ref=e751]:
+                  - generic [ref=e752]: 17K views
+                  - generic [ref=e753]: •
+                  - generic [ref=e754]: 3 weeks ago
+            - button "More actions" [ref=e757]:
+              - generic [ref=e761]:
+                - img
+        - generic [ref=e766] [cursor=pointer]:
+          - link [ref=e767]:
+            - /url: /watch?v=GFaCCeYyf8M&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e774]: 12:33
+          - generic [ref=e776]:
+            - generic [ref=e777]:
+              - heading "The Only 8 AI Tools You Need in 2026 12 minutes, 33 seconds" [level=3] [ref=e778]:
+                - link "The Only 8 AI Tools You Need in 2026 12 minutes, 33 seconds" [ref=e779]:
+                  - /url: /watch?v=GFaCCeYyf8M&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: The Only 8 AI Tools You Need in 2026
+              - generic [ref=e781]:
+                - generic [ref=e783]: Rick Mulready
+                - generic [ref=e784]:
+                  - generic [ref=e785]: 33K views
+                  - generic [ref=e786]: •
+                  - generic [ref=e787]: 1 month ago
+            - button "More actions" [ref=e790]:
+              - generic [ref=e794]:
+                - img
+        - generic [ref=e799] [cursor=pointer]:
+          - link [ref=e800]:
+            - /url: /watch?v=2kbINqpluM0&pp=ugUEEgJlbg%3D%3D
+            - generic [ref=e807]: 14:01
+          - generic [ref=e809]:
+            - generic [ref=e810]:
+              - heading "Claude Code Turned Obsidian Into My Dream Second Brain 14 minutes, 1 second" [level=3] [ref=e811]:
+                - link "Claude Code Turned Obsidian Into My Dream Second Brain 14 minutes, 1 second" [ref=e812]:
+                  - /url: /watch?v=2kbINqpluM0&pp=ugUEEgJlbg%3D%3D
+                  - text: Claude Code Turned Obsidian Into My Dream Second Brain
+              - generic [ref=e814]:
+                - generic [ref=e816]: Mark Kashef
+                - generic [ref=e817]:
+                  - generic [ref=e818]: 67K views
+                  - generic [ref=e819]: •
+                  - generic [ref=e820]: 2 weeks ago
+            - button "More actions" [ref=e823]:
+              - generic [ref=e827]:
+                - img
+        - generic [ref=e832] [cursor=pointer]:
+          - link [ref=e833]:
+            - /url: /watch?v=W1Mws_qxCRU&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e840]: 32:11
+          - generic [ref=e842]:
+            - generic [ref=e843]:
+              - heading "Qwen AI Just Showed Why The US Can't Ignore China Anymore 32 minutes" [level=3] [ref=e844]:
+                - link "Qwen AI Just Showed Why The US Can't Ignore China Anymore 32 minutes" [ref=e845]:
+                  - /url: /watch?v=W1Mws_qxCRU&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: Qwen AI Just Showed Why The US Can't Ignore China Anymore
+              - generic [ref=e847]:
+                - generic [ref=e849]: Limitless Podcast
+                - generic [ref=e850]:
+                  - generic [ref=e851]: 9.3K views
+                  - generic [ref=e852]: •
+                  - generic [ref=e853]: 17 hours ago
+                - generic [ref=e858]: New
+            - button "More actions" [ref=e861]:
+              - generic [ref=e865]:
+                - img
+        - generic [ref=e870] [cursor=pointer]:
+          - link [ref=e871]:
+            - /url: /watch?v=ZlDnsf_DOzg
+            - generic [ref=e878]: 27:24
+          - generic [ref=e880]:
+            - generic [ref=e881]:
+              - heading "Every Claude Code Concept Explained for Normal People 27 minutes" [level=3] [ref=e882]:
+                - link "Every Claude Code Concept Explained for Normal People 27 minutes" [ref=e883]:
+                  - /url: /watch?v=ZlDnsf_DOzg
+                  - text: Every Claude Code Concept Explained for Normal People
+              - generic [ref=e885]:
+                - generic [ref=e887]: Simon Scrapes
+                - generic [ref=e888]:
+                  - generic [ref=e889]: 445K views
+                  - generic [ref=e890]: •
+                  - generic [ref=e891]: 1 month ago
+            - button "More actions" [ref=e894]:
+              - generic [ref=e898]:
+                - img
+        - generic [ref=e903] [cursor=pointer]:
+          - link [ref=e904]:
+            - /url: /watch?v=mBHRPeg8zPU
+            - generic [ref=e911]: 7:22
+          - generic [ref=e913]:
+            - generic [ref=e914]:
+              - heading "Tragic mistake... Anthropic leaks Claude’s source code 7 minutes, 22 seconds" [level=3] [ref=e915]:
+                - link "Tragic mistake... Anthropic leaks Claude’s source code 7 minutes, 22 seconds" [ref=e916]:
+                  - /url: /watch?v=mBHRPeg8zPU
+                  - text: Tragic mistake... Anthropic leaks Claude’s source code
+              - generic [ref=e918]:
+                - generic [ref=e920]:
+                  - text: Fireship
+                  - img [ref=e923]:
+                    - generic [ref=e925]:
+                      - img
+                - generic [ref=e926]:
+                  - generic [ref=e927]: 2.5M views
+                  - generic [ref=e928]: •
+                  - generic [ref=e929]: 2 days ago
+                - generic [ref=e934]: New
+            - button "More actions" [ref=e937]:
+              - generic [ref=e941]:
+                - img
+        - generic [ref=e946] [cursor=pointer]:
+          - link [ref=e947]:
+            - /url: /watch?v=z9k15PNKuRg&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e954]: 16:11
+          - generic [ref=e956]:
+            - generic [ref=e957]:
+              - heading "Claude Plugins Give You Superpowers, Here's How to Unlock Them 16 minutes" [level=3] [ref=e958]:
+                - link "Claude Plugins Give You Superpowers, Here's How to Unlock Them 16 minutes" [ref=e959]:
+                  - /url: /watch?v=z9k15PNKuRg&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: Claude Plugins Give You Superpowers, Here's How to Unlock Them
+              - generic [ref=e961]:
+                - generic [ref=e963]: Rick Mulready
+                - generic [ref=e964]:
+                  - generic [ref=e965]: 117K views
+                  - generic [ref=e966]: •
+                  - generic [ref=e967]: 1 month ago
+            - button "More actions" [ref=e970]:
+              - generic [ref=e974]:
+                - img
+        - generic [ref=e979] [cursor=pointer]:
+          - link [ref=e980]:
+            - /url: /watch?v=WHQ7jYUTohs&pp=ugUHEgVlbi1VUw%3D%3D
+            - generic [ref=e987]: 17:19
+          - generic [ref=e989]:
+            - generic [ref=e990]:
+              - heading "9 Gemini 3 Tricks That Will Help You Become a Pro 17 minutes" [level=3] [ref=e991]:
+                - link "9 Gemini 3 Tricks That Will Help You Become a Pro 17 minutes" [ref=e992]:
+                  - /url: /watch?v=WHQ7jYUTohs&pp=ugUHEgVlbi1VUw%3D%3D
+                  - text: 9 Gemini 3 Tricks That Will Help You Become a Pro
+              - generic [ref=e994]:
+                - generic [ref=e996]: Rick Mulready
+                - generic [ref=e997]:
+                  - generic [ref=e998]: 57K views
+                  - generic [ref=e999]: •
+                  - generic [ref=e1000]: 3 months ago
+            - button "More actions" [ref=e1003]:
+              - generic [ref=e1007]:
+                - img
+        - generic [ref=e1012] [cursor=pointer]:
+          - link [ref=e1013]:
+            - /url: /watch?v=vnocKrxasg4&pp=ugUEEgJlbg%3D%3D
+            - generic [ref=e1020]: 26:12
+          - generic [ref=e1022]:
+            - generic [ref=e1023]:
+              - heading "Why Claude Keeps Hitting Usage Limits (& how to fix it) 26 minutes" [level=3] [ref=e1024]:
+                - link "Why Claude Keeps Hitting Usage Limits (& how to fix it) 26 minutes" [ref=e1025]:
+                  - /url: /watch?v=vnocKrxasg4&pp=ugUEEgJlbg%3D%3D
+                  - text: Why Claude Keeps Hitting Usage Limits (& how to fix it)
+              - generic [ref=e1027]:
+                - generic [ref=e1029]: Eliot Prince
+                - generic [ref=e1030]:
+                  - generic [ref=e1031]: 8K views
+                  - generic [ref=e1032]: •
+                  - generic [ref=e1033]: 16 hours ago
+                - generic [ref=e1038]: New
+            - button "More actions" [ref=e1041]:
+              - generic [ref=e1045]:
+                - img
+        - generic [ref=e1050] [cursor=pointer]:
+          - link [ref=e1051]:
+            - /url: /watch?v=gHB4JFG9i3k
+            - generic [ref=e1058]: 25:38
+          - generic [ref=e1060]:
+            - generic [ref=e1061]:
+              - 'heading "Claude Code: Build Your First AI Agent 25 minutes" [level=3] [ref=e1062]':
+                - 'link "Claude Code: Build Your First AI Agent 25 minutes" [ref=e1063]':
+                  - /url: /watch?v=gHB4JFG9i3k
+                  - text: "Claude Code: Build Your First AI Agent"
+              - generic [ref=e1065]:
+                - generic [ref=e1067]:
+                  - text: Teacher's Tech
+                  - img [ref=e1070]:
+                    - generic [ref=e1072]:
+                      - img
+                - generic [ref=e1073]:
+                  - generic [ref=e1074]: 59K views
+                  - generic [ref=e1075]: •
+                  - generic [ref=e1076]: 11 days ago
+            - button "More actions" [ref=e1079]:
+              - generic [ref=e1083]:
+                - img

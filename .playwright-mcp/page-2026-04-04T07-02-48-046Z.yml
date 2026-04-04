@@ -1,0 +1,2281 @@
+- generic [ref=e2]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - button "Guide" [ref=e9] [cursor=pointer]:
+          - generic [ref=e12]:
+            - img
+        - generic [ref=e13]:
+          - link "YouTube Home" [ref=e14] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e19]:
+              - img
+          - generic [ref=e20]: VN
+        - button "Skip navigation" [ref=e24] [cursor=pointer]:
+          - generic [ref=e25]: Skip navigation
+      - generic [ref=e29]:
+        - search [ref=e30]:
+          - generic [ref=e31]:
+            - combobox "Search" [expanded] [ref=e34]
+            - button "Search" [ref=e35] [cursor=pointer]:
+              - generic [ref=e38]:
+                - img
+        - generic [ref=e40]:
+          - button "Search with your voice" [ref=e42] [cursor=pointer]:
+            - generic [ref=e46]:
+              - img
+          - tooltip "tooltip"
+      - generic [ref=e51]:
+        - button "Settings" [ref=e56] [cursor=pointer]:
+          - generic [ref=e59]:
+            - img
+        - link "Sign in" [ref=e62] [cursor=pointer]:
+          - /url: https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252Fwatch%253Fv%253D2COkMJPHINY&hl=en&ec=65620
+          - generic [ref=e66]:
+            - img
+          - generic [ref=e67]: Sign in
+  - main [ref=e72]:
+    - generic [ref=e73]:
+      - generic [ref=e75]:
+        - complementary [ref=e82]:
+          - generic "YouTube Video Player" [ref=e85]:
+            - button "Play" [ref=e89] [cursor=pointer]:
+              - img
+            - generic [ref=e90]:
+              - generic [ref=e91] [cursor=pointer]:
+                - slider "Seek slider" [ref=e92]
+                - generic:
+                  - generic:
+                    - generic:
+                      - slider "Click or scroll the panel for the precise seeking."
+              - generic [ref=e125]:
+                - generic [ref=e126]:
+                  - button "Pause (k)" [ref=e127] [cursor=pointer]:
+                    - img
+                  - generic [ref=e128]:
+                    - button "Mute (m)" [ref=e130] [cursor=pointer]:
+                      - img
+                    - slider "Volume"
+                  - button "0 Minutes 0 Seconds of 15 Minutes 33 Seconds" [ref=e134] [cursor=pointer]: 0:00 / 15:33
+                  - button "The AI Chief of Staff Most People Aren’t Building" [ref=e136] [cursor=pointer]:
+                    - generic "The AI Chief of Staff Most People Aren’t Building" [ref=e137]
+                    - generic [ref=e138]:
+                      - img
+                - generic [ref=e139]:
+                  - generic [ref=e140]:
+                    - button "Autoplay is on" [ref=e141] [cursor=pointer]
+                    - button "Subtitles/closed captions unavailable" [ref=e144] [cursor=pointer]:
+                      - generic [ref=e145]:
+                        - img
+                    - button "Settings" [ref=e146] [cursor=pointer]:
+                      - img
+                  - generic [ref=e147]:
+                    - button "Theater mode (t)" [ref=e148] [cursor=pointer]:
+                      - img
+                    - button "Full screen (f)" [ref=e149] [cursor=pointer]:
+                      - img
+        - generic [ref=e150]:
+          - generic [ref=e152]:
+            - heading "The AI System Most People Aren’t Building (Claude Code + Obsidian)" [level=1] [ref=e154]
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - generic [ref=e157]:
+                  - link [ref=e158] [cursor=pointer]:
+                    - /url: /@RickMulready
+                  - generic [ref=e160]:
+                    - generic "Rick Mulready" [ref=e164]:
+                      - link "Rick Mulready" [ref=e165] [cursor=pointer]:
+                        - /url: /@RickMulready
+                    - generic "107 thousand subscribers" [ref=e166]: 107K subscribers
+                - generic [ref=e170]:
+                  - button "Subscribe to Rick Mulready." [ref=e172] [cursor=pointer]:
+                    - generic [ref=e173]: Subscribe
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                    - generic:
+                      - img
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - generic [ref=e185]:
+                    - button "like this video along with 307 other people" [ref=e189] [cursor=pointer]:
+                      - generic [ref=e193]:
+                        - img
+                      - generic [ref=e194]: "307"
+                    - button "Dislike this video" [ref=e201] [cursor=pointer]:
+                      - generic [ref=e205]:
+                        - img
+                  - button "Share" [ref=e211] [cursor=pointer]:
+                    - generic [ref=e215]:
+                      - img
+                    - generic [ref=e216]: Share
+                - generic [ref=e220]:
+                  - button "Save to playlist" [ref=e223] [cursor=pointer]:
+                    - generic [ref=e227]:
+                      - img
+                    - generic [ref=e228]: Save
+                  - generic [ref=e233]:
+                    - button "Download" [ref=e235] [cursor=pointer]:
+                      - generic [ref=e239]:
+                        - img
+                      - generic [ref=e240]: Download
+                    - tooltip "tooltip"
+                - button "More actions" [ref=e245] [cursor=pointer]:
+                  - generic [ref=e249]:
+                    - img
+            - generic [ref=e255]:
+              - generic [ref=e258]: 11,714 views Apr 2, 2026
+              - generic [ref=e259]:
+                - generic [ref=e1112]:
+                  - text: "Full AI team + unlimited support:"
+                  - link "https://www.skool.com/ai-playbook/about" [ref=e1114] [cursor=pointer]:
+                    - /url: https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqblE3b2ZJaGVxN2Q4Vks3Z3FkZVNzUmRXTHU4UXxBQ3Jtc0ttWVFhLUs4eUFlZTNrWEkxbndkRHUxUUdPZTVRVXJPVmxRNjhaZWt6WVJwMHdCVzJub3NPYzN6M3dJQ01XX2NHMmZOR2dXSF8wWFhfcWZ6dDBrTGFjQ3dteHdIdWlDeXZpbmwxNkJIWkJwUVFhU2gyYw&q=https%3A%2F%2Fwww.skool.com%2Fai-playbook%2Fabout&v=2COkMJPHINY
+                  - text: Most business owners use 5-10 different tools — Slack, email, calendar, tasks, docs. None of them talk to each other. None of them know your business. There's a system that fixes that, and almost nobody's building it. It's not a new app. It's Claude and Obsidian connected in a specific way that turns your own notes into an AI that knows your entire business. I call it my AI Chief of Staff. Every morning, one command briefs me on my calendar, Slack, email, tasks, and projects — and it gets smarter every week. In this video, I'll show you exactly how it works and how to build your own. My Tools 💻
+                  - list [ref=e1115]:
+                    - listitem [ref=e1116]:
+                      - text: "Voice to Text:"
+                      - link "https://wisprflow.ai/r?WISPR10125" [ref=e1118] [cursor=pointer]:
+                        - /url: https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqa3p2aE5GeTktQkMyYnF6NkxybHMtMWhpMWQ3d3xBQ3Jtc0tuc1VpQWt4UURsSmR0Y2Y5a3lVTXBGVU45bUpZZnZGNHNkcWZNbS14ZWphZGZGWDRXSFVHUHBxTFQ3c3MtdnFzQ2FqUzFWNjlLZER4YVpsRFpHYXJVQ1NMTjA1a0Q2QXNQMmx6ZTFQMUEtd0tVVHUzTQ&q=https%3A%2F%2Fwisprflow.ai%2Fr%3FWISPR10125&v=2COkMJPHINY
+                    - listitem [ref=e1119]:
+                      - text: "Get free credits for Lindy AI:"
+                      - link "https://try.lindy.ai/gqdjrs9sa3ie" [ref=e1121] [cursor=pointer]:
+                        - /url: https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqa09vUWtmaGhJUXFyNEU0Mjgzc1RZLWYtT1hvd3xBQ3Jtc0tuSmV2RlN3N2hkM3RGMF9vNWw5VlZSV3h1RVZETUtEWnRBeEFFX0tsQ2l6MUhIMllJNVpkeG84b0Y1R0NSMnhaOEw3U1B0ZElTOEFYbjFMdFU2Mk12RVNiSW9ibUZVaWw4ZzF3N0JRNzNfUjV1UmhaZw&q=https%3A%2F%2Ftry.lindy.ai%2Fgqdjrs9sa3ie&v=2COkMJPHINY
+                  - text: "Brad | AI & Automation YouTube Channel:"
+                  - 'link "YouTube Channel Link: @bradbonanno" [ref=e1124] [cursor=pointer]':
+                    - /url: /channel/UCLHfIq7P2CkA62ReystiOrw
+                    - text: / @bradbonanno
+                  - text: "Chapters:"
+                  - link "0 seconds" [ref=e1127] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY
+                    - text: 0:00
+                  - text: –
+                  - link "40 seconds" [ref=e1129] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=40s
+                    - text: 0:40
+                  - text: The AI Chief of Staff Most People Aren’t Building
+                  - link "40 seconds" [ref=e1131] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=40s
+                    - text: 0:40
+                  - text: –
+                  - link "2 minutes, 21 seconds" [ref=e1133] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=141s
+                    - text: 2:21
+                  - text: "The 3-Layer System: Obsidian, Claude Skills, Claude Code"
+                  - link "2 minutes, 21 seconds" [ref=e1135] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=141s
+                    - text: 2:21
+                  - text: –
+                  - link "4 minutes, 24 seconds" [ref=e1137] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=264s
+                    - text: 4:24
+                  - text: Turning Obsidian Into Claude’s Long-Term Memory of Your Business
+                  - link "4 minutes, 24 seconds" [ref=e1139] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=264s
+                    - text: 4:24
+                  - text: –
+                  - link "6 minutes, 24 seconds" [ref=e1141] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=384s
+                    - text: 6:24
+                  - text: The Dashboard That Pulls Calendar, Slack, Email and Tasks Into One View
+                  - link "6 minutes, 24 seconds" [ref=e1143] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=384s
+                    - text: 6:24
+                  - text: –
+                  - link "9 minutes, 2 seconds" [ref=e1145] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=542s
+                    - text: 9:02
+                  - text: "One-Command Mornings: Daily Briefing and Plan on Autopilot"
+                  - link "9 minutes, 2 seconds" [ref=e1147] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=542s
+                    - text: 9:02
+                  - text: –
+                  - link "12 minutes, 5 seconds" [ref=e1149] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=725s
+                    - text: 12:05
+                  - text: "Midday Ops: Turn Brain Dumps, DMs and Emails Into Organized Tasks"
+                  - link "12 minutes, 5 seconds" [ref=e1151] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=725s
+                    - text: 12:05
+                  - text: –
+                  - link "15 minutes, 33 seconds" [ref=e1153] [cursor=pointer]:
+                    - /url: /watch?v=2COkMJPHINY&t=933s
+                    - text: 15:33
+                  - text: The Daily Flywheel and Why This Beats Notion AI
+                - generic [ref=e1156]:
+                  - generic [ref=e1157]:
+                    - generic [ref=e1158]: How this was made
+                    - generic [ref=e1159]: Auto-dubbed
+                    - generic [ref=e1161]:
+                      - text: Audio tracks for some languages were automatically generated.
+                      - link "Learn more" [ref=e1163] [cursor=pointer]:
+                        - /url: //support.google.com/youtube/answer/15569972?hl=en
+                  - generic [ref=e1165]:
+                    - heading "Chapters View all" [level=2] [ref=e1167]:
+                      - generic [ref=e1169]:
+                        - generic [ref=e1171]: Chapters
+                        - button "View all" [ref=e1175] [cursor=pointer]:
+                          - generic [ref=e1176]: View all
+                    - generic [ref=e1182]:
+                      - link "The AI Chief of Staff Most People Aren’t Building 0:00" [ref=e1184] [cursor=pointer]:
+                        - /url: /watch?v=2COkMJPHINY
+                        - generic [ref=e1187]:
+                          - heading "The AI Chief of Staff Most People Aren’t Building" [level=4] [ref=e1188]
+                          - generic [ref=e1189]: 0:00
+                      - 'link "The 3-Layer System: Obsidian, Claude Skills, Claude Code 0:40" [ref=e1191] [cursor=pointer]':
+                        - /url: /watch?v=2COkMJPHINY&t=40s
+                        - generic [ref=e1194]:
+                          - 'heading "The 3-Layer System: Obsidian, Claude Skills, Claude Code" [level=4] [ref=e1195]'
+                          - generic [ref=e1196]: 0:40
+                      - link "Turning Obsidian Into Claude’s Long-Term Memory of Your Business 2:21" [ref=e1198] [cursor=pointer]:
+                        - /url: /watch?v=2COkMJPHINY&t=141s&pp=0gcJCRMDDuyUWbzu
+                        - generic [ref=e1201]:
+                          - heading "Turning Obsidian Into Claude’s Long-Term Memory of Your Business" [level=4] [ref=e1202]
+                          - generic [ref=e1203]: 2:21
+                      - link "The Dashboard That Pulls Calendar, Slack, Email and Tasks Into One View 4:24" [ref=e1205] [cursor=pointer]:
+                        - /url: /watch?v=2COkMJPHINY&t=264s&pp=0gcJCRMDDuyUWbzu
+                        - generic [ref=e1208]:
+                          - heading "The Dashboard That Pulls Calendar, Slack, Email and Tasks Into One View" [level=4] [ref=e1209]
+                          - generic [ref=e1210]: 4:24
+                      - 'link "One-Command Mornings: Daily Briefing and Plan on Autopilot 6:24" [ref=e1212] [cursor=pointer]':
+                        - /url: /watch?v=2COkMJPHINY&t=384s
+                        - generic [ref=e1215]:
+                          - 'heading "One-Command Mornings: Daily Briefing and Plan on Autopilot" [level=4] [ref=e1216]'
+                          - generic [ref=e1217]: 6:24
+                      - 'link "Midday Ops: Turn Brain Dumps, DMs and Emails Into Organized Tasks 9:02" [ref=e1219] [cursor=pointer]':
+                        - /url: /watch?v=2COkMJPHINY&t=542s
+                        - generic [ref=e1222]:
+                          - 'heading "Midday Ops: Turn Brain Dumps, DMs and Emails Into Organized Tasks" [level=4] [ref=e1223]'
+                          - generic [ref=e1224]: 9:02
+                      - link "The Daily Flywheel and Why This Beats Notion AI 12:05" [ref=e1226] [cursor=pointer]:
+                        - /url: /watch?v=2COkMJPHINY&t=725s
+                        - generic [ref=e1229]:
+                          - heading "The Daily Flywheel and Why This Beats Notion AI" [level=4] [ref=e1230]
+                          - generic [ref=e1231]: 12:05
+                  - generic [ref=e1232]:
+                    - generic [ref=e1234]: Transcript
+                    - paragraph [ref=e1236]: Follow along using the transcript.
+                    - button "Show transcript" [ref=e1241] [cursor=pointer]:
+                      - generic [ref=e1242]: Show transcript
+                  - generic [ref=e1246]:
+                    - link "Rick Mulready 107K subscribers" [ref=e1247] [cursor=pointer]:
+                      - /url: /@RickMulready
+                      - generic [ref=e1248]:
+                        - heading "Rick Mulready" [level=3] [ref=e1249]
+                        - generic [ref=e1250]: 107K subscribers
+                    - generic [ref=e1253]:
+                      - link "Videos" [ref=e1256] [cursor=pointer]:
+                        - /url: /channel/UCmNAkARqTFvNoyxmFhKTS9Q/videos
+                        - generic [ref=e1260]:
+                          - img
+                        - generic [ref=e1261]: Videos
+                      - link "About" [ref=e1267] [cursor=pointer]:
+                        - /url: /channel/UCmNAkARqTFvNoyxmFhKTS9Q/about
+                        - generic [ref=e1271]:
+                          - img
+                        - generic [ref=e1272]: About
+                      - link "Instagram" [ref=e1278] [cursor=pointer]:
+                        - /url: https://www.youtube.com/redirect?event=Watch_SD_EP&redir_token=QUFFLUhqbjUzcjdmZ1VDU1RpT19NVWVmTlF2anoyU2RPQXxBQ3Jtc0trV09CZU5wWjhyZGpqaFNXWmFwRlpNUDV1cVBzTFhzbU1mV3B2UGk5N0pmbzBSX2FhWnJuUHVJM3YtYWlJSkhBdDZnMnlPTEVzZUdLM1RGdHAzRjA5OU9DSUJKbkRZQjA4MlViZTlWdFRSWTMwVXNMMA&q=https%3A%2F%2Fwww.instagram.com%2Frickmulready
+                        - generic [ref=e1280]: Instagram
+                      - link "Facebook" [ref=e1286] [cursor=pointer]:
+                        - /url: https://www.youtube.com/redirect?event=Watch_SD_EP&redir_token=QUFFLUhqbUJEajN3N3pzcUNydjZESTZ0LUJjUVh1VzBvd3xBQ3Jtc0tsanZIRGpJa0s5alZMamotS2M4cjlqaldTUFZxNEF5VnM0R0lJVDF5MEo2ODhvN0p4aW9MNmc2MVhVNG1VR1dKV20tU0d6eFkzX2RGOHJwTDg1cFNsamhYbEQ5bWNZZjJGbXVXc05LcGt6YTFaSTdfRQ&q=https%3A%2F%2Fwww.facebook.com%2Frmulready
+                        - generic [ref=e1288]: Facebook
+                - button "Show less" [ref=e1292] [cursor=pointer]
+          - text: •
+          - generic [ref=e268]:
+            - generic [ref=e1294]:
+              - generic [ref=e1295]:
+                - heading "9 Comments" [level=2] [ref=e1297]:
+                  - generic [ref=e1298]: 9 Comments
+                - generic [ref=e1301]:
+                  - tooltip "tooltip"
+                  - group [ref=e1303]:
+                    - button "Sort comments" [ref=e1305] [cursor=pointer]:
+                      - generic [ref=e1308]:
+                        - img
+                      - generic [ref=e1309]: Sort by
+              - textbox [ref=e1314]
+            - generic [ref=e269]:
+              - generic [ref=e1319]:
+                - button "@fpvnick" [ref=e1321] [cursor=pointer]
+                - generic [ref=e1323]:
+                  - generic [ref=e1325]:
+                    - heading "@fpvnick" [level=3] [ref=e1326]:
+                      - link "@fpvnick" [ref=e1327] [cursor=pointer]:
+                        - /url: /@fpvnick
+                    - link "2 hours ago" [ref=e1329] [cursor=pointer]:
+                      - /url: /watch?v=2COkMJPHINY&lc=UgyhZT-8rln3S2740wh4AaABAg
+                  - generic [ref=e1332]: This is great, thank you for sharing. One question, is there an advantage to using Visual Studio over the Obsidian CLI with the Claude Code terminal plugin, so you don’t have to leave Obsidian?
+                  - generic [ref=e1334]:
+                    - generic [ref=e1335]:
+                      - button "Like this comment along with 0 other people" [ref=e1337] [cursor=pointer]:
+                        - generic [ref=e1341]:
+                          - img
+                      - tooltip "tooltip"
+                    - generic [ref=e1345]:
+                      - button "Dislike this comment" [ref=e1347] [cursor=pointer]:
+                        - generic [ref=e1351]:
+                          - img
+                      - tooltip "tooltip"
+                    - button "Reply" [ref=e1357] [cursor=pointer]:
+                      - generic [ref=e1358]: Reply
+              - generic [ref=e1366]:
+                - button "@cryptoacademymastery" [ref=e1368] [cursor=pointer]
+                - generic [ref=e1370]:
+                  - generic [ref=e1372]:
+                    - heading "@cryptoacademymastery" [level=3] [ref=e1373]:
+                      - link "@cryptoacademymastery" [ref=e1374] [cursor=pointer]:
+                        - /url: /@cryptoacademymastery
+                    - link "1 day ago" [ref=e1376] [cursor=pointer]:
+                      - /url: /watch?v=2COkMJPHINY&lc=UgzhmdVdWy5UU5GCpXh4AaABAg
+                  - generic [ref=e1379]: Thank you for the content Rick , we appreciate you time you took to make this phenomnal educational video. - Your 106k Subcribers + Anyone that views this video
+                  - generic [ref=e1381]:
+                    - generic [ref=e1382]:
+                      - button "Like this comment along with 0 other people" [ref=e1384] [cursor=pointer]:
+                        - generic [ref=e1388]:
+                          - img
+                      - tooltip "tooltip"
+                    - generic [ref=e1392]:
+                      - button "Dislike this comment" [ref=e1394] [cursor=pointer]:
+                        - generic [ref=e1398]:
+                          - img
+                      - tooltip "tooltip"
+                    - button "Reply" [ref=e1404] [cursor=pointer]:
+                      - generic [ref=e1405]: Reply
+              - generic [ref=e1413]:
+                - button "@TimelinesRewritten" [ref=e1415] [cursor=pointer]
+                - generic [ref=e1417]:
+                  - generic [ref=e1419]:
+                    - heading "@TimelinesRewritten" [level=3] [ref=e1420]:
+                      - link "@TimelinesRewritten" [ref=e1421] [cursor=pointer]:
+                        - /url: /@TimelinesRewritten
+                    - link "22 hours ago" [ref=e1423] [cursor=pointer]:
+                      - /url: /watch?v=2COkMJPHINY&lc=UgwrIS29FOTOIMtM3NB4AaABAg&pp=0gcJCSIANpG00pGi
+                  - generic [ref=e1426]: Possible to share the skill that you created with us? The /today /follow-up etc
+                  - generic [ref=e1428]:
+                    - generic [ref=e1429]:
+                      - button "Like this comment along with 1 other person" [ref=e1431] [cursor=pointer]:
+                        - generic [ref=e1435]:
+                          - img
+                      - tooltip "tooltip"
+                    - generic [ref=e1439]: "1"
+                    - generic [ref=e1440]:
+                      - button "Dislike this comment" [ref=e1442] [cursor=pointer]:
+                        - generic [ref=e1446]:
+                          - img
+                      - tooltip "tooltip"
+                    - button "Reply" [ref=e1452] [cursor=pointer]:
+                      - generic [ref=e1453]: Reply
+              - generic [ref=e1457]:
+                - generic [ref=e1461]:
+                  - button "@NATOVETZ" [ref=e1463] [cursor=pointer]
+                  - generic [ref=e1467]:
+                    - generic [ref=e1469]:
+                      - heading "@NATOVETZ" [level=3] [ref=e1470]:
+                        - link "@NATOVETZ" [ref=e1471] [cursor=pointer]:
+                          - /url: /@NATOVETZ
+                      - link "1 day ago" [ref=e1473] [cursor=pointer]:
+                        - /url: /watch?v=2COkMJPHINY&lc=Ugz7yTOt52EQO-ihXOZ4AaABAg
+                    - generic [ref=e1476]: I am doing exactly the same thing in Claude Cowork - what is the difference?
+                    - generic [ref=e1478]:
+                      - generic [ref=e1479]:
+                        - button "Like this comment along with 2 other people" [ref=e1481] [cursor=pointer]:
+                          - generic [ref=e1485]:
+                            - img
+                        - tooltip "tooltip"
+                      - generic [ref=e1489]: "2"
+                      - generic [ref=e1490]:
+                        - button "Dislike this comment" [ref=e1492] [cursor=pointer]:
+                          - generic [ref=e1496]:
+                            - img
+                        - tooltip "tooltip"
+                      - button "Reply" [ref=e1502] [cursor=pointer]:
+                        - generic [ref=e1503]: Reply
+                - button "4 replies" [ref=e1517] [cursor=pointer]:
+                  - generic [ref=e1518]: 4 replies
+                  - generic [ref=e1522]:
+                    - img
+              - generic [ref=e1531]:
+                - button "@devarni" [ref=e1533] [cursor=pointer]
+                - generic [ref=e1535]:
+                  - generic [ref=e1537]:
+                    - heading [level=3]
+                    - generic [ref=e1539]:
+                      - link "@devarni" [ref=e1540] [cursor=pointer]:
+                        - /url: /@devarni
+                        - generic "@devarni" [ref=e1544]
+                      - generic [ref=e1547]:
+                        - img
+                    - link "22 hours ago" [ref=e1549] [cursor=pointer]:
+                      - /url: /watch?v=2COkMJPHINY&lc=Ugw2CNmIsGVv-IQZ79l4AaABAg
+                  - generic [ref=e1552]: I'm not sure... to me, it looks more like productivity porn. Notion databases and dashboards were last year's version - now it's Markdown and AI. It's a digital house of cards that will collapse at the first API error or internet outage.
+                  - generic [ref=e1554]:
+                    - generic [ref=e1555]:
+                      - button "Like this comment along with 2 other people" [ref=e1557] [cursor=pointer]:
+                        - generic [ref=e1561]:
+                          - img
+                      - tooltip "tooltip"
+                    - generic [ref=e1565]: "2"
+                    - generic [ref=e1566]:
+                      - button "Dislike this comment" [ref=e1568] [cursor=pointer]:
+                        - generic [ref=e1572]:
+                          - img
+                      - tooltip "tooltip"
+                    - button "Reply" [ref=e1578] [cursor=pointer]:
+                      - generic [ref=e1579]: Reply
+              - generic [ref=e1583]: Top is selected, so you'll see featured comments
+      - generic [ref=e341]:
+        - generic [ref=e1585]:
+          - generic [ref=e1587]:
+            - generic [ref=e1588]:
+              - heading "In this video" [active] [level=2] [ref=e1590]:
+                - generic "In this video" [ref=e1591]
+              - button "More actions" [ref=e1595] [cursor=pointer]:
+                - generic [ref=e1598]:
+                  - img
+              - button "Close" [ref=e1602] [cursor=pointer]:
+                - generic [ref=e1606]:
+                  - img
+            - tablist [ref=e1612]:
+              - tab "Chapters" [ref=e1616] [cursor=pointer]:
+                - generic [ref=e1618]: Chapters
+              - tab "Transcript" [selected] [ref=e1625] [cursor=pointer]:
+                - generic [ref=e1627]: Transcript
+          - generic [ref=e1634]:
+            - generic [ref=e1638]:
+              - generic [ref=e1642]:
+                - img
+              - combobox "Search in video" [ref=e1644]
+            - generic [ref=e1647]:
+              - button "The AI Chief of Staff Most People Aren’t Building" [ref=e1649] [cursor=pointer]:
+                - heading "The AI Chief of Staff Most People Aren’t Building" [level=2] [ref=e1655]
+              - button "0 seconds Most business owners are using multiple" [ref=e1657] [cursor=pointer]:
+                - generic [ref=e1659]: 0:00
+                - generic [ref=e1660]: Most business owners are using multiple
+              - button "1 second tools like Slack, email, calendar, task" [ref=e1662] [cursor=pointer]:
+                - generic [ref=e1664]: 0:01
+                - generic [ref=e1665]: tools like Slack, email, calendar, task
+              - button "4 seconds manager, maybe a project management" [ref=e1667] [cursor=pointer]:
+                - generic [ref=e1669]: 0:04
+                - generic [ref=e1670]: manager, maybe a project management
+              - button "5 seconds tool. But the problem is none of the" [ref=e1672] [cursor=pointer]:
+                - generic [ref=e1674]: 0:05
+                - generic [ref=e1675]: tool. But the problem is none of the
+              - button "7 seconds tools talk to each other. None of them" [ref=e1677] [cursor=pointer]:
+                - generic [ref=e1679]: 0:07
+                - generic [ref=e1680]: tools talk to each other. None of them
+              - button "9 seconds actually know your business. But there's" [ref=e1682] [cursor=pointer]:
+                - generic [ref=e1684]: 0:09
+                - generic [ref=e1685]: actually know your business. But there's
+              - button "11 seconds a system that changes that and almost" [ref=e1687] [cursor=pointer]:
+                - generic [ref=e1689]: 0:11
+                - generic [ref=e1690]: a system that changes that and almost
+              - button "13 seconds nobody's building it. It's not a new" [ref=e1692] [cursor=pointer]:
+                - generic [ref=e1694]: 0:13
+                - generic [ref=e1695]: nobody's building it. It's not a new
+              - button "14 seconds app. It's not another AI chatbot. It's" [ref=e1697] [cursor=pointer]:
+                - generic [ref=e1699]: 0:14
+                - generic [ref=e1700]: app. It's not another AI chatbot. It's
+              - button "17 seconds two tools, Claude Code and Obsidian" [ref=e1702] [cursor=pointer]:
+                - generic [ref=e1704]: 0:17
+                - generic [ref=e1705]: two tools, Claude Code and Obsidian
+              - button "19 seconds connected in a way that turns your notes" [ref=e1707] [cursor=pointer]:
+                - generic [ref=e1709]: 0:19
+                - generic [ref=e1710]: connected in a way that turns your notes
+              - button "21 seconds and your brain dumps and your ideas into" [ref=e1712] [cursor=pointer]:
+                - generic [ref=e1714]: 0:21
+                - generic [ref=e1715]: and your brain dumps and your ideas into
+              - button "23 seconds an AI that knows your entire business. I" [ref=e1717] [cursor=pointer]:
+                - generic [ref=e1719]: 0:23
+                - generic [ref=e1720]: an AI that knows your entire business. I
+              - button "26 seconds built it. I call it my AI chief of" [ref=e1722] [cursor=pointer]:
+                - generic [ref=e1724]: 0:26
+                - generic [ref=e1725]: built it. I call it my AI chief of
+              - button "28 seconds staff. And every morning it briefs me on" [ref=e1727] [cursor=pointer]:
+                - generic [ref=e1729]: 0:28
+                - generic [ref=e1730]: staff. And every morning it briefs me on
+              - button "30 seconds my whole business, my calendar, Slack," [ref=e1732] [cursor=pointer]:
+                - generic [ref=e1734]: 0:30
+                - generic [ref=e1735]: my whole business, my calendar, Slack,
+              - button "33 seconds email, tasks, projects with just one" [ref=e1737] [cursor=pointer]:
+                - generic [ref=e1739]: 0:33
+                - generic [ref=e1740]: email, tasks, projects with just one
+              - button "35 seconds command. So in this video, I'm going to" [ref=e1742] [cursor=pointer]:
+                - generic [ref=e1744]: 0:35
+                - generic [ref=e1745]: command. So in this video, I'm going to
+              - button "37 seconds show you why this system is so powerful," [ref=e1747] [cursor=pointer]:
+                - generic [ref=e1749]: 0:37
+                - generic [ref=e1750]: show you why this system is so powerful,
+              - button "39 seconds how it works, and how to build your own." [ref=e1752] [cursor=pointer]:
+                - generic [ref=e1754]: 0:39
+                - generic [ref=e1755]: how it works, and how to build your own.
+              - 'button "The 3-Layer System: Obsidian, Claude Skills, Claude Code" [ref=e1757] [cursor=pointer]':
+                - 'heading "The 3-Layer System: Obsidian, Claude Skills, Claude Code" [level=2] [ref=e1763]'
+              - button "40 seconds Now, real quick, if you're watching this" [ref=e1765] [cursor=pointer]:
+                - generic [ref=e1767]: 0:40
+                - generic [ref=e1768]: Now, real quick, if you're watching this
+              - button "42 seconds and thinking, I just want to do more of" [ref=e1770] [cursor=pointer]:
+                - generic [ref=e1772]: 0:42
+                - generic [ref=e1773]: and thinking, I just want to do more of
+              - button "44 seconds the work that only I can do in my" [ref=e1775] [cursor=pointer]:
+                - generic [ref=e1777]: 0:44
+                - generic [ref=e1778]: the work that only I can do in my
+              - button "46 seconds business, and have everything else" [ref=e1780] [cursor=pointer]:
+                - generic [ref=e1782]: 0:46
+                - generic [ref=e1783]: business, and have everything else
+              - button "47 seconds handled by AI. Well, I built an app for" [ref=e1785] [cursor=pointer]:
+                - generic [ref=e1787]: 0:47
+                - generic [ref=e1788]: handled by AI. Well, I built an app for
+              - button "49 seconds that inside my AI Playbook membership" [ref=e1790] [cursor=pointer]:
+                - generic [ref=e1792]: 0:49
+                - generic [ref=e1793]: that inside my AI Playbook membership
+              - button "51 seconds community, and it's called your zone of" [ref=e1795] [cursor=pointer]:
+                - generic [ref=e1797]: 0:51
+                - generic [ref=e1798]: community, and it's called your zone of
+              - button "53 seconds genius app. In the app, you get a" [ref=e1800] [cursor=pointer]:
+                - generic [ref=e1802]: 0:53
+                - generic [ref=e1803]: genius app. In the app, you get a
+              - button "54 seconds complete AI team that takes care of" [ref=e1805] [cursor=pointer]:
+                - generic [ref=e1807]: 0:54
+                - generic [ref=e1808]: complete AI team that takes care of
+              - button "56 seconds everything in your business that isn't" [ref=e1810] [cursor=pointer]:
+                - generic [ref=e1812]: 0:56
+                - generic [ref=e1813]: everything in your business that isn't
+              - button "58 seconds in your zone of genius. It's completely" [ref=e1815] [cursor=pointer]:
+                - generic [ref=e1817]: 0:58
+                - generic [ref=e1818]: in your zone of genius. It's completely
+              - button "1 minute customizable and personalized to you and" [ref=e1820] [cursor=pointer]:
+                - generic [ref=e1822]: 1:00
+                - generic [ref=e1823]: customizable and personalized to you and
+              - button "1 minute, 3 seconds your business. There's a free 7-day" [ref=e1825] [cursor=pointer]:
+                - generic [ref=e1827]: 1:03
+                - generic [ref=e1828]: your business. There's a free 7-day
+              - button "1 minute, 4 seconds trial to the app and the community," [ref=e1830] [cursor=pointer]:
+                - generic [ref=e1832]: 1:04
+                - generic [ref=e1833]: trial to the app and the community,
+              - button "1 minute, 6 seconds which I'll link to in the description" [ref=e1835] [cursor=pointer]:
+                - generic [ref=e1837]: 1:06
+                - generic [ref=e1838]: which I'll link to in the description
+              - button "1 minute, 7 seconds below. All right, let's get into the AI" [ref=e1840] [cursor=pointer]:
+                - generic [ref=e1842]: 1:07
+                - generic [ref=e1843]: below. All right, let's get into the AI
+              - button "1 minute, 8 seconds system that most people aren't building." [ref=e1845] [cursor=pointer]:
+                - generic [ref=e1847]: 1:08
+                - generic [ref=e1848]: system that most people aren't building.
+              - button "1 minute, 10 seconds And this system has three layers to it." [ref=e1850] [cursor=pointer]:
+                - generic [ref=e1852]: 1:10
+                - generic [ref=e1853]: And this system has three layers to it.
+              - button "1 minute, 12 seconds And the first layer is Obsidian. This is" [ref=e1855] [cursor=pointer]:
+                - generic [ref=e1857]: 1:12
+                - generic [ref=e1858]: And the first layer is Obsidian. This is
+              - button "1 minute, 15 seconds where all the knowledge lives. Obsidian" [ref=e1860] [cursor=pointer]:
+                - generic [ref=e1862]: 1:15
+                - generic [ref=e1863]: where all the knowledge lives. Obsidian
+              - button "1 minute, 17 seconds is just an organizational tool based on" [ref=e1865] [cursor=pointer]:
+                - generic [ref=e1867]: 1:17
+                - generic [ref=e1868]: is just an organizational tool based on
+              - button "1 minute, 18 seconds markdown files. And you can have folders" [ref=e1870] [cursor=pointer]:
+                - generic [ref=e1872]: 1:18
+                - generic [ref=e1873]: markdown files. And you can have folders
+              - button "1 minute, 20 seconds and files and so forth in Obsidian. Now," [ref=e1875] [cursor=pointer]:
+                - generic [ref=e1877]: 1:20
+                - generic [ref=e1878]: and files and so forth in Obsidian. Now,
+              - button "1 minute, 23 seconds here's the thing about markdown and why" [ref=e1880] [cursor=pointer]:
+                - generic [ref=e1882]: 1:23
+                - generic [ref=e1883]: here's the thing about markdown and why
+              - button "1 minute, 25 seconds it matters. Markdown files are" [ref=e1885] [cursor=pointer]:
+                - generic [ref=e1887]: 1:25
+                - generic [ref=e1888]: it matters. Markdown files are
+              - button "1 minute, 27 seconds essentially a universal file format that" [ref=e1890] [cursor=pointer]:
+                - generic [ref=e1892]: 1:27
+                - generic [ref=e1893]: essentially a universal file format that
+              - button "1 minute, 29 seconds plays really well with AI. It's" [ref=e1895] [cursor=pointer]:
+                - generic [ref=e1897]: 1:29
+                - generic [ref=e1898]: plays really well with AI. It's
+              - button "1 minute, 31 seconds basically the language that AI reads the" [ref=e1900] [cursor=pointer]:
+                - generic [ref=e1902]: 1:31
+                - generic [ref=e1903]: basically the language that AI reads the
+              - button "1 minute, 33 seconds best. Not PDFs, not Google Docs, plain" [ref=e1905] [cursor=pointer]:
+                - generic [ref=e1907]: 1:33
+                - generic [ref=e1908]: best. Not PDFs, not Google Docs, plain
+              - button "1 minute, 36 seconds text markdown. So, Obsidian becomes" [ref=e1910] [cursor=pointer]:
+                - generic [ref=e1912]: 1:36
+                - generic [ref=e1913]: text markdown. So, Obsidian becomes
+              - button "1 minute, 38 seconds essentially Claude's memory of your" [ref=e1915] [cursor=pointer]:
+                - generic [ref=e1917]: 1:38
+                - generic [ref=e1918]: essentially Claude's memory of your
+              - button "1 minute, 40 seconds business. Now, the second layer in this" [ref=e1920] [cursor=pointer]:
+                - generic [ref=e1922]: 1:40
+                - generic [ref=e1923]: business. Now, the second layer in this
+              - button "1 minute, 42 seconds system is Claude skills, which are" [ref=e1925] [cursor=pointer]:
+                - generic [ref=e1927]: 1:42
+                - generic [ref=e1928]: system is Claude skills, which are
+              - button "1 minute, 43 seconds reusable instructions that you've" [ref=e1930] [cursor=pointer]:
+                - generic [ref=e1932]: 1:43
+                - generic [ref=e1933]: reusable instructions that you've
+              - button "1 minute, 45 seconds written once that tell Claude how to do" [ref=e1935] [cursor=pointer]:
+                - generic [ref=e1937]: 1:45
+                - generic [ref=e1938]: written once that tell Claude how to do
+              - button "1 minute, 47 seconds a specific task or job. And the skills" [ref=e1940] [cursor=pointer]:
+                - generic [ref=e1942]: 1:47
+                - generic [ref=e1943]: a specific task or job. And the skills
+              - button "1 minute, 50 seconds are set up as slash commands. So, for" [ref=e1945] [cursor=pointer]:
+                - generic [ref=e1947]: 1:50
+                - generic [ref=e1948]: are set up as slash commands. So, for
+              - button "1 minute, 53 seconds example, when I type in forward slash" [ref=e1950] [cursor=pointer]:
+                - generic [ref=e1952]: 1:53
+                - generic [ref=e1953]: example, when I type in forward slash
+              - button "1 minute, 54 seconds today, Claude isn't just improvising." [ref=e1955] [cursor=pointer]:
+                - generic [ref=e1957]: 1:54
+                - generic [ref=e1958]: today, Claude isn't just improvising.
+              - button "1 minute, 57 seconds It's following a specific skill that" [ref=e1960] [cursor=pointer]:
+                - generic [ref=e1962]: 1:57
+                - generic [ref=e1963]: It's following a specific skill that
+              - button "1 minute, 59 seconds that slash command triggers. The skill" [ref=e1965] [cursor=pointer]:
+                - generic [ref=e1967]: 1:59
+                - generic [ref=e1968]: that slash command triggers. The skill
+              - button "2 minutes, 1 second has the rules, the structure, what to" [ref=e1970] [cursor=pointer]:
+                - generic [ref=e1972]: 2:01
+                - generic [ref=e1973]: has the rules, the structure, what to
+              - button "2 minutes, 3 seconds pull from, what tools to use, what to" [ref=e1975] [cursor=pointer]:
+                - generic [ref=e1977]: 2:03
+                - generic [ref=e1978]: pull from, what tools to use, what to
+              - button "2 minutes, 5 seconds write, etc. And this is important" [ref=e1980] [cursor=pointer]:
+                - generic [ref=e1982]: 2:05
+                - generic [ref=e1983]: write, etc. And this is important
+              - button "2 minutes, 6 seconds because instead of me reexplaining" [ref=e1985] [cursor=pointer]:
+                - generic [ref=e1987]: 2:06
+                - generic [ref=e1988]: because instead of me reexplaining
+              - button "2 minutes, 8 seconds everything every time, the thinking" [ref=e1990] [cursor=pointer]:
+                - generic [ref=e1992]: 2:08
+                - generic [ref=e1993]: everything every time, the thinking
+              - button "2 minutes, 10 seconds pattern, and Claude knowing exactly what" [ref=e1995] [cursor=pointer]:
+                - generic [ref=e1997]: 2:10
+                - generic [ref=e1998]: pattern, and Claude knowing exactly what
+              - button "2 minutes, 12 seconds to do every time, it's already built in." [ref=e2000] [cursor=pointer]:
+                - generic [ref=e2002]: 2:12
+                - generic [ref=e2003]: to do every time, it's already built in.
+              - button "2 minutes, 15 seconds And by the way, I have a whole video on" [ref=e2005] [cursor=pointer]:
+                - generic [ref=e2007]: 2:15
+                - generic [ref=e2008]: And by the way, I have a whole video on
+              - button "2 minutes, 16 seconds Claude skills here in the channel, which" [ref=e2010] [cursor=pointer]:
+                - generic [ref=e2012]: 2:16
+                - generic [ref=e2013]: Claude skills here in the channel, which
+              - button "2 minutes, 17 seconds I'll link to in the description below." [ref=e2015] [cursor=pointer]:
+                - generic [ref=e2017]: 2:17
+                - generic [ref=e2018]: I'll link to in the description below.
+              - button "2 minutes, 19 seconds The third layer in this system is Claude" [ref=e2020] [cursor=pointer]:
+                - generic [ref=e2022]: 2:19
+                - generic [ref=e2023]: The third layer in this system is Claude
+              - button "Turning Obsidian Into Claude’s Long-Term Memory of Your Business" [ref=e2025] [cursor=pointer]:
+                - heading "Turning Obsidian Into Claude’s Long-Term Memory of Your Business" [level=2] [ref=e2031]
+              - button "2 minutes, 21 seconds Code which I run inside of VS Code. This" [ref=e2033] [cursor=pointer]:
+                - generic [ref=e2035]: 2:21
+                - generic [ref=e2036]: Code which I run inside of VS Code. This
+              - button "2 minutes, 24 seconds is where the work actually happens." [ref=e2038] [cursor=pointer]:
+                - generic [ref=e2040]: 2:24
+                - generic [ref=e2041]: is where the work actually happens.
+              - button "2 minutes, 26 seconds Claude Code can read, write, search" [ref=e2043] [cursor=pointer]:
+                - generic [ref=e2045]: 2:26
+                - generic [ref=e2046]: Claude Code can read, write, search
+              - button "2 minutes, 28 seconds every file in my Obsidian Vault. It can" [ref=e2048] [cursor=pointer]:
+                - generic [ref=e2050]: 2:28
+                - generic [ref=e2051]: every file in my Obsidian Vault. It can
+              - button "2 minutes, 30 seconds create new things in there. It connects" [ref=e2053] [cursor=pointer]:
+                - generic [ref=e2055]: 2:30
+                - generic [ref=e2056]: create new things in there. It connects
+              - button "2 minutes, 32 seconds to my Google calendar, my Slack, my" [ref=e2058] [cursor=pointer]:
+                - generic [ref=e2060]: 2:32
+                - generic [ref=e2061]: to my Google calendar, my Slack, my
+              - button "2 minutes, 35 seconds email, and whatever other tool that I" [ref=e2063] [cursor=pointer]:
+                - generic [ref=e2065]: 2:35
+                - generic [ref=e2066]: email, and whatever other tool that I
+              - button "2 minutes, 37 seconds want it to connect to. Cloud code makes" [ref=e2068] [cursor=pointer]:
+                - generic [ref=e2070]: 2:37
+                - generic [ref=e2071]: want it to connect to. Cloud code makes
+              - button "2 minutes, 38 seconds it super super easy. So, Obsidian is the" [ref=e2073] [cursor=pointer]:
+                - generic [ref=e2075]: 2:38
+                - generic [ref=e2076]: it super super easy. So, Obsidian is the
+              - button "2 minutes, 41 seconds knowledge. Skills are the thinking, the" [ref=e2078] [cursor=pointer]:
+                - generic [ref=e2080]: 2:41
+                - generic [ref=e2081]: knowledge. Skills are the thinking, the
+              - button "2 minutes, 44 seconds way you get something done the same way" [ref=e2083] [cursor=pointer]:
+                - generic [ref=e2085]: 2:44
+                - generic [ref=e2086]: way you get something done the same way
+              - button "2 minutes, 46 seconds every single time. And cloud code is the" [ref=e2088] [cursor=pointer]:
+                - generic [ref=e2090]: 2:46
+                - generic [ref=e2091]: every single time. And cloud code is the
+              - button "2 minutes, 48 seconds execution. That's the system. And when" [ref=e2093] [cursor=pointer]:
+                - generic [ref=e2095]: 2:48
+                - generic [ref=e2096]: execution. That's the system. And when
+              - button "2 minutes, 50 seconds these three layers are connected" [ref=e2098] [cursor=pointer]:
+                - generic [ref=e2100]: 2:50
+                - generic [ref=e2101]: these three layers are connected
+              - button "2 minutes, 52 seconds intentionally, you get something that no" [ref=e2103] [cursor=pointer]:
+                - generic [ref=e2105]: 2:52
+                - generic [ref=e2106]: intentionally, you get something that no
+              - button "2 minutes, 54 seconds single tool gives you. An AI that is" [ref=e2108] [cursor=pointer]:
+                - generic [ref=e2110]: 2:54
+                - generic [ref=e2111]: single tool gives you. An AI that is
+              - button "2 minutes, 56 seconds custom to how you work, your workflows," [ref=e2113] [cursor=pointer]:
+                - generic [ref=e2115]: 2:56
+                - generic [ref=e2116]: custom to how you work, your workflows,
+              - button "2 minutes, 59 seconds your specific business. It's a tool that" [ref=e2118] [cursor=pointer]:
+                - generic [ref=e2120]: 2:59
+                - generic [ref=e2121]: your specific business. It's a tool that
+              - button "3 minutes, 1 second knows your business, knows your context," [ref=e2123] [cursor=pointer]:
+                - generic [ref=e2125]: 3:01
+                - generic [ref=e2126]: knows your business, knows your context,
+              - button "3 minutes, 3 seconds your team, your goals, etc. And you can" [ref=e2128] [cursor=pointer]:
+                - generic [ref=e2130]: 3:03
+                - generic [ref=e2131]: your team, your goals, etc. And you can
+              - button "3 minutes, 5 seconds build this around almost any type of" [ref=e2133] [cursor=pointer]:
+                - generic [ref=e2135]: 3:05
+                - generic [ref=e2136]: build this around almost any type of
+              - button "3 minutes, 7 seconds business that you have, coaching," [ref=e2138] [cursor=pointer]:
+                - generic [ref=e2140]: 3:07
+                - generic [ref=e2141]: business that you have, coaching,
+              - button "3 minutes, 8 seconds agency, course creation, whatever. Now," [ref=e2143] [cursor=pointer]:
+                - generic [ref=e2145]: 3:08
+                - generic [ref=e2146]: agency, course creation, whatever. Now,
+              - button "3 minutes, 11 seconds how much control you get from this" [ref=e2148] [cursor=pointer]:
+                - generic [ref=e2150]: 3:11
+                - generic [ref=e2151]: how much control you get from this
+              - button "3 minutes, 13 seconds system comes down to really two" [ref=e2153] [cursor=pointer]:
+                - generic [ref=e2155]: 3:13
+                - generic [ref=e2156]: system comes down to really two
+              - button "3 minutes, 15 seconds decisions. Now, the first decision you" [ref=e2158] [cursor=pointer]:
+                - generic [ref=e2160]: 3:15
+                - generic [ref=e2161]: decisions. Now, the first decision you
+              - button "3 minutes, 16 seconds want to make is about knowledge. What" [ref=e2163] [cursor=pointer]:
+                - generic [ref=e2165]: 3:16
+                - generic [ref=e2166]: want to make is about knowledge. What
+              - button "3 minutes, 18 seconds Claude should know versus what Claude" [ref=e2168] [cursor=pointer]:
+                - generic [ref=e2170]: 3:18
+                - generic [ref=e2171]: Claude should know versus what Claude
+              - button "3 minutes, 20 seconds shouldn't touch. So, in my system, I" [ref=e2173] [cursor=pointer]:
+                - generic [ref=e2175]: 3:20
+                - generic [ref=e2176]: shouldn't touch. So, in my system, I
+              - button "3 minutes, 22 seconds have folders for tasks, projects, ideas," [ref=e2178] [cursor=pointer]:
+                - generic [ref=e2180]: 3:22
+                - generic [ref=e2181]: have folders for tasks, projects, ideas,
+              - button "3 minutes, 26 seconds content, people I work with, and a quick" [ref=e2183] [cursor=pointer]:
+                - generic [ref=e2185]: 3:26
+                - generic [ref=e2186]: content, people I work with, and a quick
+              - button "3 minutes, 28 seconds capture inbox, for example. Claude reads" [ref=e2188] [cursor=pointer]:
+                - generic [ref=e2190]: 3:28
+                - generic [ref=e2191]: capture inbox, for example. Claude reads
+              - button "3 minutes, 30 seconds and writes to all of those. But I also" [ref=e2193] [cursor=pointer]:
+                - generic [ref=e2195]: 3:30
+                - generic [ref=e2196]: and writes to all of those. But I also
+              - button "3 minutes, 33 seconds have daily notes, which you can see" [ref=e2198] [cursor=pointer]:
+                - generic [ref=e2200]: 3:33
+                - generic [ref=e2201]: have daily notes, which you can see
+              - button "3 minutes, 34 seconds right here. And daily notes are my" [ref=e2203] [cursor=pointer]:
+                - generic [ref=e2205]: 3:34
+                - generic [ref=e2206]: right here. And daily notes are my
+              - button "3 minutes, 36 seconds space. I don't let Claude touch my daily" [ref=e2208] [cursor=pointer]:
+                - generic [ref=e2210]: 3:36
+                - generic [ref=e2211]: space. I don't let Claude touch my daily
+              - button "3 minutes, 38 seconds notes. That's where I'm brain dumping." [ref=e2213] [cursor=pointer]:
+                - generic [ref=e2215]: 3:38
+                - generic [ref=e2216]: notes. That's where I'm brain dumping.
+              - button "3 minutes, 40 seconds These are my messy thoughts. These are" [ref=e2218] [cursor=pointer]:
+                - generic [ref=e2220]: 3:40
+                - generic [ref=e2221]: These are my messy thoughts. These are
+              - button "3 minutes, 42 seconds screenshots I grab. But then I have" [ref=e2223] [cursor=pointer]:
+                - generic [ref=e2225]: 3:42
+                - generic [ref=e2226]: screenshots I grab. But then I have
+              - button "3 minutes, 44 seconds daily plans. And the daily plan is" [ref=e2228] [cursor=pointer]:
+                - generic [ref=e2230]: 3:44
+                - generic [ref=e2231]: daily plans. And the daily plan is
+              - button "3 minutes, 45 seconds something that Claude writes to. And" [ref=e2233] [cursor=pointer]:
+                - generic [ref=e2235]: 3:45
+                - generic [ref=e2236]: something that Claude writes to. And
+              - button "3 minutes, 47 seconds this is where Claude takes all the" [ref=e2238] [cursor=pointer]:
+                - generic [ref=e2240]: 3:47
+                - generic [ref=e2241]: this is where Claude takes all the
+              - button "3 minutes, 48 seconds things that are ongoing in my business," [ref=e2243] [cursor=pointer]:
+                - generic [ref=e2245]: 3:48
+                - generic [ref=e2246]: things that are ongoing in my business,
+              - button "3 minutes, 50 seconds my calendar, my tasks, uh, Slack" [ref=e2248] [cursor=pointer]:
+                - generic [ref=e2250]: 3:50
+                - generic [ref=e2251]: my calendar, my tasks, uh, Slack
+              - button "3 minutes, 52 seconds messages, what I have going on, and puts" [ref=e2253] [cursor=pointer]:
+                - generic [ref=e2255]: 3:52
+                - generic [ref=e2256]: messages, what I have going on, and puts
+              - button "3 minutes, 54 seconds them into a structured daily plan page." [ref=e2258] [cursor=pointer]:
+                - generic [ref=e2260]: 3:54
+                - generic [ref=e2261]: them into a structured daily plan page.
+              - button "3 minutes, 56 seconds And these two pages, the daily page and" [ref=e2263] [cursor=pointer]:
+                - generic [ref=e2265]: 3:56
+                - generic [ref=e2266]: And these two pages, the daily page and
+              - button "4 minutes the daily plan page are linked together," [ref=e2268] [cursor=pointer]:
+                - generic [ref=e2270]: 4:00
+                - generic [ref=e2271]: the daily plan page are linked together,
+              - button "4 minutes, 3 seconds which you can see right here. So, if I" [ref=e2273] [cursor=pointer]:
+                - generic [ref=e2275]: 4:03
+                - generic [ref=e2276]: which you can see right here. So, if I
+              - button "4 minutes, 4 seconds click on this, takes me over to my daily" [ref=e2278] [cursor=pointer]:
+                - generic [ref=e2280]: 4:04
+                - generic [ref=e2281]: click on this, takes me over to my daily
+              - button "4 minutes, 7 seconds plan page for today. One is mine, the" [ref=e2283] [cursor=pointer]:
+                - generic [ref=e2285]: 4:07
+                - generic [ref=e2286]: plan page for today. One is mine, the
+              - button "4 minutes, 10 seconds daily notes page, and the other one is" [ref=e2288] [cursor=pointer]:
+                - generic [ref=e2290]: 4:10
+                - generic [ref=e2291]: daily notes page, and the other one is
+              - button "4 minutes, 12 seconds Claude's, which is the daily plan page." [ref=e2293] [cursor=pointer]:
+                - generic [ref=e2295]: 4:12
+                - generic [ref=e2296]: Claude's, which is the daily plan page.
+              - button "4 minutes, 14 seconds And that distinction right there is" [ref=e2298] [cursor=pointer]:
+                - generic [ref=e2300]: 4:14
+                - generic [ref=e2301]: And that distinction right there is
+              - button "4 minutes, 16 seconds something that's going to be really" [ref=e2303] [cursor=pointer]:
+                - generic [ref=e2305]: 4:16
+                - generic [ref=e2306]: something that's going to be really
+              - button "4 minutes, 17 seconds important for you. What Claude owns" [ref=e2308] [cursor=pointer]:
+                - generic [ref=e2310]: 4:17
+                - generic [ref=e2311]: important for you. What Claude owns
+              - button "4 minutes, 19 seconds versus what stays yours. That's going to" [ref=e2313] [cursor=pointer]:
+                - generic [ref=e2315]: 4:19
+                - generic [ref=e2316]: versus what stays yours. That's going to
+              - button "4 minutes, 21 seconds be a design decision for you. Now, the" [ref=e2318] [cursor=pointer]:
+                - generic [ref=e2320]: 4:21
+                - generic [ref=e2321]: be a design decision for you. Now, the
+              - button "4 minutes, 23 seconds second decision that you're going to" [ref=e2323] [cursor=pointer]:
+                - generic [ref=e2325]: 4:23
+                - generic [ref=e2326]: second decision that you're going to
+              - button "The Dashboard That Pulls Calendar, Slack, Email and Tasks Into One View" [ref=e2328] [cursor=pointer]:
+                - heading "The Dashboard That Pulls Calendar, Slack, Email and Tasks Into One View" [level=2] [ref=e2334]
+              - button "4 minutes, 24 seconds want to make is about the thinking" [ref=e2336] [cursor=pointer]:
+                - generic [ref=e2338]: 4:24
+                - generic [ref=e2339]: want to make is about the thinking
+              - button "4 minutes, 25 seconds layer. What you create Claude skills for" [ref=e2341] [cursor=pointer]:
+                - generic [ref=e2343]: 4:25
+                - generic [ref=e2344]: layer. What you create Claude skills for
+              - button "4 minutes, 28 seconds versus what you bring in at the moment." [ref=e2346] [cursor=pointer]:
+                - generic [ref=e2348]: 4:28
+                - generic [ref=e2349]: versus what you bring in at the moment.
+              - button "4 minutes, 31 seconds Again, Claude skills define how Claude" [ref=e2351] [cursor=pointer]:
+                - generic [ref=e2353]: 4:31
+                - generic [ref=e2354]: Again, Claude skills define how Claude
+              - button "4 minutes, 33 seconds approaches a task every single time" [ref=e2356] [cursor=pointer]:
+                - generic [ref=e2358]: 4:33
+                - generic [ref=e2359]: approaches a task every single time
+              - button "4 minutes, 35 seconds without you having to reexplain" [ref=e2361] [cursor=pointer]:
+                - generic [ref=e2363]: 4:35
+                - generic [ref=e2364]: without you having to reexplain
+              - button "4 minutes, 36 seconds everything each time. And as you can see" [ref=e2366] [cursor=pointer]:
+                - generic [ref=e2368]: 4:36
+                - generic [ref=e2369]: everything each time. And as you can see
+              - button "4 minutes, 38 seconds here, right in my Obsidian, I have a" [ref=e2371] [cursor=pointer]:
+                - generic [ref=e2373]: 4:38
+                - generic [ref=e2374]: here, right in my Obsidian, I have a
+              - button "4 minutes, 40 seconds whole list of these skills which we'll" [ref=e2376] [cursor=pointer]:
+                - generic [ref=e2378]: 4:40
+                - generic [ref=e2379]: whole list of these skills which we'll
+              - button "4 minutes, 42 seconds be using some in this video today. Now," [ref=e2381] [cursor=pointer]:
+                - generic [ref=e2383]: 4:42
+                - generic [ref=e2384]: be using some in this video today. Now,
+              - button "4 minutes, 44 seconds let me show you what I actually built" [ref=e2386] [cursor=pointer]:
+                - generic [ref=e2388]: 4:44
+                - generic [ref=e2389]: let me show you what I actually built
+              - button "4 minutes, 45 seconds here. So, what I did is I built a chief" [ref=e2391] [cursor=pointer]:
+                - generic [ref=e2393]: 4:45
+                - generic [ref=e2394]: here. So, what I did is I built a chief
+              - button "4 minutes, 46 seconds of staff system, and I want to walk you" [ref=e2396] [cursor=pointer]:
+                - generic [ref=e2398]: 4:46
+                - generic [ref=e2399]: of staff system, and I want to walk you
+              - button "4 minutes, 48 seconds through what's actually inside it. I" [ref=e2401] [cursor=pointer]:
+                - generic [ref=e2403]: 4:48
+                - generic [ref=e2404]: through what's actually inside it. I
+              - button "4 minutes, 50 seconds created a specific structure in" [ref=e2406] [cursor=pointer]:
+                - generic [ref=e2408]: 4:50
+                - generic [ref=e2409]: created a specific structure in
+              - button "4 minutes, 51 seconds Obsidian. Well, I actually had Claude" [ref=e2411] [cursor=pointer]:
+                - generic [ref=e2413]: 4:51
+                - generic [ref=e2414]: Obsidian. Well, I actually had Claude
+              - button "4 minutes, 53 seconds Code do that. I created folders and" [ref=e2416] [cursor=pointer]:
+                - generic [ref=e2418]: 4:53
+                - generic [ref=e2419]: Code do that. I created folders and
+              - button "4 minutes, 54 seconds files for tasks, projects, ideas, again," [ref=e2421] [cursor=pointer]:
+                - generic [ref=e2423]: 4:54
+                - generic [ref=e2424]: files for tasks, projects, ideas, again,
+              - button "4 minutes, 58 seconds daily notes. Now, quick credit here, by" [ref=e2426] [cursor=pointer]:
+                - generic [ref=e2428]: 4:58
+                - generic [ref=e2429]: daily notes. Now, quick credit here, by
+              - button "5 minutes the way. I saw how this guy Brad over at" [ref=e2431] [cursor=pointer]:
+                - generic [ref=e2433]: 5:00
+                - generic [ref=e2434]: the way. I saw how this guy Brad over at
+              - button "5 minutes, 2 seconds Brad AI and Automation YouTube channel," [ref=e2436] [cursor=pointer]:
+                - generic [ref=e2438]: 5:02
+                - generic [ref=e2439]: Brad AI and Automation YouTube channel,
+              - button "5 minutes, 4 seconds how he structured it. I looked at his" [ref=e2441] [cursor=pointer]:
+                - generic [ref=e2443]: 5:04
+                - generic [ref=e2444]: how he structured it. I looked at his
+              - button "5 minutes, 6 seconds approach, made it my own, and the" [ref=e2446] [cursor=pointer]:
+                - generic [ref=e2448]: 5:06
+                - generic [ref=e2449]: approach, made it my own, and the
+              - button "5 minutes, 8 seconds simplicity of it really, really works." [ref=e2451] [cursor=pointer]:
+                - generic [ref=e2453]: 5:08
+                - generic [ref=e2454]: simplicity of it really, really works.
+              - button "5 minutes, 10 seconds I'll link to his channel below in the" [ref=e2456] [cursor=pointer]:
+                - generic [ref=e2458]: 5:10
+                - generic [ref=e2459]: I'll link to his channel below in the
+              - button "5 minutes, 12 seconds description. I also set up what's called" [ref=e2461] [cursor=pointer]:
+                - generic [ref=e2463]: 5:12
+                - generic [ref=e2464]: description. I also set up what's called
+              - button "5 minutes, 13 seconds front matter at the top of files. So," [ref=e2466] [cursor=pointer]:
+                - generic [ref=e2468]: 5:13
+                - generic [ref=e2469]: front matter at the top of files. So,
+              - button "5 minutes, 15 seconds for example, this is a task page here in" [ref=e2471] [cursor=pointer]:
+                - generic [ref=e2473]: 5:15
+                - generic [ref=e2474]: for example, this is a task page here in
+              - button "5 minutes, 18 seconds Obsidian, and it's essentially like" [ref=e2476] [cursor=pointer]:
+                - generic [ref=e2478]: 5:18
+                - generic [ref=e2479]: Obsidian, and it's essentially like
+              - button "5 minutes, 19 seconds fields in notion. So, as you can see" [ref=e2481] [cursor=pointer]:
+                - generic [ref=e2483]: 5:19
+                - generic [ref=e2484]: fields in notion. So, as you can see
+              - button "5 minutes, 21 seconds here, it's the has the type, the status," [ref=e2486] [cursor=pointer]:
+                - generic [ref=e2488]: 5:21
+                - generic [ref=e2489]: here, it's the has the type, the status,
+              - button "5 minutes, 23 seconds is it open, is it done, due date, tags," [ref=e2491] [cursor=pointer]:
+                - generic [ref=e2493]: 5:23
+                - generic [ref=e2494]: is it open, is it done, due date, tags,
+              - button "5 minutes, 26 seconds priority, created, recurring, etc. And" [ref=e2496] [cursor=pointer]:
+                - generic [ref=e2498]: 5:26
+                - generic [ref=e2499]: priority, created, recurring, etc. And
+              - button "5 minutes, 28 seconds this front matter is exactly what makes" [ref=e2501] [cursor=pointer]:
+                - generic [ref=e2503]: 5:28
+                - generic [ref=e2504]: this front matter is exactly what makes
+              - button "5 minutes, 29 seconds everything super easy to search both for" [ref=e2506] [cursor=pointer]:
+                - generic [ref=e2508]: 5:29
+                - generic [ref=e2509]: everything super easy to search both for
+              - button "5 minutes, 31 seconds me and for cloud code inside of" [ref=e2511] [cursor=pointer]:
+                - generic [ref=e2513]: 5:31
+                - generic [ref=e2514]: me and for cloud code inside of
+              - button "5 minutes, 33 seconds Obsidian. Now, I also create a dashboard" [ref=e2516] [cursor=pointer]:
+                - generic [ref=e2518]: 5:33
+                - generic [ref=e2519]: Obsidian. Now, I also create a dashboard
+              - button "5 minutes, 35 seconds here in Obsidian. So, this is my default" [ref=e2521] [cursor=pointer]:
+                - generic [ref=e2523]: 5:35
+                - generic [ref=e2524]: here in Obsidian. So, this is my default
+              - button "5 minutes, 37 seconds page when I go into Obsidian. And this" [ref=e2526] [cursor=pointer]:
+                - generic [ref=e2528]: 5:37
+                - generic [ref=e2529]: page when I go into Obsidian. And this
+              - button "5 minutes, 39 seconds dashboard is showing me everything I've" [ref=e2531] [cursor=pointer]:
+                - generic [ref=e2533]: 5:39
+                - generic [ref=e2534]: dashboard is showing me everything I've
+              - button "5 minutes, 40 seconds got going on in my business. So, it's" [ref=e2536] [cursor=pointer]:
+                - generic [ref=e2538]: 5:40
+                - generic [ref=e2539]: got going on in my business. So, it's
+              - button "5 minutes, 42 seconds pulling in from my calendar. So, it's" [ref=e2541] [cursor=pointer]:
+                - generic [ref=e2543]: 5:42
+                - generic [ref=e2544]: pulling in from my calendar. So, it's
+              - button "5 minutes, 44 seconds pulling in what I have scheduled that" [ref=e2546] [cursor=pointer]:
+                - generic [ref=e2548]: 5:44
+                - generic [ref=e2549]: pulling in what I have scheduled that
+              - button "5 minutes, 46 seconds day. It's pulling in from Slack. It's" [ref=e2551] [cursor=pointer]:
+                - generic [ref=e2553]: 5:46
+                - generic [ref=e2554]: day. It's pulling in from Slack. It's
+              - button "5 minutes, 48 seconds pulling in from my emails. It's" [ref=e2556] [cursor=pointer]:
+                - generic [ref=e2558]: 5:48
+                - generic [ref=e2559]: pulling in from my emails. It's
+              - button "5 minutes, 50 seconds reviewing what's in my day notes. It's" [ref=e2561] [cursor=pointer]:
+                - generic [ref=e2563]: 5:50
+                - generic [ref=e2564]: reviewing what's in my day notes. It's
+              - button "5 minutes, 52 seconds creating a day page for me. It tells me" [ref=e2566] [cursor=pointer]:
+                - generic [ref=e2568]: 5:52
+                - generic [ref=e2569]: creating a day page for me. It tells me
+              - button "5 minutes, 55 seconds what I have coming up this week. Also," [ref=e2571] [cursor=pointer]:
+                - generic [ref=e2573]: 5:55
+                - generic [ref=e2574]: what I have coming up this week. Also,
+              - button "5 minutes, 56 seconds it had gives me a list of everything" [ref=e2576] [cursor=pointer]:
+                - generic [ref=e2578]: 5:56
+                - generic [ref=e2579]: it had gives me a list of everything
+              - button "5 minutes, 58 seconds that I have from a task perspective," [ref=e2581] [cursor=pointer]:
+                - generic [ref=e2583]: 5:58
+                - generic [ref=e2584]: that I have from a task perspective,
+              - button "6 minutes what I have not assigned a due date to" [ref=e2586] [cursor=pointer]:
+                - generic [ref=e2588]: 6:00
+                - generic [ref=e2589]: what I have not assigned a due date to
+              - button "6 minutes, 3 seconds yet. And then this is where it's" [ref=e2591] [cursor=pointer]:
+                - generic [ref=e2593]: 6:03
+                - generic [ref=e2594]: yet. And then this is where it's
+              - button "6 minutes, 5 seconds capturing my ideas. I'm not putting any" [ref=e2596] [cursor=pointer]:
+                - generic [ref=e2598]: 6:05
+                - generic [ref=e2599]: capturing my ideas. I'm not putting any
+              - button "6 minutes, 7 seconds of this in the dashboard itself. I this" [ref=e2601] [cursor=pointer]:
+                - generic [ref=e2603]: 6:07
+                - generic [ref=e2604]: of this in the dashboard itself. I this
+              - button "6 minutes, 10 seconds this is all brain dump. This is where" [ref=e2606] [cursor=pointer]:
+                - generic [ref=e2608]: 6:10
+                - generic [ref=e2609]: this is all brain dump. This is where
+              - button "6 minutes, 12 seconds cloud code is grabbing information from" [ref=e2611] [cursor=pointer]:
+                - generic [ref=e2613]: 6:12
+                - generic [ref=e2614]: cloud code is grabbing information from
+              - button "6 minutes, 14 seconds within my Obsidian that I have captured" [ref=e2616] [cursor=pointer]:
+                - generic [ref=e2618]: 6:14
+                - generic [ref=e2619]: within my Obsidian that I have captured
+              - button "6 minutes, 16 seconds my brain dumps etc. and putting it all" [ref=e2621] [cursor=pointer]:
+                - generic [ref=e2623]: 6:16
+                - generic [ref=e2624]: my brain dumps etc. and putting it all
+              - button "6 minutes, 18 seconds into one central dashboard so that it's" [ref=e2626] [cursor=pointer]:
+                - generic [ref=e2628]: 6:18
+                - generic [ref=e2629]: into one central dashboard so that it's
+              - button "6 minutes, 21 seconds super easy for me to uh keep track of." [ref=e2631] [cursor=pointer]:
+                - generic [ref=e2633]: 6:21
+                - generic [ref=e2634]: super easy for me to uh keep track of.
+              - button "6 minutes, 23 seconds So that's the infrastructure. That's the" [ref=e2636] [cursor=pointer]:
+                - generic [ref=e2638]: 6:23
+                - generic [ref=e2639]: So that's the infrastructure. That's the
+              - 'button "One-Command Mornings: Daily Briefing and Plan on Autopilot" [ref=e2641] [cursor=pointer]':
+                - 'heading "One-Command Mornings: Daily Briefing and Plan on Autopilot" [level=2] [ref=e2647]'
+              - button "6 minutes, 24 seconds folder structure, the front matter on" [ref=e2649] [cursor=pointer]:
+                - generic [ref=e2651]: 6:24
+                - generic [ref=e2652]: folder structure, the front matter on
+              - button "6 minutes, 26 seconds the task pages and the project pages for" [ref=e2654] [cursor=pointer]:
+                - generic [ref=e2656]: 6:26
+                - generic [ref=e2657]: the task pages and the project pages for
+              - button "6 minutes, 28 seconds example, and the dashboard. Now, let me" [ref=e2659] [cursor=pointer]:
+                - generic [ref=e2661]: 6:28
+                - generic [ref=e2662]: example, and the dashboard. Now, let me
+              - button "6 minutes, 30 seconds show you how I actually use this system" [ref=e2664] [cursor=pointer]:
+                - generic [ref=e2666]: 6:30
+                - generic [ref=e2667]: show you how I actually use this system
+              - button "6 minutes, 32 seconds day-to-day, like what my workflow is." [ref=e2669] [cursor=pointer]:
+                - generic [ref=e2671]: 6:32
+                - generic [ref=e2672]: day-to-day, like what my workflow is.
+              - button "6 minutes, 34 seconds And I'm going to walk you through three" [ref=e2674] [cursor=pointer]:
+                - generic [ref=e2676]: 6:34
+                - generic [ref=e2677]: And I'm going to walk you through three
+              - button "6 minutes, 35 seconds different scenarios. How I start my" [ref=e2679] [cursor=pointer]:
+                - generic [ref=e2681]: 6:35
+                - generic [ref=e2682]: different scenarios. How I start my
+              - button "6 minutes, 37 seconds morning, how I handle the messy middle" [ref=e2684] [cursor=pointer]:
+                - generic [ref=e2686]: 6:37
+                - generic [ref=e2687]: morning, how I handle the messy middle
+              - button "6 minutes, 39 seconds of the day where I'm just capturing" [ref=e2689] [cursor=pointer]:
+                - generic [ref=e2691]: 6:39
+                - generic [ref=e2692]: of the day where I'm just capturing
+              - button "6 minutes, 40 seconds notes and brain dumping things, and then" [ref=e2694] [cursor=pointer]:
+                - generic [ref=e2696]: 6:40
+                - generic [ref=e2697]: notes and brain dumping things, and then
+              - button "6 minutes, 42 seconds how the whole thing compounds over time." [ref=e2699] [cursor=pointer]:
+                - generic [ref=e2701]: 6:42
+                - generic [ref=e2702]: how the whole thing compounds over time.
+              - button "6 minutes, 44 seconds So the first scenario is the morning" [ref=e2704] [cursor=pointer]:
+                - generic [ref=e2706]: 6:44
+                - generic [ref=e2707]: So the first scenario is the morning
+              - button "6 minutes, 46 seconds briefing. I open up Obsidian. The" [ref=e2709] [cursor=pointer]:
+                - generic [ref=e2711]: 6:46
+                - generic [ref=e2712]: briefing. I open up Obsidian. The
+              - button "6 minutes, 48 seconds dashboard is going to load automatically" [ref=e2714] [cursor=pointer]:
+                - generic [ref=e2716]: 6:48
+                - generic [ref=e2717]: dashboard is going to load automatically
+              - button "6 minutes, 49 seconds because again, I've set it to my to be" [ref=e2719] [cursor=pointer]:
+                - generic [ref=e2721]: 6:49
+                - generic [ref=e2722]: because again, I've set it to my to be
+              - button "6 minutes, 51 seconds my default page. Then I open Cloud Code" [ref=e2724] [cursor=pointer]:
+                - generic [ref=e2726]: 6:51
+                - generic [ref=e2727]: my default page. Then I open Cloud Code
+              - button "6 minutes, 53 seconds inside of VS Code, and I just type in" [ref=e2729] [cursor=pointer]:
+                - generic [ref=e2731]: 6:53
+                - generic [ref=e2732]: inside of VS Code, and I just type in
+              - button "6 minutes, 55 seconds forward/to today. So, here's what's" [ref=e2734] [cursor=pointer]:
+                - generic [ref=e2736]: 6:55
+                - generic [ref=e2737]: forward/to today. So, here's what's
+              - button "6 minutes, 57 seconds happening. The today's skill that I've" [ref=e2739] [cursor=pointer]:
+                - generic [ref=e2741]: 6:57
+                - generic [ref=e2742]: happening. The today's skill that I've
+              - button "6 minutes, 58 seconds created pulls in from my calendar again," [ref=e2744] [cursor=pointer]:
+                - generic [ref=e2746]: 6:58
+                - generic [ref=e2747]: created pulls in from my calendar again,
+              - button "7 minutes scans my Slack DMs and Slack channels," [ref=e2749] [cursor=pointer]:
+                - generic [ref=e2751]: 7:00
+                - generic [ref=e2752]: scans my Slack DMs and Slack channels,
+              - button "7 minutes, 2 seconds checks my email, finds tasks that are" [ref=e2754] [cursor=pointer]:
+                - generic [ref=e2756]: 7:02
+                - generic [ref=e2757]: checks my email, finds tasks that are
+              - button "7 minutes, 5 seconds due within my Obsidian, and it's going" [ref=e2759] [cursor=pointer]:
+                - generic [ref=e2761]: 7:05
+                - generic [ref=e2762]: due within my Obsidian, and it's going
+              - button "7 minutes, 7 seconds to write a daily briefing for me. And" [ref=e2764] [cursor=pointer]:
+                - generic [ref=e2766]: 7:07
+                - generic [ref=e2767]: to write a daily briefing for me. And
+              - button "7 minutes, 9 seconds then that briefing gets saved as my" [ref=e2769] [cursor=pointer]:
+                - generic [ref=e2771]: 7:09
+                - generic [ref=e2772]: then that briefing gets saved as my
+              - button "7 minutes, 11 seconds daily plan page. And here's an example" [ref=e2774] [cursor=pointer]:
+                - generic [ref=e2776]: 7:11
+                - generic [ref=e2777]: daily plan page. And here's an example
+              - button "7 minutes, 12 seconds of what the daily plan looks like. It" [ref=e2779] [cursor=pointer]:
+                - generic [ref=e2781]: 7:12
+                - generic [ref=e2782]: of what the daily plan looks like. It
+              - button "7 minutes, 15 seconds tells me what the big items are today," [ref=e2784] [cursor=pointer]:
+                - generic [ref=e2786]: 7:15
+                - generic [ref=e2787]: tells me what the big items are today,
+              - button "7 minutes, 16 seconds what needs my attention. It also is" [ref=e2789] [cursor=pointer]:
+                - generic [ref=e2791]: 7:16
+                - generic [ref=e2792]: what needs my attention. It also is
+              - button "7 minutes, 18 seconds creating that daily plan page in my" [ref=e2794] [cursor=pointer]:
+                - generic [ref=e2796]: 7:18
+                - generic [ref=e2797]: creating that daily plan page in my
+              - button "7 minutes, 20 seconds plans which shows up right over here as" [ref=e2799] [cursor=pointer]:
+                - generic [ref=e2801]: 7:20
+                - generic [ref=e2802]: plans which shows up right over here as
+              - button "7 minutes, 23 seconds a markdown file. And I can the beauty of" [ref=e2804] [cursor=pointer]:
+                - generic [ref=e2806]: 7:23
+                - generic [ref=e2807]: a markdown file. And I can the beauty of
+              - button "7 minutes, 25 seconds VS Code is I can look at this right in" [ref=e2809] [cursor=pointer]:
+                - generic [ref=e2811]: 7:25
+                - generic [ref=e2812]: VS Code is I can look at this right in
+              - button "7 minutes, 27 seconds VS Code or I can go right over into" [ref=e2814] [cursor=pointer]:
+                - generic [ref=e2816]: 7:27
+                - generic [ref=e2817]: VS Code or I can go right over into
+              - button "7 minutes, 30 seconds Obsidian however I want to do it. And" [ref=e2819] [cursor=pointer]:
+                - generic [ref=e2821]: 7:30
+                - generic [ref=e2822]: Obsidian however I want to do it. And
+              - button "7 minutes, 32 seconds here is that day plan page right here in" [ref=e2824] [cursor=pointer]:
+                - generic [ref=e2826]: 7:32
+                - generic [ref=e2827]: here is that day plan page right here in
+              - button "7 minutes, 34 seconds Obsidian. This is my the whole day" [ref=e2829] [cursor=pointer]:
+                - generic [ref=e2831]: 7:34
+                - generic [ref=e2832]: Obsidian. This is my the whole day
+              - button "7 minutes, 37 seconds schedule and essentially what needs to" [ref=e2834] [cursor=pointer]:
+                - generic [ref=e2836]: 7:37
+                - generic [ref=e2837]: schedule and essentially what needs to
+              - button "7 minutes, 39 seconds get my attention. And then I just" [ref=e2839] [cursor=pointer]:
+                - generic [ref=e2841]: 7:39
+                - generic [ref=e2842]: get my attention. And then I just
+              - button "7 minutes, 40 seconds refresh the dashboard here in Obsidian." [ref=e2844] [cursor=pointer]:
+                - generic [ref=e2846]: 7:40
+                - generic [ref=e2847]: refresh the dashboard here in Obsidian.
+              - button "7 minutes, 42 seconds And now my calendar and my needs" [ref=e2849] [cursor=pointer]:
+                - generic [ref=e2851]: 7:42
+                - generic [ref=e2852]: And now my calendar and my needs
+              - button "7 minutes, 44 seconds response section are populated with" [ref=e2854] [cursor=pointer]:
+                - generic [ref=e2856]: 7:44
+                - generic [ref=e2857]: response section are populated with
+              - button "7 minutes, 47 seconds everything I need for that specific day." [ref=e2859] [cursor=pointer]:
+                - generic [ref=e2861]: 7:47
+                - generic [ref=e2862]: everything I need for that specific day.
+              - button "7 minutes, 48 seconds And as my morning one command here in" [ref=e2864] [cursor=pointer]:
+                - generic [ref=e2866]: 7:48
+                - generic [ref=e2867]: And as my morning one command here in
+              - button "7 minutes, 51 seconds cloud code, full picture of my business" [ref=e2869] [cursor=pointer]:
+                - generic [ref=e2871]: 7:51
+                - generic [ref=e2872]: cloud code, full picture of my business
+              - button "7 minutes, 54 seconds set right here in Obsidian. So for the" [ref=e2874] [cursor=pointer]:
+                - generic [ref=e2876]: 7:54
+                - generic [ref=e2877]: set right here in Obsidian. So for the
+              - button "7 minutes, 56 seconds second scenario, it's kind of what I" [ref=e2879] [cursor=pointer]:
+                - generic [ref=e2881]: 7:56
+                - generic [ref=e2882]: second scenario, it's kind of what I
+              - button "7 minutes, 57 seconds like to call the midday operation. So" [ref=e2884] [cursor=pointer]:
+                - generic [ref=e2886]: 7:57
+                - generic [ref=e2887]: like to call the midday operation. So
+              - button "8 minutes the morning one that we just talked" [ref=e2889] [cursor=pointer]:
+                - generic [ref=e2891]: 8:00
+                - generic [ref=e2892]: the morning one that we just talked
+              - button "8 minutes, 1 second about, kind of the clean version as I" [ref=e2894] [cursor=pointer]:
+                - generic [ref=e2896]: 8:01
+                - generic [ref=e2897]: about, kind of the clean version as I
+              - button "8 minutes, 3 seconds like to look at it. Now let me show you" [ref=e2899] [cursor=pointer]:
+                - generic [ref=e2901]: 8:03
+                - generic [ref=e2902]: like to look at it. Now let me show you
+              - button "8 minutes, 4 seconds the messy version. What happens" [ref=e2904] [cursor=pointer]:
+                - generic [ref=e2906]: 8:04
+                - generic [ref=e2907]: the messy version. What happens
+              - button "8 minutes, 5 seconds throughout the day? What I do is I brain" [ref=e2909] [cursor=pointer]:
+                - generic [ref=e2911]: 8:05
+                - generic [ref=e2912]: throughout the day? What I do is I brain
+              - button "8 minutes, 7 seconds dump into my daily note or my capture" [ref=e2914] [cursor=pointer]:
+                - generic [ref=e2916]: 8:07
+                - generic [ref=e2917]: dump into my daily note or my capture
+              - button "8 minutes, 10 seconds inbox. So this is an example of my daily" [ref=e2919] [cursor=pointer]:
+                - generic [ref=e2921]: 8:10
+                - generic [ref=e2922]: inbox. So this is an example of my daily
+              - button "8 minutes, 13 seconds note right here. And this is where I can" [ref=e2924] [cursor=pointer]:
+                - generic [ref=e2926]: 8:13
+                - generic [ref=e2927]: note right here. And this is where I can
+              - button "8 minutes, 14 seconds put any random thoughts. So just for" [ref=e2929] [cursor=pointer]:
+                - generic [ref=e2931]: 8:14
+                - generic [ref=e2932]: put any random thoughts. So just for
+              - button "8 minutes, 16 seconds example, I had a thought for my" [ref=e2934] [cursor=pointer]:
+                - generic [ref=e2936]: 8:16
+                - generic [ref=e2937]: example, I had a thought for my
+              - button "8 minutes, 18 seconds newsletter. So I can just brain dump" [ref=e2939] [cursor=pointer]:
+                - generic [ref=e2941]: 8:18
+                - generic [ref=e2942]: newsletter. So I can just brain dump
+              - button "8 minutes, 20 seconds that part into my daily note here. Or I" [ref=e2944] [cursor=pointer]:
+                - generic [ref=e2946]: 8:20
+                - generic [ref=e2947]: that part into my daily note here. Or I
+              - button "8 minutes, 23 seconds saw something that I liked in an email" [ref=e2949] [cursor=pointer]:
+                - generic [ref=e2951]: 8:23
+                - generic [ref=e2952]: saw something that I liked in an email
+              - button "8 minutes, 25 seconds newsletter about creating engaging short" [ref=e2954] [cursor=pointer]:
+                - generic [ref=e2956]: 8:25
+                - generic [ref=e2957]: newsletter about creating engaging short
+              - button "8 minutes, 27 seconds form videos. So I grabbed it, copied it," [ref=e2959] [cursor=pointer]:
+                - generic [ref=e2961]: 8:27
+                - generic [ref=e2962]: form videos. So I grabbed it, copied it,
+              - button "8 minutes, 29 seconds put it right into my daily note here. I" [ref=e2964] [cursor=pointer]:
+                - generic [ref=e2966]: 8:29
+                - generic [ref=e2967]: put it right into my daily note here. I
+              - button "8 minutes, 32 seconds don't worry about formatting. I just get" [ref=e2969] [cursor=pointer]:
+                - generic [ref=e2971]: 8:32
+                - generic [ref=e2972]: don't worry about formatting. I just get
+              - button "8 minutes, 33 seconds it out of my head, which for me" [ref=e2974] [cursor=pointer]:
+                - generic [ref=e2976]: 8:33
+                - generic [ref=e2977]: it out of my head, which for me
+              - button "8 minutes, 35 seconds personally is really, really important" [ref=e2979] [cursor=pointer]:
+                - generic [ref=e2981]: 8:35
+                - generic [ref=e2982]: personally is really, really important
+              - button "8 minutes, 36 seconds to do. And then what I do is I run one" [ref=e2984] [cursor=pointer]:
+                - generic [ref=e2986]: 8:36
+                - generic [ref=e2987]: to do. And then what I do is I run one
+              - button "8 minutes, 38 seconds of my slash commands. Again, this is a" [ref=e2989] [cursor=pointer]:
+                - generic [ref=e2991]: 8:38
+                - generic [ref=e2992]: of my slash commands. Again, this is a
+              - button "8 minutes, 40 seconds skill that I've created called process" [ref=e2994] [cursor=pointer]:
+                - generic [ref=e2996]: 8:40
+                - generic [ref=e2997]: skill that I've created called process
+              - button "8 minutes, 43 seconds inbox. So, I'm going to type that in." [ref=e2999] [cursor=pointer]:
+                - generic [ref=e3001]: 8:43
+                - generic [ref=e3002]: inbox. So, I'm going to type that in.
+              - button "8 minutes, 44 seconds So, you can see what it's doing here. It" [ref=e3004] [cursor=pointer]:
+                - generic [ref=e3006]: 8:44
+                - generic [ref=e3007]: So, you can see what it's doing here. It
+              - button "8 minutes, 45 seconds says, \"Let me scan the inbox sources. I" [ref=e3009] [cursor=pointer]:
+                - generic [ref=e3011]: 8:45
+                - generic [ref=e3012]: says, "Let me scan the inbox sources. I
+              - button "8 minutes, 47 seconds already have the fresh Slack and email" [ref=e3014] [cursor=pointer]:
+                - generic [ref=e3016]: 8:47
+                - generic [ref=e3017]: already have the fresh Slack and email
+              - button "8 minutes, 49 seconds data from the today run.\" So, it's" [ref=e3019] [cursor=pointer]:
+                - generic [ref=e3021]: 8:49
+                - generic [ref=e3022]: data from the today run." So, it's
+              - button "8 minutes, 50 seconds taking my brain dumps and the notes I've" [ref=e3024] [cursor=pointer]:
+                - generic [ref=e3026]: 8:50
+                - generic [ref=e3027]: taking my brain dumps and the notes I've
+              - button "8 minutes, 52 seconds taken throughout the day and throughout" [ref=e3029] [cursor=pointer]:
+                - generic [ref=e3031]: 8:52
+                - generic [ref=e3032]: taken throughout the day and throughout
+              - button "8 minutes, 54 seconds the week, actually, and then sorting" [ref=e3034] [cursor=pointer]:
+                - generic [ref=e3036]: 8:54
+                - generic [ref=e3037]: the week, actually, and then sorting
+              - button "8 minutes, 56 seconds that into tasks, into ideas, into" [ref=e3039] [cursor=pointer]:
+                - generic [ref=e3041]: 8:56
+                - generic [ref=e3042]: that into tasks, into ideas, into
+              - button "8 minutes, 59 seconds people, and assigning it to people. And" [ref=e3044] [cursor=pointer]:
+                - generic [ref=e3046]: 8:59
+                - generic [ref=e3047]: people, and assigning it to people. And
+              - button "9 minutes, 1 second so, as you can see here, it shows me" [ref=e3049] [cursor=pointer]:
+                - generic [ref=e3051]: 9:01
+                - generic [ref=e3052]: so, as you can see here, it shows me
+              - 'button "Midday Ops: Turn Brain Dumps, DMs and Emails Into Organized Tasks" [ref=e3054] [cursor=pointer]':
+                - 'heading "Midday Ops: Turn Brain Dumps, DMs and Emails Into Organized Tasks" [level=2] [ref=e3060]'
+              - button "9 minutes, 3 seconds what it found. It's found all these" [ref=e3062] [cursor=pointer]:
+                - generic [ref=e3064]: 9:03
+                - generic [ref=e3065]: what it found. It's found all these
+              - button "9 minutes, 5 seconds things here in that using that claude" [ref=e3067] [cursor=pointer]:
+                - generic [ref=e3069]: 9:05
+                - generic [ref=e3070]: things here in that using that claude
+              - button "9 minutes, 7 seconds skill that process inbox. And then what" [ref=e3072] [cursor=pointer]:
+                - generic [ref=e3074]: 9:07
+                - generic [ref=e3075]: skill that process inbox. And then what
+              - button "9 minutes, 10 seconds it's going to do, it's going to ask me" [ref=e3077] [cursor=pointer]:
+                - generic [ref=e3079]: 9:10
+                - generic [ref=e3080]: it's going to do, it's going to ask me
+              - button "9 minutes, 11 seconds before anything that it doesn't quite" [ref=e3082] [cursor=pointer]:
+                - generic [ref=e3084]: 9:11
+                - generic [ref=e3085]: before anything that it doesn't quite
+              - button "9 minutes, 13 seconds know what to do with, it's going to ask" [ref=e3087] [cursor=pointer]:
+                - generic [ref=e3089]: 9:13
+                - generic [ref=e3090]: know what to do with, it's going to ask
+              - button "9 minutes, 15 seconds me as you can see here. So it says," [ref=e3092] [cursor=pointer]:
+                - generic [ref=e3094]: 9:15
+                - generic [ref=e3095]: me as you can see here. So it says,
+              - button "9 minutes, 16 seconds \"What should I do with the AIP growth" [ref=e3097] [cursor=pointer]:
+                - generic [ref=e3099]: 9:16
+                - generic [ref=e3100]: "\"What should I do with the AIP growth"
+              - button "9 minutes, 18 seconds next steps?\" I'm going to click on skip." [ref=e3102] [cursor=pointer]:
+                - generic [ref=e3104]: 9:18
+                - generic [ref=e3105]: next steps?" I'm going to click on skip.
+              - button "9 minutes, 21 seconds And then it's going to continue to ask" [ref=e3107] [cursor=pointer]:
+                - generic [ref=e3109]: 9:21
+                - generic [ref=e3110]: And then it's going to continue to ask
+              - button "9 minutes, 22 seconds me these questions here about the things" [ref=e3112] [cursor=pointer]:
+                - generic [ref=e3114]: 9:22
+                - generic [ref=e3115]: me these questions here about the things
+              - button "9 minutes, 25 seconds that it has surfaced. And then let's" [ref=e3117] [cursor=pointer]:
+                - generic [ref=e3119]: 9:25
+                - generic [ref=e3120]: that it has surfaced. And then let's
+              - button "9 minutes, 27 seconds just say I have an idea that I have a" [ref=e3122] [cursor=pointer]:
+                - generic [ref=e3124]: 9:27
+                - generic [ref=e3125]: just say I have an idea that I have a
+              - button "9 minutes, 29 seconds new task that I want to assign to" [ref=e3127] [cursor=pointer]:
+                - generic [ref=e3129]: 9:29
+                - generic [ref=e3130]: new task that I want to assign to
+              - button "9 minutes, 30 seconds somebody on my team. What I can do here" [ref=e3132] [cursor=pointer]:
+                - generic [ref=e3134]: 9:30
+                - generic [ref=e3135]: somebody on my team. What I can do here
+              - button "9 minutes, 32 seconds is use one of the other Claude skills" [ref=e3137] [cursor=pointer]:
+                - generic [ref=e3139]: 9:32
+                - generic [ref=e3140]: is use one of the other Claude skills
+              - button "9 minutes, 34 seconds that I've created for the chief of staff" [ref=e3142] [cursor=pointer]:
+                - generic [ref=e3144]: 9:34
+                - generic [ref=e3145]: that I've created for the chief of staff
+              - button "9 minutes, 36 seconds here and type in the slash command new." [ref=e3147] [cursor=pointer]:
+                - generic [ref=e3149]: 9:36
+                - generic [ref=e3150]: here and type in the slash command new.
+              - button "9 minutes, 40 seconds And then I can say forward/ new follow" [ref=e3152] [cursor=pointer]:
+                - generic [ref=e3154]: 9:40
+                - generic [ref=e3155]: And then I can say forward/ new follow
+              - button "9 minutes, 42 seconds up with Kelly about community report or" [ref=e3157] [cursor=pointer]:
+                - generic [ref=e3159]: 9:42
+                - generic [ref=e3160]: up with Kelly about community report or
+              - button "9 minutes, 44 seconds what have you. And so you can see here" [ref=e3162] [cursor=pointer]:
+                - generic [ref=e3164]: 9:44
+                - generic [ref=e3165]: what have you. And so you can see here
+              - button "9 minutes, 45 seconds what it's going to do is I'll say it'll" [ref=e3167] [cursor=pointer]:
+                - generic [ref=e3169]: 9:45
+                - generic [ref=e3170]: what it's going to do is I'll say it'll
+              - button "9 minutes, 47 seconds say I'll check if Kelly has an existing" [ref=e3172] [cursor=pointer]:
+                - generic [ref=e3174]: 9:47
+                - generic [ref=e3175]: say I'll check if Kelly has an existing
+              - button "9 minutes, 49 seconds people file before creating anything. So" [ref=e3177] [cursor=pointer]:
+                - generic [ref=e3179]: 9:49
+                - generic [ref=e3180]: people file before creating anything. So
+              - button "9 minutes, 51 seconds the first things first it's going to" [ref=e3182] [cursor=pointer]:
+                - generic [ref=e3184]: 9:51
+                - generic [ref=e3185]: the first things first it's going to
+              - button "9 minutes, 52 seconds check to make sure that Kelly quote" [ref=e3187] [cursor=pointer]:
+                - generic [ref=e3189]: 9:52
+                - generic [ref=e3190]: check to make sure that Kelly quote
+              - button "9 minutes, 54 seconds unquote exists in my Obsidian here. Then" [ref=e3192] [cursor=pointer]:
+                - generic [ref=e3194]: 9:54
+                - generic [ref=e3195]: unquote exists in my Obsidian here. Then
+              - button "9 minutes, 57 seconds it says when do you need to follow up" [ref=e3197] [cursor=pointer]:
+                - generic [ref=e3199]: 9:57
+                - generic [ref=e3200]: it says when do you need to follow up
+              - button "9 minutes, 59 seconds with Kelly? I'm going to say uh let's" [ref=e3202] [cursor=pointer]:
+                - generic [ref=e3204]: 9:59
+                - generic [ref=e3205]: with Kelly? I'm going to say uh let's
+              - button "10 minutes, 1 second just say Friday. Submit the answer. And" [ref=e3207] [cursor=pointer]:
+                - generic [ref=e3209]: 10:01
+                - generic [ref=e3210]: just say Friday. Submit the answer. And
+              - button "10 minutes, 4 seconds just like that, it's created a task for" [ref=e3212] [cursor=pointer]:
+                - generic [ref=e3214]: 10:04
+                - generic [ref=e3215]: just like that, it's created a task for
+              - button "10 minutes, 5 seconds me. You can see over here in the front" [ref=e3217] [cursor=pointer]:
+                - generic [ref=e3219]: 10:05
+                - generic [ref=e3220]: me. You can see over here in the front
+              - button "10 minutes, 7 seconds matter. I'll look at it here in Obsidian" [ref=e3222] [cursor=pointer]:
+                - generic [ref=e3224]: 10:07
+                - generic [ref=e3225]: matter. I'll look at it here in Obsidian
+              - button "10 minutes, 9 seconds and show you that in just a second. But" [ref=e3227] [cursor=pointer]:
+                - generic [ref=e3229]: 10:09
+                - generic [ref=e3230]: and show you that in just a second. But
+              - button "10 minutes, 10 seconds it gives me the type, it's a task. Uh it" [ref=e3232] [cursor=pointer]:
+                - generic [ref=e3234]: 10:10
+                - generic [ref=e3235]: it gives me the type, it's a task. Uh it
+              - button "10 minutes, 13 seconds says the status is open. Tells me when" [ref=e3237] [cursor=pointer]:
+                - generic [ref=e3239]: 10:13
+                - generic [ref=e3240]: says the status is open. Tells me when
+              - button "10 minutes, 15 seconds it's due, gives me the tag, the" [ref=e3242] [cursor=pointer]:
+                - generic [ref=e3244]: 10:15
+                - generic [ref=e3245]: it's due, gives me the tag, the
+              - button "10 minutes, 17 seconds priority, when it was created, and then" [ref=e3247] [cursor=pointer]:
+                - generic [ref=e3249]: 10:17
+                - generic [ref=e3250]: priority, when it was created, and then
+              - button "10 minutes, 18 seconds this is the actual uh task. Also, you'll" [ref=e3252] [cursor=pointer]:
+                - generic [ref=e3254]: 10:18
+                - generic [ref=e3255]: this is the actual uh task. Also, you'll
+              - button "10 minutes, 22 seconds notice it has double brackets around the" [ref=e3257] [cursor=pointer]:
+                - generic [ref=e3259]: 10:22
+                - generic [ref=e3260]: notice it has double brackets around the
+              - button "10 minutes, 24 seconds the person. So, this will link back to" [ref=e3262] [cursor=pointer]:
+                - generic [ref=e3264]: 10:24
+                - generic [ref=e3265]: the person. So, this will link back to
+              - button "10 minutes, 27 seconds the person Kelly in my people folder" [ref=e3267] [cursor=pointer]:
+                - generic [ref=e3269]: 10:27
+                - generic [ref=e3270]: the person Kelly in my people folder
+              - button "10 minutes, 31 seconds here in Obsidian. So, it's connecting" [ref=e3272] [cursor=pointer]:
+                - generic [ref=e3274]: 10:31
+                - generic [ref=e3275]: here in Obsidian. So, it's connecting
+              - button "10 minutes, 33 seconds everything together. And then you can" [ref=e3277] [cursor=pointer]:
+                - generic [ref=e3279]: 10:33
+                - generic [ref=e3280]: everything together. And then you can
+              - button "10 minutes, 34 seconds see here over in Obsidian, this is what" [ref=e3282] [cursor=pointer]:
+                - generic [ref=e3284]: 10:34
+                - generic [ref=e3285]: see here over in Obsidian, this is what
+              - button "10 minutes, 36 seconds the page looks like in Obsidian. So," [ref=e3287] [cursor=pointer]:
+                - generic [ref=e3289]: 10:36
+                - generic [ref=e3290]: the page looks like in Obsidian. So,
+              - button "10 minutes, 37 seconds this is the task page, follow up with" [ref=e3292] [cursor=pointer]:
+                - generic [ref=e3294]: 10:37
+                - generic [ref=e3295]: this is the task page, follow up with
+              - button "10 minutes, 39 seconds Kelly. Here's the the due date. Here's" [ref=e3297] [cursor=pointer]:
+                - generic [ref=e3299]: 10:39
+                - generic [ref=e3300]: Kelly. Here's the the due date. Here's
+              - button "10 minutes, 41 seconds all the the properties. But again, I" [ref=e3302] [cursor=pointer]:
+                - generic [ref=e3304]: 10:41
+                - generic [ref=e3305]: all the the properties. But again, I
+              - button "10 minutes, 43 seconds didn't create all any of these pages." [ref=e3307] [cursor=pointer]:
+                - generic [ref=e3309]: 10:43
+                - generic [ref=e3310]: didn't create all any of these pages.
+              - button "10 minutes, 46 seconds Actually, Claude Code created it because" [ref=e3312] [cursor=pointer]:
+                - generic [ref=e3314]: 10:46
+                - generic [ref=e3315]: Actually, Claude Code created it because
+              - button "10 minutes, 48 seconds I explained to it what it is that I" [ref=e3317] [cursor=pointer]:
+                - generic [ref=e3319]: 10:48
+                - generic [ref=e3320]: I explained to it what it is that I
+              - button "10 minutes, 50 seconds wanted it to do. And when I do that," [ref=e3322] [cursor=pointer]:
+                - generic [ref=e3324]: 10:50
+                - generic [ref=e3325]: wanted it to do. And when I do that,
+              - button "10 minutes, 52 seconds when I create a new task like that, I" [ref=e3327] [cursor=pointer]:
+                - generic [ref=e3329]: 10:52
+                - generic [ref=e3330]: when I create a new task like that, I
+              - button "10 minutes, 54 seconds don't have to think about where it goes." [ref=e3332] [cursor=pointer]:
+                - generic [ref=e3334]: 10:54
+                - generic [ref=e3335]: don't have to think about where it goes.
+              - button "10 minutes, 56 seconds Claude code is taking care of that" [ref=e3337] [cursor=pointer]:
+                - generic [ref=e3339]: 10:56
+                - generic [ref=e3340]: Claude code is taking care of that
+              - button "10 minutes, 58 seconds because of the skills that I've created" [ref=e3342] [cursor=pointer]:
+                - generic [ref=e3344]: 10:58
+                - generic [ref=e3345]: because of the skills that I've created
+              - button "11 minutes as part of this chief of staff system." [ref=e3347] [cursor=pointer]:
+                - generic [ref=e3349]: 11:00
+                - generic [ref=e3350]: as part of this chief of staff system.
+              - button "11 minutes, 2 seconds So, for example, if I look at this on my" [ref=e3352] [cursor=pointer]:
+                - generic [ref=e3354]: 11:02
+                - generic [ref=e3355]: So, for example, if I look at this on my
+              - button "11 minutes, 4 seconds dashboard and I see that this is a Slack" [ref=e3357] [cursor=pointer]:
+                - generic [ref=e3359]: 11:04
+                - generic [ref=e3360]: dashboard and I see that this is a Slack
+              - button "11 minutes, 6 seconds message from Ara on my team, I don't" [ref=e3362] [cursor=pointer]:
+                - generic [ref=e3364]: 11:06
+                - generic [ref=e3365]: message from Ara on my team, I don't
+              - button "11 minutes, 9 seconds need to go to Slack to respond to her. I" [ref=e3367] [cursor=pointer]:
+                - generic [ref=e3369]: 11:09
+                - generic [ref=e3370]: need to go to Slack to respond to her. I
+              - button "11 minutes, 11 seconds can send a Slack message to Ara from" [ref=e3372] [cursor=pointer]:
+                - generic [ref=e3374]: 11:11
+                - generic [ref=e3375]: can send a Slack message to Ara from
+              - button "11 minutes, 13 seconds right within Cloud Code here. So I can" [ref=e3377] [cursor=pointer]:
+                - generic [ref=e3379]: 11:13
+                - generic [ref=e3380]: right within Cloud Code here. So I can
+              - button "11 minutes, 15 seconds just type in simply reply to R in Slack" [ref=e3382] [cursor=pointer]:
+                - generic [ref=e3384]: 11:15
+                - generic [ref=e3385]: just type in simply reply to R in Slack
+              - button "11 minutes, 17 seconds saying go ahead with the recent format" [ref=e3387] [cursor=pointer]:
+                - generic [ref=e3389]: 11:17
+                - generic [ref=e3390]: saying go ahead with the recent format
+              - button "11 minutes, 19 seconds and then it'll send the message" [ref=e3392] [cursor=pointer]:
+                - generic [ref=e3394]: 11:19
+                - generic [ref=e3395]: and then it'll send the message
+              - button "11 minutes, 20 seconds directly. I don't have to leave cloud" [ref=e3397] [cursor=pointer]:
+                - generic [ref=e3399]: 11:20
+                - generic [ref=e3400]: directly. I don't have to leave cloud
+              - button "11 minutes, 22 seconds code here in order to send a Slack" [ref=e3402] [cursor=pointer]:
+                - generic [ref=e3404]: 11:22
+                - generic [ref=e3405]: code here in order to send a Slack
+              - button "11 minutes, 24 seconds message. Another slash command I've" [ref=e3407] [cursor=pointer]:
+                - generic [ref=e3409]: 11:24
+                - generic [ref=e3410]: message. Another slash command I've
+              - button "11 minutes, 25 seconds created again another Cloud skill I've" [ref=e3412] [cursor=pointer]:
+                - generic [ref=e3414]: 11:25
+                - generic [ref=e3415]: created again another Cloud skill I've
+              - button "11 minutes, 27 seconds created as part of this chief of staff" [ref=e3417] [cursor=pointer]:
+                - generic [ref=e3419]: 11:27
+                - generic [ref=e3420]: created as part of this chief of staff
+              - button "11 minutes, 29 seconds system is to use followup. So I can" [ref=e3422] [cursor=pointer]:
+                - generic [ref=e3424]: 11:29
+                - generic [ref=e3425]: system is to use followup. So I can
+              - button "11 minutes, 32 seconds start typing in follow if I can type" [ref=e3427] [cursor=pointer]:
+                - generic [ref=e3429]: 11:32
+                - generic [ref=e3430]: start typing in follow if I can type
+              - button "11 minutes, 35 seconds followup. And what this is doing is" [ref=e3432] [cursor=pointer]:
+                - generic [ref=e3434]: 11:35
+                - generic [ref=e3435]: followup. And what this is doing is
+              - button "11 minutes, 36 seconds checking to see if anybody is waiting on" [ref=e3437] [cursor=pointer]:
+                - generic [ref=e3439]: 11:36
+                - generic [ref=e3440]: checking to see if anybody is waiting on
+              - button "11 minutes, 39 seconds me and also who I'm waiting on across" [ref=e3442] [cursor=pointer]:
+                - generic [ref=e3444]: 11:39
+                - generic [ref=e3445]: me and also who I'm waiting on across
+              - button "11 minutes, 41 seconds Slack and email. So, as you can see" [ref=e3447] [cursor=pointer]:
+                - generic [ref=e3449]: 11:41
+                - generic [ref=e3450]: Slack and email. So, as you can see
+              - button "11 minutes, 43 seconds here, it's it's searching across my" [ref=e3452] [cursor=pointer]:
+                - generic [ref=e3454]: 11:43
+                - generic [ref=e3455]: here, it's it's searching across my
+              - button "11 minutes, 45 seconds Slack, also across the email, and it's" [ref=e3457] [cursor=pointer]:
+                - generic [ref=e3459]: 11:45
+                - generic [ref=e3460]: Slack, also across the email, and it's
+              - button "11 minutes, 48 seconds going to give me a little report here" [ref=e3462] [cursor=pointer]:
+                - generic [ref=e3464]: 11:48
+                - generic [ref=e3465]: going to give me a little report here
+              - button "11 minutes, 49 seconds saying, \"Hey, waiting on Rick. Need a" [ref=e3467] [cursor=pointer]:
+                - generic [ref=e3469]: 11:49
+                - generic [ref=e3470]: saying, "Hey, waiting on Rick. Need a
+              - button "11 minutes, 51 seconds response. A R is waiting. There's other" [ref=e3472] [cursor=pointer]:
+                - generic [ref=e3474]: 11:51
+                - generic [ref=e3475]: response. A R is waiting. There's other
+              - button "11 minutes, 53 seconds uh other people waiting or I'm waiting" [ref=e3477] [cursor=pointer]:
+                - generic [ref=e3479]: 11:53
+                - generic [ref=e3480]: uh other people waiting or I'm waiting
+              - button "11 minutes, 56 seconds actually.\" And then Kelly on my team" [ref=e3482] [cursor=pointer]:
+                - generic [ref=e3484]: 11:56
+                - generic [ref=e3485]: actually." And then Kelly on my team
+              - button "11 minutes, 59 seconds sent me a Slack DM. What I love about" [ref=e3487] [cursor=pointer]:
+                - generic [ref=e3489]: 11:59
+                - generic [ref=e3490]: sent me a Slack DM. What I love about
+              - button "12 minutes, 1 second this is I'm not having to leave the" [ref=e3492] [cursor=pointer]:
+                - generic [ref=e3494]: 12:01
+                - generic [ref=e3495]: this is I'm not having to leave the
+              - button "12 minutes, 2 seconds workspace here in Cloud Code and it's" [ref=e3497] [cursor=pointer]:
+                - generic [ref=e3499]: 12:02
+                - generic [ref=e3500]: workspace here in Cloud Code and it's
+              - button "The Daily Flywheel and Why This Beats Notion AI" [ref=e3502] [cursor=pointer]:
+                - heading "The Daily Flywheel and Why This Beats Notion AI" [level=2] [ref=e3508]
+              - button "12 minutes, 5 seconds reaching out to all the tools that I use" [ref=e3510] [cursor=pointer]:
+                - generic [ref=e3512]: 12:05
+                - generic [ref=e3513]: reaching out to all the tools that I use
+              - button "12 minutes, 7 seconds in the business. Again, this these are" [ref=e3515] [cursor=pointer]:
+                - generic [ref=e3517]: 12:07
+                - generic [ref=e3518]: in the business. Again, this these are
+              - button "12 minutes, 8 seconds only three right now. I'm going to be" [ref=e3520] [cursor=pointer]:
+                - generic [ref=e3522]: 12:08
+                - generic [ref=e3523]: only three right now. I'm going to be
+              - button "12 minutes, 9 seconds adding more to this, but it's bringing" [ref=e3525] [cursor=pointer]:
+                - generic [ref=e3527]: 12:09
+                - generic [ref=e3528]: adding more to this, but it's bringing
+              - button "12 minutes, 12 seconds everything in. So I don't have to be in" [ref=e3530] [cursor=pointer]:
+                - generic [ref=e3532]: 12:12
+                - generic [ref=e3533]: everything in. So I don't have to be in
+              - button "12 minutes, 14 seconds seven different tools going back and" [ref=e3535] [cursor=pointer]:
+                - generic [ref=e3537]: 12:14
+                - generic [ref=e3538]: seven different tools going back and
+              - button "12 minutes, 15 seconds forth. So the way I look at it, the" [ref=e3540] [cursor=pointer]:
+                - generic [ref=e3542]: 12:15
+                - generic [ref=e3543]: forth. So the way I look at it, the
+              - button "12 minutes, 17 seconds morning briefing, if you will, is like" [ref=e3545] [cursor=pointer]:
+                - generic [ref=e3547]: 12:17
+                - generic [ref=e3548]: morning briefing, if you will, is like
+              - button "12 minutes, 18 seconds the clean version. The midday is kind of" [ref=e3550] [cursor=pointer]:
+                - generic [ref=e3552]: 12:18
+                - generic [ref=e3553]: the clean version. The midday is kind of
+              - button "12 minutes, 20 seconds the messy version. So it has the brain" [ref=e3555] [cursor=pointer]:
+                - generic [ref=e3557]: 12:20
+                - generic [ref=e3558]: the messy version. So it has the brain
+              - button "12 minutes, 22 seconds dump, you know, any kind of notes I" [ref=e3560] [cursor=pointer]:
+                - generic [ref=e3562]: 12:22
+                - generic [ref=e3563]: dump, you know, any kind of notes I
+              - button "12 minutes, 24 seconds capture during the day, any ideas. So" [ref=e3565] [cursor=pointer]:
+                - generic [ref=e3567]: 12:24
+                - generic [ref=e3568]: capture during the day, any ideas. So
+              - button "12 minutes, 26 seconds for the third scenario, this is sort of" [ref=e3570] [cursor=pointer]:
+                - generic [ref=e3572]: 12:26
+                - generic [ref=e3573]: for the third scenario, this is sort of
+              - button "12 minutes, 27 seconds the end of the day recap, what I call" [ref=e3575] [cursor=pointer]:
+                - generic [ref=e3577]: 12:27
+                - generic [ref=e3578]: the end of the day recap, what I call
+              - button "12 minutes, 29 seconds the flywheel. So what I've created here" [ref=e3580] [cursor=pointer]:
+                - generic [ref=e3582]: 12:29
+                - generic [ref=e3583]: the flywheel. So what I've created here
+              - button "12 minutes, 31 seconds is AI is going to search through all the" [ref=e3585] [cursor=pointer]:
+                - generic [ref=e3587]: 12:31
+                - generic [ref=e3588]: is AI is going to search through all the
+              - button "12 minutes, 34 seconds things that we got done today and that I" [ref=e3590] [cursor=pointer]:
+                - generic [ref=e3592]: 12:34
+                - generic [ref=e3593]: things that we got done today and that I
+              - button "12 minutes, 36 seconds worked on and create a daily review for" [ref=e3595] [cursor=pointer]:
+                - generic [ref=e3597]: 12:36
+                - generic [ref=e3598]: worked on and create a daily review for
+              - button "12 minutes, 38 seconds me all in one central place. So again, I" [ref=e3600] [cursor=pointer]:
+                - generic [ref=e3602]: 12:38
+                - generic [ref=e3603]: me all in one central place. So again, I
+              - button "12 minutes, 41 seconds created a claude skill for that and a" [ref=e3605] [cursor=pointer]:
+                - generic [ref=e3607]: 12:41
+                - generic [ref=e3608]: created a claude skill for that and a
+              - button "12 minutes, 43 seconds slash command. So I can just type in" [ref=e3610] [cursor=pointer]:
+                - generic [ref=e3612]: 12:43
+                - generic [ref=e3613]: slash command. So I can just type in
+              - button "12 minutes, 44 seconds daily review. And so what Claude is" [ref=e3615] [cursor=pointer]:
+                - generic [ref=e3617]: 12:44
+                - generic [ref=e3618]: daily review. And so what Claude is
+              - button "12 minutes, 46 seconds going to do, it's going to compare what" [ref=e3620] [cursor=pointer]:
+                - generic [ref=e3622]: 12:46
+                - generic [ref=e3623]: going to do, it's going to compare what
+              - button "12 minutes, 47 seconds I planned that morning compared to what" [ref=e3625] [cursor=pointer]:
+                - generic [ref=e3627]: 12:47
+                - generic [ref=e3628]: I planned that morning compared to what
+              - button "12 minutes, 50 seconds I actually did. It's also going to" [ref=e3630] [cursor=pointer]:
+                - generic [ref=e3632]: 12:50
+                - generic [ref=e3633]: I actually did. It's also going to
+              - button "12 minutes, 51 seconds update task statuses, if I got something" [ref=e3635] [cursor=pointer]:
+                - generic [ref=e3637]: 12:51
+                - generic [ref=e3638]: update task statuses, if I got something
+              - button "12 minutes, 54 seconds done or not, or I'm working on it right" [ref=e3640] [cursor=pointer]:
+                - generic [ref=e3642]: 12:54
+                - generic [ref=e3643]: done or not, or I'm working on it right
+              - button "12 minutes, 56 seconds now. So it's going to give me a picture" [ref=e3645] [cursor=pointer]:
+                - generic [ref=e3647]: 12:56
+                - generic [ref=e3648]: now. So it's going to give me a picture
+              - button "12 minutes, 58 seconds of where things actually landed at the" [ref=e3650] [cursor=pointer]:
+                - generic [ref=e3652]: 12:58
+                - generic [ref=e3653]: of where things actually landed at the
+              - button "13 minutes end of the day. So as you can see here," [ref=e3655] [cursor=pointer]:
+                - generic [ref=e3657]: 13:00
+                - generic [ref=e3658]: end of the day. So as you can see here,
+              - button "13 minutes, 1 second activity today, which makes sense. Uh it" [ref=e3660] [cursor=pointer]:
+                - generic [ref=e3662]: 13:01
+                - generic [ref=e3663]: activity today, which makes sense. Uh it
+              - button "13 minutes, 3 seconds was little activity. There's actually a" [ref=e3665] [cursor=pointer]:
+                - generic [ref=e3667]: 13:03
+                - generic [ref=e3668]: was little activity. There's actually a
+              - button "13 minutes, 5 seconds lot of activity today. I did a podcast" [ref=e3670] [cursor=pointer]:
+                - generic [ref=e3672]: 13:05
+                - generic [ref=e3673]: lot of activity today. I did a podcast
+              - button "13 minutes, 7 seconds recording. I was interviewed. There was" [ref=e3675] [cursor=pointer]:
+                - generic [ref=e3677]: 13:07
+                - generic [ref=e3678]: recording. I was interviewed. There was
+              - button "13 minutes, 9 seconds something at my daughter's school. Then" [ref=e3680] [cursor=pointer]:
+                - generic [ref=e3682]: 13:09
+                - generic [ref=e3683]: something at my daughter's school. Then
+              - button "13 minutes, 11 seconds I did training at 3:00. Then it's" [ref=e3685] [cursor=pointer]:
+                - generic [ref=e3687]: 13:11
+                - generic [ref=e3688]: I did training at 3:00. Then it's
+              - button "13 minutes, 13 seconds saying, \"Let me check if the sagi task" [ref=e3690] [cursor=pointer]:
+                - generic [ref=e3692]: 13:13
+                - generic [ref=e3693]: saying, "Let me check if the sagi task
+              - button "13 minutes, 15 seconds got done and append the review.\" And so" [ref=e3695] [cursor=pointer]:
+                - generic [ref=e3697]: 13:15
+                - generic [ref=e3698]: got done and append the review." And so
+              - button "13 minutes, 18 seconds it's asking me if I actually did that." [ref=e3700] [cursor=pointer]:
+                - generic [ref=e3702]: 13:18
+                - generic [ref=e3703]: it's asking me if I actually did that.
+              - button "13 minutes, 20 seconds And then it's saying likely incomplete." [ref=e3705] [cursor=pointer]:
+                - generic [ref=e3707]: 13:20
+                - generic [ref=e3708]: And then it's saying likely incomplete.
+              - button "13 minutes, 21 seconds So what I want to do here is I want to" [ref=e3710] [cursor=pointer]:
+                - generic [ref=e3712]: 13:21
+                - generic [ref=e3713]: So what I want to do here is I want to
+              - button "13 minutes, 23 seconds update it whether this is actually true" [ref=e3715] [cursor=pointer]:
+                - generic [ref=e3717]: 13:23
+                - generic [ref=e3718]: update it whether this is actually true
+              - button "13 minutes, 25 seconds or not. Did I did I reply to Sagi? I" [ref=e3720] [cursor=pointer]:
+                - generic [ref=e3722]: 13:25
+                - generic [ref=e3723]: or not. Did I did I reply to Sagi? I
+              - button "13 minutes, 27 seconds have not yet. Did I review the B-roll?" [ref=e3725] [cursor=pointer]:
+                - generic [ref=e3727]: 13:27
+                - generic [ref=e3728]: have not yet. Did I review the B-roll?
+              - button "13 minutes, 30 seconds Yes. Do I need to make some decisions" [ref=e3730] [cursor=pointer]:
+                - generic [ref=e3732]: 13:30
+                - generic [ref=e3733]: Yes. Do I need to make some decisions
+              - button "13 minutes, 32 seconds about these sponsors? Yes. So then it's" [ref=e3735] [cursor=pointer]:
+                - generic [ref=e3737]: 13:32
+                - generic [ref=e3738]: about these sponsors? Yes. So then it's
+              - button "13 minutes, 34 seconds asking me what I want it to do. So, do I" [ref=e3740] [cursor=pointer]:
+                - generic [ref=e3742]: 13:34
+                - generic [ref=e3743]: asking me what I want it to do. So, do I
+              - button "13 minutes, 37 seconds mark the does it mark that task carried" [ref=e3745] [cursor=pointer]:
+                - generic [ref=e3747]: 13:37
+                - generic [ref=e3748]: mark the does it mark that task carried
+              - button "13 minutes, 39 seconds forward or append the review? What's the" [ref=e3750] [cursor=pointer]:
+                - generic [ref=e3752]: 13:39
+                - generic [ref=e3753]: forward or append the review? What's the
+              - button "13 minutes, 42 seconds status of it? And this is where the" [ref=e3755] [cursor=pointer]:
+                - generic [ref=e3757]: 13:42
+                - generic [ref=e3758]: status of it? And this is where the
+              - button "13 minutes, 43 seconds flywheel really kicks in because here's" [ref=e3760] [cursor=pointer]:
+                - generic [ref=e3762]: 13:43
+                - generic [ref=e3763]: flywheel really kicks in because here's
+              - button "13 minutes, 46 seconds the thing. I take notes about a project," [ref=e3765] [cursor=pointer]:
+                - generic [ref=e3767]: 13:46
+                - generic [ref=e3768]: the thing. I take notes about a project,
+              - button "13 minutes, 47 seconds for example, and then the next time that" [ref=e3770] [cursor=pointer]:
+                - generic [ref=e3772]: 13:47
+                - generic [ref=e3773]: for example, and then the next time that
+              - button "13 minutes, 49 seconds Claude works on that project, it just" [ref=e3775] [cursor=pointer]:
+                - generic [ref=e3777]: 13:49
+                - generic [ref=e3778]: Claude works on that project, it just
+              - button "13 minutes, 51 seconds reads those notes so it knows exactly" [ref=e3780] [cursor=pointer]:
+                - generic [ref=e3782]: 13:51
+                - generic [ref=e3783]: reads those notes so it knows exactly
+              - button "13 minutes, 53 seconds where we are. And then tomorrow morning" [ref=e3785] [cursor=pointer]:
+                - generic [ref=e3787]: 13:53
+                - generic [ref=e3788]: where we are. And then tomorrow morning
+              - button "13 minutes, 54 seconds when I type in the slash command today" [ref=e3790] [cursor=pointer]:
+                - generic [ref=e3792]: 13:54
+                - generic [ref=e3793]: when I type in the slash command today
+              - button "13 minutes, 56 seconds again, Claude reads all of it all over." [ref=e3795] [cursor=pointer]:
+                - generic [ref=e3797]: 13:56
+                - generic [ref=e3798]: again, Claude reads all of it all over.
+              - button "13 minutes, 58 seconds And the briefing will be better. The" [ref=e3800] [cursor=pointer]:
+                - generic [ref=e3802]: 13:58
+                - generic [ref=e3803]: And the briefing will be better. The
+              - button "14 minutes plan's going to be sharper because it" [ref=e3805] [cursor=pointer]:
+                - generic [ref=e3807]: 14:00
+                - generic [ref=e3808]: plan's going to be sharper because it
+              - button "14 minutes, 1 second continues to take all this information" [ref=e3810] [cursor=pointer]:
+                - generic [ref=e3812]: 14:01
+                - generic [ref=e3813]: continues to take all this information
+              - button "14 minutes, 4 seconds and just builds on each other. And the" [ref=e3815] [cursor=pointer]:
+                - generic [ref=e3817]: 14:04
+                - generic [ref=e3818]: and just builds on each other. And the
+              - button "14 minutes, 6 seconds system just keeps getting smarter and" [ref=e3820] [cursor=pointer]:
+                - generic [ref=e3822]: 14:06
+                - generic [ref=e3823]: system just keeps getting smarter and
+              - button "14 minutes, 7 seconds smarter and smarter. And I'm not really" [ref=e3825] [cursor=pointer]:
+                - generic [ref=e3827]: 14:07
+                - generic [ref=e3828]: smarter and smarter. And I'm not really
+              - button "14 minutes, 8 seconds training it anymore, per se. I'm just" [ref=e3830] [cursor=pointer]:
+                - generic [ref=e3832]: 14:08
+                - generic [ref=e3833]: training it anymore, per se. I'm just
+              - button "14 minutes, 10 seconds taking notes. I'm just doing my normal" [ref=e3835] [cursor=pointer]:
+                - generic [ref=e3837]: 14:10
+                - generic [ref=e3838]: taking notes. I'm just doing my normal
+              - button "14 minutes, 13 seconds daily workflow, putting that notes and" [ref=e3840] [cursor=pointer]:
+                - generic [ref=e3842]: 14:13
+                - generic [ref=e3843]: daily workflow, putting that notes and
+              - button "14 minutes, 16 seconds ideas and captures and tasks and" [ref=e3845] [cursor=pointer]:
+                - generic [ref=e3847]: 14:16
+                - generic [ref=e3848]: ideas and captures and tasks and
+              - button "14 minutes, 19 seconds projects, etc. into Obsidian and Claude" [ref=e3850] [cursor=pointer]:
+                - generic [ref=e3852]: 14:19
+                - generic [ref=e3853]: projects, etc. into Obsidian and Claude
+              - button "14 minutes, 21 seconds Code is just doing the rest. The more I" [ref=e3855] [cursor=pointer]:
+                - generic [ref=e3857]: 14:21
+                - generic [ref=e3858]: Code is just doing the rest. The more I
+              - button "14 minutes, 24 seconds add to Obsidian, the smarter the overall" [ref=e3860] [cursor=pointer]:
+                - generic [ref=e3862]: 14:24
+                - generic [ref=e3863]: add to Obsidian, the smarter the overall
+              - button "14 minutes, 26 seconds chief of staff system is getting. It's" [ref=e3865] [cursor=pointer]:
+                - generic [ref=e3867]: 14:26
+                - generic [ref=e3868]: chief of staff system is getting. It's
+              - button "14 minutes, 28 seconds just a flywheel, as I like to look at" [ref=e3870] [cursor=pointer]:
+                - generic [ref=e3872]: 14:28
+                - generic [ref=e3873]: just a flywheel, as I like to look at
+              - button "14 minutes, 29 seconds it. Now, why do I like this approach" [ref=e3875] [cursor=pointer]:
+                - generic [ref=e3877]: 14:29
+                - generic [ref=e3878]: it. Now, why do I like this approach
+              - button "14 minutes, 31 seconds better than anything else that I've seen" [ref=e3880] [cursor=pointer]:
+                - generic [ref=e3882]: 14:31
+                - generic [ref=e3883]: better than anything else that I've seen
+              - button "14 minutes, 33 seconds or tried? Well, something like Notion" [ref=e3885] [cursor=pointer]:
+                - generic [ref=e3887]: 14:33
+                - generic [ref=e3888]: or tried? Well, something like Notion
+              - button "14 minutes, 35 seconds AI, for example, as as good as it is," [ref=e3890] [cursor=pointer]:
+                - generic [ref=e3892]: 14:35
+                - generic [ref=e3893]: AI, for example, as as good as it is,
+              - button "14 minutes, 37 seconds it's confined into the Notion ecosystem." [ref=e3895] [cursor=pointer]:
+                - generic [ref=e3897]: 14:37
+                - generic [ref=e3898]: it's confined into the Notion ecosystem.
+              - button "14 minutes, 40 seconds With this system that I built here" [ref=e3900] [cursor=pointer]:
+                - generic [ref=e3902]: 14:40
+                - generic [ref=e3903]: With this system that I built here
+              - button "14 minutes, 42 seconds between Obsidian and Cloud Code, I'm not" [ref=e3905] [cursor=pointer]:
+                - generic [ref=e3907]: 14:42
+                - generic [ref=e3908]: between Obsidian and Cloud Code, I'm not
+              - button "14 minutes, 44 seconds confined into that here. I can" [ref=e3910] [cursor=pointer]:
+                - generic [ref=e3912]: 14:44
+                - generic [ref=e3913]: confined into that here. I can
+              - button "14 minutes, 46 seconds completely customize this to however I" [ref=e3915] [cursor=pointer]:
+                - generic [ref=e3917]: 14:46
+                - generic [ref=e3918]: completely customize this to however I
+              - button "14 minutes, 48 seconds work. The system is mine. Yes, I'm using" [ref=e3920] [cursor=pointer]:
+                - generic [ref=e3922]: 14:48
+                - generic [ref=e3923]: work. The system is mine. Yes, I'm using
+              - button "14 minutes, 51 seconds Obsidian, but those files are living on" [ref=e3925] [cursor=pointer]:
+                - generic [ref=e3927]: 14:51
+                - generic [ref=e3928]: Obsidian, but those files are living on
+              - button "14 minutes, 53 seconds my computer. I'm not locked into one" [ref=e3930] [cursor=pointer]:
+                - generic [ref=e3932]: 14:53
+                - generic [ref=e3933]: my computer. I'm not locked into one
+              - button "14 minutes, 55 seconds vendor or whatever. It allows me to go" [ref=e3935] [cursor=pointer]:
+                - generic [ref=e3937]: 14:55
+                - generic [ref=e3938]: vendor or whatever. It allows me to go
+              - button "14 minutes, 57 seconds from using, you know, seven different" [ref=e3940] [cursor=pointer]:
+                - generic [ref=e3942]: 14:57
+                - generic [ref=e3943]: from using, you know, seven different
+              - button "14 minutes, 59 seconds tools down to just two. Obsidian and" [ref=e3945] [cursor=pointer]:
+                - generic [ref=e3947]: 14:59
+                - generic [ref=e3948]: tools down to just two. Obsidian and
+              - button "15 minutes, 2 seconds Claude Code. So that's the system and" [ref=e3950] [cursor=pointer]:
+                - generic [ref=e3952]: 15:02
+                - generic [ref=e3953]: Claude Code. So that's the system and
+              - button "15 minutes, 4 seconds it's not complicated to build. The real" [ref=e3955] [cursor=pointer]:
+                - generic [ref=e3957]: 15:04
+                - generic [ref=e3958]: it's not complicated to build. The real
+              - button "15 minutes, 6 seconds work is using it consistently. I run my" [ref=e3960] [cursor=pointer]:
+                - generic [ref=e3962]: 15:06
+                - generic [ref=e3963]: work is using it consistently. I run my
+              - button "15 minutes, 9 seconds entire business now through Claude Code" [ref=e3965] [cursor=pointer]:
+                - generic [ref=e3967]: 15:09
+                - generic [ref=e3968]: entire business now through Claude Code
+              - button "15 minutes, 12 seconds here in VS Code and Obsidian. Now if you" [ref=e3970] [cursor=pointer]:
+                - generic [ref=e3972]: 15:12
+                - generic [ref=e3973]: here in VS Code and Obsidian. Now if you
+              - button "15 minutes, 15 seconds want the actual slash commands that we" [ref=e3975] [cursor=pointer]:
+                - generic [ref=e3977]: 15:15
+                - generic [ref=e3978]: want the actual slash commands that we
+              - button "15 minutes, 16 seconds talked about here today, the folder" [ref=e3980] [cursor=pointer]:
+                - generic [ref=e3982]: 15:16
+                - generic [ref=e3983]: talked about here today, the folder
+              - button "15 minutes, 18 seconds structure, the dashboard setup, the" [ref=e3985] [cursor=pointer]:
+                - generic [ref=e3987]: 15:18
+                - generic [ref=e3988]: structure, the dashboard setup, the
+              - button "15 minutes, 19 seconds skills files, everything I just showed" [ref=e3990] [cursor=pointer]:
+                - generic [ref=e3992]: 15:19
+                - generic [ref=e3993]: skills files, everything I just showed
+              - button "15 minutes, 21 seconds you, I put it all inside the AI playbook" [ref=e3995] [cursor=pointer]:
+                - generic [ref=e3997]: 15:21
+                - generic [ref=e3998]: you, I put it all inside the AI playbook
+              - button "15 minutes, 23 seconds community, I'll link to it. You can grab" [ref=e4000] [cursor=pointer]:
+                - generic [ref=e4002]: 15:23
+                - generic [ref=e4003]: community, I'll link to it. You can grab
+              - button "15 minutes, 25 seconds it, set it up, start running your own AI" [ref=e4005] [cursor=pointer]:
+                - generic [ref=e4007]: 15:25
+                - generic [ref=e4008]: it, set it up, start running your own AI
+              - button "15 minutes, 27 seconds chief of staff. I'll link to it in the" [ref=e4010] [cursor=pointer]:
+                - generic [ref=e4012]: 15:27
+                - generic [ref=e4013]: chief of staff. I'll link to it in the
+              - button "15 minutes, 29 seconds description below. As always, thanks so" [ref=e4015] [cursor=pointer]:
+                - generic [ref=e4017]: 15:29
+                - generic [ref=e4018]: description below. As always, thanks so
+              - button "15 minutes, 30 seconds much for watching today's video. I'll" [ref=e4020] [cursor=pointer]:
+                - generic [ref=e4022]: 15:30
+                - generic [ref=e4023]: much for watching today's video. I'll
+              - button "15 minutes, 32 seconds see you in the next" [ref=e4025] [cursor=pointer]:
+                - generic [ref=e4027]: 15:32
+                - generic [ref=e4028]: see you in the next
+            - generic [ref=e4032]:
+              - tooltip "tooltip"
+              - group [ref=e4034]:
+                - button "English (auto-generated)" [ref=e4036]:
+                  - generic [ref=e4037]: English (auto-generated)
+        - generic [ref=e346]:
+          - generic [ref=e348] [cursor=pointer]:
+            - link [ref=e349]:
+              - /url: /watch?v=HCwfRe5EHGQ&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e356]: 14:52
+            - generic [ref=e358]:
+              - generic [ref=e359]:
+                - heading "5 Mind-Blowing Use Cases of Claude Skills 14 minutes, 52 seconds" [level=3] [ref=e360]:
+                  - link "5 Mind-Blowing Use Cases of Claude Skills 14 minutes, 52 seconds" [ref=e361]:
+                    - /url: /watch?v=HCwfRe5EHGQ&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: 5 Mind-Blowing Use Cases of Claude Skills
+                - generic [ref=e363]:
+                  - generic [ref=e365]: Rick Mulready
+                  - generic [ref=e366]:
+                    - generic [ref=e367]: 130K views
+                    - generic [ref=e368]: •
+                    - generic [ref=e369]: 4 months ago
+              - button "More actions" [ref=e372]:
+                - generic [ref=e376]:
+                  - img
+          - generic [ref=e381] [cursor=pointer]:
+            - link [ref=e382]:
+              - /url: /watch?v=FtCdYhspm7w&pp=ugUEEgJlbg%3D%3D
+              - generic [ref=e389]: 26:53
+            - generic [ref=e391]:
+              - generic [ref=e392]:
+                - heading "I Broke Down Anthropic's $2.5 Billion Leak. Your Agent Is Missing 12 Critical Pieces. 26 minutes" [level=3] [ref=e393]:
+                  - link "I Broke Down Anthropic's $2.5 Billion Leak. Your Agent Is Missing 12 Critical Pieces. 26 minutes" [ref=e394]:
+                    - /url: /watch?v=FtCdYhspm7w&pp=ugUEEgJlbg%3D%3D
+                    - text: I Broke Down Anthropic's $2.5 Billion Leak. Your Agent Is Missing 12 Critical Pieces.
+                - generic [ref=e396]:
+                  - generic [ref=e398]: AI News & Strategy Daily | Nate B Jones
+                  - generic [ref=e399]:
+                    - generic [ref=e400]: 66K views
+                    - generic [ref=e401]: •
+                    - generic [ref=e402]: 17 hours ago
+                  - generic [ref=e407]: New
+              - button "More actions" [ref=e410]:
+                - generic [ref=e414]:
+                  - img
+          - generic [ref=e419] [cursor=pointer]:
+            - link [ref=e420]:
+              - /url: /watch?v=_E4ZT1h7MZs
+              - generic [ref=e427]: 14:55
+            - generic [ref=e429]:
+              - generic [ref=e430]:
+                - heading "I was hacked... 14 minutes, 55 seconds" [level=3] [ref=e431]:
+                  - link "I was hacked... 14 minutes, 55 seconds" [ref=e432]:
+                    - /url: /watch?v=_E4ZT1h7MZs
+                    - text: I was hacked...
+                - generic [ref=e434]:
+                  - generic [ref=e436]:
+                    - text: Matthew Berman
+                    - img [ref=e439]:
+                      - generic [ref=e441]:
+                        - img
+                  - generic [ref=e442]:
+                    - generic [ref=e443]: 27K views
+                    - generic [ref=e444]: •
+                    - generic [ref=e445]: 10 hours ago
+                  - generic [ref=e450]: New
+              - button "More actions" [ref=e453]:
+                - generic [ref=e457]:
+                  - img
+          - generic [ref=e462] [cursor=pointer]:
+            - link [ref=e463]:
+              - /url: /watch?v=49V-5Ock8LU&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+              - generic [ref=e470]: 18:57
+            - generic [ref=e472]:
+              - generic [ref=e473]:
+                - heading "18 Claude Code Token Hacks in 18 Minutes 18 minutes" [level=3] [ref=e474]:
+                  - link "18 Claude Code Token Hacks in 18 Minutes 18 minutes" [ref=e475]:
+                    - /url: /watch?v=49V-5Ock8LU&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+                    - text: 18 Claude Code Token Hacks in 18 Minutes
+                - generic [ref=e477]:
+                  - generic [ref=e479]:
+                    - text: Nate Herk | AI Automation
+                    - img [ref=e482]:
+                      - generic [ref=e484]:
+                        - img
+                  - generic [ref=e485]:
+                    - generic [ref=e486]: 66K views
+                    - generic [ref=e487]: •
+                    - generic [ref=e488]: 2 days ago
+                  - generic [ref=e493]: New
+              - button "More actions" [ref=e496]:
+                - generic [ref=e500]:
+                  - img
+          - generic [ref=e505] [cursor=pointer]:
+            - link [ref=e506]:
+              - /url: /watch?v=MsQACpcuTkU
+              - generic [ref=e513]: 33:44
+            - generic [ref=e515]:
+              - generic [ref=e516]:
+                - heading "You've Been Using AI the Hard Way (Use This Instead) 33 minutes" [level=3] [ref=e517]:
+                  - link "You've Been Using AI the Hard Way (Use This Instead) 33 minutes" [ref=e518]:
+                    - /url: /watch?v=MsQACpcuTkU
+                    - text: You've Been Using AI the Hard Way (Use This Instead)
+                - generic [ref=e520]:
+                  - generic [ref=e522]:
+                    - text: NetworkChuck
+                    - img [ref=e525]:
+                      - generic [ref=e527]:
+                        - img
+                  - generic [ref=e528]:
+                    - generic [ref=e529]: 1.8M views
+                    - generic [ref=e530]: •
+                    - generic [ref=e531]: 5 months ago
+              - button "More actions" [ref=e534]:
+                - generic [ref=e538]:
+                  - img
+          - generic [ref=e543] [cursor=pointer]:
+            - link [ref=e544]:
+              - /url: /watch?v=GTjACKMujwA&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e551]: 18:21
+            - generic [ref=e553]:
+              - generic [ref=e554]:
+                - heading "How to Prompt Better Than 99% of People 18 minutes" [level=3] [ref=e555]:
+                  - link "How to Prompt Better Than 99% of People 18 minutes" [ref=e556]:
+                    - /url: /watch?v=GTjACKMujwA&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: How to Prompt Better Than 99% of People
+                - generic [ref=e558]:
+                  - generic [ref=e560]: Rick Mulready
+                  - generic [ref=e561]:
+                    - generic [ref=e562]: 10K views
+                    - generic [ref=e563]: •
+                    - generic [ref=e564]: 5 months ago
+              - button "More actions" [ref=e567]:
+                - generic [ref=e571]:
+                  - img
+          - generic [ref=e576] [cursor=pointer]:
+            - link [ref=e577]:
+              - /url: /watch?v=IYF4NtECX3s&pp=ugUEEgJlbg%3D%3D
+              - generic [ref=e584]: 21:00
+            - generic [ref=e586]:
+              - generic [ref=e587]:
+                - 'heading "Claude: From Beginner To Pro In 21 Minutes 21 minutes" [level=3] [ref=e588]':
+                  - 'link "Claude: From Beginner To Pro In 21 Minutes 21 minutes" [ref=e589]':
+                    - /url: /watch?v=IYF4NtECX3s&pp=ugUEEgJlbg%3D%3D
+                    - text: "Claude: From Beginner To Pro In 21 Minutes"
+                - generic [ref=e591]:
+                  - generic [ref=e593]: AI Edge
+                  - generic [ref=e594]:
+                    - generic [ref=e595]: 4K views
+                    - generic [ref=e596]: •
+                    - generic [ref=e597]: 11 hours ago
+                  - generic [ref=e602]: New
+              - button "More actions" [ref=e605]:
+                - generic [ref=e609]:
+                  - img
+          - generic [ref=e614] [cursor=pointer]:
+            - link [ref=e615]:
+              - /url: /watch?v=h2P7Q2sI_nM&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e622]: 19:29
+            - generic [ref=e624]:
+              - generic [ref=e625]:
+                - 'heading "Don’t Waste Money: Which AI Subscription Is Worth It? 19 minutes" [level=3] [ref=e626]':
+                  - 'link "Don’t Waste Money: Which AI Subscription Is Worth It? 19 minutes" [ref=e627]':
+                    - /url: /watch?v=h2P7Q2sI_nM&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: "Don’t Waste Money: Which AI Subscription Is Worth It?"
+                - generic [ref=e629]:
+                  - generic [ref=e631]: Rick Mulready
+                  - generic [ref=e632]:
+                    - generic [ref=e633]: 218K views
+                    - generic [ref=e634]: •
+                    - generic [ref=e635]: 2 months ago
+              - button "More actions" [ref=e638]:
+                - generic [ref=e642]:
+                  - img
+          - generic [ref=e647] [cursor=pointer]:
+            - link [ref=e648]:
+              - /url: /watch?v=XRU-CjzYt_o&pp=ugUEEgJlbg%3D%3D
+              - generic [ref=e655]: 16:07
+            - generic [ref=e657]:
+              - generic [ref=e658]:
+                - heading "Why I Switched From ChatGPT to Claude (without losing anything) 16 minutes" [level=3] [ref=e659]:
+                  - link "Why I Switched From ChatGPT to Claude (without losing anything) 16 minutes" [ref=e660]:
+                    - /url: /watch?v=XRU-CjzYt_o&pp=ugUEEgJlbg%3D%3D
+                    - text: Why I Switched From ChatGPT to Claude (without losing anything)
+                - generic [ref=e662]:
+                  - generic [ref=e664]:
+                    - text: Dan Martell
+                    - img [ref=e667]:
+                      - generic [ref=e669]:
+                        - img
+                  - generic [ref=e670]:
+                    - generic [ref=e671]: 151K views
+                    - generic [ref=e672]: •
+                    - generic [ref=e673]: 1 day ago
+                  - generic [ref=e678]: New
+              - button "More actions" [ref=e681]:
+                - generic [ref=e685]:
+                  - img
+          - generic [ref=e690] [cursor=pointer]:
+            - link [ref=e691]:
+              - /url: /watch?v=BZ1hs2ZcnJc&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+              - generic [ref=e698]: 31:05
+            - generic [ref=e700]:
+              - generic [ref=e701]:
+                - 'heading "AI News: Anthropic Leak is Bigger Than You Think 31 minutes" [level=3] [ref=e702]':
+                  - 'link "AI News: Anthropic Leak is Bigger Than You Think 31 minutes" [ref=e703]':
+                    - /url: /watch?v=BZ1hs2ZcnJc&pp=ugUEEgJlbtIHCQnZCgGHKiGM7w%3D%3D
+                    - text: "AI News: Anthropic Leak is Bigger Than You Think"
+                - generic [ref=e705]:
+                  - generic [ref=e707]:
+                    - text: Matt Wolfe
+                    - img [ref=e710]:
+                      - generic [ref=e712]:
+                        - img
+                  - generic [ref=e713]:
+                    - generic [ref=e714]: 44K views
+                    - generic [ref=e715]: •
+                    - generic [ref=e716]: 16 hours ago
+                  - generic [ref=e721]: New
+              - button "More actions" [ref=e724]:
+                - generic [ref=e728]:
+                  - img
+          - generic [ref=e733] [cursor=pointer]:
+            - link [ref=e734]:
+              - /url: /watch?v=-xid_9WijQ0&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e741]: 18:40
+            - generic [ref=e743]:
+              - generic [ref=e744]:
+                - heading "Claude Cowork Just Changed How You Do Marketing 18 minutes" [level=3] [ref=e745]:
+                  - link "Claude Cowork Just Changed How You Do Marketing 18 minutes" [ref=e746]:
+                    - /url: /watch?v=-xid_9WijQ0&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: Claude Cowork Just Changed How You Do Marketing
+                - generic [ref=e748]:
+                  - generic [ref=e750]: Rick Mulready
+                  - generic [ref=e751]:
+                    - generic [ref=e752]: 17K views
+                    - generic [ref=e753]: •
+                    - generic [ref=e754]: 3 weeks ago
+              - button "More actions" [ref=e757]:
+                - generic [ref=e761]:
+                  - img
+          - generic [ref=e766] [cursor=pointer]:
+            - link [ref=e767]:
+              - /url: /watch?v=GFaCCeYyf8M&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e774]: 12:33
+            - generic [ref=e776]:
+              - generic [ref=e777]:
+                - heading "The Only 8 AI Tools You Need in 2026 12 minutes, 33 seconds" [level=3] [ref=e778]:
+                  - link "The Only 8 AI Tools You Need in 2026 12 minutes, 33 seconds" [ref=e779]:
+                    - /url: /watch?v=GFaCCeYyf8M&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: The Only 8 AI Tools You Need in 2026
+                - generic [ref=e781]:
+                  - generic [ref=e783]: Rick Mulready
+                  - generic [ref=e784]:
+                    - generic [ref=e785]: 33K views
+                    - generic [ref=e786]: •
+                    - generic [ref=e787]: 1 month ago
+              - button "More actions" [ref=e790]:
+                - generic [ref=e794]:
+                  - img
+          - generic [ref=e799] [cursor=pointer]:
+            - link [ref=e800]:
+              - /url: /watch?v=2kbINqpluM0&pp=ugUEEgJlbg%3D%3D
+              - generic [ref=e807]: 14:01
+            - generic [ref=e809]:
+              - generic [ref=e810]:
+                - heading "Claude Code Turned Obsidian Into My Dream Second Brain 14 minutes, 1 second" [level=3] [ref=e811]:
+                  - link "Claude Code Turned Obsidian Into My Dream Second Brain 14 minutes, 1 second" [ref=e812]:
+                    - /url: /watch?v=2kbINqpluM0&pp=ugUEEgJlbg%3D%3D
+                    - text: Claude Code Turned Obsidian Into My Dream Second Brain
+                - generic [ref=e814]:
+                  - generic [ref=e816]: Mark Kashef
+                  - generic [ref=e817]:
+                    - generic [ref=e818]: 67K views
+                    - generic [ref=e819]: •
+                    - generic [ref=e820]: 2 weeks ago
+              - button "More actions" [ref=e823]:
+                - generic [ref=e827]:
+                  - img
+          - generic [ref=e832] [cursor=pointer]:
+            - link [ref=e833]:
+              - /url: /watch?v=W1Mws_qxCRU&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e840]: 32:11
+            - generic [ref=e842]:
+              - generic [ref=e843]:
+                - heading "Qwen AI Just Showed Why The US Can't Ignore China Anymore 32 minutes" [level=3] [ref=e844]:
+                  - link "Qwen AI Just Showed Why The US Can't Ignore China Anymore 32 minutes" [ref=e845]:
+                    - /url: /watch?v=W1Mws_qxCRU&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: Qwen AI Just Showed Why The US Can't Ignore China Anymore
+                - generic [ref=e847]:
+                  - generic [ref=e849]: Limitless Podcast
+                  - generic [ref=e850]:
+                    - generic [ref=e851]: 9.3K views
+                    - generic [ref=e852]: •
+                    - generic [ref=e853]: 17 hours ago
+                  - generic [ref=e858]: New
+              - button "More actions" [ref=e861]:
+                - generic [ref=e865]:
+                  - img
+          - generic [ref=e870] [cursor=pointer]:
+            - link [ref=e871]:
+              - /url: /watch?v=ZlDnsf_DOzg
+              - generic [ref=e878]: 27:24
+            - generic [ref=e880]:
+              - generic [ref=e881]:
+                - heading "Every Claude Code Concept Explained for Normal People 27 minutes" [level=3] [ref=e882]:
+                  - link "Every Claude Code Concept Explained for Normal People 27 minutes" [ref=e883]:
+                    - /url: /watch?v=ZlDnsf_DOzg
+                    - text: Every Claude Code Concept Explained for Normal People
+                - generic [ref=e885]:
+                  - generic [ref=e887]: Simon Scrapes
+                  - generic [ref=e888]:
+                    - generic [ref=e889]: 445K views
+                    - generic [ref=e890]: •
+                    - generic [ref=e891]: 1 month ago
+              - button "More actions" [ref=e894]:
+                - generic [ref=e898]:
+                  - img
+          - generic [ref=e903] [cursor=pointer]:
+            - link [ref=e904]:
+              - /url: /watch?v=mBHRPeg8zPU
+              - generic [ref=e911]: 7:22
+            - generic [ref=e913]:
+              - generic [ref=e914]:
+                - heading "Tragic mistake... Anthropic leaks Claude’s source code 7 minutes, 22 seconds" [level=3] [ref=e915]:
+                  - link "Tragic mistake... Anthropic leaks Claude’s source code 7 minutes, 22 seconds" [ref=e916]:
+                    - /url: /watch?v=mBHRPeg8zPU
+                    - text: Tragic mistake... Anthropic leaks Claude’s source code
+                - generic [ref=e918]:
+                  - generic [ref=e920]:
+                    - text: Fireship
+                    - img [ref=e923]:
+                      - generic [ref=e925]:
+                        - img
+                  - generic [ref=e926]:
+                    - generic [ref=e927]: 2.5M views
+                    - generic [ref=e928]: •
+                    - generic [ref=e929]: 2 days ago
+                  - generic [ref=e934]: New
+              - button "More actions" [ref=e937]:
+                - generic [ref=e941]:
+                  - img
+          - generic [ref=e946] [cursor=pointer]:
+            - link [ref=e947]:
+              - /url: /watch?v=z9k15PNKuRg&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e954]: 16:11
+            - generic [ref=e956]:
+              - generic [ref=e957]:
+                - heading "Claude Plugins Give You Superpowers, Here's How to Unlock Them 16 minutes" [level=3] [ref=e958]:
+                  - link "Claude Plugins Give You Superpowers, Here's How to Unlock Them 16 minutes" [ref=e959]:
+                    - /url: /watch?v=z9k15PNKuRg&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: Claude Plugins Give You Superpowers, Here's How to Unlock Them
+                - generic [ref=e961]:
+                  - generic [ref=e963]: Rick Mulready
+                  - generic [ref=e964]:
+                    - generic [ref=e965]: 117K views
+                    - generic [ref=e966]: •
+                    - generic [ref=e967]: 1 month ago
+              - button "More actions" [ref=e970]:
+                - generic [ref=e974]:
+                  - img
+          - generic [ref=e979] [cursor=pointer]:
+            - link [ref=e980]:
+              - /url: /watch?v=WHQ7jYUTohs&pp=ugUHEgVlbi1VUw%3D%3D
+              - generic [ref=e987]: 17:19
+            - generic [ref=e989]:
+              - generic [ref=e990]:
+                - heading "9 Gemini 3 Tricks That Will Help You Become a Pro 17 minutes" [level=3] [ref=e991]:
+                  - link "9 Gemini 3 Tricks That Will Help You Become a Pro 17 minutes" [ref=e992]:
+                    - /url: /watch?v=WHQ7jYUTohs&pp=ugUHEgVlbi1VUw%3D%3D
+                    - text: 9 Gemini 3 Tricks That Will Help You Become a Pro
+                - generic [ref=e994]:
+                  - generic [ref=e996]: Rick Mulready
+                  - generic [ref=e997]:
+                    - generic [ref=e998]: 57K views
+                    - generic [ref=e999]: •
+                    - generic [ref=e1000]: 3 months ago
+              - button "More actions" [ref=e1003]:
+                - generic [ref=e1007]:
+                  - img
+          - generic [ref=e1012] [cursor=pointer]:
+            - link [ref=e1013]:
+              - /url: /watch?v=vnocKrxasg4&pp=ugUEEgJlbg%3D%3D
+              - generic [ref=e1020]: 26:12
+            - generic [ref=e1022]:
+              - generic [ref=e1023]:
+                - heading "Why Claude Keeps Hitting Usage Limits (& how to fix it) 26 minutes" [level=3] [ref=e1024]:
+                  - link "Why Claude Keeps Hitting Usage Limits (& how to fix it) 26 minutes" [ref=e1025]:
+                    - /url: /watch?v=vnocKrxasg4&pp=ugUEEgJlbg%3D%3D
+                    - text: Why Claude Keeps Hitting Usage Limits (& how to fix it)
+                - generic [ref=e1027]:
+                  - generic [ref=e1029]: Eliot Prince
+                  - generic [ref=e1030]:
+                    - generic [ref=e1031]: 8K views
+                    - generic [ref=e1032]: •
+                    - generic [ref=e1033]: 16 hours ago
+                  - generic [ref=e1038]: New
+              - button "More actions" [ref=e1041]:
+                - generic [ref=e1045]:
+                  - img
+          - generic [ref=e1050] [cursor=pointer]:
+            - link [ref=e1051]:
+              - /url: /watch?v=gHB4JFG9i3k
+              - generic [ref=e1058]: 25:38
+            - generic [ref=e1060]:
+              - generic [ref=e1061]:
+                - 'heading "Claude Code: Build Your First AI Agent 25 minutes" [level=3] [ref=e1062]':
+                  - 'link "Claude Code: Build Your First AI Agent 25 minutes" [ref=e1063]':
+                    - /url: /watch?v=gHB4JFG9i3k
+                    - text: "Claude Code: Build Your First AI Agent"
+                - generic [ref=e1065]:
+                  - generic [ref=e1067]:
+                    - text: Teacher's Tech
+                    - img [ref=e1070]:
+                      - generic [ref=e1072]:
+                        - img
+                  - generic [ref=e1073]:
+                    - generic [ref=e1074]: 59K views
+                    - generic [ref=e1075]: •
+                    - generic [ref=e1076]: 11 days ago
+              - button "More actions" [ref=e1079]:
+                - generic [ref=e1083]:
+                  - img
