@@ -24,7 +24,7 @@ description: Read daily-notes and create a structured daily plan with estimated 
 
 ## Goal
 
-Read `#tasks` section from `daily-notes/{today}.md`, auto-fill missing EST/start/end dates, and create `daily-plans/{today}.md`.
+Read `#tasks` section from `daily-notes/{today}.md`, auto-fill missing priority and EST/start/end dates, and create `daily-plans/{today}.md` with tasks ordered from high priority to low priority.
 
 ---
 
@@ -73,7 +73,7 @@ Extract only the `#tasks` section (stop at next `#` section or end of file).
 #tasks
 ## project-a
 - fix bug a
-- implement feature b | est: 3h | start: 2026-04-04 | end: 2026-04-06
+- implement feature b | priority: high | est: 3h | start: 2026-04-04 | end: 2026-04-06
 ## project-b
 - fix bug c
 ```
@@ -81,7 +81,7 @@ Extract only the `#tasks` section (stop at next `#` section or end of file).
 **Parsing rules:**
 - `## heading` → project name
 - `- item` → one task
-- User may provide any combination of `est:`, `start:`, `end:` inline — extract if present
+- User may provide any combination of `priority:`, `est:`, `start:`, `end:` inline — extract if present
 - If any field is missing → Claude fills it in (see Step 4)
 - Ignore all sections other than `#tasks` (`#ideas`, `#notes`, etc.)
 
@@ -89,7 +89,15 @@ Extract only the `#tasks` section (stop at next `#` section or end of file).
 
 ## Step 4: Fill Missing Fields
 
-For each task without complete EST/start/end, auto-fill:
+For each task without complete priority/EST/start/end, auto-fill:
+
+**Priority:**
+- Respect user-provided `priority:` if present
+- Normalize to `High`, `Medium`, or `Low`
+- "fix/bug/hotfix/urgent/blocker/prod" → `High`
+- "implement/build/create/review/test" → `Medium`
+- "research/investigate/docs/cleanup/refactor" → `Low`
+- default → `Medium`
 
 **EST** (estimate duration):
 - "fix/bug/debug" → 1–2h
@@ -129,6 +137,7 @@ Options:
 - Continue ID sequence from last used N
 - Insert new tasks into the correct project section; create section if project doesn't exist yet
 - Do not touch existing tasks, Actual values, or Status
+- Re-sort each affected project section by priority order `High`, `Medium`, `Low`
 
 ---
 
@@ -154,16 +163,16 @@ Source: [[daily-notes/{YYYY-MM-DD}]]
 
 ## {project-a}
 
-| ID | Task | Start | End | EST | Actual | Status |
-|----|------|-------|-----|-----|--------|--------|
-| 0404-1 | Fix bug a | 2026-04-04 | 2026-04-04 | 1h | — | pending |
-| 0404-2 | Implement feature b | 2026-04-04 | 2026-04-06 | 3h | — | pending |
+| ID | Task | Priority | Start | End | EST | Actual | Status |
+|----|------|----------|-------|-----|-----|--------|--------|
+| 0404-1 | Fix bug a | High | 2026-04-04 | 2026-04-04 | 1h | — | pending |
+| 0404-2 | Implement feature b | Medium | 2026-04-04 | 2026-04-06 | 3h | — | pending |
 
 ## {project-b}
 
-| ID | Task | Start | End | EST | Actual | Status |
-|----|------|-------|-----|-----|--------|--------|
-| 0404-3 | Fix bug c | 2026-04-05 | 2026-04-05 | 1h | — | pending |
+| ID | Task | Priority | Start | End | EST | Actual | Status |
+|----|------|----------|-------|-----|-----|--------|--------|
+| 0404-3 | Fix bug c | High | 2026-04-05 | 2026-04-05 | 1h | — | pending |
 
 ## Notes
 
@@ -171,9 +180,11 @@ Source: [[daily-notes/{YYYY-MM-DD}]]
 
 **Notes:**
 - `Source: [[daily-notes/{YYYY-MM-DD}]]` — Obsidian wiki-link, clickable in the app
+- Add a `Priority` column with values `High` | `Medium` | `Low`
 - `Actual` column starts as `—`, filled during `/daily-review`
 - **Progress column:** only add for tasks with progress > 0% (carried forward). Omit for new tasks.
 - **Status values:** `pending` | `done` | `in-progress` | `blocked`
+- Sort tasks inside each project from `High` to `Medium` to `Low`
 
 ---
 

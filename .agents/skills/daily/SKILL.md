@@ -5,7 +5,7 @@ description: Read the tasks section from a daily note, fill missing estimate and
 
 # Daily
 
-Read `daily-notes/{today}.md`, extract the `#tasks` section, auto-fill missing scheduling fields, and write `daily-plans/{today}.md`. Keep IDs stable, preserve existing work on append, and only operate inside the planning workspace.
+Read `daily-notes/{today}.md`, extract the `#tasks` section, auto-fill missing scheduling fields, and write `daily-plans/{today}.md`. Keep IDs stable, preserve existing work on append, and order tasks by priority from high to low when displaying and writing plan tables.
 
 ## Workspace Layout
 
@@ -29,7 +29,7 @@ Read only the `#tasks` section from `daily-notes/{today}.md`.
 - Stop at the next top-level section that starts with `# `, or end of file.
 - Treat `## <project>` as a project heading inside `#tasks`.
 - Treat each `- <task>` line as one task.
-- Parse optional inline fields after `|` segments: `est:`, `start:`, `end:`.
+- Parse optional inline fields after `|` segments: `priority:`, `est:`, `start:`, `end:`.
 
 Expected structure:
 
@@ -37,7 +37,7 @@ Expected structure:
 #tasks
 ## project-a
 - fix bug a
-- implement feature b | est: 3h | start: 2026-04-04 | end: 2026-04-06
+- implement feature b | priority: high | est: 3h | start: 2026-04-04 | end: 2026-04-06
 ## project-b
 - fix bug c
 ```
@@ -76,6 +76,15 @@ Create the file first, then run $daily again.
 - Fill only the missing fields in the next step.
 
 ### 4. Fill Missing Fields
+
+Priority rules:
+- Respect user-provided `priority:` if present.
+- Normalize values to `High`, `Medium`, or `Low`.
+- If priority is missing, infer it:
+- `fix`, `bug`, `hotfix`, `urgent`, `blocker`, `prod` -> `High`
+- `implement`, `build`, `create`, `review`, `test` -> `Medium`
+- `research`, `investigate`, `docs`, `cleanup`, `refactor` -> `Low`
+- default -> `Medium`
 
 Estimate rules:
 - `fix`, `bug`, `debug` -> `1-2h`
@@ -117,6 +126,7 @@ Append behavior:
 - Insert only new tasks into the correct project section.
 - Create the project section if it does not exist.
 - Never regenerate IDs for existing rows.
+- Re-sort each affected project table by priority order `High`, `Medium`, `Low` after inserting new tasks.
 
 ### 6. Generate Task IDs
 
@@ -143,26 +153,28 @@ Source: [[daily-notes/{today}]]
 
 ## {project-a}
 
-| ID | Task | Start | End | EST | Actual | Status |
-|----|------|-------|-----|-----|--------|--------|
-| 0404-1 | Fix bug a | 2026-04-04 | 2026-04-04 | 1h | -- | pending |
-| 0404-2 | Implement feature b | 2026-04-04 | 2026-04-06 | 3h | -- | pending |
+| ID | Task | Priority | Start | End | EST | Actual | Status |
+|----|------|----------|-------|-----|-----|--------|--------|
+| 0404-1 | Fix bug a | High | 2026-04-04 | 2026-04-04 | 1h | -- | pending |
+| 0404-2 | Implement feature b | Medium | 2026-04-04 | 2026-04-06 | 3h | -- | pending |
 
 ## {project-b}
 
-| ID | Task | Start | End | EST | Actual | Status |
-|----|------|-------|-----|-----|--------|--------|
-| 0404-3 | Fix bug c | 2026-04-05 | 2026-04-05 | 1h | -- | pending |
+| ID | Task | Priority | Start | End | EST | Actual | Status |
+|----|------|----------|-------|-----|-----|--------|--------|
+| 0404-3 | Fix bug c | High | 2026-04-05 | 2026-04-05 | 1h | -- | pending |
 
 ## Notes
 ```
 
 Formatting rules:
 - Use the `Source: [[daily-notes/{today}]]` line exactly below frontmatter.
+- Include a `Priority` column with values limited to `High`, `Medium`, and `Low`.
 - Set `Actual` to `--` for new tasks.
 - Allowed status values: `pending`, `done`, `in-progress`, `blocked`.
 - Do not add a `Progress` column for a new file.
 - If you are appending into an existing project table that already contains a `Progress` column, preserve that table shape.
+- Sort each project table by priority order `High`, then `Medium`, then `Low`. Keep existing relative order inside the same priority band.
 
 ### 8. Confirm the Result
 
