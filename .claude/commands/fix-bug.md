@@ -21,6 +21,7 @@ If any of the following is unclear, use `AskUserQuestion` before proceeding:
 - **Actual behavior**: What happens instead?
 - **Trigger condition**: Under what inputs/state/sequence does it occur?
 - **Reproduction path**: Can it be reproduced reliably? How?
+- **Environment**: Which OS, runtime version, config, or deployment environment does this occur in? Does it occur in all environments or only specific ones?
 
 If reproduction path is ambiguous, state confidence level explicitly before attempting a fix.
 
@@ -53,6 +54,8 @@ Trace the issue layer by layer:
 | **Symptom** | Visible wrong behavior | "Button does nothing" |
 | **Immediate cause** | Direct code failure | "Event handler not attached" |
 | **Underlying cause** | Why the immediate cause exists | "Component re-renders wipe the ref" |
+
+**Start from the trigger condition and trace backward**: identify where the actual state first diverges from expected, then follow the call chain upstream to the root.
 
 **Tools:**
 - Read relevant files to trace the execution path
@@ -96,11 +99,9 @@ Select the **most minimal** strategy that correctly addresses the underlying cau
 Before closing, check:
 
 - [ ] Is there an existing test that should have caught this? If so, why didn't it?
-- [ ] Should a new test be added to prevent recurrence?
+- [ ] Should a new test be added to prevent recurrence? **If yes, add it now** unless the user explicitly asks to defer.
 - [ ] Can this bug recur via a similar code path elsewhere?
 - [ ] Should any logging or monitoring be added at the failure point?
-
-If a test should be added, either add it now or create a follow-up task.
 
 ---
 
@@ -113,6 +114,7 @@ Provide a concise summary:
 
 **Bug**: [one-line description]
 **Reproduction**: [steps or "could not reproduce — confidence low"]
+**Environment**: [OS, runtime version, config — or "all environments"]
 **Root cause**:
   - Symptom: [...]
   - Immediate cause: [...]

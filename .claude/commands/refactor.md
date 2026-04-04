@@ -61,20 +61,9 @@ If no motivation from the above applies, stop and reconsider whether refactoring
 
 ---
 
-## Step 4: Define Safe Boundaries
+## Step 4: Verify Safety Net
 
-Before writing any code, declare constraints:
-
-- **External contract**: List the interfaces, exports, or API endpoints that must not change.
-- **No behavior change**: If a behavioral change is discovered as necessary, it must be separated into a different task.
-- **No mixed concerns**: Do not fix bugs or add features inline. Note them and create follow-up tasks.
-- **Incremental if large**: If the refactor touches more than ~5 files or multiple layers, break it into steps. Describe the steps before starting.
-
----
-
-## Step 5: Verify Safety Net
-
-**Goal**: Confirm there is sufficient coverage to detect regressions.
+**Goal**: Confirm there is sufficient coverage to detect regressions before writing any code.
 
 Check:
 
@@ -88,18 +77,29 @@ If user accepts risk without tests: mark the output section as `Behavior parity:
 
 ---
 
+## Step 5: Define Safe Boundaries
+
+Before writing any code, declare constraints:
+
+- **External contract**: List the interfaces, exports, or API endpoints that must not change.
+- **No behavior change**: If a behavioral change is discovered as necessary, it must be separated into a different task.
+- **No mixed concerns**: Do not fix bugs or add features inline. Note them and create follow-up tasks.
+- **Incremental if large**: If the refactor touches more than ~5 files or multiple layers, break it into steps. Describe the steps before starting.
+
+---
+
 ## Step 6: Implement Refactor
 
 **Process:**
-1. Make one logical transformation at a time (e.g., extract function → rename → move file).
-2. Run tests (or build) after each step to catch regressions early.
-3. If a step introduces a bug: revert that step, do not push forward.
+1. Make one atomic transformation at a time (e.g., extract function, then rename, then move file — each is a separate step).
+2. Run tests (or build) after each atomic transformation to catch regressions early.
+3. If a transformation introduces a bug: revert that transformation, do not push forward.
 4. Do not reformat code unrelated to the refactor (separate that into a linting/formatting pass if needed).
 
 **Tools:**
 - Read before editing to confirm current state
 - Edit for targeted changes
-- Bash to run tests or build verification between steps
+- Bash to run tests or build verification between transformations
 
 ---
 
@@ -114,6 +114,8 @@ After refactoring is complete:
 ---
 
 ## Step 8: Output Summary
+
+For small refactors (≤2 files, single transformation): provide a brief summary (scope, motivation, what changed, parity status). Full template below is for medium/large refactors.
 
 ```
 ## Refactor Summary

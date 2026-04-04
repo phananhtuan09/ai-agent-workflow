@@ -20,7 +20,8 @@ If feature name or scope is ambiguous, use `AskUserQuestion`:
 - What is the feature name / entry point?
 - Should related data (DB records, config, env vars) also be deleted?
 - Are there any parts intentionally kept (e.g., shared utilities)?
-- Is this a hard delete, a soft disable, or a phased deprecation?
+
+Do not ask the user to choose a deletion strategy here — that decision is made in Step 4 after dependency analysis.
 
 ---
 
@@ -42,13 +43,14 @@ Scan the codebase for all of the following:
 | **Tests** | Unit, integration, E2E tests covering this feature |
 | **Docs** | README sections, API docs, user guides |
 | **Background jobs** | Cron jobs, event listeners, queues, workers |
+| **Data / DB** | Tables, migrations, seed data owned by this feature |
 
 **Tools:**
 - Grep(pattern=...) to search for symbols, route names, event names
 - Glob to find related files by path pattern
 - Read to inspect related files
 
-List everything found. Do not skip items you are unsure about — mark them as `[uncertain]` instead.
+List everything found. If you are unsure whether an item belongs to this feature, mark it as `[uncertain]` — do not skip it.
 
 ---
 
@@ -66,11 +68,11 @@ For each surface found in Step 2, check:
 Mark each dependency as:
 - `safe to delete` — only used by this feature
 - `needs extraction` — shared, must decouple first
-- `defer` — not enough evidence to decide
+- `[uncertain]` — not enough evidence to decide
 
 **Gate: Before proceeding to Step 4**
 
-If any items are marked `defer` or `[uncertain]`:
+If any items are marked `[uncertain]`:
 1. List them explicitly.
 2. Use `AskUserQuestion`: block until resolved, or accept risk and proceed?
 3. If **block**: stop here, ask user to investigate or provide more context.
@@ -81,14 +83,14 @@ If any items are marked `defer` or `[uncertain]`:
 
 ## Step 4: Choose Deletion Strategy
 
-Only reached if **no unresolved `defer` / `[uncertain]` items remain** (gate above passed cleanly).
+Only reached if **no unresolved `[uncertain]` items remain** (gate above passed cleanly).
 
 Select one strategy and justify the choice:
 
 | Strategy | When to use |
 |----------|-------------|
 | **Hard delete** | All items confirmed `safe to delete`, no shared dependencies |
-| **Soft disable** (feature flag off → cleanup later) | Gate was bypassed with unresolved items, OR uncertain deps need verification first |
+| **Soft disable** (feature flag off → cleanup later) | Strategy forced by gate (unresolved `[uncertain]` items remain), OR uncertain deps need verification first |
 | **Phased deprecation** | External consumers exist; need migration period |
 
 Do not mix strategies.
@@ -97,11 +99,14 @@ Do not mix strategies.
 
 ## Step 5: Execute Deletion
 
+**Before starting**: Hard delete is irreversible. If the codebase has uncommitted changes or no recent backup, confirm with the user before proceeding.
+
 **Process:**
 1. Remove in dependency order: remove consumers before providers.
-2. Apply one surface category at a time (e.g., UI first, then routes, then logic).
-3. Do not delete items marked `needs extraction` until extraction is complete.
-4. Do not clean up unrelated code discovered along the way.
+2. Apply one surface category at a time (e.g., UI first, then routes, then logic, then data/DB last).
+3. For data/DB: drop tables or migrations only after confirming no other feature references them and a backup exists or data loss is accepted.
+4. Do not delete items marked `needs extraction` until extraction is complete.
+5. Do not clean up unrelated code discovered along the way.
 
 **Tools:**
 - Edit / Write to remove code
@@ -122,6 +127,7 @@ After deletion, verify each item is addressed:
 - [ ] Permissions / RBAC rules cleaned up
 - [ ] Fallback messages or dead copy removed
 - [ ] Background jobs / cron jobs deregistered
+- [ ] DB tables / migrations addressed (dropped, or marked for follow-up if deferred)
 
 ---
 
@@ -142,7 +148,7 @@ After deletion, verify each item is addressed:
 **Strategy**: hard delete / soft disable / phased deprecation
 
 **Surfaces found**: [list]
-**Dependencies impacted**: [list with safe/extraction/defer status]
+**Dependencies impacted**: [list with safe/extraction/uncertain status]
 
 **Deleted**:
   - [file or section]: [what was removed]

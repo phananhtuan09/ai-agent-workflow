@@ -11,14 +11,13 @@ Delete a feature without leaving dead paths, dangling dependencies, or hidden en
 
 - Feature name or description
 - Optional: specific files, routes, or components known to belong to the feature
-- Optional: deletion approach preference (hard delete / soft disable / phased)
 
 ## Codex Tool Mapping
 
 - Claude `Read/Edit/Write` → inspect files with shell reads and edit with `apply_patch`
 - Claude `Grep` → `rg <pattern>` to find all surfaces (route names, event names, symbols)
 - Claude `Glob` → `rg --files | grep <pattern>` or `find` to locate related files by path
-- Claude `AskUserQuestion` → ask the user directly for scope or strategy decisions
+- Claude `AskUserQuestion` → ask the user directly for scope decisions
 - Claude `Bash` → run build or tests to verify no dangling references
 
 ## Workflow
@@ -30,7 +29,8 @@ If any is ambiguous, ask before proceeding:
 - What is the feature name or entry point?
 - Should related data (DB records, config, env vars) also be removed?
 - Are any parts intentionally shared and must be kept?
-- Is there a preferred deletion approach?
+
+Do not ask the user to choose a deletion strategy — that decision is made in Step 4 after dependency analysis.
 
 ### 2. Feature inventory
 
@@ -48,6 +48,7 @@ Find every surface before touching any code. Use `rg` and `find` to scan:
 | **Tests** | Unit, integration, E2E tests covering this feature |
 | **Docs** | README sections, API docs, user guides |
 | **Background jobs** | Cron jobs, event listeners, queues, workers |
+| **Data / DB** | Tables, migrations, seed data owned by this feature |
 
 Mark items you cannot confirm as `[uncertain]` — do not skip them.
 
@@ -57,11 +58,11 @@ For each surface found, classify:
 
 - `safe to delete` — used only by this feature
 - `needs extraction` — shared code, must decouple first
-- `defer` — not enough evidence to decide
+- `[uncertain]` — not enough evidence to decide
 
 **Gate before Step 4:**
 
-If any items are `defer` or `[uncertain]`:
+If any items are `[uncertain]`:
 1. List them explicitly.
 2. Ask the user: block until resolved, or accept risk and proceed?
 3. If **block**: stop, request more context.
@@ -69,20 +70,24 @@ If any items are `defer` or `[uncertain]`:
 
 ### 4. Choose deletion strategy
 
-Only reached when the gate above passed cleanly (no unresolved items).
+Only reached when the gate above passed cleanly (no unresolved `[uncertain]` items).
 
 | Strategy | When to use |
 |----------|-------------|
 | **Hard delete** | All items confirmed `safe to delete` |
-| **Soft disable** | Gate bypassed with unresolved items, OR uncertain deps need verification |
+| **Soft disable** | Strategy forced by gate (unresolved `[uncertain]` items remain), OR uncertain deps need verification first |
 | **Phased deprecation** | External consumers exist; migration period needed |
 
 Choose one. Do not mix strategies.
 
 ### 5. Execute deletion
 
+**Before starting**: Hard delete is irreversible. If the codebase has uncommitted changes or no recent backup, confirm with the user before proceeding.
+
 Remove in dependency order: consumers before providers.
-Apply one surface category at a time using `apply_patch`.
+Apply one surface category at a time using `apply_patch` (e.g., UI first, then routes, then logic, then data/DB last).
+
+For data/DB: drop tables or migrations only after confirming no other feature references them and a backup exists or data loss is accepted.
 
 Rules:
 - Do not delete items marked `needs extraction` until extraction is complete.
@@ -101,10 +106,12 @@ After deletion, verify each category:
 - [ ] Permissions / RBAC rules removed
 - [ ] Fallback messages or dead copy removed
 - [ ] Background jobs deregistered
+- [ ] DB tables / migrations addressed (dropped, or marked for follow-up if deferred)
 
 ### 7. Validate
 
 Run build and test suite to confirm no dangling references or broken imports.
+If soft disable was chosen: verify the feature is unreachable through all entry points.
 
 ### 8. Output summary
 
@@ -115,7 +122,7 @@ Run build and test suite to confirm no dangling references or broken imports.
 **Strategy**: hard delete / soft disable / phased deprecation
 
 **Surfaces found**: [list]
-**Dependencies impacted**: [list with safe/extraction/defer status]
+**Dependencies impacted**: [list with safe/extraction/uncertain status]
 
 **Deleted**:
   - [file or section]: [what was removed]
@@ -151,6 +158,6 @@ Ask only when:
 
 ## Quality Bar
 
-- Do not delete only visible UI — check all 10 surface categories
+- Do not delete only visible UI — check all surface categories
 - Hard delete requires all items confirmed `safe to delete`; anything else → Soft disable
 - Intentionally retained and deferred items must be listed explicitly, not silently omitted

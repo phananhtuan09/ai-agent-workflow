@@ -58,16 +58,7 @@ Refactoring must have a clear reason. Choose at least one:
 
 If none applies: stop. Reconsider whether refactoring is justified.
 
-### 4. Define safe boundaries
-
-State these constraints before writing code:
-
-- **External contract is frozen**: listed interfaces, exports, API endpoints must not change.
-- **No behavior change**: if a behavioral change is discovered as necessary, it must become a separate task.
-- **No mixed concerns**: do not fix bugs or add features inline. Note them and create follow-up tasks.
-- **Incremental if large**: if the refactor touches more than ~5 files or multiple layers, define the steps before starting.
-
-### 5. Verify safety net
+### 4. Verify safety net
 
 Check before any edit:
 
@@ -79,14 +70,23 @@ If no safety net and code is non-trivial: stop and add tests first, or confirm t
 
 If user proceeds without tests: mark output as `Behavior parity: UNVERIFIED — no automated safety net`. Do not claim parity was confirmed.
 
+### 5. Define safe boundaries
+
+State these constraints before writing code:
+
+- **External contract is frozen**: listed interfaces, exports, API endpoints must not change.
+- **No behavior change**: if a behavioral change is discovered as necessary, it must become a separate task.
+- **No mixed concerns**: do not fix bugs or add features inline. Note them and create follow-up tasks.
+- **Incremental if large**: if the refactor touches more than ~5 files or multiple layers, define the steps before starting.
+
 ### 6. Implement
 
-One logical transformation at a time (e.g., extract function → rename → move file).
+One atomic transformation at a time (e.g., extract function, then rename, then move file — each is a separate step).
 
-For each step:
+For each atomic transformation:
 1. Apply change with `apply_patch`
 2. Run tests or build to catch regressions
-3. If a step introduces a bug: revert that step, do not push forward
+3. If a transformation introduces a bug: revert it, do not push forward
 
 Rules:
 - Do not reformat unrelated code.
@@ -101,6 +101,8 @@ After all transformations:
 - If behavior changed unintentionally: this is a regression — fix before marking done.
 
 ### 8. Output summary
+
+For small refactors (≤2 files, single transformation): provide a brief summary (scope, motivation, what changed, parity status). Full template below is for medium/large refactors.
 
 ```
 ## Refactor Summary
@@ -158,6 +160,6 @@ Ask only when:
 
 - Never start without a documented baseline
 - Never mix bugfix, feature, or behavior change into a refactor task
-- Incremental transformations only — one logical change at a time
+- Incremental atomic transformations only — one logical change at a time
 - Behavior parity must be verified or explicitly marked UNVERIFIED
 - Follow-ups must be listed, never silently dropped

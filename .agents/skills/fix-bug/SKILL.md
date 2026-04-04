@@ -30,6 +30,7 @@ Before reading any code, ensure these are known:
 - **Actual behavior**: what happens instead?
 - **Trigger condition**: under what inputs / state / sequence?
 - **Reproduction path**: can it be reproduced reliably?
+- **Environment**: which OS, runtime version, config, or deployment environment? Does it occur in all environments or only specific ones?
 
 If any is missing and a wrong assumption would change the fix, ask the user.
 
@@ -53,6 +54,8 @@ Trace the issue layer by layer. All three must be stated before proposing a fix:
 | **Symptom** | Visible wrong behavior |
 | **Immediate cause** | Direct code failure |
 | **Underlying cause** | Why the immediate cause exists |
+
+**Start from the trigger condition and trace backward**: identify where the actual state first diverges from expected, then follow the call chain upstream to the root.
 
 Use `rg` to trace call sites, event handlers, config references, and related symbols.
 
@@ -79,11 +82,9 @@ Rules:
 Before closing, verify:
 
 - [ ] Is there an existing test that should have caught this? Why didn't it?
-- [ ] Should a new test be added?
+- [ ] Should a new test be added? **If yes, add it now** unless the user explicitly asks to defer.
 - [ ] Can this bug recur via a similar path elsewhere?
 - [ ] Should logging be added at the failure point?
-
-Add a test now or create a follow-up task.
 
 ### 7. Output summary
 
@@ -92,6 +93,7 @@ Add a test now or create a follow-up task.
 
 **Bug**: [one-line description]
 **Reproduction**: [steps or "could not reproduce — confidence low"]
+**Environment**: [OS, runtime version, config — or "all environments"]
 **Root cause**:
   - Symptom: [...]
   - Immediate cause: [...]
