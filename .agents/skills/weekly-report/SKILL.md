@@ -5,7 +5,7 @@ description: Aggregate the current week daily plan files into a weekly report wi
 
 # Weekly Report
 
-Read the current week's `daily-plans/*.md` files, compute summary statistics, and write a weekly report to `weekly-report/YYYY-WXX.md`. Use only days from Monday through today and ignore future plan files.
+Read the current week's `daily-plans/*.md` files, compute summary statistics, and write a weekly report to `weekly-report/YYYY-WXX-MmmDD-MmmDD.md` (e.g. `2026-W15-Apr06-Apr12.md`). Use only days from Monday through today and ignore future plan files.
 
 ## Workspace Layout
 
@@ -85,7 +85,7 @@ Interpretation rules:
 
 ### 5. Write the Weekly Report
 
-Write `{BASE_DIR}/weekly-report/{YYYY-WXX}.md` in this shape:
+Write `{BASE_DIR}/weekly-report/{YYYY-WXX-MmmDD-MmmDD}.md` in this shape:
 
 ```markdown
 ---
@@ -171,7 +171,7 @@ Formatting rules:
 Return a concise summary in this shape:
 
 ```text
-Weekly plan: {BASE_DIR}/weekly-report/{YYYY-WXX}.md
+Weekly plan: {BASE_DIR}/weekly-report/{YYYY-WXX-MmmDD-MmmDD}.md
 
 {Mon} -> {today}
 Tasks: {done}/{total} done ({XX}%)

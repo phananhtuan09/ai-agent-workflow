@@ -24,7 +24,7 @@ description: Weekly summary — aggregate daily plans into stats and carry-forwa
 
 ## Goal
 
-Read all `daily-plans/` files for the current week, generate stats + breakdown, save to `weekly-report/YYYY-WXX.md`.
+Read all `daily-plans/` files for the current week, generate stats + breakdown, save to `weekly-report/YYYY-WXX-MmmDD-MmmDD.md` (e.g. `2026-W15-Apr06-Apr12.md`).
 
 ---
 
@@ -86,6 +86,8 @@ From each file extract:
 ---
 
 ## Step 5: Write Weekly Plan
+
+Write `{BASE_DIR}/weekly-report/{YYYY-WXX-MmmDD-MmmDD}.md` in this shape:
 
 ```markdown
 ---
@@ -171,7 +173,7 @@ generated: {today}
 ## Step 6: Confirm
 
 ```
-✓ Weekly plan: {BASE_DIR}/weekly-report/{YYYY-WXX}.md
+✓ Weekly plan: {BASE_DIR}/weekly-report/{YYYY-WXX-MmmDD-MmmDD}.md
 
   {Mon} → {today}
   Tasks:   {done}/{total} done ({XX}%)
