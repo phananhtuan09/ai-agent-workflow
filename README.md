@@ -8,6 +8,7 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 - **Structured Workflows**: Plan → Implement → Test → Review methodology
 - **9 Pre-built Commands**: Create plans, execute tasks, run tests, code reviews, and more
 - **7 Reusable Skills**: Design fundamentals, accessibility, theme generation, quality checks
+- **Project Wiki Bootstrap**: Seed a shared `project-wiki/` knowledge base alongside workflow docs
 - **Universal Standards**: `AGENTS.md` works across all AI tools
 - **Bootstrap Installer**: One command from GitHub, no npm registry required
 - **Smart Installation**: Protected files, selective updates, no data loss
@@ -44,6 +45,8 @@ Choose from:
 - **Codex** → `.agents/skills/`, `.agents/roles/`, `.agents/knowledge/`, `.agents/themes/`, `.codex/`, and root `AGENTS.md`
 - **Google Antigravity** → `.agents/skills/` and root `AGENTS.md`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`, and supporting Claude config files
+
+Every install also syncs shared workflow assets: `docs/ai/`, root `AGENTS.md`, and `project-wiki/`.
 
 ### Install Specific Tool
 
