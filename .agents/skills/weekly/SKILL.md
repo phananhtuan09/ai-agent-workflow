@@ -17,7 +17,8 @@ Read `weekly-notes/{week-key}.md`, resolve `#Sources` links to monthly plan file
 ```
 
 Default `BASE_DIR`:
-- Linux/macOS: `~/Documents/obsidian-dev`
+- Linux: `~/Documents/obsidian-dev`
+- macOS: `~/Desktop/obsidian-dev`
 - Windows: `%USERPROFILE%\\Documents\\obsidian-dev`
 
 Prompt override: `dir folder: <path>`

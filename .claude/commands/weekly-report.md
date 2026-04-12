@@ -12,7 +12,8 @@ description: Weekly summary — aggregate daily plans into stats and carry-forwa
 ```
 
 **Default BASE_DIR (cross-platform):**
-- Linux/macOS: `~/Documents/obsidian-dev`
+- Linux: `~/Documents/obsidian-dev`
+- macOS: `~/Desktop/obsidian-dev`
 - Windows: `%USERPROFILE%\Documents\obsidian-dev`
 
 **Override in prompt:**
@@ -34,8 +35,9 @@ Check if user specified `dir folder:` in prompt → use that path.
 
 If not → detect OS:
 ```bash
-uname -s  # Linux/macOS → ~/Documents/obsidian-dev
-          # Windows    → %USERPROFILE%\Documents\obsidian-dev
+uname -s  # Darwin  → ~/Desktop/obsidian-dev
+          # Linux   → ~/Documents/obsidian-dev
+          # Windows → %USERPROFILE%\Documents\obsidian-dev
 ```
 
 Create dir if not exists:

@@ -16,7 +16,8 @@ Save user-provided idea text into `{BASE_DIR}/brainstorm/{today}.md` and link it
 ```
 
 Default `BASE_DIR`:
-- Linux/macOS: `~/Documents/obsidian-dev`
+- Linux: `~/Documents/obsidian-dev`
+- macOS: `~/Desktop/obsidian-dev`
 - Windows: `%USERPROFILE%\\Documents\\obsidian-dev`
 
 Prompt overrides:

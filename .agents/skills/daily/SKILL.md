@@ -16,7 +16,8 @@ Read `daily-notes/{today}.md`, extract the `#tasks` section, auto-fill missing s
 ```
 
 Default `BASE_DIR`:
-- Linux/macOS: `~/Documents/obsidian-dev`
+- Linux: `~/Documents/obsidian-dev`
+- macOS: `~/Desktop/obsidian-dev`
 - Windows: `%USERPROFILE%\\Documents\\obsidian-dev`
 
 Prompt override:

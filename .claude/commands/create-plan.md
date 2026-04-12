@@ -5,7 +5,7 @@ description: Generates a feature planning doc with implementation details.
 
 ## Goal
 
-Generate a single planning doc at `docs/ai/planning/feature-{name}.md` using the template, with goal, acceptance criteria, risks, and detailed implementation phases with pseudo-code.
+Generate a single planning doc at `docs/ai/planning/DD-MM-YYYY-feature-{name}.md` using the template, with goal, acceptance criteria, risks, and detailed implementation phases with pseudo-code.
 
 ## Workflow Alignment
 
@@ -241,22 +241,22 @@ This template defines the required structure and format. Use it as the baseline 
 Auto-name feature:
 
 - **If BEADS_MODE**: Use `suggested_title` from context (kebab-case)
-  - Example: "Setup JWT infrastructure" → `feature-jwt-infrastructure`
-- **If normal mode**: Derive `feature-{name}` from user prompt + Q&A (kebab-case, concise, specific).
-  - Example: "Login Page (HTML/CSS)" → `feature-login-page`.
+  - Example: "Setup JWT infrastructure" → `12-04-2026-feature-jwt-infrastructure`
+- **If normal mode**: Derive `DD-MM-YYYY-feature-{name}` from current date + user prompt + Q&A (kebab-case, concise, specific).
+  - Example: "Login Page (HTML/CSS)" on 2026-04-12 → `12-04-2026-feature-login-page`.
 
 **If file already exists:**
 1. **Backup existing file** to archive folder:
    ```
-   docs/ai/planning/archive/feature-{name}_{timestamp}.md
+   docs/ai/planning/archive/DD-MM-YYYY-feature-{name}_{timestamp}.md
    ```
    - Timestamp format: `YYYYMMDD-HHMMSS`
-   - Example: `archive/feature-login-page_20250115-143022.md`
+   - Example: `archive/12-04-2026-feature-login-page_20260412-143022.md`
 
-2. **Overwrite** the main file: `docs/ai/planning/feature-{name}.md`
+2. **Overwrite** the main file: `docs/ai/planning/DD-MM-YYYY-feature-{name}.md`
 
 3. **Notify user:**
-   > "Previous version backed up to `archive/feature-{name}_{timestamp}.md`"
+   > "Previous version backed up to `archive/DD-MM-YYYY-feature-{name}_{timestamp}.md`"
 
 **Create archive folder if not exists:**
 ```bash
@@ -364,7 +364,7 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
 
 Create the file automatically:
 
-- `docs/ai/planning/feature-{name}.md` - Use complete structure from `feature-template.md`
+- `docs/ai/planning/DD-MM-YYYY-feature-{name}.md` - Use complete structure from `feature-template.md`
 - Set `status: draft` in the frontmatter of the generated file.
 
 **Notify user:** "Created plan with X phases: [Phase 1], [Phase 2], ..."
@@ -374,13 +374,13 @@ Create the file automatically:
 **Suggest next command:**
 
 ```
-✓ Created plan: docs/ai/planning/feature-{name}.md
+✓ Created plan: docs/ai/planning/DD-MM-YYYY-feature-{name}.md
 
 Next steps:
   /execute-plan    → Implement this feature
 ```
 
-Implementation will be driven from `docs/ai/planning/feature-{name}.md`.
+Implementation will be driven from `docs/ai/planning/DD-MM-YYYY-feature-{name}.md`.
 
 Note: Test documentation will be created separately using the `writing-test` command.
 
@@ -404,8 +404,8 @@ Note: Test documentation will be created separately using the `writing-test` com
 ### Cross-Linking Flow
 
 ```
-req-{name}.md  ←→  epic-{name}.md  ←→  feature-{name}.md
-   (WHAT)          (TRACKING)            (HOW)
+req-{name}.md  ←→  DD-MM-YYYY-epic-{name}.md  ←→  DD-MM-YYYY-feature-{name}.md
+   (WHAT)               (TRACKING)                        (HOW)
 ```
 
 **Standalone (no epic, no req):**

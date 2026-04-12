@@ -1,6 +1,6 @@
 ---
 name: create-plan
-description: Use when the user asks to create, refresh, or update a feature planning doc in `docs/ai/planning/feature-{name}.md`, including goal, acceptance criteria, risks, phased tasks, and implementation details.
+description: Use when the user asks to create, refresh, or update a feature planning doc in `docs/ai/planning/DD-MM-YYYY-feature-{name}.md`, including goal, acceptance criteria, risks, phased tasks, and implementation details.
 ---
 
 # Create Plan
@@ -107,12 +107,12 @@ Create a concise kebab-case feature name from the prompt and loaded context.
 
 Output path:
 
-- `docs/ai/planning/feature-{name}.md`
+- `docs/ai/planning/DD-MM-YYYY-feature-{name}.md`
 
 If the file already exists:
 
 - create `docs/ai/planning/archive/` if needed
-- back up the existing file to `docs/ai/planning/archive/feature-{name}_{timestamp}.md`
+- back up the existing file to `docs/ai/planning/archive/DD-MM-YYYY-feature-{name}_{timestamp}.md`
 - then overwrite the main file
 
 ### 6. Draft the plan

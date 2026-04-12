@@ -11,7 +11,8 @@ description: End-of-day review — update task status, actual time, and notes in
 ```
 
 **Default BASE_DIR (cross-platform):**
-- Linux/macOS: `~/Documents/obsidian-dev`
+- Linux: `~/Documents/obsidian-dev`
+- macOS: `~/Desktop/obsidian-dev`
 - Windows: `%USERPROFILE%\Documents\obsidian-dev`
 
 **Override in prompt:**
@@ -33,8 +34,9 @@ Check if user specified `dir folder:` in prompt → use that path.
 
 If not → detect OS:
 ```bash
-uname -s  # Linux/macOS → ~/Documents/obsidian-dev
-          # Windows    → %USERPROFILE%\Documents\obsidian-dev
+uname -s  # Darwin  → ~/Desktop/obsidian-dev
+          # Linux   → ~/Documents/obsidian-dev
+          # Windows → %USERPROFILE%\Documents\obsidian-dev
 ```
 
 ---

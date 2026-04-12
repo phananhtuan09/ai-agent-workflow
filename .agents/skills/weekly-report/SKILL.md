@@ -16,7 +16,8 @@ Read the current week's `daily-plans/*.md` files, compute summary statistics, an
 ```
 
 Default `BASE_DIR`:
-- Linux/macOS: `~/Documents/obsidian-dev`
+- Linux: `~/Documents/obsidian-dev`
+- macOS: `~/Desktop/obsidian-dev`
 - Windows: `%USERPROFILE%\\Documents\\obsidian-dev`
 
 Prompt override:

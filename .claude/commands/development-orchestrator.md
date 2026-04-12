@@ -192,7 +192,7 @@ Otherwise decide by size:
 
 **Creating the epic doc:**
 1. Read `docs/ai/planning/epic-template.md`
-2. Generate `docs/ai/planning/epic-{name}.md` with:
+2. Generate `docs/ai/planning/DD-MM-YYYY-epic-{name}.md` with:
    - `requirement` frontmatter pointing to the req doc
    - Overview from requirement's executive summary (1–3 sentences)
    - Feature Plans table: proposed slices with descriptions, FR Scope, Depends On

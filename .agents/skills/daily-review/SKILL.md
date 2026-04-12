@@ -15,7 +15,8 @@ Read today's daily plan, show the current task list, collect status updates by I
 ```
 
 Default `BASE_DIR`:
-- Linux/macOS: `~/Documents/obsidian-dev`
+- Linux: `~/Documents/obsidian-dev`
+- macOS: `~/Desktop/obsidian-dev`
 - Windows: `%USERPROFILE%\\Documents\\obsidian-dev`
 
 Prompt override:
