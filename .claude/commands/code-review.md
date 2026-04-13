@@ -53,9 +53,8 @@ AskUserQuestion(questions=[{
    - `Bash(command="git diff <base-branch>...HEAD")` to get full diff
 
 2. **Working directory changes:**
-   - `Bash(command="git diff --name-only")` for unstaged changes
-   - `Bash(command="git diff --cached --name-only")` for staged changes
-   - Combine both lists for full review scope
+   - `Bash(command="git diff --cached --name-only")` for staged changes only
+   - Use **only staged files** as review scope (unstaged files are excluded)
 
 **Error handling:**
 - Git not available: Ask user for file paths directly
