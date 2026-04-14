@@ -53,8 +53,9 @@ AskUserQuestion(questions=[{
    - `Bash(command="git diff <base-branch>...HEAD")` to get full diff
 
 2. **Working directory changes:**
-   - `Bash(command="git diff --cached --name-only")` for staged changes only
-   - Use **only staged files** as review scope (unstaged files are excluded)
+   - `Bash(command="git diff --cached --name-only")` to get staged file list
+   - `Bash(command="git diff --cached")` to get staged diff content
+   - Use **only the staged diff** as review scope — do NOT read files directly (unstaged changes are excluded)
 
 **Error handling:**
 - Git not available: Ask user for file paths directly
@@ -87,7 +88,9 @@ Run **both** review types automatically. Results are reported **independently** 
 **Tool:** Task(
   subagent_type='Explore',
   thoroughness='medium',
-  prompt="Scan files for violations against CODE_CONVENTIONS and PROJECT_STRUCTURE ONLY.
+  prompt="Scan the provided diff for violations against CODE_CONVENTIONS and PROJECT_STRUCTURE ONLY.
+
+    IMPORTANT: Review ONLY the diff content provided — do NOT read files directly. This ensures only staged changes are reviewed, not unstaged modifications.
 
     STRICT RULES:
     - Report ONLY violations that are EXPLICITLY stated in the standards docs
@@ -179,7 +182,9 @@ Run **both** review types automatically. Results are reported **independently** 
 **Tool:** Task(
   subagent_type='Explore',
   thoroughness='medium',
-  prompt="Review files for quality issues using your reasoning.
+  prompt="Review the provided diff for quality issues using your reasoning.
+
+    IMPORTANT: Review ONLY the diff content provided — do NOT read files directly. This ensures only staged changes are reviewed, not unstaged modifications.
 
     REASONING MODE - Use judgment to identify:
     - Logic bugs and edge cases
