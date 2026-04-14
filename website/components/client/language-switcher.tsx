@@ -21,7 +21,8 @@ export function LanguageSwitcher() {
           onClick={() => setLocale(option.id as "en" | "vi")}
           className={cn(
             "focus-ring min-h-11 rounded-full px-3 text-xs font-semibold tracking-[0.24em] text-slate-400 transition",
-            locale === option.id && "bg-hero-gradient text-white shadow-violet",
+            locale === option.id &&
+              "bg-btn-indigo text-white shadow-[0_2px_10px_rgba(99,102,241,0.32)]",
           )}
           aria-pressed={locale === option.id}
         >

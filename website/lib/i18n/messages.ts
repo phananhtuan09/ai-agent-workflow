@@ -4,7 +4,7 @@ import type { Locale } from "@/types/content";
 
 export const messages = {
   en,
-  vi
+  vi,
 } as const;
 
 export const defaultLocale: Locale = "en";

@@ -7,35 +7,38 @@ import "@/app/globals.css";
 
 const headingFont = Outfit({
   subsets: ["latin"],
-  variable: "--font-heading"
+  variable: "--font-heading",
 });
 
 const bodyFont = Inter({
   subsets: ["latin"],
-  variable: "--font-body"
+  variable: "--font-body",
 });
 
 const monoFont = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono"
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "AI Workflow Website",
-    template: "%s | AI Workflow Website"
+    default: "AI Agent Workflow Guide",
+    template: "%s | AI Agent Workflow Guide",
   },
-  description: "Marketing and documentation website scaffold for the AI Agent Workflow project."
+  description:
+    "Guide-style landing page for building a custom AI agent workflow, using this repository as the working example.",
 };
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{
   children: ReactNode;
 }>) {
   return (
     <html lang="en">
-      <body className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable} font-sans`}>
+      <body
+        className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable} font-sans`}
+      >
         <LocaleProvider>
           <SiteChrome>{children}</SiteChrome>
         </LocaleProvider>

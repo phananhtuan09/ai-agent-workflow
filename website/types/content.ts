@@ -1,6 +1,6 @@
-import type { ToolId } from "@/data/tools";
-
 export type Locale = "en" | "vi";
+
+export type ToolId = "claude" | "codex" | "antigravity";
 
 export type LocalizedCopy = {
   en: string;

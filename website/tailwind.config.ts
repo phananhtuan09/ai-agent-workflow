@@ -5,46 +5,46 @@ const config: Config = {
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./data/**/*.{ts,tsx}",
-    "./lib/**/*.{ts,tsx}"
+    "./lib/**/*.{ts,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        obsidian: {
-          950: "#09090b",
-          900: "#0d0d0f",
-          850: "#111114",
-          800: "#17171d",
-          700: "#27272f"
+        surface: {
+          base: "#0B0E18",
+          low: "#0F1420",
+          mid: "#141926",
+          high: "#1A2133",
+          border: "#232D42",
         },
         accent: {
+          indigo: "#6366F1",
           violet: "#7c3aed",
           blue: "#2563eb",
-          cyan: "#06b6d4",
-          success: "#4ade80"
-        }
+          teal: "#0D9488",
+          success: "#4ade80",
+        },
       },
       fontFamily: {
         sans: ["var(--font-body)", "sans-serif"],
         heading: ["var(--font-heading)", "sans-serif"],
-        mono: ["var(--font-mono)", "monospace"]
+        mono: ["var(--font-mono)", "monospace"],
       },
       boxShadow: {
-        glow: "0 20px 60px rgba(37, 99, 235, 0.22)",
-        violet: "0 24px 70px rgba(124, 58, 237, 0.28)"
+        card: "0 1px 3px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.2)",
+        "btn-primary":
+          "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12)",
+        "btn-white": "0 1px 3px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.15)",
       },
       backgroundImage: {
-        "hero-gradient":
-          "linear-gradient(135deg, rgba(124,58,237,0.95), rgba(37,99,235,0.9), rgba(6,182,212,0.88))",
-        "glass-border":
-          "linear-gradient(135deg, rgba(124,58,237,0.8), rgba(37,99,235,0.7), rgba(6,182,212,0.7))"
+        "btn-indigo": "linear-gradient(180deg, #6D70F5 0%, #4F52D9 100%)",
       },
       maxWidth: {
-        shell: "1280px"
-      }
-    }
+        shell: "1280px",
+      },
+    },
   },
-  plugins: [require("@tailwindcss/typography")]
+  plugins: [require("@tailwindcss/typography")],
 };
 
 export default config;

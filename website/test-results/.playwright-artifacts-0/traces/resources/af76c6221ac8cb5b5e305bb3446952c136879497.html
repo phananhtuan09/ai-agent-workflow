@@ -1,1 +1,948 @@
-<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="/_next/static/css/app/layout.css?v=1774778842711" data-precedence="next_static/css/app/layout.css"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/webpack.js?v=1774778842711"/><script src="/_next/static/chunks/main-app.js?v=1774778842711" async=""></script><script src="/_next/static/chunks/app-pages-internals.js" async=""></script><script src="/_next/static/chunks/app/page.js" async=""></script><script src="/_next/static/chunks/app/layout.js" async=""></script><script src="/_next/static/chunks/app/not-found.js" async=""></script><title>AI Workflow Website</title><meta name="description" content="Marketing and documentation website scaffold for the AI Agent Workflow project."/><meta name="next-size-adjust"/><script src="/_next/static/chunks/polyfills.js" noModule=""></script></head><body class="__variable_ed3508 __variable_f367f3 __variable_3c557b font-sans"><div class="relative min-h-screen overflow-hidden bg-obsidian-900 text-slate-100"><div class="hero-blur hero-blur-one"></div><div class="hero-blur hero-blur-two"></div><div class="hero-blur hero-blur-three"></div><header class="border-white/6 sticky top-0 z-50 border-b bg-obsidian-950/80 backdrop-blur-xl"><div class="mx-auto flex max-w-shell items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8"><a class="focus-ring rounded-full px-2 py-2 font-mono text-sm tracking-[0.32em] text-slate-200" href="/">&gt; ai-workflow</a><nav class="hidden items-center gap-2 md:flex"><a class="focus-ring rounded-full px-4 py-2 text-sm transition hover:text-white bg-white/8 text-white" href="/">Home</a><a class="focus-ring rounded-full px-4 py-2 text-sm text-slate-400 transition hover:text-white" href="/install">Install</a><a class="focus-ring rounded-full px-4 py-2 text-sm text-slate-400 transition hover:text-white" href="/workflow">Workflow</a><a class="focus-ring rounded-full px-4 py-2 text-sm text-slate-400 transition hover:text-white" href="/skills">Skills</a></nav><div class="hidden items-center gap-3 md:flex"><div class="inline-flex rounded-full border border-white/10 bg-white/5 p-1" aria-label="Language"><button type="button" class="focus-ring min-h-11 rounded-full px-3 text-xs font-semibold tracking-[0.24em] transition bg-hero-gradient text-white shadow-violet" aria-pressed="true">EN</button><button type="button" class="focus-ring min-h-11 rounded-full px-3 text-xs font-semibold tracking-[0.24em] text-slate-400 transition" aria-pressed="false">VI</button></div><a href="https://github.com/phananhtuan09/ai-agent-workflow" target="_blank" rel="noreferrer" class="focus-ring rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:border-white/30 hover:text-white">GitHub</a></div><button type="button" class="focus-ring inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg md:hidden" aria-label="Open navigation menu">≡</button></div></header><main><div class="mx-auto flex max-w-shell flex-col gap-16 px-4 py-10 sm:px-6 lg:gap-20 lg:px-8 lg:py-16"><section class="relative overflow-hidden rounded-[40px] border border-white/10 bg-white/[0.035] p-6 shadow-[0_32px_120px_rgba(15,23,42,0.45)] sm:p-8 lg:p-10"><div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"></div><div class="absolute -left-24 top-12 h-56 w-56 rounded-full bg-accent-violet/15 blur-3xl"></div><div class="absolute -right-10 bottom-0 h-64 w-64 rounded-full bg-accent-blue/15 blur-3xl"></div><div class="relative grid gap-10 xl:grid-cols-[1.02fr,0.98fr] xl:items-center"><div class="space-y-8" style="opacity:0;transform:translateY(16px)"><div class="space-y-5"><div class="flex flex-wrap items-center gap-3"><p class="section-kicker">$ ai-agent-workflow --init</p><span class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">Planning-first starter kit</span></div><h1 class="max-w-4xl font-heading text-5xl font-semibold leading-[0.92] text-white sm:text-6xl lg:text-7xl"><span class="text-gradient">From rough prompt to reviewable AI execution.</span></h1><p class="max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">Install the workflow, route work through requirements and feature plans, and keep implementation aligned with verification instead of improvising in chat.</p></div><div class="flex flex-col gap-3 sm:flex-row"><a class="focus-ring inline-flex min-h-12 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-black transition hover:bg-slate-200" href="/install">Install the workflow</a><a class="focus-ring border-white/12 inline-flex min-h-12 items-center justify-center rounded-full border bg-white/5 px-6 text-sm font-semibold text-slate-100 transition hover:border-white/25 hover:bg-white/10" href="/workflow">Preview the workflow</a></div><div class="flex flex-wrap items-center gap-2"><span class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Supports</span><span class="pill">Claude Code</span><span class="pill">Codex</span><span class="pill">Google Antigravity</span></div></div><div class="xl:pl-4" style="opacity:0;transform:translateY(16px)"><div role="img" aria-label="Animated workflow node map showing requirement intake, epic routing, plan review, and execution." class="glass-panel relative overflow-hidden bg-white/[0.055] p-5 sm:p-6"><div class="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/40 to-transparent"></div><div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(103,232,249,0.12),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(147,197,253,0.14),transparent_38%)]"></div><div class="relative sm:hidden"><div class="space-y-4"><div class="relative pl-6"><span aria-hidden="true" class="absolute left-[11px] top-12 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-cyan-300/60 to-white/10" style="transform-origin:top;opacity:0;transform:scaleY(0)"></span><div style="opacity:0;transform:translateY(12px)"><div class="relative rounded-[24px] border border-white/10 bg-obsidian-850/90 p-4 shadow-[0_20px_60px_rgba(2,8,23,0.35)]"><span class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100">1</span><p class="section-kicker">step <!-- -->1</p><p class="mt-3 font-heading text-2xl font-semibold text-white">Requirement intake</p></div></div></div><div class="relative pl-6"><span aria-hidden="true" class="absolute left-[11px] top-12 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-cyan-300/60 to-white/10" style="transform-origin:top;opacity:0;transform:scaleY(0)"></span><div style="opacity:0;transform:translateY(12px)"><div class="relative rounded-[24px] border border-white/10 bg-obsidian-850/90 p-4 shadow-[0_20px_60px_rgba(2,8,23,0.35)]"><span class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100">2</span><p class="section-kicker">step <!-- -->2</p><p class="mt-3 font-heading text-2xl font-semibold text-white">Epic routing</p></div></div></div><div class="relative pl-6"><span aria-hidden="true" class="absolute left-[11px] top-12 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-cyan-300/60 to-white/10" style="transform-origin:top;opacity:0;transform:scaleY(0)"></span><div style="opacity:0;transform:translateY(12px)"><div class="relative rounded-[24px] border border-white/10 bg-obsidian-850/90 p-4 shadow-[0_20px_60px_rgba(2,8,23,0.35)]"><span class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100">3</span><p class="section-kicker">step <!-- -->3</p><p class="mt-3 font-heading text-2xl font-semibold text-white">Plan review</p></div></div></div><div class="relative pl-6"><div style="opacity:0;transform:translateY(12px)"><div class="relative rounded-[24px] border bg-obsidian-850/90 p-4 border-cyan-300/35 shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_24px_60px_rgba(34,211,238,0.12)]"><span class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100">4</span><p class="section-kicker">step <!-- -->4</p><p class="mt-3 font-heading text-2xl font-semibold text-white">Execute</p></div></div></div></div></div><div class="relative hidden min-h-[26rem] sm:block"><svg aria-hidden="true" class="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="Rl1jtj6" x1="0%" x2="100%"><stop offset="0%" stop-color="#67e8f9" stop-opacity="0.95"></stop><stop offset="100%" stop-color="#c4b5fd" stop-opacity="0.7"></stop></linearGradient></defs><path d="M 24 24 C 38 20, 44 20, 58 30" fill="none" stroke="url(#Rl1jtj6)" stroke-width="1.2" stroke-linecap="round" opacity="0" pathLength="1" stroke-dashoffset="0px" stroke-dasharray="0px 1px"></path><path d="M 66 38 C 58 50, 46 56, 36 66" fill="none" stroke="url(#Rl1jtj6)" stroke-width="1.2" stroke-linecap="round" opacity="0" pathLength="1" stroke-dashoffset="0px" stroke-dasharray="0px 1px"></path><path d="M 44 72 C 58 70, 63 72, 72 80" fill="none" stroke="url(#Rl1jtj6)" stroke-width="1.2" stroke-linecap="round" opacity="0" pathLength="1" stroke-dashoffset="0px" stroke-dasharray="0px 1px"></path></svg><div class="absolute w-[42%] max-w-[14rem] left-[6%] top-[10%]" style="opacity:0;transform:translateY(12px)"><div class="rounded-[24px] border border-white/10 bg-obsidian-850/90 p-5 shadow-[0_20px_70px_rgba(2,8,23,0.36)] backdrop-blur"><p class="section-kicker">step <!-- -->1</p><p class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white">Requirement intake</p></div></div><div class="absolute w-[42%] max-w-[14rem] left-[52%] top-[22%]" style="opacity:0;transform:translateY(12px)"><div class="rounded-[24px] border border-white/10 bg-obsidian-850/90 p-5 shadow-[0_20px_70px_rgba(2,8,23,0.36)] backdrop-blur"><p class="section-kicker">step <!-- -->2</p><p class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white">Epic routing</p></div></div><div class="absolute w-[42%] max-w-[14rem] left-[14%] top-[58%]" style="opacity:0;transform:translateY(12px)"><div class="rounded-[24px] border border-white/10 bg-obsidian-850/90 p-5 shadow-[0_20px_70px_rgba(2,8,23,0.36)] backdrop-blur"><p class="section-kicker">step <!-- -->3</p><p class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white">Plan review</p></div></div><div class="absolute w-[42%] max-w-[14rem] left-[58%] top-[68%]" style="opacity:0;transform:translateY(12px)"><div class="rounded-[24px] border bg-obsidian-850/90 p-5 backdrop-blur border-cyan-300/35 shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_26px_70px_rgba(34,211,238,0.16)]"><p class="section-kicker">step <!-- -->4</p><p class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white">Execute</p></div></div></div></div></div></div></section><div class="" style="opacity:0;transform:translateY(16px)"><section class="overflow-hidden rounded-[36px] border border-white/10 bg-black/20 p-6 shadow-[0_24px_80px_rgba(2,8,23,0.26)] sm:p-8"><div class="grid gap-8 xl:grid-cols-[0.82fr,1.18fr] xl:items-end"><div><p class="section-kicker">By the numbers</p><h2 class="mt-4 max-w-xl font-heading text-3xl font-semibold text-white sm:text-4xl">Built around one predictable flow</h2><div class="mt-6 grid gap-3 sm:grid-cols-3"><div role="group" aria-label="AI tools: 3" class="rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"><p class="font-heading text-3xl font-semibold text-white"><span>0</span></p><p class="mt-2 text-xs uppercase tracking-[0.22em] text-slate-500">AI tools</p></div><div role="group" aria-label="Ready skills: 16" class="rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"><p class="font-heading text-3xl font-semibold text-white"><span>0</span></p><p class="mt-2 text-xs uppercase tracking-[0.22em] text-slate-500">Ready skills</p></div><div role="group" aria-label="Workflow graphs: 2" class="rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"><p class="font-heading text-3xl font-semibold text-white"><span>0</span></p><p class="mt-2 text-xs uppercase tracking-[0.22em] text-slate-500">Workflow graphs</p></div></div></div><div class="grid gap-3 md:grid-cols-2"><div class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"><p class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80">01</p><p class="mt-3 text-sm leading-7 text-slate-200">Requirement intake</p></div><div class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"><p class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80">02</p><p class="mt-3 text-sm leading-7 text-slate-200">Epic routing</p></div><div class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"><p class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80">03</p><p class="mt-3 text-sm leading-7 text-slate-200">Plan review</p></div><div class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"><p class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80">04</p><p class="mt-3 text-sm leading-7 text-slate-200">Single-writer execution</p></div></div></div></section></div><section class="grid gap-6 xl:grid-cols-[0.84fr,1.16fr] xl:items-start"><div class="max-w-xl" style="opacity:0;transform:translateY(16px)"><p class="section-kicker">One command install</p><h2 class="mt-4 font-heading text-3xl font-semibold text-white sm:text-4xl">Pick your tool. Copy the command. Done.</h2><p class="mt-4 text-base leading-8 text-slate-400">The homepage preview now behaves like the real install flow, so visitors can switch tools, inspect the exact CLI flag, and see where the workflow writes files.</p></div><div class="" style="opacity:0;transform:translateY(16px)"><div class="glass-panel terminal-panel relative overflow-hidden"><div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(103,232,249,0.1),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(124,58,237,0.12),transparent_34%)]"></div><div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/40 to-transparent"></div><div class="relative"><p class="section-kicker">Interactive install preview</p><h3 class="mt-4 max-w-lg font-heading text-3xl font-semibold leading-tight text-white sm:text-[2rem]">Launch with one command, then tailor the workflow to your tool.</h3><p class="mt-4 max-w-lg text-sm leading-7 text-slate-300">The full Install page switches between Claude Code, Codex, and Google Antigravity, keeps the command in sync, and gives users copy feedback immediately.</p><div class="mt-6 flex flex-wrap gap-2"><button type="button" aria-pressed="false" class="focus-ring rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition hover:border-white/20 hover:bg-white/8 hover:text-slate-200">Claude Code</button><button type="button" aria-pressed="true" class="focus-ring rounded-full border border-cyan-300/30 bg-cyan-300/12 px-4 py-2 text-sm font-semibold text-cyan-100 transition">Codex</button><button type="button" aria-pressed="false" class="focus-ring rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition hover:border-white/20 hover:bg-white/8 hover:text-slate-200">Google Antigravity</button></div><div class="mt-6 rounded-[30px] border border-white/10 bg-black/50 p-5"><div class="flex items-center justify-between gap-4"><p class="font-mono text-xs tracking-[0.24em] text-slate-500">$ install</p><span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">CX</span></div><pre class="mt-4 overflow-x-auto whitespace-pre-wrap break-all font-mono text-sm leading-7 text-cyan-200">curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool codex</pre></div><div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center"><button type="button" class="focus-ring border-white/12 inline-flex min-h-11 items-center justify-center rounded-full border bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-slate-200">⎘<!-- --> <!-- -->Copy command</button><span class="sr-only" aria-live="polite">Copy command</span><a class="focus-ring border-white/12 inline-flex min-h-11 items-center justify-center rounded-full border bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/25 hover:bg-white/10" href="/install">Open full install flow</a></div><div class="mt-8"><p class="section-kicker">Writes the right project structure</p><p class="mt-3 text-sm leading-7 text-slate-400">This preview uses the Codex variant, which seeds the repository with workflow folders and guidance files instead of leaving setup hidden in markdown.</p><div class="mt-4 flex flex-wrap gap-2"><span class="pill">.agents/skills</span><span class="pill">.agents/roles</span><span class="pill">.agents/knowledge</span><span class="pill">.agents/themes</span><span class="pill">+<!-- -->2<!-- --> more</span></div></div></div></div></div></section><section class="grid gap-6 lg:grid-cols-[0.85fr,1.15fr] lg:items-start"><div class="max-w-xl" style="opacity:0;transform:translateY(16px)"><p class="section-kicker">Why teams adopt it</p><h2 class="mt-4 font-heading text-3xl font-semibold text-white sm:text-4xl">A homepage that explains the system before users open the repository.</h2><p class="mt-4 text-base leading-8 text-slate-400">Each block translates the workflow into a practical benefit so visitors can understand the product, the install path, and the architecture in one pass.</p></div><div class="grid gap-4 md:grid-cols-3"><div class="" style="opacity:0;transform:translateY(16px)"><article class="glass-panel card-hover-glow group relative overflow-hidden bg-white/[0.04]"><div class="absolute inset-y-6 left-0 w-px bg-transparent transition group-hover:bg-cyan-300/40"></div><span class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 transition group-hover:text-slate-200">01</span><h3 class="mt-6 font-heading text-2xl font-semibold text-white">Multi-tool ready</h3><p class="mt-4 text-sm leading-7 text-slate-400">Model-aware install paths and shared workflow assets keep Claude Code, Codex, and Google Antigravity in one coherent delivery flow.</p></article></div><div class="" style="opacity:0;transform:translateY(16px)"><article class="glass-panel card-hover-glow group relative overflow-hidden bg-white/[0.04]"><div class="absolute inset-y-6 left-0 w-px bg-transparent transition group-hover:bg-cyan-300/40"></div><span class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 transition group-hover:text-slate-200">02</span><h3 class="mt-6 font-heading text-2xl font-semibold text-white">Plan before you code</h3><p class="mt-4 text-sm leading-7 text-slate-400">Requirement, epic, and feature-plan artifacts give AI runs a boundary, measurable acceptance criteria, and a reviewable execution path.</p></article></div><div class="" style="opacity:0;transform:translateY(16px)"><article class="glass-panel card-hover-glow group relative overflow-hidden bg-white/[0.04]"><div class="absolute inset-y-6 left-0 w-px bg-transparent transition group-hover:bg-cyan-300/40"></div><span class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 transition group-hover:text-slate-200">03</span><h3 class="mt-6 font-heading text-2xl font-semibold text-white">Static site, live-feeling guidance</h3><p class="mt-4 text-sm leading-7 text-slate-400">Typed metadata, copied skill markdown, and polished UI sections keep the website fast while still feeling premium and intentional.</p></article></div></div></section><section class="space-y-6"><div class="max-w-2xl" style="opacity:0;transform:translateY(16px)"><p class="section-kicker">Explore the product</p><h2 class="mt-4 font-heading text-3xl font-semibold text-white sm:text-4xl">Move from landing page to install, workflow visualization, and skill discovery.</h2><p class="mt-4 text-base leading-8 text-slate-400">The home page should make the next step obvious whether a visitor wants to install immediately, inspect the orchestration flow, or browse reusable skills.</p></div><div class="grid gap-4 xl:grid-cols-3"><div class="" style="opacity:0;transform:translateY(16px)"><a class="focus-ring glass-panel card-hover-glow group relative flex h-full min-h-[240px] flex-col justify-between overflow-hidden bg-white/[0.04]" href="/install"><div class="absolute inset-0 bg-gradient-to-br from-cyan-400/0 via-transparent to-cyan-400/5 opacity-0 transition group-hover:opacity-100"></div><div class="relative"><p class="font-mono text-xs tracking-[0.22em] text-cyan-200">/install</p><h3 class="mt-4 font-heading text-3xl font-semibold text-white">Install</h3><p class="mt-4 text-sm leading-7 text-slate-400">Choose an AI tool, update the command instantly, and copy with clear visual feedback.</p></div><div class="relative mt-8 flex items-center justify-between gap-3 text-sm text-slate-300"><span>Open route</span><span aria-hidden="true" class="transition group-hover:translate-x-2">→</span></div></a></div><div class="" style="opacity:0;transform:translateY(16px)"><a class="focus-ring glass-panel card-hover-glow group relative flex h-full min-h-[240px] flex-col justify-between overflow-hidden bg-white/[0.04]" href="/workflow"><div class="absolute inset-0 bg-gradient-to-br from-cyan-400/0 via-transparent to-cyan-400/5 opacity-0 transition group-hover:opacity-100"></div><div class="relative"><p class="font-mono text-xs tracking-[0.22em] text-cyan-200">/workflow</p><h3 class="mt-4 font-heading text-3xl font-semibold text-white">Workflow</h3><p class="mt-4 text-sm leading-7 text-slate-400">See how intake, plan review, verification, and sync connect inside the workflow.</p></div><div class="relative mt-8 flex items-center justify-between gap-3 text-sm text-slate-300"><span>Open route</span><span aria-hidden="true" class="transition group-hover:translate-x-2">→</span></div></a></div><div class="" style="opacity:0;transform:translateY(16px)"><a class="focus-ring glass-panel card-hover-glow group relative flex h-full min-h-[240px] flex-col justify-between overflow-hidden bg-white/[0.04]" href="/skills"><div class="absolute inset-0 bg-gradient-to-br from-cyan-400/0 via-transparent to-cyan-400/5 opacity-0 transition group-hover:opacity-100"></div><div class="relative"><p class="font-mono text-xs tracking-[0.22em] text-cyan-200">/skills</p><h3 class="mt-4 font-heading text-3xl font-semibold text-white">Skills</h3><p class="mt-4 text-sm leading-7 text-slate-400">Browse the reusable skills that shape planning, execution, and validation across tools.</p></div><div class="relative mt-8 flex items-center justify-between gap-3 text-sm text-slate-300"><span>Open route</span><span aria-hidden="true" class="transition group-hover:translate-x-2">→</span></div></a></div></div></section></div></main><footer class="border-white/6 border-t bg-obsidian-950/70"><div class="mx-auto grid max-w-shell gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[1.5fr,1fr] lg:px-8"><div><p class="font-mono text-sm tracking-[0.28em] text-slate-200">&gt; ai-workflow</p><p class="mt-3 max-w-xl text-sm leading-7 text-slate-400">Open-source workflow assets for developers who want clearer AI execution paths.</p></div><div class="grid gap-3 text-sm text-slate-400 sm:grid-cols-2"><a class="focus-ring rounded-md transition hover:text-white" href="/install">Install</a><a class="focus-ring rounded-md transition hover:text-white" href="/skills">Skills</a><a class="focus-ring rounded-md transition hover:text-white" href="/workflow">Workflow</a><span>MIT License</span></div></div></footer></div><script src="/_next/static/chunks/webpack.js?v=1774778842711" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0]);self.__next_f.push([2,null])</script><script>self.__next_f.push([1,"1:HL[\"/_next/static/media/7b0b24f36b1a6d0b-s.p.woff2\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/woff2\"}]\n2:HL[\"/_next/static/media/bb3ef058b751a6ad-s.p.woff2\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/woff2\"}]\n3:HL[\"/_next/static/media/e4af272ccee01ff0-s.p.woff2\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/woff2\"}]\n4:HL[\"/_next/static/css/app/layout.css?v=1774778842711\",\"style\"]\n0:D{\"name\":\"r5\",\"env\":\"Server\"}\n"])</script><script>self.__next_f.push([1,"5:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n8:I[\"(app-pages-browser)/./components/client/home-page.tsx\",[\"app/page\",\"static/chunks/app/page.js\"],\"HomePage\"]\na:I[\"(app-pages-browser)/./components/client/locale-provider.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"LocaleProvider\"]\nb:I[\"(app-pages-browser)/./components/client/site-chrome.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"SiteChrome\"]\nc:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\nd:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\nf:I[\"(app-pages-browser)/./components/client/not-found-page.tsx\",[\"app/not-found\",\"static/chunks/app/not-found.js\"],\"NotFoundPage\"]\n12:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n6:D{\"name\":\"\",\"env\":\"Server\"}\n7:D{\"name\":\"Page\",\"env\":\"Server\"}\n7:[\"$\",\"$L8\",null,{}]\n9:D{\"name\":\"RootLayout\",\"env\":\"Server\"}\ne:D{\"name\":\"NotFound\",\"env\":\"Server\"}\ne:[\"$\",\"$Lf\",null,{}]\n9:[\"$\",\"html\",null,{\"lang\":\"en\",\"children\":[\"$\",\"body\",null,{\"className\":\"__variable_ed3508 __variable_f367f3 __variable_3c557b font-sans\",\"children\":[\"$\",\"$La\",null,{\"children\":[\"$\",\"$Lb\",null,{\"children\":[\"$\",\"$Lc\",null,{\"parallelRouterKey\":\"children\",\"segmentPath\":[\"children\"],\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$Ld\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$e\",\"notFoundStyles\":[]}]}]}]}]}]\n10:D{\"name\":\"r6\",\"env\":\"Server\"}\n10:null\n11:D{\"name\":\"\",\"env\":\"Server\"}\n13:[]\n0:[\"$\",\"$L5\",null,{\"buildId\":\"development\",\"assetPrefix\":\"\",\"urlParts\":[\"\",\"\"],\"initialTree\":[\"\",{\"children\":[\"__PAGE__\",{}]},\"$undefined\",\"$undefined\",true],\"initialSe"])</script><script>self.__next_f.push([1,"edData\":[\"\",{\"children\":[\"__PAGE__\",{},[[\"$L6\",\"$7\",null],null],null]},[[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/app/layout.css?v=1774778842711\",\"precedence\":\"next_static/css/app/layout.css\",\"crossOrigin\":\"$undefined\"}]],\"$9\"],null],null],\"couldBeIntercepted\":false,\"initialHead\":[\"$10\",\"$L11\"],\"globalErrorComponent\":\"$12\",\"missingSlots\":\"$W13\"}]\n"])</script><script>self.__next_f.push([1,"11:[[\"$\",\"meta\",\"0\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1\"}],[\"$\",\"meta\",\"1\",{\"charSet\":\"utf-8\"}],[\"$\",\"title\",\"2\",{\"children\":\"AI Workflow Website\"}],[\"$\",\"meta\",\"3\",{\"name\":\"description\",\"content\":\"Marketing and documentation website scaffold for the AI Agent Workflow project.\"}],[\"$\",\"meta\",\"4\",{\"name\":\"next-size-adjust\"}]]\n6:null\n"])</script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="/_next/static/css/app/layout.css?v=1774778842711"
+      data-precedence="next_static/css/app/layout.css"
+    />
+    <link
+      rel="preload"
+      as="script"
+      fetchpriority="low"
+      href="/_next/static/chunks/webpack.js?v=1774778842711"
+    />
+    <script
+      src="/_next/static/chunks/main-app.js?v=1774778842711"
+      async=""
+    ></script>
+    <script src="/_next/static/chunks/app-pages-internals.js" async=""></script>
+    <script src="/_next/static/chunks/app/page.js" async=""></script>
+    <script src="/_next/static/chunks/app/layout.js" async=""></script>
+    <script src="/_next/static/chunks/app/not-found.js" async=""></script>
+    <title>AI Workflow Website</title>
+    <meta
+      name="description"
+      content="Marketing and documentation website scaffold for the AI Agent Workflow project."
+    />
+    <meta name="next-size-adjust" />
+    <script src="/_next/static/chunks/polyfills.js" nomodule=""></script>
+  </head>
+  <body class="__variable_ed3508 __variable_f367f3 __variable_3c557b font-sans">
+    <div
+      class="bg-obsidian-900 relative min-h-screen overflow-hidden text-slate-100"
+    >
+      <div class="hero-blur hero-blur-one"></div>
+      <div class="hero-blur hero-blur-two"></div>
+      <div class="hero-blur hero-blur-three"></div>
+      <header
+        class="border-white/6 bg-obsidian-950/80 sticky top-0 z-50 border-b backdrop-blur-xl"
+      >
+        <div
+          class="mx-auto flex max-w-shell items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8"
+        >
+          <a
+            class="focus-ring rounded-full px-2 py-2 font-mono text-sm tracking-[0.32em] text-slate-200"
+            href="/"
+            >&gt; ai-workflow</a
+          >
+          <nav class="hidden items-center gap-2 md:flex">
+            <a
+              class="focus-ring bg-white/8 rounded-full px-4 py-2 text-sm text-white transition hover:text-white"
+              href="/"
+              >Home</a
+            ><a
+              class="focus-ring rounded-full px-4 py-2 text-sm text-slate-400 transition hover:text-white"
+              href="/install"
+              >Install</a
+            ><a
+              class="focus-ring rounded-full px-4 py-2 text-sm text-slate-400 transition hover:text-white"
+              href="/workflow"
+              >Workflow</a
+            ><a
+              class="focus-ring rounded-full px-4 py-2 text-sm text-slate-400 transition hover:text-white"
+              href="/skills"
+              >Skills</a
+            >
+          </nav>
+          <div class="hidden items-center gap-3 md:flex">
+            <div
+              class="inline-flex rounded-full border border-white/10 bg-white/5 p-1"
+              aria-label="Language"
+            >
+              <button
+                type="button"
+                class="focus-ring bg-hero-gradient shadow-violet min-h-11 rounded-full px-3 text-xs font-semibold tracking-[0.24em] text-white transition"
+                aria-pressed="true"
+              >
+                EN</button
+              ><button
+                type="button"
+                class="focus-ring min-h-11 rounded-full px-3 text-xs font-semibold tracking-[0.24em] text-slate-400 transition"
+                aria-pressed="false"
+              >
+                VI
+              </button>
+            </div>
+            <a
+              href="https://github.com/phananhtuan09/ai-agent-workflow"
+              target="_blank"
+              rel="noreferrer"
+              class="focus-ring rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:border-white/30 hover:text-white"
+              >GitHub</a
+            >
+          </div>
+          <button
+            type="button"
+            class="focus-ring inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg md:hidden"
+            aria-label="Open navigation menu"
+          >
+            ≡
+          </button>
+        </div>
+      </header>
+      <main>
+        <div
+          class="mx-auto flex max-w-shell flex-col gap-16 px-4 py-10 sm:px-6 lg:gap-20 lg:px-8 lg:py-16"
+        >
+          <section
+            class="relative overflow-hidden rounded-[40px] border border-white/10 bg-white/[0.035] p-6 shadow-[0_32px_120px_rgba(15,23,42,0.45)] sm:p-8 lg:p-10"
+          >
+            <div
+              class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
+            ></div>
+            <div
+              class="absolute -left-24 top-12 h-56 w-56 rounded-full bg-accent-violet/15 blur-3xl"
+            ></div>
+            <div
+              class="absolute -right-10 bottom-0 h-64 w-64 rounded-full bg-accent-blue/15 blur-3xl"
+            ></div>
+            <div
+              class="relative grid gap-10 xl:grid-cols-[1.02fr,0.98fr] xl:items-center"
+            >
+              <div
+                class="space-y-8"
+                style="opacity: 0; transform: translateY(16px)"
+              >
+                <div class="space-y-5">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <p class="section-kicker">$ ai-agent-workflow --init</p>
+                    <span
+                      class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100"
+                      >Planning-first starter kit</span
+                    >
+                  </div>
+                  <h1
+                    class="max-w-4xl font-heading text-5xl font-semibold leading-[0.92] text-white sm:text-6xl lg:text-7xl"
+                  >
+                    <span class="text-gradient"
+                      >From rough prompt to reviewable AI execution.</span
+                    >
+                  </h1>
+                  <p
+                    class="max-w-2xl text-base leading-8 text-slate-300 sm:text-lg"
+                  >
+                    Install the workflow, route work through requirements and
+                    feature plans, and keep implementation aligned with
+                    verification instead of improvising in chat.
+                  </p>
+                </div>
+                <div class="flex flex-col gap-3 sm:flex-row">
+                  <a
+                    class="focus-ring inline-flex min-h-12 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-black transition hover:bg-slate-200"
+                    href="/install"
+                    >Install the workflow</a
+                  ><a
+                    class="focus-ring border-white/12 inline-flex min-h-12 items-center justify-center rounded-full border bg-white/5 px-6 text-sm font-semibold text-slate-100 transition hover:border-white/25 hover:bg-white/10"
+                    href="/workflow"
+                    >Preview the workflow</a
+                  >
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span
+                    class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500"
+                    >Supports</span
+                  ><span class="pill">Claude Code</span
+                  ><span class="pill">Codex</span
+                  ><span class="pill">Google Antigravity</span>
+                </div>
+              </div>
+              <div
+                class="xl:pl-4"
+                style="opacity: 0; transform: translateY(16px)"
+              >
+                <div
+                  role="img"
+                  aria-label="Animated workflow node map showing requirement intake, epic routing, plan review, and execution."
+                  class="glass-panel relative overflow-hidden bg-white/[0.055] p-5 sm:p-6"
+                >
+                  <div
+                    class="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/40 to-transparent"
+                  ></div>
+                  <div
+                    class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(103,232,249,0.12),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(147,197,253,0.14),transparent_38%)]"
+                  ></div>
+                  <div class="relative sm:hidden">
+                    <div class="space-y-4">
+                      <div class="relative pl-6">
+                        <span
+                          aria-hidden="true"
+                          class="absolute left-[11px] top-12 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-cyan-300/60 to-white/10"
+                          style="
+                            transform-origin: top;
+                            opacity: 0;
+                            transform: scaleY(0);
+                          "
+                        ></span>
+                        <div style="opacity: 0; transform: translateY(12px)">
+                          <div
+                            class="bg-obsidian-850/90 relative rounded-[24px] border border-white/10 p-4 shadow-[0_20px_60px_rgba(2,8,23,0.35)]"
+                          >
+                            <span
+                              class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100"
+                              >1</span
+                            >
+                            <p class="section-kicker">
+                              step
+                              <!-- -->1
+                            </p>
+                            <p
+                              class="mt-3 font-heading text-2xl font-semibold text-white"
+                            >
+                              Requirement intake
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="relative pl-6">
+                        <span
+                          aria-hidden="true"
+                          class="absolute left-[11px] top-12 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-cyan-300/60 to-white/10"
+                          style="
+                            transform-origin: top;
+                            opacity: 0;
+                            transform: scaleY(0);
+                          "
+                        ></span>
+                        <div style="opacity: 0; transform: translateY(12px)">
+                          <div
+                            class="bg-obsidian-850/90 relative rounded-[24px] border border-white/10 p-4 shadow-[0_20px_60px_rgba(2,8,23,0.35)]"
+                          >
+                            <span
+                              class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100"
+                              >2</span
+                            >
+                            <p class="section-kicker">
+                              step
+                              <!-- -->2
+                            </p>
+                            <p
+                              class="mt-3 font-heading text-2xl font-semibold text-white"
+                            >
+                              Epic routing
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="relative pl-6">
+                        <span
+                          aria-hidden="true"
+                          class="absolute left-[11px] top-12 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-cyan-300/60 to-white/10"
+                          style="
+                            transform-origin: top;
+                            opacity: 0;
+                            transform: scaleY(0);
+                          "
+                        ></span>
+                        <div style="opacity: 0; transform: translateY(12px)">
+                          <div
+                            class="bg-obsidian-850/90 relative rounded-[24px] border border-white/10 p-4 shadow-[0_20px_60px_rgba(2,8,23,0.35)]"
+                          >
+                            <span
+                              class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100"
+                              >3</span
+                            >
+                            <p class="section-kicker">
+                              step
+                              <!-- -->3
+                            </p>
+                            <p
+                              class="mt-3 font-heading text-2xl font-semibold text-white"
+                            >
+                              Plan review
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="relative pl-6">
+                        <div style="opacity: 0; transform: translateY(12px)">
+                          <div
+                            class="bg-obsidian-850/90 relative rounded-[24px] border border-cyan-300/35 p-4 shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_24px_60px_rgba(34,211,238,0.12)]"
+                          >
+                            <span
+                              class="absolute -left-6 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-100"
+                              >4</span
+                            >
+                            <p class="section-kicker">
+                              step
+                              <!-- -->4
+                            </p>
+                            <p
+                              class="mt-3 font-heading text-2xl font-semibold text-white"
+                            >
+                              Execute
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="relative hidden min-h-[26rem] sm:block">
+                    <svg
+                      aria-hidden="true"
+                      class="pointer-events-none absolute inset-0 h-full w-full"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <linearGradient id="Rl1jtj6" x1="0%" x2="100%">
+                          <stop
+                            offset="0%"
+                            stop-color="#67e8f9"
+                            stop-opacity="0.95"
+                          ></stop>
+                          <stop
+                            offset="100%"
+                            stop-color="#c4b5fd"
+                            stop-opacity="0.7"
+                          ></stop>
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M 24 24 C 38 20, 44 20, 58 30"
+                        fill="none"
+                        stroke="url(#Rl1jtj6)"
+                        stroke-width="1.2"
+                        stroke-linecap="round"
+                        opacity="0"
+                        pathLength="1"
+                        stroke-dashoffset="0px"
+                        stroke-dasharray="0px 1px"
+                      ></path>
+                      <path
+                        d="M 66 38 C 58 50, 46 56, 36 66"
+                        fill="none"
+                        stroke="url(#Rl1jtj6)"
+                        stroke-width="1.2"
+                        stroke-linecap="round"
+                        opacity="0"
+                        pathLength="1"
+                        stroke-dashoffset="0px"
+                        stroke-dasharray="0px 1px"
+                      ></path>
+                      <path
+                        d="M 44 72 C 58 70, 63 72, 72 80"
+                        fill="none"
+                        stroke="url(#Rl1jtj6)"
+                        stroke-width="1.2"
+                        stroke-linecap="round"
+                        opacity="0"
+                        pathLength="1"
+                        stroke-dashoffset="0px"
+                        stroke-dasharray="0px 1px"
+                      ></path>
+                    </svg>
+                    <div
+                      class="absolute left-[6%] top-[10%] w-[42%] max-w-[14rem]"
+                      style="opacity: 0; transform: translateY(12px)"
+                    >
+                      <div
+                        class="bg-obsidian-850/90 rounded-[24px] border border-white/10 p-5 shadow-[0_20px_70px_rgba(2,8,23,0.36)] backdrop-blur"
+                      >
+                        <p class="section-kicker">
+                          step
+                          <!-- -->1
+                        </p>
+                        <p
+                          class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white"
+                        >
+                          Requirement intake
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      class="absolute left-[52%] top-[22%] w-[42%] max-w-[14rem]"
+                      style="opacity: 0; transform: translateY(12px)"
+                    >
+                      <div
+                        class="bg-obsidian-850/90 rounded-[24px] border border-white/10 p-5 shadow-[0_20px_70px_rgba(2,8,23,0.36)] backdrop-blur"
+                      >
+                        <p class="section-kicker">
+                          step
+                          <!-- -->2
+                        </p>
+                        <p
+                          class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white"
+                        >
+                          Epic routing
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      class="absolute left-[14%] top-[58%] w-[42%] max-w-[14rem]"
+                      style="opacity: 0; transform: translateY(12px)"
+                    >
+                      <div
+                        class="bg-obsidian-850/90 rounded-[24px] border border-white/10 p-5 shadow-[0_20px_70px_rgba(2,8,23,0.36)] backdrop-blur"
+                      >
+                        <p class="section-kicker">
+                          step
+                          <!-- -->3
+                        </p>
+                        <p
+                          class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white"
+                        >
+                          Plan review
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      class="absolute left-[58%] top-[68%] w-[42%] max-w-[14rem]"
+                      style="opacity: 0; transform: translateY(12px)"
+                    >
+                      <div
+                        class="bg-obsidian-850/90 rounded-[24px] border border-cyan-300/35 p-5 shadow-[0_0_0_1px_rgba(103,232,249,0.18),0_26px_70px_rgba(34,211,238,0.16)] backdrop-blur"
+                      >
+                        <p class="section-kicker">
+                          step
+                          <!-- -->4
+                        </p>
+                        <p
+                          class="mt-3 font-heading text-[1.7rem] font-semibold leading-tight text-white"
+                        >
+                          Execute
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <div class="" style="opacity: 0; transform: translateY(16px)">
+            <section
+              class="overflow-hidden rounded-[36px] border border-white/10 bg-black/20 p-6 shadow-[0_24px_80px_rgba(2,8,23,0.26)] sm:p-8"
+            >
+              <div class="grid gap-8 xl:grid-cols-[0.82fr,1.18fr] xl:items-end">
+                <div>
+                  <p class="section-kicker">By the numbers</p>
+                  <h2
+                    class="mt-4 max-w-xl font-heading text-3xl font-semibold text-white sm:text-4xl"
+                  >
+                    Built around one predictable flow
+                  </h2>
+                  <div class="mt-6 grid gap-3 sm:grid-cols-3">
+                    <div
+                      role="group"
+                      aria-label="AI tools: 3"
+                      class="rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    >
+                      <p class="font-heading text-3xl font-semibold text-white">
+                        <span>0</span>
+                      </p>
+                      <p
+                        class="mt-2 text-xs uppercase tracking-[0.22em] text-slate-500"
+                      >
+                        AI tools
+                      </p>
+                    </div>
+                    <div
+                      role="group"
+                      aria-label="Ready skills: 16"
+                      class="rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    >
+                      <p class="font-heading text-3xl font-semibold text-white">
+                        <span>0</span>
+                      </p>
+                      <p
+                        class="mt-2 text-xs uppercase tracking-[0.22em] text-slate-500"
+                      >
+                        Ready skills
+                      </p>
+                    </div>
+                    <div
+                      role="group"
+                      aria-label="Workflow graphs: 2"
+                      class="rounded-[24px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    >
+                      <p class="font-heading text-3xl font-semibold text-white">
+                        <span>0</span>
+                      </p>
+                      <p
+                        class="mt-2 text-xs uppercase tracking-[0.22em] text-slate-500"
+                      >
+                        Workflow graphs
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid gap-3 md:grid-cols-2">
+                  <div
+                    class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"
+                  >
+                    <p
+                      class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80"
+                    >
+                      01
+                    </p>
+                    <p class="mt-3 text-sm leading-7 text-slate-200">
+                      Requirement intake
+                    </p>
+                  </div>
+                  <div
+                    class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"
+                  >
+                    <p
+                      class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80"
+                    >
+                      02
+                    </p>
+                    <p class="mt-3 text-sm leading-7 text-slate-200">
+                      Epic routing
+                    </p>
+                  </div>
+                  <div
+                    class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"
+                  >
+                    <p
+                      class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80"
+                    >
+                      03
+                    </p>
+                    <p class="mt-3 text-sm leading-7 text-slate-200">
+                      Plan review
+                    </p>
+                  </div>
+                  <div
+                    class="rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4"
+                  >
+                    <p
+                      class="text-xs font-semibold uppercase tracking-[0.26em] text-cyan-200/80"
+                    >
+                      04
+                    </p>
+                    <p class="mt-3 text-sm leading-7 text-slate-200">
+                      Single-writer execution
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+          <section
+            class="grid gap-6 xl:grid-cols-[0.84fr,1.16fr] xl:items-start"
+          >
+            <div
+              class="max-w-xl"
+              style="opacity: 0; transform: translateY(16px)"
+            >
+              <p class="section-kicker">One command install</p>
+              <h2
+                class="mt-4 font-heading text-3xl font-semibold text-white sm:text-4xl"
+              >
+                Pick your tool. Copy the command. Done.
+              </h2>
+              <p class="mt-4 text-base leading-8 text-slate-400">
+                The homepage preview now behaves like the real install flow, so
+                visitors can switch tools, inspect the exact CLI flag, and see
+                where the workflow writes files.
+              </p>
+            </div>
+            <div class="" style="opacity: 0; transform: translateY(16px)">
+              <div class="glass-panel terminal-panel relative overflow-hidden">
+                <div
+                  class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(103,232,249,0.1),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(124,58,237,0.12),transparent_34%)]"
+                ></div>
+                <div
+                  class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/40 to-transparent"
+                ></div>
+                <div class="relative">
+                  <p class="section-kicker">Interactive install preview</p>
+                  <h3
+                    class="mt-4 max-w-lg font-heading text-3xl font-semibold leading-tight text-white sm:text-[2rem]"
+                  >
+                    Launch with one command, then tailor the workflow to your
+                    tool.
+                  </h3>
+                  <p class="mt-4 max-w-lg text-sm leading-7 text-slate-300">
+                    The full Install page switches between Claude Code, Codex,
+                    and Google Antigravity, keeps the command in sync, and gives
+                    users copy feedback immediately.
+                  </p>
+                  <div class="mt-6 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      aria-pressed="false"
+                      class="focus-ring hover:bg-white/8 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition hover:border-white/20 hover:text-slate-200"
+                    >
+                      Claude Code</button
+                    ><button
+                      type="button"
+                      aria-pressed="true"
+                      class="focus-ring bg-cyan-300/12 rounded-full border border-cyan-300/30 px-4 py-2 text-sm font-semibold text-cyan-100 transition"
+                    >
+                      Codex</button
+                    ><button
+                      type="button"
+                      aria-pressed="false"
+                      class="focus-ring hover:bg-white/8 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-400 transition hover:border-white/20 hover:text-slate-200"
+                    >
+                      Google Antigravity
+                    </button>
+                  </div>
+                  <div
+                    class="mt-6 rounded-[30px] border border-white/10 bg-black/50 p-5"
+                  >
+                    <div class="flex items-center justify-between gap-4">
+                      <p
+                        class="font-mono text-xs tracking-[0.24em] text-slate-500"
+                      >
+                        $ install
+                      </p>
+                      <span
+                        class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400"
+                        >CX</span
+                      >
+                    </div>
+                    <pre
+                      class="mt-4 overflow-x-auto whitespace-pre-wrap break-all font-mono text-sm leading-7 text-cyan-200"
+                    >
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool codex</pre
+                    >
+                  </div>
+                  <div
+                    class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center"
+                  >
+                    <button
+                      type="button"
+                      class="focus-ring border-white/12 inline-flex min-h-11 items-center justify-center rounded-full border bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-slate-200"
+                    >
+                      ⎘<!-- --> <!-- -->Copy command</button
+                    ><span class="sr-only" aria-live="polite">Copy command</span
+                    ><a
+                      class="focus-ring border-white/12 inline-flex min-h-11 items-center justify-center rounded-full border bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/25 hover:bg-white/10"
+                      href="/install"
+                      >Open full install flow</a
+                    >
+                  </div>
+                  <div class="mt-8">
+                    <p class="section-kicker">
+                      Writes the right project structure
+                    </p>
+                    <p class="mt-3 text-sm leading-7 text-slate-400">
+                      This preview uses the Codex variant, which seeds the
+                      repository with workflow folders and guidance files
+                      instead of leaving setup hidden in markdown.
+                    </p>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                      <span class="pill">.agents/skills</span
+                      ><span class="pill">.agents/roles</span
+                      ><span class="pill">.agents/knowledge</span
+                      ><span class="pill">.agents/themes</span
+                      ><span class="pill"
+                        >+<!-- -->2<!-- -->
+                        more</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section
+            class="grid gap-6 lg:grid-cols-[0.85fr,1.15fr] lg:items-start"
+          >
+            <div
+              class="max-w-xl"
+              style="opacity: 0; transform: translateY(16px)"
+            >
+              <p class="section-kicker">Why teams adopt it</p>
+              <h2
+                class="mt-4 font-heading text-3xl font-semibold text-white sm:text-4xl"
+              >
+                A homepage that explains the system before users open the
+                repository.
+              </h2>
+              <p class="mt-4 text-base leading-8 text-slate-400">
+                Each block translates the workflow into a practical benefit so
+                visitors can understand the product, the install path, and the
+                architecture in one pass.
+              </p>
+            </div>
+            <div class="grid gap-4 md:grid-cols-3">
+              <div class="" style="opacity: 0; transform: translateY(16px)">
+                <article
+                  class="glass-panel card-hover-glow group relative overflow-hidden bg-white/[0.04]"
+                >
+                  <div
+                    class="absolute inset-y-6 left-0 w-px bg-transparent transition group-hover:bg-cyan-300/40"
+                  ></div>
+                  <span
+                    class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 transition group-hover:text-slate-200"
+                    >01</span
+                  >
+                  <h3
+                    class="mt-6 font-heading text-2xl font-semibold text-white"
+                  >
+                    Multi-tool ready
+                  </h3>
+                  <p class="mt-4 text-sm leading-7 text-slate-400">
+                    Model-aware install paths and shared workflow assets keep
+                    Claude Code, Codex, and Google Antigravity in one coherent
+                    delivery flow.
+                  </p>
+                </article>
+              </div>
+              <div class="" style="opacity: 0; transform: translateY(16px)">
+                <article
+                  class="glass-panel card-hover-glow group relative overflow-hidden bg-white/[0.04]"
+                >
+                  <div
+                    class="absolute inset-y-6 left-0 w-px bg-transparent transition group-hover:bg-cyan-300/40"
+                  ></div>
+                  <span
+                    class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 transition group-hover:text-slate-200"
+                    >02</span
+                  >
+                  <h3
+                    class="mt-6 font-heading text-2xl font-semibold text-white"
+                  >
+                    Plan before you code
+                  </h3>
+                  <p class="mt-4 text-sm leading-7 text-slate-400">
+                    Requirement, epic, and feature-plan artifacts give AI runs a
+                    boundary, measurable acceptance criteria, and a reviewable
+                    execution path.
+                  </p>
+                </article>
+              </div>
+              <div class="" style="opacity: 0; transform: translateY(16px)">
+                <article
+                  class="glass-panel card-hover-glow group relative overflow-hidden bg-white/[0.04]"
+                >
+                  <div
+                    class="absolute inset-y-6 left-0 w-px bg-transparent transition group-hover:bg-cyan-300/40"
+                  ></div>
+                  <span
+                    class="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500 transition group-hover:text-slate-200"
+                    >03</span
+                  >
+                  <h3
+                    class="mt-6 font-heading text-2xl font-semibold text-white"
+                  >
+                    Static site, live-feeling guidance
+                  </h3>
+                  <p class="mt-4 text-sm leading-7 text-slate-400">
+                    Typed metadata, copied skill markdown, and polished UI
+                    sections keep the website fast while still feeling premium
+                    and intentional.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </section>
+          <section class="space-y-6">
+            <div
+              class="max-w-2xl"
+              style="opacity: 0; transform: translateY(16px)"
+            >
+              <p class="section-kicker">Explore the product</p>
+              <h2
+                class="mt-4 font-heading text-3xl font-semibold text-white sm:text-4xl"
+              >
+                Move from landing page to install, workflow visualization, and
+                skill discovery.
+              </h2>
+              <p class="mt-4 text-base leading-8 text-slate-400">
+                The home page should make the next step obvious whether a
+                visitor wants to install immediately, inspect the orchestration
+                flow, or browse reusable skills.
+              </p>
+            </div>
+            <div class="grid gap-4 xl:grid-cols-3">
+              <div class="" style="opacity: 0; transform: translateY(16px)">
+                <a
+                  class="focus-ring glass-panel card-hover-glow group relative flex h-full min-h-[240px] flex-col justify-between overflow-hidden bg-white/[0.04]"
+                  href="/install"
+                  ><div
+                    class="absolute inset-0 bg-gradient-to-br from-cyan-400/0 via-transparent to-cyan-400/5 opacity-0 transition group-hover:opacity-100"
+                  ></div>
+                  <div class="relative">
+                    <p
+                      class="font-mono text-xs tracking-[0.22em] text-cyan-200"
+                    >
+                      /install
+                    </p>
+                    <h3
+                      class="mt-4 font-heading text-3xl font-semibold text-white"
+                    >
+                      Install
+                    </h3>
+                    <p class="mt-4 text-sm leading-7 text-slate-400">
+                      Choose an AI tool, update the command instantly, and copy
+                      with clear visual feedback.
+                    </p>
+                  </div>
+                  <div
+                    class="relative mt-8 flex items-center justify-between gap-3 text-sm text-slate-300"
+                  >
+                    <span>Open route</span
+                    ><span
+                      aria-hidden="true"
+                      class="transition group-hover:translate-x-2"
+                      >→</span
+                    >
+                  </div></a
+                >
+              </div>
+              <div class="" style="opacity: 0; transform: translateY(16px)">
+                <a
+                  class="focus-ring glass-panel card-hover-glow group relative flex h-full min-h-[240px] flex-col justify-between overflow-hidden bg-white/[0.04]"
+                  href="/workflow"
+                  ><div
+                    class="absolute inset-0 bg-gradient-to-br from-cyan-400/0 via-transparent to-cyan-400/5 opacity-0 transition group-hover:opacity-100"
+                  ></div>
+                  <div class="relative">
+                    <p
+                      class="font-mono text-xs tracking-[0.22em] text-cyan-200"
+                    >
+                      /workflow
+                    </p>
+                    <h3
+                      class="mt-4 font-heading text-3xl font-semibold text-white"
+                    >
+                      Workflow
+                    </h3>
+                    <p class="mt-4 text-sm leading-7 text-slate-400">
+                      See how intake, plan review, verification, and sync
+                      connect inside the workflow.
+                    </p>
+                  </div>
+                  <div
+                    class="relative mt-8 flex items-center justify-between gap-3 text-sm text-slate-300"
+                  >
+                    <span>Open route</span
+                    ><span
+                      aria-hidden="true"
+                      class="transition group-hover:translate-x-2"
+                      >→</span
+                    >
+                  </div></a
+                >
+              </div>
+              <div class="" style="opacity: 0; transform: translateY(16px)">
+                <a
+                  class="focus-ring glass-panel card-hover-glow group relative flex h-full min-h-[240px] flex-col justify-between overflow-hidden bg-white/[0.04]"
+                  href="/skills"
+                  ><div
+                    class="absolute inset-0 bg-gradient-to-br from-cyan-400/0 via-transparent to-cyan-400/5 opacity-0 transition group-hover:opacity-100"
+                  ></div>
+                  <div class="relative">
+                    <p
+                      class="font-mono text-xs tracking-[0.22em] text-cyan-200"
+                    >
+                      /skills
+                    </p>
+                    <h3
+                      class="mt-4 font-heading text-3xl font-semibold text-white"
+                    >
+                      Skills
+                    </h3>
+                    <p class="mt-4 text-sm leading-7 text-slate-400">
+                      Browse the reusable skills that shape planning, execution,
+                      and validation across tools.
+                    </p>
+                  </div>
+                  <div
+                    class="relative mt-8 flex items-center justify-between gap-3 text-sm text-slate-300"
+                  >
+                    <span>Open route</span
+                    ><span
+                      aria-hidden="true"
+                      class="transition group-hover:translate-x-2"
+                      >→</span
+                    >
+                  </div></a
+                >
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+      <footer class="border-white/6 bg-obsidian-950/70 border-t">
+        <div
+          class="mx-auto grid max-w-shell gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[1.5fr,1fr] lg:px-8"
+        >
+          <div>
+            <p class="font-mono text-sm tracking-[0.28em] text-slate-200">
+              &gt; ai-workflow
+            </p>
+            <p class="mt-3 max-w-xl text-sm leading-7 text-slate-400">
+              Open-source workflow assets for developers who want clearer AI
+              execution paths.
+            </p>
+          </div>
+          <div class="grid gap-3 text-sm text-slate-400 sm:grid-cols-2">
+            <a
+              class="focus-ring rounded-md transition hover:text-white"
+              href="/install"
+              >Install</a
+            ><a
+              class="focus-ring rounded-md transition hover:text-white"
+              href="/skills"
+              >Skills</a
+            ><a
+              class="focus-ring rounded-md transition hover:text-white"
+              href="/workflow"
+              >Workflow</a
+            ><span>MIT License</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+    <script
+      src="/_next/static/chunks/webpack.js?v=1774778842711"
+      async=""
+    ></script>
+    <script>
+      (self.__next_f = self.__next_f || []).push([0]);
+      self.__next_f.push([2, null]);
+    </script>
+    <script>
+      self.__next_f.push([
+        1,
+        '1:HL["/_next/static/media/7b0b24f36b1a6d0b-s.p.woff2","font",{"crossOrigin":"","type":"font/woff2"}]\n2:HL["/_next/static/media/bb3ef058b751a6ad-s.p.woff2","font",{"crossOrigin":"","type":"font/woff2"}]\n3:HL["/_next/static/media/e4af272ccee01ff0-s.p.woff2","font",{"crossOrigin":"","type":"font/woff2"}]\n4:HL["/_next/static/css/app/layout.css?v=1774778842711","style"]\n0:D{"name":"r5","env":"Server"}\n',
+      ]);
+    </script>
+    <script>
+      self.__next_f.push([
+        1,
+        '5:I["(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js",["app-pages-internals","static/chunks/app-pages-internals.js"],""]\n8:I["(app-pages-browser)/./components/client/home-page.tsx",["app/page","static/chunks/app/page.js"],"HomePage"]\na:I["(app-pages-browser)/./components/client/locale-provider.tsx",["app/layout","static/chunks/app/layout.js"],"LocaleProvider"]\nb:I["(app-pages-browser)/./components/client/site-chrome.tsx",["app/layout","static/chunks/app/layout.js"],"SiteChrome"]\nc:I["(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js",["app-pages-internals","static/chunks/app-pages-internals.js"],""]\nd:I["(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js",["app-pages-internals","static/chunks/app-pages-internals.js"],""]\nf:I["(app-pages-browser)/./components/client/not-found-page.tsx",["app/not-found","static/chunks/app/not-found.js"],"NotFoundPage"]\n12:I["(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js",["app-pages-internals","static/chunks/app-pages-internals.js"],""]\n6:D{"name":"","env":"Server"}\n7:D{"name":"Page","env":"Server"}\n7:["$","$L8",null,{}]\n9:D{"name":"RootLayout","env":"Server"}\ne:D{"name":"NotFound","env":"Server"}\ne:["$","$Lf",null,{}]\n9:["$","html",null,{"lang":"en","children":["$","body",null,{"className":"__variable_ed3508 __variable_f367f3 __variable_3c557b font-sans","children":["$","$La",null,{"children":["$","$Lb",null,{"children":["$","$Lc",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Ld",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$e","notFoundStyles":[]}]}]}]}]}]\n10:D{"name":"r6","env":"Server"}\n10:null\n11:D{"name":"","env":"Server"}\n13:[]\n0:["$","$L5",null,{"buildId":"development","assetPrefix":"","urlParts":["",""],"initialTree":["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],"initialSe',
+      ]);
+    </script>
+    <script>
+      self.__next_f.push([
+        1,
+        'edData":["",{"children":["__PAGE__",{},[["$L6","$7",null],null],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/app/layout.css?v=1774778842711","precedence":"next_static/css/app/layout.css","crossOrigin":"$undefined"}]],"$9"],null],null],"couldBeIntercepted":false,"initialHead":["$10","$L11"],"globalErrorComponent":"$12","missingSlots":"$W13"}]\n',
+      ]);
+    </script>
+    <script>
+      self.__next_f.push([
+        1,
+        '11:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"AI Workflow Website"}],["$","meta","3",{"name":"description","content":"Marketing and documentation website scaffold for the AI Agent Workflow project."}],["$","meta","4",{"name":"next-size-adjust"}]]\n6:null\n',
+      ]);
+    </script>
+  </body>
+</html>

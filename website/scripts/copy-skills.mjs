@@ -34,10 +34,14 @@ async function main() {
     copied.push(entry.name);
   }
 
-  console.log(`[sync:skills] copied ${copied.length} files into website/content/skills`);
+  console.log(
+    `[sync:skills] copied ${copied.length} files into website/content/skills`,
+  );
 
   if (skipped.length > 0) {
-    console.warn(`[sync:skills] skipped folders without SKILL.md: ${skipped.join(", ")}`);
+    console.warn(
+      `[sync:skills] skipped folders without SKILL.md: ${skipped.join(", ")}`,
+    );
   }
 }
 

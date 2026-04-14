@@ -10,8 +10,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit --incremental false",
     "test:web": "playwright test",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write",
+    "format:check": "prettier --check",
     "sync:skills": "node scripts/copy-skills.mjs"
   },
   "dependencies": {

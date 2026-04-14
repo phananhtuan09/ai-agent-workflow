@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { defaultLocale, localeOptions, messages } from "@/lib/i18n/messages";
 import type { Locale } from "@/types/content";
 
@@ -60,10 +66,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     t(key, params) {
       const resolved = resolvePath(messages[locale], key);
       return typeof resolved === "string" ? interpolate(resolved, params) : key;
-    }
+    },
   };
 
-  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+  return (
+    <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
+  );
 }
 
 export function useLocale() {
