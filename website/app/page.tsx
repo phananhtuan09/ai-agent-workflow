@@ -20,14 +20,27 @@ const stepBlueprints: Array<
     id: "foundation",
     stepLabel: "Step 1 of 4",
     title: "Start with a tool that already has workflow building blocks",
-    body: "If you want to build your own AI workflow, the first decision is not the prompt. It is the base tool. Claude Code is a strong starting point because it already exposes concepts like commands, skills, hooks, output styles, and sub agents. Those concepts make workflow design much more concrete.",
+    summary:
+      "The first decision is the foundation. If the base tool already exposes workflow surfaces, you can design a system instead of hiding everything inside one giant prompt.",
+    bullets: [
+      "Choose the base tool before designing prompts or templates.",
+      "Look for reusable workflow surfaces: commands, skills, output styles, and agents.",
+      "A good foundation makes the workflow inspectable and portable later.",
+    ],
     whyItMatters:
-      "When the tool already has clear workflow primitives, you spend less time fighting the interface and more time designing the system.",
+      "When the tool already gives you workflow primitives, you spend less time fighting the interface and more time shaping a repeatable system.",
     takeaway:
-      "Claude Code is a strong place to design the workflow first, then migrate the same ideas elsewhere later.",
+      "Start with workflow primitives, not prompt gymnastics.",
+    inspectLabel:
+      "Inspect one asset from each Claude Code surface so the workflow feels concrete instead of theoretical.",
+    inspectBullets: [
+      "Open a command to see the user-facing entry point.",
+      "Open a skill to see reusable task logic.",
+      "Open an output style or agent to see how behavior gets specialized.",
+    ],
     graphTitle: "Claude Code primitives",
     graphDescription:
-      "These surfaces become the building blocks of the workflow instead of hiding everything inside one giant prompt.",
+      "The workflow becomes easier to reason about when each responsibility lives in a visible surface.",
     graphNodes: [
       {
         label: "Commands",
@@ -46,14 +59,15 @@ const stepBlueprints: Array<
         caption: "Specialized roles that keep complex work decomposed.",
       },
     ],
+    graphFocusIndex: 0,
     comparison: [
       {
         title: "Generic Chat Tool",
-        body: "Useful for quick help, but weak as a workflow foundation because most structure stays trapped inside prompts and memory.",
+        body: "Fast for ad-hoc help, but most workflow structure stays trapped inside prompts and chat memory.",
       },
       {
         title: "Claude Code",
-        body: "Commands, skills, output styles, and agents are file-based assets you can inspect, refine, and migrate.",
+        body: "Commands, skills, output styles, and agents are durable assets you can inspect, refine, and migrate.",
       },
     ],
     examples: [
@@ -83,14 +97,27 @@ const stepBlueprints: Array<
     id: "setup",
     stepLabel: "Step 2 of 4",
     title: "Configure Claude Code before you build the workflow",
-    body: "In this workflow, Claude Code is not used as a raw chat tool. It is configured first. Permissions define what the agent can do safely. The status line keeps the session readable while you work. CLAUDE.md ensures every new session starts with the same rules, coding philosophy, and response behavior.",
+    summary:
+      "Before the workflow starts, shape the environment. Permissions, live context, and default instructions decide whether the agent feels safe, predictable, and useful.",
+    bullets: [
+      "Permissions define what the agent may and may not do.",
+      "A status line keeps the session readable while work is in progress.",
+      "A shared instruction file prevents session-to-session drift.",
+    ],
     whyItMatters:
-      "A good workflow starts with the environment the agent runs inside. If permissions are too loose, the tool becomes risky. If they are too strict, every useful action creates friction. If session rules are unclear, behavior drifts from one chat to the next.",
+      "Most workflow quality problems come from setup drift. If permissions are wrong or the operating contract is vague, every future step gets noisier.",
     takeaway:
-      "These files are separate, but together they make Claude Code predictable.",
+      "Configure the room before asking the agent to work in it.",
+    inspectLabel:
+      "Each config file controls a different risk: unsafe actions, unreadable sessions, or inconsistent behavior.",
+    inspectBullets: [
+      "Check `settings.json` for guardrails and allowed operations.",
+      "Check `statusline.sh` for the live context shown during work.",
+      "Check `CLAUDE.md` for the durable session contract.",
+    ],
     graphTitle: "Three config surfaces",
     graphDescription:
-      "Permissions, live context, and durable instructions shape one controlled working environment.",
+      "These three files create the operating environment before the first implementation task begins.",
     graphNodes: [
       {
         label: "settings.json",
@@ -107,6 +134,7 @@ const stepBlueprints: Array<
         caption: "Load the same operating contract into every new session.",
       },
     ],
+    graphFocusIndex: 1,
     examples: [
       {
         path: ".claude/settings.json",
@@ -125,13 +153,26 @@ const stepBlueprints: Array<
     id: "packaging",
     stepLabel: "Step 3 of 4",
     title: "Use commands and skills to package repeated workflow patterns",
-    body: "In Claude Code, commands and skills do different jobs. A command is how you enter the workflow. A skill is reusable logic that helps Claude handle a specific kind of task well. The goal is not to create many of them. The goal is to create the ones you actually use repeatedly.",
+    summary:
+      "Commands and skills should reduce repetition, not create a second documentation system. Use commands for entry points and skills for reusable specialized behavior.",
+    bullets: [
+      "A command is a clear way to enter a workflow path.",
+      "A skill is a reusable module for a recurring task pattern.",
+      "Fewer assets with sharper purpose beat many overlapping assets.",
+    ],
     whyItMatters:
-      "When these assets match your real workflow, Claude becomes more consistent. When they are generic, overlapping, or copied blindly, they create confusion instead of leverage.",
-    takeaway: "Create fewer workflow assets, but make each one clearly useful.",
+      "Packaging repeated work turns good behavior into a system. Packaging vague ideas into too many files just creates friction.",
+    takeaway: "Package repetition, not theory.",
+    inspectLabel:
+      "Compare the command entry point with the narrower skill it can trigger so the routing logic becomes obvious.",
+    inspectBullets: [
+      "Use the command file to understand how the workflow starts.",
+      "Use the skill file to see where specialization actually lives.",
+      "Notice that the assets are complementary, not duplicates.",
+    ],
     graphTitle: "Command to skill flow",
     graphDescription:
-      "A user-triggered entry point can route into a narrower skill when the prompt matches a known need.",
+      "The point is not to show more files. The point is to show how a request gets progressively narrowed.",
     graphNodes: [
       {
         label: "User Prompt",
@@ -152,14 +193,15 @@ const stepBlueprints: Array<
         caption: "The skill sharpens the plan with concrete visual direction.",
       },
     ],
+    graphFocusIndex: 2,
     comparison: [
       {
         title: "Command",
-        body: "User-triggered entry point. Good when the developer already knows which workflow path they want to start.",
+        body: "User-triggered entry point. Best when the developer already knows which workflow path to start.",
       },
       {
         title: "Skill",
-        body: "Reusable instruction module. Good when the same specialized behavior appears across different tasks.",
+        body: "Reusable instruction module. Best when the same specialized behavior appears across multiple tasks.",
       },
     ],
     examples: [
@@ -179,14 +221,27 @@ const stepBlueprints: Array<
     id: "phases",
     stepLabel: "Step 4 of 4",
     title: "Keep the same five phases a strong developer would already use",
-    body: "This workflow uses five phases because a good developer already works this way without AI: clarify the requirement, create a plan if the task is large, implement, review, and test. AI should follow that structure instead of replacing it with one long prompt session.",
+    summary:
+      "The workflow works because it copies real engineering structure. AI should move through requirement, plan, implementation, review, and testing instead of improvising inside one long prompt session.",
+    bullets: [
+      "Clarify the requirement before writing code.",
+      "Create a plan for larger work so implementation has a stable target.",
+      "Review and test before declaring the task done.",
+    ],
     whyItMatters:
-      "The clearer each phase is, the easier it becomes to check output quality, detect mistakes early, and hand context from one step to the next.",
+      "Clear phases reduce ambiguity, catch mistakes earlier, and let context move from one step to the next without relying on chat memory.",
     takeaway:
-      "The workflow works because the phases match real engineering work.",
+      "AI helps most when it follows the same discipline as a strong engineer.",
+    inspectLabel:
+      "Use the example files as phase markers. Each one should map to a concrete part of the engineering loop.",
+    inspectBullets: [
+      "Find the requirement-facing asset that sharpens the ask.",
+      "Find the planning and implementation entry points.",
+      "Find the review or testing artifact that closes the loop.",
+    ],
     graphTitle: "Workflow phases",
     graphDescription:
-      "Each phase exists to reduce ambiguity before the next phase begins, which keeps both the human and the agent aligned.",
+      "The graph should read like a pipeline with checkpoints, not like a list of concepts.",
     graphNodes: [
       {
         label: "Requirement",
@@ -211,6 +266,7 @@ const stepBlueprints: Array<
         caption: "Confirm the implementation matches the intended behavior.",
       },
     ],
+    graphFocusIndex: 3,
     examples: [
       {
         path: ".claude/output-styles/brainstorm-partner.md",

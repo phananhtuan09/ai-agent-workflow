@@ -31,7 +31,7 @@ The wiki is organized into a small set of document layers:
 - root docs for orientation, governance, navigation, and change history
 - onboarding docs for shared context and reading guidance
 - requirements docs for durable scope, rules, quality expectations, and constraints
-- feature, flow, system, and decision surfaces for domain-specific knowledge
+- feature, flow, and decision surfaces for domain-specific knowledge
 - operations and reference docs for maintenance support
 - reusable templates for future authoring
 
@@ -44,7 +44,6 @@ Humans and AI agents should start at [INDEX.md](../INDEX.md), confirm maintenanc
 - `01_onboarding/` explains what the wiki is and how to read it.
 - `02_requirements/` holds durable rule and boundary documents.
 - `03_features/` and `04_flows/` are the future home of canonical behavior and sequence docs.
-- `05_system/` holds technical documentation surfaces for architecture, API, data, and security topics.
 - `06_decisions/` is reserved for ADRs.
 - `07_operations/` records wiki maintenance practices and risks.
 - `09_references/` curates supporting links and dependency references.

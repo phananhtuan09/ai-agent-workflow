@@ -218,7 +218,7 @@ body {
       rgba(255, 255, 255, 0.18),
       transparent
     );
-    transition: left 0.55s ease;
+    transition: left 1.1s ease;
   }
   .btn-shimmer:hover::after {
     left: 150%;

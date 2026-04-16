@@ -57,7 +57,7 @@ Keep this file concise. Governance policy lives in [GOVERNANCE.md](GOVERNANCE.md
 - Root docs: `README.md`, `INDEX.md`, `GOVERNANCE.md`, `GLOSSARY.md`, and `CHANGELOG.md`
 - Onboarding docs under `01_onboarding/`
 - Requirement docs and drafts guidance under `02_requirements/`
-- Feature, flow, system, and decision surfaces under `03_features/`, `04_flows/`, `05_system/`, and `06_decisions/`
+- Feature, flow, and decision surfaces under `03_features/`, `04_flows/`, and `06_decisions/`
 - Operations and reference docs under `07_operations/` and `09_references/`
 - Reusable templates under `99_templates/`
 
