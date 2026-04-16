@@ -2,41 +2,16 @@
 
 input=$(cat)
 
-parse_json() {
-  local key="$1"
-  local fallback="$2"
-  local result=""
+if ! command -v jq >/dev/null 2>&1; then
+  echo "[no jq] install jq to enable statusline"
+  exit 0
+fi
 
-  if command -v jq >/dev/null 2>&1; then
-    result=$(echo "$input" | jq -r "$key // empty" 2>/dev/null)
-  elif command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
-    local py_cmd="python3"
-    command -v python3 >/dev/null 2>&1 || py_cmd="python"
-    local py_key="${key#.}"  # strip leading dot
-    result=$(echo "$input" | $py_cmd -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    keys = '${py_key}'.split('.')
-    val = data
-    for k in keys:
-        if k and isinstance(val, dict):
-            val = val.get(k)
-        else:
-            val = None
-    if val is not None:
-        print(val)
-except:
-    pass
-" 2>/dev/null)
-  fi
-
-  echo "${result:-$fallback}"
-}
-
-model=$(parse_json '.model.display_name' "Unknown")
-current_dir=$(parse_json '.workspace.current_dir' "")
-used_pct=$(parse_json '.context_window.used_percentage' "")
+model=$(echo "$input" | jq -r '.model.display_name // "Unknown"')
+current_dir=$(echo "$input" | jq -r '.workspace.current_dir // ""')
+used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // ""')
+limit_5h=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // ""')
+weekly_limit=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // ""')
 
 # Normalize Windows backslashes to forward slashes
 current_dir="${current_dir//\\//}"
@@ -52,15 +27,33 @@ if [ -n "$current_dir" ] && ([ -d "$current_dir/.git" ] || git -C "$current_dir"
   branch=$(git -C "$current_dir" --no-optional-locks symbolic-ref --short HEAD 2>/dev/null)
 fi
 
-output="[$model] 📁 $folder"
+# Row 1: branch | folder | model
+row1_parts=()
+[ -n "$branch" ] && row1_parts+=("🌿 $branch")
+row1_parts+=("📁 $folder")
+row1_parts+=("🤖 $model")
 
-if [ -n "$branch" ]; then
-  output="$output | 🌿 $branch"
-fi
+row1=$(IFS=" | "; echo "${row1_parts[*]}")
+
+# Row 2: context % | 5h limit | weekly limit
+row2_parts=()
 
 if [ -n "$used_pct" ]; then
   printf_pct=$(printf "%.0f" "$used_pct" 2>/dev/null || echo "$used_pct")
-  output="$output | ctx ${printf_pct}%"
+  row2_parts+=("📊 ctx ${printf_pct}%")
 fi
 
-echo "$output"
+if [ -n "$limit_5h" ]; then
+  printf_5h=$(printf "%.0f" "$limit_5h" 2>/dev/null || echo "$limit_5h")
+  row2_parts+=("⏱ 5h: ${printf_5h}%")
+fi
+if [ -n "$weekly_limit" ]; then
+  printf_7d=$(printf "%.0f" "$weekly_limit" 2>/dev/null || echo "$weekly_limit")
+  row2_parts+=("📅 7d: ${printf_7d}%")
+fi
+
+echo "$row1"
+if [ ${#row2_parts[@]} -gt 0 ]; then
+  row2=$(IFS=" | "; echo "${row2_parts[*]}")
+  echo "$row2"
+fi
