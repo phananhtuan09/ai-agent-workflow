@@ -22,7 +22,7 @@ wiki-init "Sagas" template:~/source_code/ai-projects-wiki
 
 - Claude `Read/Edit/Write` → inspect files with shell reads and write stubs with `apply_patch`
 - Claude `Bash` → run `cp -r` to copy template, `rm` to delete demo files
-- Claude `AskUserQuestion` → ask when project name or template path is missing, or when overwrite confirmation is needed
+- Claude `AskUserQuestion` → ask when project name or template path is missing, when overwrite confirmation is needed, or to gather project details in Step 1
 
 ## Workflow
 
@@ -42,14 +42,27 @@ If project name or template path is missing, stop and ask:
 >
 > Example: `wiki-init "Sagas" template:~/source_code/ai-projects-wiki`
 
-### 1. Pre-flight Checks
+### 1. Gather Project Details
+
+Ask the user the following questions in a single message before doing anything else. Wait for their answers before proceeding.
+
+> Before setting up the wiki, I need a few details about the project:
+>
+> 1. **Project name** — what is the name of this project? _(if not already provided)_
+> 2. **Short description** — one sentence: what does this project do?
+> 3. **Who are the users?** — who will use this system? (e.g. internal team, end customers, developers)
+> 4. **Main problem it solves** — what pain point or need does it address?
+
+Use the answers to populate `01_onboarding/`, `02_requirements/confirmed/`, and `README.md` stubs in Step 4. Do not invent or assume any detail the user did not provide — leave sections blank if the user skips a question.
+
+### 2. Pre-flight Checks
 
 1. Verify the template path exists and contains a `project-wiki/` folder. If not, stop and report the invalid path.
 2. Check if `project-wiki/` already exists in the current working directory.
    - If it exists, stop and ask: **"A `project-wiki/` folder already exists. Overwrite it? This will delete all existing wiki content."**
    - Only proceed if the user explicitly confirms.
 
-### 2. Copy Template Structure
+### 3. Copy Template Structure
 
 ```bash
 cp -r <template-path>/project-wiki/ ./project-wiki/
@@ -57,7 +70,7 @@ cp -r <template-path>/project-wiki/ ./project-wiki/
 
 Verify the copy succeeded before continuing.
 
-### 3. Remove Demo Content
+### 4. Remove Demo Content
 
 Delete these files — they contain wiki-about-itself demo content:
 
@@ -83,7 +96,7 @@ rm project-wiki/06_decisions/ADR-002-one-canonical-doc-per-topic.md
 rm project-wiki/06_decisions/ADR-003-visible-uncertainty.md
 ```
 
-### 4. Reset Project-Specific Docs to Stubs
+### 5. Reset Project-Specific Docs to Stubs
 
 Use `apply_patch` to replace body content with minimal stubs. Keep frontmatter structure, update `title`, `summary`, and `last_updated`. Set all statuses to `proposed`.
 
@@ -112,7 +125,7 @@ Files to stub:
 | `09_references/third_party_services.md` | `## Services` — blank |
 | `09_references/related_links.md` | `## Links` — blank |
 
-### 5. Update INDEX.md
+### 6. Update INDEX.md
 
 - Replace title and summary with the project name.
 - Remove links to deleted demo feature specs, flow specs, and ADRs.

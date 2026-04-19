@@ -3,7 +3,7 @@ id: REQ-CORE-PRODUCT-SCOPE
 title: Project Wiki Product Scope
 doc_type: requirement
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

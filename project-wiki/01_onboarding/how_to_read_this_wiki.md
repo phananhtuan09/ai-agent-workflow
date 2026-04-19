@@ -3,7 +3,7 @@ id: ONBOARDING-CORE-HOW-TO-READ
 title: How to Read This Wiki
 doc_type: onboarding_guide
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

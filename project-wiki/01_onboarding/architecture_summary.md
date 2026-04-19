@@ -3,7 +3,7 @@ id: ONBOARDING-CORE-ARCHITECTURE-SUMMARY
 title: Project Wiki Architecture Summary
 doc_type: overview
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

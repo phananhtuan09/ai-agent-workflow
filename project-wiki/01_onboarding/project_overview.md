@@ -3,7 +3,7 @@ id: ONBOARDING-CORE-PROJECT-OVERVIEW
 title: Project Wiki System Overview
 doc_type: overview
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

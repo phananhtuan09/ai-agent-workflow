@@ -3,7 +3,7 @@ id: REF-CORE-EXTERNAL-DEPENDENCIES
 title: External Dependencies
 doc_type: reference
 domain: references
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

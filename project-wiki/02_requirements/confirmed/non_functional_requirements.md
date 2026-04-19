@@ -3,7 +3,7 @@ id: REQ-CORE-NON-FUNCTIONAL
 title: Project Wiki Non-Functional Requirements
 doc_type: requirement
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

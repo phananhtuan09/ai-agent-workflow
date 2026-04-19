@@ -3,7 +3,7 @@ id: INDEX-FEATURES-ROOT
 title: Feature Specs Index
 doc_type: folder_index
 domain: features
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

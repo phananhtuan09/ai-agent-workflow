@@ -27,60 +27,36 @@ summary: Canonical feature doc for how the wiki makes canonical docs discoverabl
 
 ## Purpose
 
-Define how readers find the right wiki docs quickly without depending on guesswork or a complex search layer.
+_To be filled in._
 
 ## Scope
 
-- root-level navigation through `INDEX.md`
-- folder entry points through `README.md` files or starter docs
-- curated read paths for onboarding and targeted analysis
-- discoverability rules for canonical and support docs
+_To be filled in._
 
 ## Out of Scope
 
-- full-text search engine behavior
-- ranking algorithms or automated retrieval systems
-- external workflow tooling that is not stored inside the wiki
+_To be filled in._
 
 ## Acceptance Criteria
 
-- Given a reader starts from the root index, when they need a doc by type or purpose, then the correct entry point is available without guessing filenames.
-- Given a folder does not yet contain deep content, when navigation is used, then a starter doc still exposes the surface clearly.
-- Given a contributor needs the recommended read order, when this feature doc is read, then it links back to the onboarding read path and glossary terminology.
+_To be filled in._
 
 ## Related Docs
 
-- [Index](../../INDEX.md)
-- [How to Read This Wiki](../../01_onboarding/how_to_read_this_wiki.md)
-- [Glossary](../../GLOSSARY.md)
-- [Impact Analysis Flow](../../04_flows/impact-analysis-flow.md)
+_To be filled in._
 
 ## Confirmed
 
-- None yet. Human confirmation is still required for the retrieval behavior below.
+_To be filled in._
 
 ## Inferred
 
-### Root Navigation Behavior
-
-`INDEX.md` acts as the main navigation layer for both humans and AI agents and should point to real docs or real entry points.
-
-### Discoverability Behavior
-
-A doc is discoverable when a reader can reach it through stable root navigation, a folder entry point, related-doc links, or the standard read path without needing undocumented filename knowledge.
-
-### Folder Entry Point Behavior
-
-Folders that are still growing should expose a README or starter doc so the surface is visible in git and in navigation.
-
-### Retrieval Goal
-
-The wiki optimizes for curated reads of the most relevant small set of documents, not for an elaborate search engine in the first rollout.
+_To be filled in._
 
 ## Unknown
 
-- Whether some larger folders will eventually need additional sub-indexes beyond the current starter docs.
+_To be filled in._
 
 ## Open Questions
 
-- Which future areas, if any, should get deeper folder-level indexes once canonical content grows beyond the initial seed set?
+_To be filled in._

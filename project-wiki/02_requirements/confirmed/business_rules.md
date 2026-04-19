@@ -3,7 +3,7 @@ id: REQ-CORE-BUSINESS-RULES
 title: Project Wiki Business Rules
 doc_type: business_rules
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

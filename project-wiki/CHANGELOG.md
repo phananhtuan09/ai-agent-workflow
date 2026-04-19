@@ -3,7 +3,7 @@ id: WIKI-CORE-CHANGELOG
 title: Project Wiki Changelog
 doc_type: changelog
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

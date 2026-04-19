@@ -3,7 +3,7 @@ id: REQ-CORE-CONSTRAINTS
 title: Project Wiki Constraints
 doc_type: requirement
 domain: core
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

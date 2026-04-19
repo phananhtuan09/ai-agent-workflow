@@ -3,7 +3,7 @@ id: INDEX-REQ-DRAFTS
 title: Requirement Drafts Guide
 doc_type: folder_index
 domain: requirements
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

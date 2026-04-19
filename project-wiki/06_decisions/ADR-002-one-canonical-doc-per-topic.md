@@ -26,47 +26,40 @@ summary: Records the rationale for requiring one canonical active document per d
 
 ## Context
 
-Without a clear ownership rule, the wiki can accumulate overlapping active docs that restate the same topic differently. That creates retrieval confusion for humans and AI agents and makes impact analysis unreliable.
+_To be filled in._
 
 ## Decision
 
-Require one canonical active doc per durable topic and use cross-links instead of competing restatements.
+_To be filled in._
 
 ## Alternatives Considered
 
-- Allow multiple active docs to describe the same topic if they serve different audiences.
-- Keep a loose duplicate-tolerant model and rely on human judgment to choose the right doc each time.
-- Solve overlap only through naming conventions without a canonical ownership rule.
+_To be filled in._
 
 ## Trade-Offs
 
-- This decision reduces ambiguity, but it requires authors to spend effort finding the current owner before creating a new doc.
-- It encourages focused docs and cross-linking, but it can make file-splitting decisions more important.
+_To be filled in._
 
 ## Consequences
 
-- Folder indexes and related-doc links should help readers reach the canonical owner quickly.
-- Duplicate active topics should be treated as a maintenance problem, not as harmless extra context.
+_To be filled in._
 
 ## Related Docs
 
-- [Governance](../GOVERNANCE.md)
-- [Doc Lifecycle and Governance](../03_features/authoring/feature-doc-lifecycle-and-governance.md)
-- [Index and Navigation](../03_features/retrieval/feature-index-and-navigation.md)
+_To be filled in._
 
 ## Confirmed
 
-- None yet. Human confirmation is still required for this decision.
+_To be filled in._
 
 ## Inferred
 
-- Canonical ownership makes retrieval, maintenance, and discrepancy handling more reliable.
-- Cross-linking is safer than parallel duplication because it preserves one primary reference path per topic.
+_To be filled in._
 
 ## Unknown
 
-- Whether some future document families will need a more explicit ownership notation beyond current metadata and navigation.
+_To be filled in._
 
 ## Open Questions
 
-- Should future validator tooling enforce canonical uniqueness more strictly once seed content grows?
+_To be filled in._

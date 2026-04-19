@@ -3,7 +3,7 @@ id: OPS-CORE-DEPENDENCY-NOTES
 title: Project Wiki Dependency Notes
 doc_type: operations
 domain: operations
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

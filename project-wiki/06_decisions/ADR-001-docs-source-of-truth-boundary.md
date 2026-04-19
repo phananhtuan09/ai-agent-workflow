@@ -26,47 +26,40 @@ summary: Records the rationale for treating docs as the source of intended busin
 
 ## Context
 
-The wiki needs a stable rule for resolving ambiguity between documented intended behavior and observed implementation detail. Without a clear boundary, maintainers may silently rewrite docs to match code or ignore drift until knowledge becomes unreliable.
+_To be filled in._
 
 ## Decision
 
-Treat confirmed requirement-style docs as the source of intended business behavior, and treat code as the source of unspecified implementation detail.
+_To be filled in._
 
 ## Alternatives Considered
 
-- Treat code as the single source of truth for all questions.
-- Treat docs as the source of truth for every detail, including implementation specifics.
-- Allow ad hoc source selection per topic without a durable rule.
+_To be filled in._
 
 ## Trade-Offs
 
-- This decision makes intended behavior easier to preserve, but it requires maintainers to handle code-vs-doc mismatches explicitly.
-- It avoids overloading docs with low-level implementation detail, but it means some questions still require code inspection.
+_To be filled in._
 
 ## Consequences
 
-- Mismatches between code and confirmed docs should be surfaced as drift or ambiguity rather than merged silently.
-- The wiki can stay behavior-focused while still acknowledging that code owns unspecified technical detail.
+_To be filled in._
 
 ## Related Docs
 
-- [Governance](../GOVERNANCE.md)
-- [Business Rules](../02_requirements/confirmed/business_rules.md)
-- [Project Wiki Foundation](../03_features/core/feature-wiki-foundation.md)
+_To be filled in._
 
 ## Confirmed
 
-- None yet. Human confirmation is still required for this decision.
+_To be filled in._
 
 ## Inferred
 
-- The chosen boundary reduces ambiguity for future maintenance and impact analysis.
-- Preserving this boundary makes discrepancy handling safer than rewriting canonical docs from observation alone.
+_To be filled in._
 
 ## Unknown
 
-- Whether future projects will need a documented override when a topic blurs business behavior and implementation detail more tightly.
+_To be filled in._
 
 ## Open Questions
 
-- Should any project-specific exception patterns be documented if this boundary proves too coarse for some domains?
+_To be filled in._

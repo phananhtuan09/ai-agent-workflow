@@ -3,7 +3,7 @@ id: REF-CORE-THIRD-PARTY-SERVICES
 title: Third-Party Services
 doc_type: reference
 domain: references
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

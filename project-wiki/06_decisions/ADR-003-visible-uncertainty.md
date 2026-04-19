@@ -26,47 +26,40 @@ summary: Records the rationale for separating confirmed, inferred, unknown, and 
 
 ## Context
 
-A document can contain a mixture of approved facts, inferred interpretation, missing evidence, and unresolved questions. A single doc-level status is not enough to show that mixture safely.
+_To be filled in._
 
 ## Decision
 
-Keep uncertainty visible by separating confirmed, inferred, unknown, and open questions where the topic requires it, with a documented fallback pattern when a full section layout is too heavy.
+_To be filled in._
 
 ## Alternatives Considered
 
-- Rely only on doc-level status and avoid section-level certainty handling.
-- Keep uncertainty in inline prose without consistent labels.
-- Delay documentation until every detail is fully confirmed.
+_To be filled in._
 
 ## Trade-Offs
 
-- This decision adds authoring overhead, but it makes mixed-certainty docs safer to read and update.
-- It improves clarity for humans and AI agents, but it requires discipline to keep sections honest over time.
+_To be filled in._
 
 ## Consequences
 
-- Important spec-like docs should expose uncertainty explicitly instead of hiding it in narrative text.
-- Review and discrepancy workflows can use the certainty sections to preserve ambiguity without blocking all documentation.
+_To be filled in._
 
 ## Related Docs
 
-- [Governance](../GOVERNANCE.md)
-- [Validator and Freshness](../03_features/verification/feature-validator-and-freshness.md)
-- [Discrepancy Reconciliation Flow](../04_flows/discrepancy-reconciliation-flow.md)
+_To be filled in._
 
 ## Confirmed
 
-- None yet. Human confirmation is still required for this decision.
+_To be filled in._
 
 ## Inferred
 
-- Visible uncertainty is safer than silent assumption because it preserves knowledge gaps explicitly.
-- Section-level certainty supports better impact analysis and safer AI-assisted maintenance.
+_To be filled in._
 
 ## Unknown
 
-- Whether any future project will need a documented override for alternative certainty section names.
+_To be filled in._
 
 ## Open Questions
 
-- Should future templates include stronger prompts or examples for keeping certainty sections updated after edits?
+_To be filled in._

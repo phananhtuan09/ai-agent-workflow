@@ -24,66 +24,24 @@ summary: Canonical strategy for validating the wiki through repeatable review ta
 
 ## Purpose
 
-Define how maintainers check whether the wiki remains trustworthy through a combination of real tasks, focused review, and lightweight validator automation.
+_To be filled in._
 
 ## Confirmed
 
-- None yet. Human confirmation is still required for the strategy below.
+_To be filled in._
 
 ## Inferred
 
-### Validation Layers
-
-Use two complementary layers:
-
-- task-based review for real change scenarios and retrieval quality
-- validator automation for high-value consistency checks such as frontmatter, IDs, related-doc references, and broken links
-
-### Recommended Task-Based Checks
-
-Run these checks during the pilot:
-
-1. New joiner test for common project questions.
-2. AI retrieval test for canonical-source selection and uncertainty handling.
-3. Drift test that compares one recent change against the wiki and implementation.
-4. Uncertainty test for a partially specified topic.
-
-### Minimum Measurements
-
-Track at least:
-
-- number of files read per task
-- wrong-canonical selections
-- stale or conflicting docs found
-- update lag after a confirmed change
-- tasks where the wiki reduced the need to ask humans again
-
-### Freshness Review Cadence
-
-Important canonical docs should be reviewed when related changes occur or at least once every one to two sprints if they remain critical but untouched.
-
-### Validator Scope for This Slice
-
-The minimum validator should enforce only:
-
-- parseable frontmatter
-- unique IDs
-- valid statuses
-- related-doc ID resolution
-- internal-link integrity
+_To be filled in._
 
 ## Unknown
 
-- Which measurements should become automated once the repository adds a richer workflow runner or CI support.
+_To be filled in._
 
 ## Open Questions
 
-- Should review cadence remain process-driven, or should later metadata such as `review_cycle` and `last_reviewed` become required?
+_To be filled in._
 
 ## Related Docs
 
-- [Release Process](../07_operations/release_process.md)
-- [Validator and Freshness](../03_features/verification/feature-validator-and-freshness.md)
-- [Impact Analysis Rules](impact_analysis_rules.md)
-- [Regression-Sensitive Areas](regression_sensitive_areas.md)
-- [Acceptance Criteria Patterns](acceptance_criteria_patterns.md)
+_To be filled in._

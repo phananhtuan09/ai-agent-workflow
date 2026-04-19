@@ -27,53 +27,40 @@ summary: Canonical flow doc for analyzing documentation mismatches without silen
 
 ## Trigger
 
-A mismatch is observed between canonical docs, code, runtime behavior, or related evidence.
+_To be filled in._
 
 ## Preconditions
 
-- the relevant canonical docs have been identified
-- the observed mismatch is described clearly enough to inspect
-- the analyst is prepared to separate evidence from assumptions
+_To be filled in._
 
 ## Main Flow
 
-1. Read the current canonical docs for the target topic and inspect the relevant implementation behavior or evidence.
-2. Compare the intended behavior in docs with the observed implementation or runtime behavior.
-3. Classify the mismatch as likely stale documentation, likely code drift, or unresolved ambiguity.
-4. Preserve the current canonical doc until the intended behavior is reviewed rather than silently rewriting it to match the latest observation.
-5. Create a discrepancy note or review handoff that captures evidence, interpretation, and next action.
-6. Route the outcome toward doc updates, implementation fixes, or human review once the intended behavior is resolved.
+_To be filled in._
 
 ## Alternative Flows
 
-- If there is no confirmed doc for the topic, record the knowledge gap first and treat the issue as missing canonical coverage.
-- If the mismatch is actually a proposed change, route it toward a change request instead of a discrepancy note.
+_To be filled in._
 
 ## Failure Paths
 
-- If evidence is incomplete, keep the ambiguity explicit and do not collapse it into a false conclusion.
-- If multiple docs appear to own the same topic, resolve canonical ownership before reconciling the mismatch.
+_To be filled in._
 
 ## Related Docs
 
-- [Governance](../GOVERNANCE.md)
-- [Validator and Freshness](../03_features/verification/feature-validator-and-freshness.md)
-- [Discrepancy Note Template](../99_templates/template_discrepancy_note.md)
-- [Known Risks](../07_operations/incident_known_risks.md)
+_To be filled in._
 
 ## Confirmed
 
-- None yet. Human confirmation is still required for the flow below.
+_To be filled in._
 
 ## Inferred
 
-- Confirmed docs should stay intact until intended behavior is reviewed.
-- Discrepancy handling exists to expose drift safely, not to hide it behind fast edits.
+_To be filled in._
 
 ## Unknown
 
-- The exact escalation threshold that should require immediate human review for every mismatch category.
+_To be filled in._
 
 ## Open Questions
 
-- Which mismatch classes should become validator-detected versus reviewer-detected in later phases?
+_To be filled in._

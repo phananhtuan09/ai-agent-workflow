@@ -26,28 +26,16 @@ summary: Curated list of high-value internal and external paths used repeatedly 
 
 ## Core Wiki Entry Points
 
-- [Project Wiki Home](../README.md)
-- [Project Wiki Index](../INDEX.md)
-- [Governance](../GOVERNANCE.md)
-- [Glossary](../GLOSSARY.md)
+_To be filled in._
 
 ## Onboarding and Requirements
 
-- [Project Overview](../01_onboarding/project_overview.md)
-- [Business Context](../01_onboarding/business_context.md)
-- [Architecture Summary](../01_onboarding/architecture_summary.md)
-- [Business Rules](../02_requirements/confirmed/business_rules.md)
-- [Product Scope](../02_requirements/confirmed/product_scope.md)
-- [Constraints](../02_requirements/confirmed/constraints.md)
+_To be filled in._
 
 ## Operations and Maintenance
 
-- [Release Process](../07_operations/release_process.md)
-- [Known Risks](../07_operations/incident_known_risks.md)
-- [Dependency Notes](../07_operations/dependency_notes.md)
-- [Epic Plan](../../docs/ai/planning/epic-project-wiki-system.md)
+_To be filled in._
 
 ## Workflow Asset Roots Outside the Wiki
 
-- [.claude/commands/](../../.claude/commands/)
-- [.agents/skills/](../../.agents/skills/)
+_To be filled in._

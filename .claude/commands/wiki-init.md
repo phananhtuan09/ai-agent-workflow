@@ -29,14 +29,27 @@ If project name or template path is missing, stop and ask:
 >
 > Example: `/wiki-init "Sagas" template:~/source_code/ai-projects-wiki`
 
-## Step 1: Pre-flight Checks
+## Step 1: Gather Project Details
+
+Ask the user the following questions in a single message before doing anything else. Wait for their answers before proceeding.
+
+> Before setting up the wiki, I need a few details about the project:
+>
+> 1. **Project name** — what is the name of this project? _(if not already provided)_
+> 2. **Short description** — one sentence: what does this project do?
+> 3. **Who are the users?** — who will use this system? (e.g. internal team, end customers, developers)
+> 4. **Main problem it solves** — what pain point or need does it address?
+
+Use the answers to populate `01_onboarding/`, `02_requirements/confirmed/`, and `README.md` stubs in Step 5. Do not invent or assume any detail the user did not provide — leave sections blank if the user skips a question.
+
+## Step 2: Pre-flight Checks
 
 1. Verify the template path exists and contains a `project-wiki/` folder. If not, stop and report the invalid path.
 2. Check if `project-wiki/` already exists in the current working directory.
    - If it exists, stop and ask: **"A `project-wiki/` folder already exists. Overwrite it? This will delete all existing wiki content."**
    - Only proceed if the user explicitly confirms.
 
-## Step 2: Copy Template Structure
+## Step 3: Copy Template Structure
 
 Copy the full `project-wiki/` folder from the template path to the current working directory:
 
@@ -46,7 +59,7 @@ cp -r <template-path>/project-wiki/ ./project-wiki/
 
 Verify the copy succeeded before continuing.
 
-## Step 3: Remove Demo Content
+## Step 5: Remove Demo Content
 
 Delete these files — they contain wiki-about-itself demo content that does not belong in a real project:
 
@@ -66,7 +79,7 @@ Delete these files — they contain wiki-about-itself demo content that does not
 - `project-wiki/06_decisions/ADR-002-one-canonical-doc-per-topic.md`
 - `project-wiki/06_decisions/ADR-003-visible-uncertainty.md`
 
-## Step 4: Reset Project-Specific Docs to Stubs
+## Step 6: Reset Project-Specific Docs to Stubs
 
 Replace the body content of the following files with minimal stubs. Keep the frontmatter structure but update `title`, `summary`, and `last_updated`. Set all statuses to `proposed`.
 
@@ -112,7 +125,7 @@ Replace the body content of the following files with minimal stubs. Keep the fro
 
 `project-wiki/09_references/related_links.md` — reset to stub with blank `## Links` section.
 
-## Step 5: Update INDEX.md
+## Step 7: Update INDEX.md
 
 Update `project-wiki/INDEX.md`:
 
@@ -128,7 +141,7 @@ Update `project-wiki/INDEX.md`:
 - `project-wiki/99_templates/*` (all templates)
 - All folder `README.md` files under subfolders
 
-## Step 6: Output Summary
+## Step 8: Output Summary
 
 Report:
 

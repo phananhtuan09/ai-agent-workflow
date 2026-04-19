@@ -3,7 +3,7 @@ id: INDEX-DECISIONS-ROOT
 title: Architecture Decisions Index
 doc_type: folder_index
 domain: decisions
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:

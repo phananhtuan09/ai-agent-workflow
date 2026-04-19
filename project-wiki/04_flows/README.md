@@ -3,7 +3,7 @@ id: INDEX-FLOWS-ROOT
 title: Flow Specs Index
 doc_type: folder_index
 domain: flows
-status: proposed
+status: confirmed
 version: 0.1
 owner: ai-primary
 reviewers:
