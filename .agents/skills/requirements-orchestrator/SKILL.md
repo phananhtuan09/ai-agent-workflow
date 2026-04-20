@@ -1,6 +1,6 @@
 ---
 name: requirements-orchestrator
-description: Use when the user wants to clarify a feature request into requirement docs, coordinate BA/SA/Researcher/UI/UX sub-work, and produce `docs/ai/requirements/req-{name}.md` plus agent artifacts.
+description: Use when the user wants to clarify a feature request into requirement docs, coordinate BA/SA/Researcher/UI/UX sub-work, and produce `docs/ai/requirements/DD-MM-YYYY-req-{name}.md` plus agent artifacts.
 ---
 
 # Requirements Orchestrator
@@ -95,9 +95,9 @@ Expected outputs:
 - `docs/ai/requirements/agents/sa-{name}.md`
 - `docs/ai/requirements/agents/research-{name}.md`
 - `docs/ai/requirements/agents/uiux-{name}.md`
-- `docs/ai/requirements/req-{name}.md`
+- `docs/ai/requirements/DD-MM-YYYY-req-{name}.md`
 
-If `docs/ai/requirements/req-{name}.md` already exists:
+If `docs/ai/requirements/DD-MM-YYYY-req-{name}.md` already exists:
 
 - read it first
 - decide whether to refresh, extend, or review in place
@@ -407,7 +407,7 @@ When the conflict materially changes scope or implementation, ask the user a dir
 
 ### 9. Consolidate final requirement
 
-Create `docs/ai/requirements/req-{name}.md` using `docs/ai/requirements/req-template.md`.
+Create `docs/ai/requirements/DD-MM-YYYY-req-{name}.md` using `docs/ai/requirements/req-template.md`.
 
 The final requirement must:
 

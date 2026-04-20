@@ -1,11 +1,11 @@
 ---
 name: extract-figma
-description: Extracts Figma frame design specs into docs/ai/requirements/figma-{name}.md with smart large-frame handling.
+description: Extracts Figma frame design specs into docs/ai/requirements/DD-MM-YYYY-figma-{name}.md with smart large-frame handling.
 ---
 
 ## Goal
 
-Extract complete design specifications from a Figma frame and save to `docs/ai/requirements/figma-{name}.md`.
+Extract complete design specifications from a Figma frame and save to `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md`.
 Output is detailed enough to:
 1. **Implement** pixel-perfect UI without accessing Figma again.
 2. **Validate** that code matches design (used by `/check-implementation`).
@@ -36,11 +36,11 @@ Output is detailed enough to:
 **Parse arguments:**
 - Extract Figma URL from user input (or ask if not provided)
 - Derive `name` from frame name (kebab-case) if not explicitly given
-- Output file path: `docs/ai/requirements/figma-{name}.md`
+- Output file path: `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md`
 
 **Check if file already exists:**
 ```
-Read(file_path="docs/ai/requirements/figma-{name}.md")
+Read(file_path="docs/ai/requirements/DD-MM-YYYY-figma-{name}.md")
 ```
 - If exists AND status is `complete`: Ask user:
   - Option A: "Re-extract and overwrite" (full re-extraction)
@@ -116,7 +116,7 @@ Do NOT extract component details yet.
 - Set `status: partial` in frontmatter
 - Fill Extraction Status checkboxes: check only "Frame overview and layout structure"
 
-**Write the file:** `docs/ai/requirements/figma-{name}.md`
+**Write the file:** `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md`
 
 **Ask user which section to detail next:**
 
@@ -275,7 +275,7 @@ status: complete  # or partial if progressive mode not finished
 
 **Notify user:**
 ```
-✓ Figma specs saved: docs/ai/requirements/figma-{name}.md
+✓ Figma specs saved: docs/ai/requirements/DD-MM-YYYY-figma-{name}.md
   Status: complete / partial
 
 Sections extracted:
@@ -293,7 +293,7 @@ Next steps:
 
 ## Output File
 
-**Location:** `docs/ai/requirements/figma-{name}.md`
+**Location:** `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md`
 
 **Structure** (follows `docs/ai/requirements/figma-template.md`):
 1. Frontmatter (url, frame name, date, status)
@@ -325,7 +325,7 @@ Next steps:
 ## Integration with create-plan
 
 When `/create-plan` detects a Figma URL:
-1. Check if `docs/ai/requirements/figma-{name}.md` exists
+1. Check if `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md` exists
 2. If yes → Read it and include in Section 2a "Design Specifications"
 3. If no → Tell user: "Run `/extract-figma {url}` first, then re-run `/create-plan`"
 

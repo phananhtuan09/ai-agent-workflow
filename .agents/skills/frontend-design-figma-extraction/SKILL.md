@@ -1,6 +1,6 @@
 ---
 name: extract-figma
-description: Use when the user wants to extract a Figma frame into `docs/ai/requirements/figma-{name}.md` with exact specs, partial-progress support, and large-frame handling.
+description: Use when the user wants to extract a Figma frame into `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md` with exact specs, partial-progress support, and large-frame handling.
 ---
 
 # Extract Figma
@@ -15,7 +15,7 @@ Use it to turn a Figma URL or frame into an implementation-ready design spec fil
 
 ## Output
 
-- `docs/ai/requirements/figma-{name}.md`
+- `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md`
 
 The output must be detailed enough to:
 
@@ -36,7 +36,7 @@ Parse:
 
 - the Figma URL
 - the target output name
-- the output path `docs/ai/requirements/figma-{name}.md`
+- the output path `docs/ai/requirements/DD-MM-YYYY-figma-{name}.md`
 
 If the file already exists:
 
@@ -181,5 +181,5 @@ Use `status: partial` if any planned extraction sections remain unfinished.
 
 ## Integration with Create Plan
 
-`create-plan` should read the generated `figma-{name}.md` file.
+`create-plan` should read the generated `DD-MM-YYYY-figma-{name}.md` file.
 If that file does not exist yet, `create-plan` should stop guessing and tell the user to run `/extract-figma` first.

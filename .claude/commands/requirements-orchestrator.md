@@ -5,7 +5,7 @@ description: Requirement Orchestrator - Coordinates BA, SA, Researcher, and UI/U
 
 ## Goal
 
-Orchestrate requirement gathering through specialized agents to produce a comprehensive requirement document at `docs/ai/requirements/req-{name}.md`.
+Orchestrate requirement gathering through specialized agents to produce a comprehensive requirement document at `docs/ai/requirements/DD-MM-YYYY-req-{name}.md`.
 
 This command coordinates:
 - **BA Agent**: Business analysis, user stories, functional requirements
@@ -687,7 +687,7 @@ Read(file_path="docs/ai/requirements/agents/uiux-{name}.md")     # only if neede
 
 ### Generate Consolidated Document
 
-Create `docs/ai/requirements/req-{name}.md` with:
+Create `docs/ai/requirements/DD-MM-YYYY-req-{name}.md` with:
 
 ```markdown
 # Requirement: {Feature Name}
@@ -848,10 +848,11 @@ Create `docs/ai/requirements/req-{name}.md` with:
 
 **Auto-name requirement:**
 - Derive `req-{name}` from feature (kebab-case, concise)
-- Example: "User Authentication Flow" → `req-user-authentication`
+- Prefix with today's date in `DD-MM-YYYY` format
+- Example: "User Authentication Flow" → `20-04-2026-req-user-authentication.md`
 
 **If file already exists:**
-1. Backup to `docs/ai/requirements/archive/req-{name}_{timestamp}.md`
+1. Backup to `docs/ai/requirements/archive/DD-MM-YYYY-req-{name}_{timestamp}.md`
 2. Overwrite main file
 3. Notify user of backup
 
@@ -864,7 +865,7 @@ Create `docs/ai/requirements/req-{name}.md` with:
 ```markdown
 ## Requirement Document Created
 
-**File**: docs/ai/requirements/req-{name}.md
+**File**: docs/ai/requirements/DD-MM-YYYY-req-{name}.md
 
 ### Agents Executed
 | Agent | Output | Status |
@@ -880,7 +881,7 @@ Create `docs/ai/requirements/req-{name}.md` with:
 - **Open Questions**: {count}
 
 ### Next Steps
-1. Review requirement: `docs/ai/requirements/req-{name}.md`
+1. Review requirement: `docs/ai/requirements/DD-MM-YYYY-req-{name}.md`
 2. Address open questions (if any)
 3. Create plan: `/create-plan` (will auto-link to this requirement)
 ```
