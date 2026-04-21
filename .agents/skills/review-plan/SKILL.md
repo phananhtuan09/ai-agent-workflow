@@ -8,6 +8,8 @@ description: Use when the user asks to review a feature planning doc before impl
 Use this skill to review a planning doc before implementation starts.
 The goal is to catch ambiguity, missing scope, broken logic, or project misalignment before an AI agent writes code.
 
+Each finding gets a confidence % so the user knows which issues are certain and which need human verification.
+
 ## Inputs
 
 - A planning doc path, usually `docs/ai/planning/feature-{name}.md`
@@ -23,30 +25,33 @@ The goal is to catch ambiguity, missing scope, broken logic, or project misalign
 
 ### 1. Load the plan and required context
 
-Read these files first:
+Read these files in parallel:
 
 - the target planning doc
 - `docs/ai/project/CODE_CONVENTIONS.md`
 - `docs/ai/project/PROJECT_STRUCTURE.md`
 
-If the plan links to a requirement doc, epic doc, or design source that materially affects the review, read only the specific linked files needed to judge correctness.
+If either context file is missing, note it as unavailable and continue.
+If the plan file does not exist, stop and report the missing path.
 
-### 2. Review with an implementation mindset
+### 2. Assign confidence % to every finding
 
-Assume the next AI agent will implement the plan literally.
-Focus on whether the plan is executable, not whether it is nicely formatted.
+Before writing any finding, determine how it was derived and assign a confidence %:
 
-Check whether:
+| Range | Meaning | When to use |
+|-------|---------|-------------|
+| 90–100% | Directly observed in text — no inference | Vague word found verbatim, file path mismatch, missing field |
+| 70–89% | Inferred from clear pattern — low ambiguity | Step order issue, naming inconsistency, known anti-pattern |
+| 40–69% | Heuristic / generic checklist — may not apply | Missing edge case from generic list, common risk pattern |
+| < 40% | Speculation — domain or codebase context needed | Domain-specific gap, runtime behavior, business rule coverage |
 
-- the intended behavior is unambiguous
-- edge cases and failure states are defined
-- file targets and architecture choices fit the repository
-- task order and dependencies are technically sound
-- the plan is specific enough that an AI agent will not guess
+Every finding below 70% must include a `Verify:` line stating exactly what the user should check and where.
 
-### 3. Evaluate the five critical criteria
+### 3. Evaluate the five criteria
 
-#### 1. Clarity
+#### 1. Clarity — check with HIGH confidence
+
+Detect language-level vagueness directly from the plan text.
 
 Ask:
 
@@ -55,130 +60,112 @@ Ask:
 - Would two implementers build the same thing from this plan?
 - Are user flows, states, and edge cases explicit?
 
-Red flags:
+Red flags: "Handle errors appropriately", "Similar to existing feature", "Refine the UI", "Should support various formats"
 
-- "Handle errors appropriately"
-- "Similar to existing feature" without naming the source
-- "Support various formats" without listing them
-- missing details on state transitions, validations, or UX behavior
+#### 2. Completeness — check with LIMITED confidence
 
-#### 2. Completeness
+AI can only check against what is written in the plan. Without a requirement doc as baseline, it cannot know what domain-specific cases are truly missing.
 
-Ask:
+Do:
 
-- Does the plan cover happy path and unhappy paths?
-- Are validation rules, dependencies, and failure modes included?
-- Is any requirement implied but not described?
-- Are there missing pieces that would block implementation?
+- Check if happy path is described
+- Check if error states and validation rules are mentioned
+- Apply a generic checklist: empty state, auth failure, network error, initial load with URL params
 
-Red flags:
+Do not:
 
-- only the happy path is described
-- no error handling strategy
-- missing validation rules
-- unclear edge-case behavior
-- unstated dependencies or prerequisites
+- Claim completeness from domain knowledge alone — flag those findings at 40–69% with a `Verify:` line
 
-#### 3. Project Context Alignment
+#### 3. Project Context Alignment — check with HIGH confidence
 
-Compare against:
-
-- `docs/ai/project/CODE_CONVENTIONS.md`
-- `docs/ai/project/PROJECT_STRUCTURE.md`
+Compare file paths, naming, and patterns in the plan against `CODE_CONVENTIONS.md` and `PROJECT_STRUCTURE.md` directly.
 
 Ask:
 
-- Does the plan reuse existing patterns before inventing new ones?
-- Are file paths and ownership boundaries consistent with the repo?
-- Does naming match existing conventions?
-- Does it avoid duplicating utilities or components that likely already exist?
+- Do file paths in the plan match the repo structure?
+- Does the plan follow naming conventions?
+- Does it reuse existing patterns instead of reinventing them?
 
-Red flags:
+If context files are unavailable, downgrade all alignment findings to 60% and flag them.
 
-- introducing new patterns with no justification
-- file placement that conflicts with project structure
-- ignoring reusable existing modules
-- inconsistent naming or architecture boundaries
+#### 4. Logic Soundness — check with LIMITED confidence
 
-#### 4. Logic Soundness
+Check the internal logic of the plan only. Do not claim to verify against actual codebase state.
 
-Ask:
+Do:
 
-- Does the technical flow make sense end to end?
-- Are task dependencies ordered correctly?
-- Are there race conditions, missing state transitions, or security gaps?
-- Do data flow, error handling, and persistence behavior hold together?
+- Check if task steps are in a valid dependency order
+- Check if the data flow described in the plan is internally consistent
+- Flag obvious security gaps stated or implied in the plan
 
-Red flags:
+Do not:
 
-- a step depends on code or data not created yet
-- missing state-management considerations
-- external calls without failure handling
-- unsafe validation, auth, or sanitization assumptions
-- architecture that does not fit the expected scale or lifecycle
+- Claim that DB schemas, API contracts, or runtime behaviors match the codebase without reading the actual files — flag those at 50–65% with specific files to check
 
-#### 5. AI Executability
+#### 5. AI Executability — check with LIMITED confidence
 
-Ask:
+Detect missing specs that would force an AI agent to guess during implementation.
 
-- Are instructions concrete enough for an AI agent to implement without guessing?
-- Are pseudo-code blocks specific on inputs, outputs, and logic flow?
-- Does each task have clear success criteria?
-- Would any task require human judgment that the plan never resolves?
+Do:
 
-Red flags:
+- Flag tasks with no input/output spec
+- Flag pseudo-code that is too abstract
+- Flag "implement similar to X" references without specifics
+- State what the AI would assume if asked to implement the task right now
 
-- "Implement similar to X" without stating which behavior matters
-- abstract pseudo-code with key branches omitted
-- missing input or output contracts
-- vague acceptance criteria
-- steps that depend on unstated product decisions
+Do not:
 
-### 4. Produce an actionable verdict
+- Claim a spec is sufficient just because it appears complete — note implicit assumptions the user should confirm
 
-Prefer concrete findings over general commentary.
-If the plan is weak, identify the exact section or task causing risk and suggest how to fix it.
-If the plan is strong, still call out any residual risks or assumptions.
+### 4. Produce the review output
 
 ## Output Format
-
-Use this structure:
 
 ```markdown
 ## Plan Review: {feature-name}
 
 ### Verdict
 **Status**: Ready to Execute | Needs Clarification | Not Ready
-**Confidence**: High | Medium | Low
 
-### 1. Clarity Assessment
-**Score**: Clear | Some Ambiguity | Too Vague
-[Specific findings]
+---
 
-### 2. Completeness Assessment
-**Score**: Complete | Gaps Found | Major Missing Pieces
-[Specific findings]
+### 1. Clarity
+| # | Finding | Confidence | Verify |
+|---|---------|------------|--------|
+| 1 | {vague term or missing detail} | {X}% | {what to check, or "-" if confident} |
+
+### 2. Completeness
+| # | Gap | Confidence | Verify |
+|---|-----|------------|--------|
+| 1 | {missing case or scenario} | {X}% | {what to check} |
 
 ### 3. Project Context Alignment
-**Score**: Aligned | Minor Deviations | Misaligned
-[Specific findings]
+| # | Deviation | Confidence | Verify |
+|---|-----------|------------|--------|
+| 1 | {mismatch with conventions or structure} | {X}% | {file or rule to check, or "-"} |
 
 ### 4. Logic Soundness
-**Score**: Sound | Minor Issues | Flawed Logic
-[Specific findings]
+| # | Issue | Confidence | Verify |
+|---|-------|------------|--------|
+| 1 | {logic or ordering problem} | {X}% | {file, schema, or contract to check} |
 
 ### 5. AI Executability
-**Score**: Executable | Risky Areas | Likely Misimplementation
-[Specific findings]
+| # | Gap | Confidence | Assumption AI would make |
+|---|-----|------------|--------------------------|
+| 1 | {underspecified task or missing spec} | {X}% | {what AI would guess if implementing now} |
+
+---
 
 ### Critical Issues (Must Fix)
-1. [Issue] -> [Suggested fix]
+1. [Issue] — Confidence: {X}% -> [Suggested fix]
 
 ### Warnings (Should Fix)
-1. [Issue] -> [Suggested fix]
+1. [Issue] — Confidence: {X}% -> [Suggested fix]
 
-### Suggestions (Nice to Have)
-1. [Improvement idea]
+### Items to Verify (Confidence < 70%)
+1. [Finding] — {X}% -> [Exactly what to check and where]
+
+---
 
 ### Recommendation
 [Proceed / revise specific sections / major rework needed]
@@ -189,8 +176,9 @@ If there are no critical issues, say `None`.
 
 ## Quality Bar
 
-- Review behavior and implementation readiness, not markdown formatting
+- Assign confidence % to every individual finding, not just per section
 - Be specific enough that the author can revise the plan directly
 - Treat ambiguity as implementation risk
+- Do not invent missing requirements — flag them as gaps with low confidence
 - Prefer file or section references when available
-- Do not invent missing requirements; flag them as gaps
+- Do not edit any implementation files
