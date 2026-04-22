@@ -1,6 +1,8 @@
 ---
 name: be-security-check
-description: Use when a backend feature has been implemented and needs a security pass before PR review or merge. Covers injection, broken auth, mass assignment, sensitive data exposure, missing rate limiting, improper authorization, business flow abuse, misconfiguration (OWASP API Security Top 10 2023). Trigger phrases: "check security", "security review backend", "security audit", "security check after implementation". Skip when task is purely frontend styling, config-only change, or documentation update with no logic. SCOPE: always review only the files changed in the current feature/PR.
+description: |
+  Post-implementation backend security review scoped to a feature or flow: injection, broken auth, mass assignment, sensitive data exposure, missing rate limiting, improper authorization, business flow abuse, misconfiguration (OWASP API Security Top 10 2023).
+  Use when: a backend feature has been implemented and needs a security pass before PR review or merge. Trigger phrases: "check security", "security review backend", "security audit", "security check after implementation". Skip when task is purely frontend styling, config-only change, or documentation update with no logic. SCOPE: always review only the files changed in the current feature/PR.
 ---
 
 # Backend Security Check

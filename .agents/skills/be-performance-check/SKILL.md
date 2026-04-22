@@ -1,6 +1,8 @@
 ---
 name: be-performance-check
-description: Use when a backend feature has been implemented and needs a performance pass before PR review or merge. Covers N+1 queries, missing indexes, unbounded queries, blocking I/O, memory leaks, caching gaps. Trigger phrases: "check performance", "performance review", "optimize backend", "review queries", "N+1 check". Skip when task is purely frontend, config change, or documentation update. SCOPE: always review only the files changed in the current feature/PR.
+description: |
+  Post-implementation backend performance review scoped to a feature or flow: N+1 queries, missing indexes, unbounded queries, blocking I/O, memory leaks, caching gaps.
+  Use when: a backend feature has been implemented and needs a performance pass before PR review or merge. Trigger phrases: "check performance", "performance review", "optimize backend", "review queries", "N+1 check". Skip when task is purely frontend, config change, or documentation update. SCOPE: always review only the files changed in the current feature/PR.
 ---
 
 # Backend Performance Check
