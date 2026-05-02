@@ -695,6 +695,18 @@ Create `docs/ai/requirements/DD-MM-YYYY-req-{name}.md` with:
 > Generated: {YYYY-MM-DD}
 > Status: Draft | Review | Approved
 > Complexity: {Low / Medium / High}
+> Readiness: {0-100}% — missing: {item1}, {item2}
+> References: {Jira ticket, Figma link, API docs}
+
+Note: All content in this document must be written in English.
+
+<!--
+Review tags guide:
+  [REVIEW]   — Read carefully and verify correctness before approving
+  [SKIM]     — Quick scan to confirm, rarely wrong
+  [REFERENCE]— Skip unless you have a specific concern; background info only
+  [BLOCKING] — Must resolve all items here before this doc can be approved
+-->
 
 ## Quick Links
 
@@ -707,37 +719,41 @@ Create `docs/ai/requirements/DD-MM-YYYY-req-{name}.md` with:
 
 ---
 
-## 1. Executive Summary
+## 1. Problem Statement `[REVIEW]`
 
-{Synthesized from all agents - 3-5 sentences covering what, why, how}
-
----
-
-## 2. Problem Statement
+<!-- Verify the problem framing is correct — wrong framing here invalidates everything below -->
 
 {From BA document}
 
 ---
 
-## 3. Users & User Stories
+## 2. Users & User Stories `[REVIEW]`
+
+<!-- Verify all target user types are identified and no important user is missing -->
 
 {From BA document - consolidated user stories table}
 
 ---
 
-## 4. Functional Requirements
+## 3. Functional Requirements `[REVIEW]`
+
+<!-- Core of this doc — verify each FR is testable, correctly prioritized, and nothing critical is missing -->
 
 {From BA document - FR table}
 
 ---
 
-## 5. Business Rules
+## 4. Business Rules `[REVIEW]`
+
+<!-- These rules are implemented directly by AI — verify each condition/action is logically correct -->
 
 {From BA document - BR table}
 
 ---
 
-## 6. Technical Assessment
+## 5. Technical Assessment `[REFERENCE]`
+
+<!-- SA has already validated this — only read if you have concerns about feasibility or architecture direction -->
 
 ### Feasibility
 {From SA document - feasibility summary}
@@ -748,100 +764,68 @@ Create `docs/ai/requirements/DD-MM-YYYY-req-{name}.md` with:
 ### Technology Stack
 {From SA document - stack table}
 
-### Technical Edge Cases
+### Non-Functional Requirements
+{From SA or BA document - performance, security, compatibility}
+
+---
+
+## 6. UI/UX Design `[REFERENCE]`
+
+<!-- Full details in the linked agent file — only open if reviewing UI flows specifically -->
+
+See: [UI/UX Design Document](agents/uiux-{name}.md)
+
+Key screens: {From UI/UX document - screen list}
+
+---
+
+## 7. Domain Context `[REFERENCE]`
+
+<!-- Full glossary and compliance details in the linked agent file — look up terms here when needed -->
+
+See: [Domain Research](agents/research-{name}.md)
+
+Key terms: {From Research document - critical terms only}
+
+---
+
+## 8. Edge Cases, Constraints & Risks `[REVIEW]`
+
+<!-- Verify risks have realistic mitigations and constraints won't block delivery -->
+
+### Edge Cases
 {From SA document - edge cases table}
 
-### Risks
+### Constraints
+{From BA document - technical, business, dependency constraints}
+
+### Technical Risks
 {From SA document - risk table}
 
 ---
 
-## 7. UI/UX Design (if applicable)
+## 9. Out of Scope `[SKIM]`
 
-### Screen Inventory
-{From UI/UX document}
-
-### Key Wireframes
-{From UI/UX document - main screens only}
-
-### User Flows
-{From UI/UX document - flow diagrams}
-
----
-
-## 8. Domain Context (if applicable)
-
-### Glossary
-{From Research document - key terms}
-
-### Compliance & Standards
-{From Research document - relevant standards}
-
----
-
-## 9. Implementation Guidance
-
-### Suggested Phases
-{From SA document}
-
-### Dependencies
-{From BA + SA documents}
-
----
-
-## 10. Out of Scope
+<!-- Quick scan to confirm no required feature was accidentally excluded -->
 
 {From BA document}
 
 ---
 
-## 11. Open Questions
+## 10. Open Questions `[BLOCKING]`
+
+<!-- Resolve all items here before approving — unresolved blocking questions prevent implementation -->
 
 {Consolidated from all agents}
 
 ---
 
-## 12. Acceptance Criteria
+## Related Plans (if applicable)
 
-{Derived from FRs - Given/When/Then format}
-
----
-
----
-
-## 13. Implementation Readiness Score
-
-**Score**: {0-100}%
-
-| Criteria | Status | Weight |
-|----------|--------|--------|
-| All FRs have testable acceptance criteria | ✅ / ❌ | 20% |
-| No critical open questions | ✅ / ❌ | 20% |
-| Technical risks have mitigations | ✅ / ❌ | 15% |
-| Business rules are explicit | ✅ / ❌ | 15% |
-| Error/edge cases defined | ✅ / ❌ | 15% |
-| UI/UX specs complete (if applicable) | ✅ / ❌ / N/A | 15% |
-
-**Missing for 100%**:
-- {item 1}
-- {item 2}
-
----
-
-## 14. Changelog
-
-| Date | Change |
-|------|--------|
-| {YYYY-MM-DD} | Initial version |
-
----
-
-## Next Steps
-
-1. Review this requirement document
-2. Address open questions before implementation
-3. Run `/create-plan` to generate implementation plan (small feature)
-4. Run `/manage-epic` to break into feature plans (large feature)
+| Type | Document | Status | Scope |
+|------|----------|--------|-------|
+| Epic | [epic-{name}.md](../planning/epic-{name}.md) | open/in_progress/blocked/completed | {Requirement-wide tracking} |
+| Feature Plan | [feature-{name}.md](../planning/feature-{name}.md) | open/in_progress/blocked/completed | {FR-01, FR-02} |
 ```
 
 ### File Naming & Versioning
@@ -945,8 +929,8 @@ Complex (many unknowns):
 | User abandons Q&A | Save progress, allow resume |
 | Researcher finds no results for a term | Skip that term, note as "unresearched" in domain context section |
 | SA output conflicts heavily with BA (unfeasible Must-haves) | Run Step 3.5 conflict resolution before proceeding; do not spawn UI/UX on broken foundation |
-| `[NEEDS CONFIRMATION]` items still unresolved at consolidation | List them explicitly in Section 11 (Open Questions) with `⚠️ BLOCKS IMPLEMENTATION` tag |
-| Inline context stale (>30 days) and SA-lite used | Add `⚠️ SA output based on potentially stale inline context — validate against repo before implementation` to Section 6 |
+| `[NEEDS CONFIRMATION]` items still unresolved at consolidation | List them explicitly in Section 10 (Open Questions) with `⚠️ BLOCKS IMPLEMENTATION` tag |
+| Inline context stale (>30 days) and SA-lite used | Add `⚠️ SA output based on potentially stale inline context — validate against repo before implementation` to Section 5 |
 
 ---
 

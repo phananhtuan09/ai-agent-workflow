@@ -135,43 +135,40 @@ AskUserQuestion(questions=[{
 
 ### Document Sections
 
-1. **Executive Summary** (2-3 sentences)
-   - What is being built and why
-
-2. **Problem Statement**
+1. **Problem Statement**
    - Current situation
    - Pain points
    - Desired outcome
 
-3. **Users & Stakeholders**
+2. **Users & Stakeholders**
    - Primary users (with personas if relevant)
    - Secondary users
    - Stakeholders
 
-4. **User Stories**
+3. **User Stories**
    - Format: As a [user], I want [action], so that [benefit]
    - Prioritized: Must-have / Should-have / Nice-to-have
 
-5. **Functional Requirements**
+4. **Functional Requirements**
    - FR-01, FR-02, etc.
    - Clear, testable statements
 
-6. **Business Rules**
+5. **Business Rules**
    - BR-01, BR-02, etc.
    - Conditions and constraints
 
-7. **Assumptions & Dependencies**
+6. **Assumptions & Dependencies**
    - What we're assuming to be true
    - External dependencies
 
-8. **Out of Scope**
+7. **Out of Scope**
    - Explicitly excluded items
 
-9. **Open Questions**
+8. **Open Questions**
    - Unresolved items needing stakeholder input
 
-10. **Q&A Log**
-    - Complete record of clarification session
+9. **Q&A Log**
+   - Complete record of clarification session
 
 ---
 

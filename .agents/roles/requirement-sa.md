@@ -86,9 +86,7 @@ Prioritize:
 - Requirements Analysis
 - Technical Recommendations
 - Reuse Opportunities
-- Technical Edge Cases
-- Risk Assessment
-- Implementation Guidance
+- Edge Cases & Technical Risks
 - Open Technical Questions
 
 ## Output Contract

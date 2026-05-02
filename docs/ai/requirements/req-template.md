@@ -3,8 +3,18 @@
 > Generated: {YYYY-MM-DD}
 > Status: Draft | Review | Approved
 > Complexity: Low | Medium | High
+> Readiness: {0-100}% — missing: {item1}, {item2}
+> References: {Jira ticket, Figma link, API docs}
 
 Note: All content in this document must be written in English.
+
+<!--
+Review tags guide:
+  [REVIEW]   — Read carefully and verify correctness before approving
+  [SKIM]     — Quick scan to confirm, rarely wrong
+  [REFERENCE]— Skip unless you have a specific concern; background info only
+  [BLOCKING] — Must resolve all items here before this doc can be approved
+-->
 
 ---
 
@@ -19,13 +29,9 @@ Note: All content in this document must be written in English.
 
 ---
 
-## 1. Executive Summary
+## 1. Problem Statement `[REVIEW]`
 
-{3-5 sentences covering: what is being built, why it matters, and how it will be approached}
-
----
-
-## 2. Problem Statement
+<!-- Verify the problem framing is correct — wrong framing here invalidates everything below -->
 
 ### Context
 {Business/technical context that led to this requirement}
@@ -38,7 +44,9 @@ Note: All content in this document must be written in English.
 
 ---
 
-## 3. Users & User Stories
+## 2. Users & User Stories `[REVIEW]`
+
+<!-- Verify all target user types are identified and no important user is missing -->
 
 ### Target Users
 
@@ -56,7 +64,9 @@ Note: All content in this document must be written in English.
 
 ---
 
-## 4. Functional Requirements
+## 3. Functional Requirements `[REVIEW]`
+
+<!-- Core of this doc — verify each FR is testable, correctly prioritized, and nothing critical is missing -->
 
 | ID | Requirement | Priority | Acceptance Criteria |
 |----|-------------|----------|---------------------|
@@ -65,14 +75,13 @@ Note: All content in this document must be written in English.
 | FR-03 | {Description} | Should | {How to verify} |
 | FR-04 | {Description} | Could | {How to verify} |
 
-**Priority Legend:**
-- **Must**: Critical for release
-- **Should**: Important but not blocking
-- **Could**: Nice to have
+**Priority Legend:** Must = critical for release · Should = important but not blocking · Could = nice to have
 
 ---
 
-## 5. Business Rules
+## 4. Business Rules `[REVIEW]`
+
+<!-- These rules are implemented directly by AI — verify each condition/action is logically correct -->
 
 | ID | Rule | Condition | Action |
 |----|------|-----------|--------|
@@ -81,7 +90,9 @@ Note: All content in this document must be written in English.
 
 ---
 
-## 6. Technical Assessment
+## 5. Technical Assessment `[REFERENCE]`
+
+<!-- SA has already validated this — only read if you have concerns about feasibility or architecture direction -->
 
 ### Feasibility Summary
 
@@ -102,49 +113,7 @@ Note: All content in this document must be written in English.
 |-------|------------|--------|
 | {Layer} | {Tech} | {Why} |
 
-### Technical Risks
-
-| ID | Risk | Impact | Likelihood | Mitigation |
-|----|------|--------|------------|------------|
-| TR-01 | {Risk} | High/Med/Low | High/Med/Low | {Mitigation} |
-
----
-
-## 7. UI/UX Design (if applicable)
-
-### Screen Inventory
-
-| # | Screen | Purpose | Priority |
-|---|--------|---------|----------|
-| 1 | {Screen name} | {Purpose} | Must |
-
-### Key User Flows
-
-{Flow diagram or description}
-
-### Wireframe Reference
-
-See: [UI/UX Design Document](agents/uiux-{name}.md)
-
----
-
-## 8. Domain Context (if applicable)
-
-### Glossary
-
-| Term | Definition |
-|------|------------|
-| {Term} | {Clear definition in project context} |
-
-### Compliance & Standards
-
-| Standard | Applicability |
-|----------|---------------|
-| {Standard name} | {How it applies} |
-
----
-
-## 9. Non-Functional Requirements (Optional)
+### Non-Functional Requirements
 
 | Category | Requirement |
 |----------|-------------|
@@ -155,21 +124,35 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 10. Technical Edge Cases
+## 6. UI/UX Design `[REFERENCE]`
 
-| ID | Category | Edge Case | Expected Behavior | Priority |
-|----|----------|-----------|-------------------|----------|
-| TE-01 | {Concurrency/Data/Network/Security/Performance} | {Description} | {How system should handle it} | Must/Should |
+<!-- Full details in the linked agent file — only open if reviewing UI flows specifically -->
+
+See: [UI/UX Design Document](agents/uiux-{name}.md)
+
+Key screens: {Screen 1}, {Screen 2}
 
 ---
 
-## 11. Edge Cases & Constraints
+## 7. Domain Context `[REFERENCE]`
+
+<!-- Full glossary and compliance details in the linked agent file — look up terms here when needed -->
+
+See: [Domain Research](agents/research-{name}.md)
+
+Key terms: {Term 1} = {definition}, {Term 2} = {definition}
+
+---
+
+## 8. Edge Cases, Constraints & Risks `[REVIEW]`
+
+<!-- Verify risks have realistic mitigations and constraints won't block delivery -->
 
 ### Edge Cases
 
-| Case | Expected Behavior |
-|------|-------------------|
-| {Edge case description} | {How system should handle it} |
+| ID | Category | Edge Case | Expected Behavior | Priority |
+|----|----------|-----------|-------------------|----------|
+| EC-01 | {Concurrency/Data/Network/Security/Performance} | {Description} | {How system should handle it} | Must/Should |
 
 ### Constraints
 
@@ -177,18 +160,26 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 - **Business**: {e.g., Budget limit, timeline}
 - **Dependencies**: {e.g., Requires API v2 ready}
 
+### Technical Risks
+
+| ID | Risk | Impact | Likelihood | Mitigation |
+|----|------|--------|------------|------------|
+| TR-01 | {Risk} | High/Med/Low | High/Med/Low | {Mitigation} |
+
 ---
 
-## 12. Out of Scope
+## 9. Out of Scope `[SKIM]`
 
-> Explicitly excluded from this requirement
+<!-- Quick scan to confirm no required feature was accidentally excluded -->
 
 - {Feature/functionality not included}
 - {Deferred to future iteration}
 
 ---
 
-## 13. Open Questions
+## 10. Open Questions `[BLOCKING]`
+
+<!-- Resolve all items here before approving — unresolved blocking questions prevent implementation -->
 
 | ID | Question | Owner | Due Date | Status | Blocking |
 |----|----------|-------|----------|--------|----------|
@@ -196,95 +187,9 @@ See: [UI/UX Design Document](agents/uiux-{name}.md)
 
 ---
 
-## 14. Acceptance Criteria
-
-### Scenario 1: {Happy Path - Main Flow}
-
-- **Given** {initial context/state}
-- **When** {action performed}
-- **Then** {expected outcome}
-
-### Scenario 2: {Alternative Flow}
-
-- **Given** {context}
-- **When** {action}
-- **Then** {outcome}
-
-### Scenario 3: {Error Handling}
-
-- **Given** {context}
-- **When** {invalid action/error condition}
-- **Then** {error handling behavior}
-
----
-
-## 15. Implementation Guidance
-
-### Suggested Phases
-
-| Phase | Focus | Priority |
-|-------|-------|----------|
-| 1 | {Foundation} | High |
-| 2 | {Core features} | High |
-| 3 | {Enhancement} | Medium |
-
-### Dependencies
-
-| Dependency | Type | Status |
-|------------|------|--------|
-| {Dependency} | Internal/External | Available/Pending |
-
----
-
-## 16. Implementation Readiness Score
-
-**Score**: {0-100}%
-
-| Criteria | Status | Weight |
-|----------|--------|--------|
-| All FRs have testable acceptance criteria | ✅ / ❌ | 20% |
-| No critical open questions | ✅ / ❌ | 20% |
-| Technical risks have mitigations | ✅ / ❌ | 15% |
-| Business rules are explicit | ✅ / ❌ | 15% |
-| Error/edge cases defined | ✅ / ❌ | 15% |
-| UI/UX specs complete (if applicable) | ✅ / ❌ / N/A | 15% |
-
-**Missing for 100%**:
-- {item 1}
-- {item 2}
-
----
-
-## 17. Changelog
-
-| Date | Change |
-|------|--------|
-| {YYYY-MM-DD} | Initial version |
-
----
-
-## 18. References
-
-- **Related Docs**: {links to related requirements, designs}
-- **External Links**: {Jira tickets, Figma, API docs}
-- **Agent Outputs**: See Quick Links section
-
----
-
-## Related Plans (Optional)
-
-> Remove this section if no epic or feature plans are linked.
+## Related Plans (if applicable)
 
 | Type | Document | Status | Scope |
 |------|----------|--------|-------|
 | Epic | [epic-{name}.md](../planning/epic-{name}.md) | open/in_progress/blocked/completed | {Requirement-wide tracking} |
 | Feature Plan | [feature-{name}.md](../planning/feature-{name}.md) | open/in_progress/blocked/completed | {FR-01, FR-02} |
-
----
-
-## Next Steps
-
-1. [ ] Review this requirement document
-2. [ ] Address open questions
-3. [ ] Run `/create-plan` to generate implementation plan (small feature)
-4. [ ] Run `/manage-epic` to break into feature plans (large feature)

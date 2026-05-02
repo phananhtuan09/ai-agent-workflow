@@ -75,25 +75,15 @@ Expected speedup: 30-40% for context loading phase.
 
 **Purpose**: These standards will guide implementation quality. Refresh this context at each phase boundary to prevent quality degradation in long plans.
 
-### 1b: Load Design/Theme Specifications (If Exists)
+### 1b: Load Design Specifications (If Exists)
 
-**Check planning doc for design section**:
+**Check planning doc for "Design Specifications" section** (Figma extraction only):
 
-**If "Design Specifications" exists** (Figma extraction):
-- Extract complete design specs into memory
-- Design tokens, component breakdown, responsive specs
+If exists:
+- Extract design tokens, component breakdown, responsive specs into memory
 - **Note**: DO NOT fetch from Figma MCP again
 
-**If "Theme Specification" exists** (Theme selection):
-- Load theme details from planning doc
-- Extract: color palette, typography, spacing, visual style
-
-**Priority** (if multiple design sources exist):
-1. **Use Figma Design Specifications** (highest fidelity) - ignore Theme if Figma exists
-2. **Use Theme Specification** only if no Figma design
-3. **No design constraints** if neither exists
-
-If both Figma and Theme sections exist, use ONLY Figma and ignore Theme completely.
+If absent: no design constraints to apply.
 
 **Purpose**: Implementation must match these exact specifications for consistency.
 
@@ -276,7 +266,7 @@ Code Standards Reminder:
   - [Key convention 2 from CODE_CONVENTIONS.md]
   - [Key pattern from PROJECT_STRUCTURE.md]
 
-Design/Theme Active: [Yes/No]
+Design Specs Active (Figma): [Yes/No]
   - Colors: [primary colors if applicable]
   - Typography: [font families if applicable]
   - Spacing: [scale values if applicable]

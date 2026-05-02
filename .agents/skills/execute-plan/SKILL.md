@@ -35,7 +35,7 @@ Read:
 - `docs/ai/project/CODE_CONVENTIONS.md`
 - `docs/ai/project/PROJECT_STRUCTURE.md`
 
-If the planning doc contains design or theme sections, use those sections as the design source of truth.
+If the planning doc contains a Design Specifications section (Figma), use it as the design source of truth.
 
 If the planning doc contains codebase context, use it to find the right files and patterns quickly.
 
@@ -85,7 +85,7 @@ For each task:
 Implementation rules:
 
 - follow `CODE_CONVENTIONS.md` and `PROJECT_STRUCTURE.md`
-- follow design/theme constraints from the planning doc when present
+- follow design constraints (Figma specs) from the planning doc when present
 - reuse existing patterns before creating new abstractions
 - keep changes incremental and within plan scope
 - do not silently expand scope beyond the requested execution scope

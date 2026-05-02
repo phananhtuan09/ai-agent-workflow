@@ -60,7 +60,6 @@ Use the BA template and fill it completely.
 
 Minimum sections to complete:
 
-- Executive Summary
 - Problem Statement
 - Users and Stakeholders
 - User Stories

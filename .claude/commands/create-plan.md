@@ -24,8 +24,8 @@ Generate a single planning doc at `docs/ai/planning/DD-MM-YYYY-feature-{name}.md
 - **Explicit requirements:** Framework, libraries, constraints mentioned
 - **Design context:**
   - Has Figma URL/mention? → Flag for Step 4
-  - Has design description/screenshot? → Skip Steps 4-5
-  - No design source? → Flag for Step 5 (theme selection)
+  - Has design description/screenshot? → Skip Step 4
+  - No design source? → Skip Steps 4-5
 - **Scope hints:** MVP mentions, deadlines, specific exclusions
 
 **If Epic Reference Provided:**
@@ -45,14 +45,14 @@ Generate a single planning doc at `docs/ai/planning/DD-MM-YYYY-feature-{name}.md
 
 | Requirement Section | Maps to Planning Section |
 |---------------------|--------------------------|
-| 1. Problem Statement | 3. Goal (problem context) |
-| 2. User Stories | 3. Goal (user context) |
-| 3. Business Rules | 6. Implementation Plan (logic constraints) |
-| 4. Functional Requirements | 6. Implementation Plan (tasks) |
+| 1. Problem Statement | Skip — req doc is source of truth |
+| 2. User Stories | Skip — req doc is source of truth |
+| 3. Business Rules | 5. Implementation Plan (logic constraints) |
+| 4. Functional Requirements | 5. Implementation Plan (tasks) |
 | 5. Non-Functional Requirements | 4. Risks & Assumptions |
 | 6. Edge Cases & Constraints | 4. Risks & Assumptions |
-| 8. Out of Scope | 7. Follow-ups |
-| 9. Acceptance Criteria | 3. Acceptance Criteria |
+| 8. Out of Scope | 6. Follow-ups |
+| 9. Acceptance Criteria | Skip — req doc is source of truth |
 | 11. Glossary | Keep as reference during implementation |
 
 - Skip most of Step 2 (Q&A) - requirements already documented
@@ -90,14 +90,13 @@ Generate a single planning doc at `docs/ai/planning/DD-MM-YYYY-feature-{name}.md
 4. **Constraints:** Tech stack, libraries, APIs (real/mock), deadlines
 5. **Risks & Assumptions:** Known blockers or assumptions
 6. **Tasks:** 3-7 high-level work items
-7. **Definition of Done:** Build/test/review/docs criteria
 
 **Q&A Format:** Use AskUserQuestion with 2-4 options per question.
 - Example: "1. UI library? a) TailwindCSS b) Bootstrap c) Other"
 
 **Collect after Q&A:**
 - Feature name (kebab-case) - Ask if not derivable from prompt
-- Goal, scope, tasks, DoD
+- Goal, scope, tasks
 
 ---
 
@@ -106,8 +105,7 @@ Generate a single planning doc at `docs/ai/planning/DD-MM-YYYY-feature-{name}.md
 **Steps 3-5 can run in parallel** to optimize performance *(Steps 4-5 defined below)*:
 
 **Scenario A: No design source**
-- Run in parallel: Step 3 (Explore) + Step 5 (Theme Selection)
-- Use single message with multiple tool calls
+- Run only: Step 3 (Explore) — no theme step needed
 
 **Scenario B: Figma design detected**
 - Run in parallel: Step 3 (Explore) + Step 4 (Read figma-{name}.md)
@@ -197,32 +195,12 @@ Generate a single planning doc at `docs/ai/planning/DD-MM-YYYY-feature-{name}.md
 
 **Skip this step if:** No Figma URL/mention detected in Step 1.
 
-## Step 5: Design System & Theme (Optional)
-
-**Trigger:** Step 4 skipped (no Figma) AND user has NOT provided detailed design description/screenshot.
-
-**Use design skills to guide design decisions:**
-- `frontend-design-fundamentals`: Core principles (spacing, typography, color, hierarchy)
-- `frontend-design-theme-factory`: Interactive theme selection based on brand personality
-- `frontend-design-responsive`: Mobile-first responsive patterns and breakpoints
-
-**Expected workflow:**
-1. Ask about brand personality/preferences if needed
-2. Choose aesthetic direction (minimal, bold, elegant, etc.)
-3. Propose complete design system (colors, fonts, spacing)
-4. Consider responsive strategy (mobile-first for target devices)
-5. Document theme/design specs in planning doc
-
-**Expected output:** "Design System" or "Theme Specification" section in planning doc.
-
-**Skip this step if:** User provided design description/screenshot in Step 1.
-
-## Step 6: Load Template
+## Step 5: Load Template
 
 **Tool:** Read(file_path="docs/ai/planning/feature-template.md")
 
-- Validate template contains required sections: Goal, Implementation Plan, DoD
-- If template not found: Use fallback minimal structure (Goal → Tasks → DoD)
+- Validate template contains required sections: Implementation Plan, Risks & Assumptions
+- If template not found: Use fallback minimal structure (Codebase Context → Risks → Implementation Plan → Follow-ups)
 
 This template defines the required structure and format. Use it as the baseline for creating the planning doc.
 
@@ -230,11 +208,10 @@ This template defines the required structure and format. Use it as the baseline 
 
 **Using inputs from:**
 - Step 0: Beads context (if BEADS_MODE)
-- Step 2: Scope, acceptance criteria, tasks, DoD
+- Step 2: Scope, acceptance criteria, tasks
 - Step 3: Codebase patterns (if done)
 - Step 4: Figma design specs (if done)
-- Step 5: Theme specification (if done)
-- Step 6: Template structure
+- Step 5: Template structure
 
 **Generate immediately without asking for confirmation.**
 
@@ -287,29 +264,21 @@ Produce a Markdown doc following `docs/ai/planning/feature-template.md`.
    - Architectural patterns to follow
    - Key files to reference
 
-2. **Design Specifications** (if Figma extraction was done):
+2. **Design Specifications** (only if Figma extraction was done):
    - Complete Figma design specs from Step 4
    - Design tokens, component breakdown, responsive specs
 
-   **OR**
+3. **Goal & Acceptance Criteria** (only if NO requirement doc linked):
+   - Brief goal + Given-When-Then scenarios
+   - Skip entirely if req doc exists — it is the source of truth
 
-   **Theme Specification** (if theme selection was done):
-   - Theme name and source file
-   - Color palette (primary, neutral, semantic)
-   - Typography (fonts, scale)
-   - Spacing scale and visual style
+4. **Risks & Assumptions**: Known implementation risks and key assumptions
 
-3. **Goal & Acceptance Criteria**: Brief goal + Given-When-Then scenarios
-
-4. **Risks & Assumptions**: Known risks and key assumptions
-
-5. **Definition of Done**: Build/test/review/docs checklist
-
-6. **Implementation Plan**:
+5. **Implementation Plan**:
    - Summary: Brief description of solution approach (1-3 sentences)
    - Phases: Detailed tasks with pseudo-code
 
-7. **Follow-ups**: TODOs or deferred work
+6. **Follow-ups**: TODOs or deferred work
 
 **Estimate phase scope**:
 - Count total tasks from Q&A

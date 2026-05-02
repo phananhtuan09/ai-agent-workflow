@@ -53,11 +53,10 @@ Ask the user a concise question only if one of these is still unclear and risky:
 
 When a requirement doc exists, map it into the plan instead of re-asking:
 
-- Problem Statement and User Stories -> Goal
 - Business Rules and Functional Requirements -> Implementation Plan
 - Non-Functional Requirements and Edge Cases -> Risks and Assumptions
-- Acceptance Criteria -> Acceptance Criteria
 - Out of Scope -> Follow-ups
+- Skip Goal & Acceptance Criteria — req doc is the source of truth
 
 ### 3. Research the codebase
 
@@ -86,20 +85,9 @@ Then:
 - if the file exists and `status: partial`, warn that specs are incomplete and proceed only with available data
 - if the file does not exist, tell the user to run `/extract-figma {url} {name}` first instead of guessing design values
 
-If the user already supplied screenshots or detailed design notes, use those directly and skip theme generation.
+If the user already supplied screenshots or detailed design notes, use those directly.
 
-If the task is UI-heavy and no design source exists, use the minimal relevant design skills:
-
-- `frontend-design-fundamentals`
-- `frontend-design-theme-factory`
-- `frontend-design-responsive`
-
-Only include one design section in the plan:
-
-- `2a. Design Specifications`
-- `2b. Theme Specification`
-
-Never include both.
+If no design source exists, skip the design section entirely.
 
 ### 5. Derive the feature name and output path
 
@@ -125,12 +113,11 @@ Include:
 
 1. `Related Documents` only when a requirement or epic exists
 2. `Codebase Context` only when research found something concrete
-3. `Design Specifications` or `Theme Specification` when applicable
-4. `Goal & Acceptance Criteria`
+3. `Design Specifications` only when Figma extraction exists
+4. `Goal & Acceptance Criteria` only when no requirement doc is linked
 5. `Risks & Assumptions`
-6. `Definition of Done`
-7. `Implementation Plan`
-8. `Follow-ups`
+6. `Implementation Plan`
+7. `Follow-ups`
 
 Related-doc and frontmatter rules:
 
