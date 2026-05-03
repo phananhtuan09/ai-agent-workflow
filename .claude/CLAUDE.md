@@ -59,3 +59,15 @@
 - Create todos for medium/large tasks (≤14 words, verb-led)
 - Keep ONE `in_progress` item only
 - Update immediately; mark completed when done
+
+## Logging
+
+Call `get_logging_guide` at the start of each session to get the full logging protocol.
+If `write_log` fails: retry once (required fields only). If still fails: notify user with
+"[Logging skipped: <reason>]" and continue — never let logging block the main task.
+
+**Do NOT call `write_log` for session-end or session-summary events.** The Stop hook
+automatically fires `event: "session_end"` with `log_type: "session_summary"` when the
+session closes — calling it manually would create duplicate entries. Only use `write_log`
+for task-level events: `task_start`, `task_done`, `subtask_start`, `subtask_done`,
+`tool_call`, `error`, `abort`, `checkpoint`.

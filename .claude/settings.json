@@ -1,4 +1,18 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport json, sys, urllib.request\ntry:\n    data = json.load(sys.stdin)\n    payload = json.dumps({\n        'session_id': data.get('session_id', ''),\n        'transcript_path': data.get('transcript_path', ''),\n        'cwd': data.get('cwd', '')\n    }).encode()\n    req = urllib.request.Request('http://127.0.0.1:4040/hooks/stop', data=payload, headers={'Content-Type': 'application/json'}, method='POST')\n    urllib.request.urlopen(req, timeout=5)\nexcept Exception:\n    pass\n\"",
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Read",
