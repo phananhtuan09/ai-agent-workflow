@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(mkdir -p C:/mor-personal/ai-agent-workflow/.claude/skills/db-schema)",
+      "Bash(mkdir -p C:/mor-personal/ai-agent-workflow/.claude/skills/auth-patterns)",
+      "Bash(mkdir -p C:/mor-personal/ai-agent-workflow/.claude/skills/swagger-docs)",
+      "Bash(mkdir -p C:/mor-personal/ai-agent-workflow/.claude/skills/be-performance-check)",
+      "Bash(mkdir -p C:/mor-personal/ai-agent-workflow/.claude/skills/be-security-check)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "agent-logger"
+  ],
+  "enableAllProjectMcpServers": true
 }
