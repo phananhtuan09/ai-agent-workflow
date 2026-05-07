@@ -1,9 +1,9 @@
 ---
-name: plan
+name: create-plan
 description: Use when the user asks to create a plan, write a plan, or plan implementation for a feature or bug fix. Creates a plan file in docs/ai/plans/.
 ---
 
-# Plan
+# Create Plan
 
 Create a plan from a spec file or inline task description.
 
@@ -21,15 +21,12 @@ Detect mode from input:
 ## File Mode Process
 
 1. Read spec file
-2. Write plan to docs/ai/plans/{feature-name}.md
+2. Write single plan file to docs/ai/plans/{feature-name}.md
 
 ## Inline Mode Process
 
 1. Derive a slug from the description (e.g. "fix-avatar-update")
 2. Write small plan to docs/ai/plans/{slug}.md
-   - 1 phase only, max 5 tasks
-   - No ## Spec section
-   - No ## Test Checklist (unless bug fix needs regression test)
 
 ## Plan Format - File Mode
 
@@ -45,14 +42,10 @@ docs/ai/specs/{feature-name}.md - ACs: #1 #2 #3
 ## Tasks
 
 ### Phase 1: {name}
-- [ ] [DISCOVER] Find all files related to {domain/feature}:
-      search by feature name, related component/store/hook names.
-      Output: file list + which will be modified vs created.
 - [ ] Task described as intent, not implementation
 - [ ] ...
 
 ### Phase 2: {name}
-- [ ] [DISCOVER] ...
 - [ ] ...
 
 ## Test Checklist
@@ -75,26 +68,16 @@ Maximum 20 lines:
 ## Tasks
 
 ### Phase 1: Fix
-- [ ] [DISCOVER] Find files related to {domain}: search {terms}.
-      Output: file list + which will be modified.
-- [ ] [task 2]
-- [ ] [task 3, max 5 total]
+- [ ] Task 1
+- [ ] Task 2
+- [ ] Task 3 (max 5 total)
 ```
 
 ## Shared Rules
 
 - All output files must be written in English
-- No file paths in tasks - AI discovers during execution
-- [DISCOVER] is mandatory as first task of each phase
-- [DISCOVER] format: "Find all files related to {domain}: search {terms}. Output list + modified vs created."
+- No file paths in tasks - file mapping is done by /enrich-plan
+- No [DISCOVER] tasks - that is handled by /enrich-plan
 - Each task = one small diff, described as intent
-- If File mode plan exceeds 60 lines -> split by phase:
-  - Parent: docs/ai/plans/{name}.md (overview + phase index only)
-  - Children: docs/ai/plans/{name}-phase-{N}.md (tasks of that phase)
-  - Parent format:
-    ```markdown
-    ## Phases
-    - Phase 1: {name} -> plans/{name}-phase-1.md
-    ```
-  - Execute command always receives parent file
-  - Summary always written to docs/ai/summaries/{name}.md (named after parent, not child - one summary per feature regardless of split)
+- One plan file only - never split into multiple files
+- Inline mode: no ## Spec section, no ## Test Checklist unless regression needed

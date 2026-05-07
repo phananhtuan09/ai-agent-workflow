@@ -1,9 +1,9 @@
 ---
-name: verify
+name: verify-feature
 description: Use when the user asks to verify, check, or validate a feature against its spec. Generates a verification checklist.
 ---
 
-# Verify
+# Verify Feature
 
 Read the spec file, generate a verification checklist.
 

@@ -1,9 +1,9 @@
 ---
-name: spec
+name: create-spec
 description: Use when the user asks to create a spec, write a specification, or define requirements for a feature. Creates a spec file in docs/ai/specs/.
 ---
 
-# Spec
+# Create Spec
 
 Create a spec file for the described feature.
 

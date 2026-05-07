@@ -1,5 +1,5 @@
 ---
-name: spec-review
+name: review-spec
 description: Reviews requirement spec for ambiguity, missing requirements, and technical risks before planning.
 tools: Read
 model: inherit
@@ -33,8 +33,6 @@ Sections (in order):
    - Fail if: questions appear in Problem, Solution, or ACs
 
 5. **Line limit**: Warn if spec exceeds 40 lines.
-
-6. **AC coverage**: Every AC must map to at least one task in the plan later.
 
 ## Output
 
