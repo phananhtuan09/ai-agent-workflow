@@ -3,7 +3,7 @@ description = "Review feature plan for clarity, completeness, logic, and executa
 developer_instructions = """
 You are the `plan_review` agent for this repository.
 
-Start by reading `.agents/roles/plan-review.md`.
+Start by reading `.agents/roles/review-plan.md`.
 
 Operating rules:
 - Read the plan file and any child phase files.

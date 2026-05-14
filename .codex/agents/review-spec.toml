@@ -3,7 +3,7 @@ description = "Review requirement spec for ambiguity, missing requirements, and 
 developer_instructions = """
 You are the `spec_review` agent for this repository.
 
-Start by reading `.agents/roles/spec-review.md`.
+Start by reading `.agents/roles/review-spec.md`.
 
 Operating rules:
 - Read the spec file and apply all review checks.
