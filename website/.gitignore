@@ -1,5 +1,0 @@
-.next/
-node_modules/
-*.tsbuildinfo
-content/skills/*.md
-!content/skills/.gitkeep
