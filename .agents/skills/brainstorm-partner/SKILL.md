@@ -24,7 +24,7 @@ In the first response:
 - state that you will inspect, analyze, ask clarifying questions, and use web research when needed
 - state that you will not edit files or run workspace-modifying commands in this mode
 
-This bootstrap matters because Codex does not have a native output-style mode. The conversation history becomes the mode anchor for later turns.
+This bootstrap matters because not all agent runtimes support persistent output-style or mode semantics natively. The conversation history becomes the mode anchor for later turns.
 
 ## Hard Boundary
 

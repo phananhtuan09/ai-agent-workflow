@@ -12,13 +12,12 @@ Delete a feature without leaving dead paths, dangling dependencies, or hidden en
 - Feature name or description
 - Optional: specific files, routes, or components known to belong to the feature
 
-## Codex Tool Mapping
+## Tool Mapping
 
-- Claude `Read/Edit/Write` → inspect files with shell reads and edit with `apply_patch`
-- Claude `Grep` → `rg <pattern>` to find all surfaces (route names, event names, symbols)
-- Claude `Glob` → `rg --files | grep <pattern>` or `find` to locate related files by path
-- Claude `AskUserQuestion` → ask the user directly for scope decisions
-- Claude `Bash` → run build or tests to verify no dangling references
+- File inspection/edit tools -> inspect files with the runtime's read/edit/write tools and prefer precise targeted edits over broad rewrites
+- Search tools -> use repository search and file listing tools to find all feature surfaces by symbol, route, event name, or path
+- User clarification -> ask the user directly for scope decisions when needed
+- Shell/validation tools -> run build or test commands when shell execution is available and appropriate
 
 ## Workflow
 
@@ -85,7 +84,7 @@ Choose one. Do not mix strategies.
 **Before starting**: Hard delete is irreversible. If the codebase has uncommitted changes or no recent backup, confirm with the user before proceeding.
 
 Remove in dependency order: consumers before providers.
-Apply one surface category at a time using `apply_patch` (e.g., UI first, then routes, then logic, then data/DB last).
+Apply one surface category at a time using the runtime's precise file editing tools (e.g., UI first, then routes, then logic, then data/DB last).
 
 For data/DB: drop tables or migrations only after confirming no other feature references them and a backup exists or data loss is accepted.
 

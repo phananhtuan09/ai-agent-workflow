@@ -22,11 +22,11 @@ The output must be detailed enough to:
 1. implement the UI without reopening Figma
 2. validate implementation against the design later
 
-## Codex Tool Mapping
+## Tool Mapping
 
-- Claude Figma MCP reads -> use the available Figma integration or repository-provided workflow if present
-- Claude `Read/Write/Edit` -> inspect files with shell tools and edit with `apply_patch`
-- Claude `AskUserQuestion` -> ask the user directly only when the file, frame, or next extraction target is unclear
+- Figma access tools -> use any available Figma integration or repository-provided workflow when present
+- File read/write/edit tools -> inspect supporting files with the runtime's file tools and update outputs with precise edits
+- User clarification -> ask the user directly only when the file, frame, or next extraction target is unclear
 
 ## Workflow
 
@@ -43,7 +43,7 @@ If the file already exists:
 - if `status: complete`, ask whether to overwrite or stop
 - if `status: partial`, resume from the unchecked extraction items
 
-Do not continue if the Figma source cannot be accessed.
+Do not continue if the Figma source cannot be accessed or if no suitable Figma integration is available in the current runtime.
 
 ### 2. Scan layout before detailed extraction
 

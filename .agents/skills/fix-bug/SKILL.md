@@ -13,12 +13,12 @@ Fix the reported bug with strict scope control. Reproduce first, isolate root ca
 - Optional: error logs, stack trace, failing test, or reproduction steps
 - Optional: specific file or module suspected to contain the issue
 
-## Codex Tool Mapping
+## Tool Mapping
 
-- Claude `Read/Edit/Write` → inspect files with shell reads and edit with `apply_patch`
-- Claude `Grep` → `rg <pattern>` to trace symbols, callers, related paths
-- Claude `AskUserQuestion` → ask the user directly when reproduction path is missing
-- Claude `Bash` → run tests or build via shell to validate fix
+- File inspection/edit tools -> inspect files with the runtime's read/edit/write tools and prefer precise targeted edits over broad rewrites
+- Search tools -> use repository search to trace symbols, callers, and related paths
+- User clarification -> ask the user directly when the reproduction path is missing or assumptions would change the fix
+- Shell/validation tools -> run tests or build commands when shell execution is available and appropriate
 
 ## Workflow
 
@@ -71,7 +71,7 @@ Do not change behavior outside bug scope unless explicitly justified.
 
 ### 5. Implement
 
-Apply only the changes necessary. Use `apply_patch` for edits.
+Apply only the changes necessary. Use the runtime's precise file editing tools for targeted edits.
 
 Rules:
 - Do not reformat or reorganize code unrelated to the fix.

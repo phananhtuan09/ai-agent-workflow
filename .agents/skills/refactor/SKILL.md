@@ -13,12 +13,12 @@ Improve code structure without changing observable behavior. Refactoring without
 - Refactor motivation (if provided)
 - Optional: existing tests that cover the scope
 
-## Codex Tool Mapping
+## Tool Mapping
 
-- Claude `Read/Edit/Write` → inspect files with shell reads and edit with `apply_patch`
-- Claude `Grep` → `rg <pattern>` to find all callers, usages, and related symbols
-- Claude `AskUserQuestion` → ask the user directly when contract or motivation is ambiguous
-- Claude `Bash` → run tests between transformation steps to catch regressions early
+- File inspection/edit tools -> inspect files with the runtime's read/edit/write tools and prefer precise targeted edits over broad rewrites
+- Search tools -> use repository search to find callers, usages, and related symbols
+- User clarification -> ask the user directly when contract or motivation is ambiguous
+- Shell/validation tools -> run tests or builds between transformation steps when shell execution is available and appropriate
 
 ## Workflow
 
@@ -84,7 +84,7 @@ State these constraints before writing code:
 One atomic transformation at a time (e.g., extract function, then rename, then move file — each is a separate step).
 
 For each atomic transformation:
-1. Apply change with `apply_patch`
+1. Apply the change with the runtime's precise file editing tools
 2. Run tests or build to catch regressions
 3. If a transformation introduces a bug: revert it, do not push forward
 

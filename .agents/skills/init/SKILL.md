@@ -1,11 +1,11 @@
 ---
 name: init
-description: Use when the user asks to initialize, analyze codebase, or generate .claude/CLAUDE.md. This skill should be used at the start of a new project or when CLAUDE.md is missing.
+description: Use when the user asks to initialize, analyze codebase, or generate the repository's primary agent context file. This skill should be used at the start of a new project or when the main agent context file is missing.
 ---
 
 # Init
 
-Analyze the codebase, then generate or overwrite .claude/CLAUDE.md.
+Analyze the codebase, then generate or overwrite the repository's primary agent context file.
 
 ## Scan Scope
 
@@ -20,7 +20,13 @@ If pattern unclear after 2 files -> note "pattern unclear, needs manual review".
 
 ## Output
 
-Write to: `.claude/CLAUDE.md`
+Write to the repository's primary agent context file.
+
+Preferred target resolution order:
+1. Existing root `AGENTS.md`
+2. Existing root `CLAUDE.md`
+3. Runtime- or repo-specific configured agent context path if one is already established
+4. Otherwise create root `AGENTS.md`
 
 ## Hard Limits
 
