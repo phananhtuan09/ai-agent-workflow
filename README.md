@@ -4,7 +4,7 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 
 ## Features
 
-- **Multi-Platform Support**: Works with Codex, Claude Code, and Google Antigravity
+- **Multi-Platform Support**: Works with Codex, Claude Code, Google Antigravity, and Pi
 - **Structured Workflows**: Plan → Implement → Test → Review methodology
 - **9 Pre-built Commands**: Create plans, execute tasks, run tests, code reviews, and more
 - **7 Reusable Skills**: Design fundamentals, accessibility, theme generation, quality checks
@@ -44,6 +44,7 @@ irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/insta
 Choose from:
 - **Codex** → `.agents/skills/`, `.agents/roles/`, `.agents/knowledge/`, `.agents/themes/`, `.codex/`, and root `AGENTS.md`
 - **Google Antigravity** → `.agents/skills/` and root `AGENTS.md`
+- **Pi** → `.pi/extensions/` and root `AGENTS.md`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`, and supporting Claude config files
 
 Every install also syncs shared workflow assets: `docs/ai/`, root `AGENTS.md`, and `project-wiki/`.
@@ -59,6 +60,9 @@ curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/mai
 
 # Install only Google Antigravity
 curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool antigravity
+
+# Install only Pi
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool pi
 ```
 
 ```powershell
@@ -89,6 +93,9 @@ npx ai-workflow-init --tool claude
 
 # Install only Google Antigravity
 npx ai-workflow-init --tool antigravity
+
+# Install only Pi
+npx ai-workflow-init --tool pi
 ```
 
 #### Install All Tools
