@@ -139,9 +139,24 @@ export async function resolveExistingPaths(cwd: string, rawArgs: string): Promis
 	for (const candidate of paths) {
 		const absolutePath = path.resolve(cwd, candidate);
 		try {
-			await fs.access(absolutePath);
+			const stats = await fs.stat(absolutePath);
+			if (stats.isDirectory()) {
+				const entries = await fs.readdir(absolutePath, { withFileTypes: true });
+				const markdownFiles = entries
+					.filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+					.map((entry) => path.posix.join(candidate.replace(/\\/g, "/").replace(/\/$/, ""), entry.name))
+					.slice(0, 5);
+				const suggestion =
+					markdownFiles.length > 0
+						? ` Did you mean one of these files? ${markdownFiles.join(", ")}`
+						: "";
+				throw new Error(`Expected a file path, got a directory: ${candidate}.${suggestion}`);
+			}
 			resolved.push(absolutePath);
-		} catch {
+		} catch (error) {
+			if (error instanceof Error && error.message.startsWith("Expected a file path")) {
+				throw error;
+			}
 			throw new Error(`Path not found: ${candidate}`);
 		}
 	}
