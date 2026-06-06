@@ -30,6 +30,7 @@ When installing for Pi, the CLI syncs:
   - docs/ai/
   - AGENTS.md
   - .pi/extensions/
+  - .pi/workflows/
 
 Examples:
   npx ai-workflow-init --tool pi
