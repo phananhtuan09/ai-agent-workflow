@@ -190,6 +190,10 @@ Rules:
 - Hard limit: keep the entire response under 1500 characters.
 - Keep at most 5 files per section unless absolutely necessary.
 - Notes section: maximum 2 bullets.
+- If the repo is greenfield or the target files do not exist yet, infer the smallest realistic file set that should be created for this phase.
+- Prefer concrete likely paths over abstract descriptions.
+- For implementation phases, do not return all sections as 'none' unless the phase truly requires no file changes.
+- Use common project conventions visible in the repo or implied by the plan (for example: src/components, src/hooks, src/types, src/utils, src/__tests__).
 
 Phase:
 ${phaseName}
