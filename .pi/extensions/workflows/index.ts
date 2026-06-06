@@ -1,5 +1,4 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Box, Text } from "@earendil-works/pi-tui";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
@@ -28,7 +27,6 @@ interface ActiveWorkflowState {
 }
 
 const STATUS_KEY = "workflows";
-const WIDGET_KEY = "workflows";
 const WORKFLOW_DIR = ".pi/workflows";
 const ACTIVE_STATE_FILE = ".pi/workflows/.active-workflow.json";
 
@@ -154,33 +152,27 @@ function formatHint(step: WorkflowStep | undefined) {
 
 function setWorkflowStatus(ctx: ExtensionContext, workflow: WorkflowDefinition, stepIndex: number) {
 	const summary = getStepSummary(workflow, stepIndex);
-	const currentLabel = formatStepLabel(summary.current);
-	const nextLabel = formatStepLabel(summary.next);
+	const currentLabel = summary.current?.title ?? "done";
+	const nextLabel = summary.next?.title ?? "done";
+	const nextValue = summary.next?.value?.trim();
+	const nextSuffix = nextValue ? ` (${nextValue})` : "";
+	const theme = ctx.ui.theme;
 	ctx.ui.setStatus(
 		STATUS_KEY,
-		ctx.ui.theme.fg("accent", "◌") + ctx.ui.theme.fg("dim", ` workflow: ${workflow.name} · ${summary.currentIndex + 1}/${summary.total} · ${currentLabel} → ${nextLabel}`),
+		[
+			theme.fg("accent", "↪ Workflow:"),
+			theme.bold(workflow.name),
+			theme.fg("dim", `· ${summary.currentIndex + 1}/${summary.total} · ${currentLabel} → ${nextLabel}`),
+			nextValue ? theme.fg("accent", nextSuffix) : undefined,
+		].filter(Boolean).join(" "),
 	);
 }
 
 function clearWorkflowUI(ctx: ExtensionContext) {
 	ctx.ui.setStatus(STATUS_KEY, undefined);
-	ctx.ui.setWidget(WIDGET_KEY, undefined);
 }
 
-function renderWorkflowWidget(ctx: ExtensionContext, workflow: WorkflowDefinition, stepIndex: number) {
-	const summary = getStepSummary(workflow, stepIndex);
-	const currentLabel = formatStepLabel(summary.current);
-	const nextLabel = formatStepLabel(summary.next);
-	const currentHint = formatHint(summary.current);
-	const nextHint = formatHint(summary.next);
-	const box = new Box(1, 0, (text) => ctx.ui.theme.bg("customMessageBg", text));
-	box.addChild(new Text(`${ctx.ui.theme.fg("accent", "•")} ${ctx.ui.theme.bold(workflow.name)} ${ctx.ui.theme.fg("dim", `${summary.currentIndex + 1}/${summary.total}`)}`, 0, 0));
-	box.addChild(new Text(`${currentLabel} ${ctx.ui.theme.fg("dim", "→")} ${nextLabel}`, 0, 0));
-	if (nextHint || currentHint) {
-		const hintText = nextHint ? `Next hint: ${nextHint}` : `Hint: ${currentHint}`;
-		box.addChild(new Text(ctx.ui.theme.fg("dim", hintText), 0, 0));
-	}
-	ctx.ui.setWidget(WIDGET_KEY, () => box);
+function renderWorkflowStatus(ctx: ExtensionContext, workflow: WorkflowDefinition, stepIndex: number) {
 	setWorkflowStatus(ctx, workflow, stepIndex);
 }
 
@@ -199,7 +191,7 @@ async function refreshWorkflowUI(ctx: ExtensionContext) {
 	if (stepIndex !== state.currentStepIndex) {
 		await saveActiveState(ctx.cwd, { ...state, currentStepIndex: stepIndex });
 	}
-	renderWorkflowWidget(ctx, workflow, stepIndex);
+	renderWorkflowStatus(ctx, workflow, stepIndex);
 }
 
 function parseArgs(args: string) {
@@ -246,7 +238,7 @@ function buildCurrentWorkflowMessage(workflow: WorkflowDefinition, stepIndex: nu
 	const currentValue = summary.current?.value?.trim() ? `Source: ${summary.current.value.trim()}` : undefined;
 	const nextHint = formatHint(summary.next);
 	const currentHint = formatHint(summary.current);
-		return [
+	return [
 		`Workflow hiện tại: ${workflow.name}`,
 		`Step: ${summary.currentIndex + 1}/${summary.total}`,
 		`Now: ${currentLabel}`,
@@ -256,6 +248,25 @@ function buildCurrentWorkflowMessage(workflow: WorkflowDefinition, stepIndex: nu
 	].filter(Boolean).join("\n");
 }
 
+function buildWorkflowHelpMessage() {
+	return [
+		"Workflow commands:",
+		"- /workflows                  Liệt kê workflow có sẵn",
+		"- /workflows help             Xem hướng dẫn dùng workflow",
+		"- /workflows current          Xem workflow active, step hiện tại, step tiếp theo",
+		"- /workflows view <id>        Xem toàn bộ step của workflow",
+		"- /workflows use <id>         Kích hoạt workflow",
+		"- /workflows next             Chuyển sang step tiếp theo",
+		"- /workflows prev             Lùi về step trước",
+		"- /workflows set <id|number>  Nhảy đến step cụ thể",
+		"- /workflows clear            Clear workflow active khỏi footer",
+		"",
+		"Tip:",
+		"- Footer chỉ hiển thị workflow hiện tại và next step để đỡ phân tâm.",
+		"- Nếu quên cách làm step tiếp theo, dùng /workflows current hoặc /workflows view <id>.",
+	].join("\n");
+}
+
 async function activateWorkflow(ctx: ExtensionContext, workflow: WorkflowDefinition, stepIndex = 0) {
 	const normalizedIndex = normalizeStepIndex(stepIndex, workflow.steps.length);
 	await saveActiveState(ctx.cwd, {
@@ -263,7 +274,7 @@ async function activateWorkflow(ctx: ExtensionContext, workflow: WorkflowDefinit
 		currentStepIndex: normalizedIndex,
 		startedAt: new Date().toISOString(),
 	});
-	renderWorkflowWidget(ctx, workflow, normalizedIndex);
+	renderWorkflowStatus(ctx, workflow, normalizedIndex);
 	const summary = getStepSummary(workflow, normalizedIndex);
 	ctx.ui.notify(`Đã kích hoạt workflow: ${workflow.name} · step ${summary.currentIndex + 1}/${summary.total}`, "info");
 }
@@ -283,6 +294,12 @@ export default function workflowsExtension(pi: ExtensionAPI) {
 				if (!action) {
 					const workflows = await listWorkflows(ctx.cwd);
 					ctx.ui.notify(buildWorkflowListMessage(workflows, activeState?.workflowId), "info");
+					await refreshWorkflowUI(ctx);
+					return;
+				}
+
+				if (action === "help") {
+					ctx.ui.notify(buildWorkflowHelpMessage(), "info");
 					await refreshWorkflowUI(ctx);
 					return;
 				}
@@ -390,7 +407,7 @@ export default function workflowsExtension(pi: ExtensionAPI) {
 					return;
 				}
 
-				ctx.ui.notify("Các lệnh hỗ trợ: /workflows, /workflows current, /workflows view <id>, /workflows use <id>, /workflows next, /workflows prev, /workflows set <step-id|step-number>, /workflows clear", "warning");
+				ctx.ui.notify("Các lệnh hỗ trợ: /workflows, /workflows help, /workflows current, /workflows view <id>, /workflows use <id>, /workflows next, /workflows prev, /workflows set <step-id|step-number>, /workflows clear", "warning");
 			} catch (error) {
 				ctx.ui.notify(error instanceof Error ? error.message : "Workflow command failed", "error");
 			}
