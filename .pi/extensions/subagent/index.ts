@@ -337,13 +337,19 @@ function normalizePhaseDisplayName(phaseName: string): string {
 
 function parseExploreSection(result: string, sectionName: string): string[] {
 	const escapedName = sectionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-	const regex = new RegExp(`^${escapedName}:\\s*\\r?\\n([\\s\\S]*?)(?=^\\S.*:\\s*$|$)`, "m");
+	const headingVariants = [
+		escapedName,
+		`\\*\\*${escapedName}\\*\\*`,
+		`###\\s+${escapedName}`,
+	].join("|");
+	const regex = new RegExp(`^(?:${headingVariants}):?\\s*\\r?\\n([\\s\\S]*?)(?=^(?:\\*\\*?[A-Z][^\\n:]*\\*\\*?|###\\s+.+|[A-Z][^\\n:]*):?\\s*$|$)`, "m");
 	const match = result.match(regex);
 	if (!match) return [];
 	return match[1]
 		.split("\n")
 		.map((line) => line.trim())
-		.filter((line) => line.startsWith("- ") && line !== "- none");
+		.filter((line) => /^[-*]\s+/.test(line) && line !== "- none" && line !== "* none")
+		.map((line) => line.replace(/^\*\s+/, "- "));
 }
 
 function formatPhaseDetails(phaseNumber: number, phaseName: string, exploreResult: string): string {
