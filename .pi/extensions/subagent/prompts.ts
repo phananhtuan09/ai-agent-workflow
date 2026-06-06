@@ -7,6 +7,13 @@ function toRepoRelativePath(cwd: string, absolutePath: string): string {
 	return normalizedPath;
 }
 
+const OUTPUT_LIMIT_RULES = [
+	"- Hard limit: keep the entire response under 1800 characters.",
+	"- Each bullet must be one short sentence.",
+	"- Keep at most 3 bullets per section.",
+	"- Prioritize only the highest-signal issues; omit minor repetitions.",
+].join("\n");
+
 export function buildReviewPlanPrompt(cwd: string, planPath: string): string {
 	const relativePlanPath = toRepoRelativePath(cwd, planPath);
 	return `You are a delegated plan reviewer working in an isolated Pi session.
@@ -19,6 +26,7 @@ Rules:
 - Do not modify files.
 - Focus on plan contract quality, task clarity, phase structure, obvious scope drift, and obvious coverage gaps.
 - Keep the output concise and use the exact format below.
+${OUTPUT_LIMIT_RULES}
 
 Plan file:
 - ${relativePlanPath}
@@ -55,6 +63,7 @@ Rules:
 - Do not suggest implementation details, frameworks, or file mapping.
 - Focus on structural correctness, AC verifiability, ambiguity, contradictions, and missing edge cases.
 - Keep the output concise and use the exact format below.
+${OUTPUT_LIMIT_RULES}
 
 Spec file:
 - ${relativeSpecPath}
@@ -90,6 +99,7 @@ Rules:
 - Do not modify files.
 - Focus on plan contract issues, spec-to-plan coverage, plan-to-details coverage, scope drift, ordering concerns, and unresolved ambiguity.
 - Keep the output concise and use the exact format below.
+${OUTPUT_LIMIT_RULES}
 
 Provided files:
 - Spec: ${relativeSpecPath}
@@ -141,6 +151,7 @@ Rules:
 - Keep the output short, concrete, and execution-focused.
 - Prefer the highest-risk gaps and decisions only.
 - Use the exact format below.
+${OUTPUT_LIMIT_RULES}
 
 Provided files:
 - Spec: ${relativeSpecPath}
@@ -176,6 +187,9 @@ Rules:
 - Do not modify files.
 - Focus on files to modify, files to create, relevant symbols, and critical dependency notes.
 - Keep the output concise.
+- Hard limit: keep the entire response under 1500 characters.
+- Keep at most 5 files per section unless absolutely necessary.
+- Notes section: maximum 2 bullets.
 
 Phase:
 ${phaseName}

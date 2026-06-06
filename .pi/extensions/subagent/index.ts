@@ -451,7 +451,7 @@ async function runReviewReadinessPacket(
 		pi.sendMessage(
 			{
 				customType,
-				content: `${getReviewPrefix(result.exitCode, "Delegated readiness review complete", "Delegated readiness review failed")}${toPreview(result.finalText)}`,
+				content: `${getReviewPrefix(result.exitCode, "Delegated readiness review complete", "Delegated readiness review failed")}${result.finalText}`,
 				display: true,
 				details: { exitCode: result.exitCode, stderr: result.stderr },
 			},
@@ -521,7 +521,7 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				pi.sendMessage(
 					{
 						customType: "subagent-review-plan",
-						content: `${getReviewPrefix(result.exitCode, "Delegated plan review complete", "Delegated plan review failed")}${toPreview(result.finalText)}`,
+						content: `${getReviewPrefix(result.exitCode, "Delegated plan review complete", "Delegated plan review failed")}${result.finalText}`,
 						display: true,
 						details: { exitCode: result.exitCode, stderr: result.stderr },
 					},
@@ -583,7 +583,7 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				pi.sendMessage(
 					{
 						customType: "subagent-review-spec",
-						content: `${getReviewPrefix(result.exitCode, "Delegated spec review complete", "Delegated spec review failed")}${toPreview(result.finalText)}`,
+						content: `${getReviewPrefix(result.exitCode, "Delegated spec review complete", "Delegated spec review failed")}${result.finalText}`,
 						display: true,
 						details: { exitCode: result.exitCode, stderr: result.stderr },
 					},
@@ -651,7 +651,7 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				pi.sendMessage(
 					{
 						customType: "subagent-readiness-brief",
-						content: `${getReviewPrefix(result.exitCode, "Delegated readiness brief complete", "Delegated readiness brief failed")}${toPreview(result.finalText)}`,
+						content: `${getReviewPrefix(result.exitCode, "Delegated readiness brief complete", "Delegated readiness brief failed")}${result.finalText}`,
 						display: true,
 						details: { exitCode: result.exitCode, stderr: result.stderr },
 					},
@@ -722,7 +722,7 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					pi.sendMessage(
 						{
 							customType: "subagent-readiness-brief",
-							content: `${getReviewPrefix(briefResult.exitCode, "Delegated readiness brief complete", "Delegated readiness brief failed")}${toPreview(briefResult.finalText)}`,
+							content: `${getReviewPrefix(briefResult.exitCode, "Delegated readiness brief complete", "Delegated readiness brief failed")}${briefResult.finalText}`,
 							display: true,
 							details: { exitCode: briefResult.exitCode, stderr: briefResult.stderr, auto: true },
 						},
@@ -785,7 +785,7 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					pi.sendMessage(
 						{
 							customType: "subagent-review-plan",
-							content: `${getReviewPrefix(planReviewResult.exitCode, "Delegated plan review complete", "Delegated plan review failed")}${toPreview(planReviewResult.finalText)}`,
+							content: `${getReviewPrefix(planReviewResult.exitCode, "Delegated plan review complete", "Delegated plan review failed")}${planReviewResult.finalText}`,
 							display: true,
 							details: { exitCode: planReviewResult.exitCode, stderr: planReviewResult.stderr, auto: true },
 						},
