@@ -7,24 +7,24 @@ Extend the existing Pi sub-agent extension instead of introducing a separate orc
 ## Tasks
 
 ### Phase 1: Extend review command surfaces
-- [ ] Add a dedicated pre-enrichment plan review command with concise contract-focused output
-- [ ] Add a readiness brief command that summarizes the highest-priority review focus before execution
-- [ ] Reuse and extend delegated prompt builders and subprocess execution helpers for the new review surfaces
+- [x] Add a dedicated pre-enrichment plan review command with concise contract-focused output
+- [x] Add a readiness brief command that summarizes the highest-priority review focus before execution
+- [x] Reuse and extend delegated prompt builders and subprocess execution helpers for the new review surfaces
 
 ### Phase 2: Add bounded automation controls
-- [ ] Define opt-in automatic review behavior for selected workflow boundaries
-- [ ] Wire per-command controls so automatic review remains explicit and bounded
-- [ ] Ensure automation only triggers review assistance and never autonomous code modification
+- [x] Define opt-in automatic review behavior for selected workflow boundaries
+- [x] Wire per-command controls so automatic review remains explicit and bounded
+- [x] Ensure automation only triggers review assistance and never autonomous code modification
 
 ### Phase 3: Keep output ephemeral
-- [ ] Keep new review surfaces aligned with explicit artifact-path handling and in-session output only
-- [ ] Confirm the extended workflow adds no durable review files or appended review artifacts by default or opt-in
-- [ ] Preserve traceability through concise custom output details instead of file persistence
+- [x] Keep new review surfaces aligned with explicit artifact-path handling and in-session output only
+- [x] Confirm the extended workflow adds no durable review files or appended review artifacts by default or opt-in
+- [x] Preserve traceability through concise custom output details instead of file persistence
 
 ### Phase 4: Document and verify the extended behavior
-- [ ] Document the new commands, automation options, and ephemeral-output behavior for Pi users
-- [ ] Add verification coverage for the new review surfaces, automation boundaries, and no-persistence behavior
-- [ ] Validate existing review commands continue to work unchanged when new options are not enabled
+- [x] Document the new commands, automation options, and ephemeral-output behavior for Pi users
+- [x] Add verification coverage for the new review surfaces, automation boundaries, and no-persistence behavior
+- [x] Validate existing review commands continue to work unchanged when new options are not enabled
 
 ## Test Checklist
 - [ ] Manual: Run the new pre-enrichment plan review command on a sample plan and confirm concise contract-focused output

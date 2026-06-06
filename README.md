@@ -47,7 +47,24 @@ Choose from:
 - **Pi** → `.pi/extensions/` and root `AGENTS.md`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`, and supporting Claude config files
 
-Every install also syncs shared workflow assets: `docs/ai/`, root `AGENTS.md`, and `project-wiki/`.
+Every install also syncs shared workflow assets: `docs/ai/` and root `AGENTS.md`.
+
+### Pi Review Workflow
+
+Installing for Pi adds the project-local extension at `.pi/extensions/subagent/`.
+
+Available Pi commands:
+- `/review-spec @docs/ai/specs/<file>.md` — isolated spec review with concise verdict output
+- `/review-plan @docs/ai/plans/<file>.md` — isolated pre-enrichment plan review
+- `/enrich-plan-pi @docs/ai/plans/<file>.md [--review-plan]` — enriches plan phases and can opt-in to automatic plan review before enrichment
+- `/review-readiness @spec.md @plan.md @detail-1.md [@detail-2.md ...] [--brief]` — isolated readiness review and optional automatic readiness brief
+- `/readiness-brief @spec.md @plan.md @detail-1.md [@detail-2.md ...]` — short execution-focus summary for a reviewed artifact packet
+
+Behavior notes for Pi users:
+- All review commands require explicit artifact paths.
+- Delegated review runs execute in isolated child Pi subprocesses.
+- Review output is ephemeral and returned in-session only.
+- No review artifact files are written under `docs/ai/` by default or via the opt-in automation flags.
 
 ### Install Specific Tool
 
@@ -63,6 +80,22 @@ curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/mai
 
 # Install only Pi
 curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool pi
+```
+
+### CLI Help
+
+```bash
+# Show supported options and install targets
+npx ai-workflow-init --help
+
+# List supported tool ids
+npx ai-workflow-init --list-tools
+```
+
+The CLI help explicitly includes the Pi install target:
+
+```bash
+npx ai-workflow-init --tool pi
 ```
 
 ```powershell
