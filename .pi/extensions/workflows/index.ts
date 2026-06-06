@@ -229,12 +229,31 @@ function buildWorkflowDetailMessage(workflow: WorkflowDefinition, currentStepInd
 		workflow.description ? `${workflow.description}` : undefined,
 		"",
 		...workflow.steps.map((step, index) => {
-			const marker = currentStepIndex === index ? ">" : "-";
-			const hint = step.hint?.trim() ? ` · hint: ${step.hint.trim()}` : "";
+			const isCurrent = currentStepIndex === index;
+			const marker = isCurrent ? ">" : "-";
 			const type = step.type?.trim() ? ` [${step.type.trim()}]` : "";
-			return `${marker} ${index + 1}. ${step.title}${type}${hint}`;
+			const value = step.value?.trim() ? ` · source: ${step.value.trim()}` : "";
+			const hint = step.hint?.trim() ? `\n    hint: ${step.hint.trim()}` : "";
+			return `${marker} ${index + 1}. ${step.title}${type}${value}${hint}`;
 		}).filter(Boolean),
 	].join("\n");
+}
+
+function buildCurrentWorkflowMessage(workflow: WorkflowDefinition, stepIndex: number) {
+	const summary = getStepSummary(workflow, stepIndex);
+	const currentLabel = formatStepLabel(summary.current);
+	const nextLabel = formatStepLabel(summary.next);
+	const currentValue = summary.current?.value?.trim() ? `Source: ${summary.current.value.trim()}` : undefined;
+	const nextHint = formatHint(summary.next);
+	const currentHint = formatHint(summary.current);
+		return [
+		`Workflow hiện tại: ${workflow.name}`,
+		`Step: ${summary.currentIndex + 1}/${summary.total}`,
+		`Now: ${currentLabel}`,
+		currentValue,
+		`Next: ${nextLabel}`,
+		nextHint ? `Next hint: ${nextHint}` : currentHint ? `Hint: ${currentHint}` : undefined,
+	].filter(Boolean).join("\n");
 }
 
 async function activateWorkflow(ctx: ExtensionContext, workflow: WorkflowDefinition, stepIndex = 0) {
@@ -281,6 +300,22 @@ export default function workflowsExtension(pi: ExtensionAPI) {
 					}
 					const currentStepIndex = activeState?.workflowId === workflow.id ? activeState.currentStepIndex : undefined;
 					ctx.ui.notify(buildWorkflowDetailMessage(workflow, currentStepIndex), "info");
+					return;
+				}
+
+				if (action === "current") {
+					if (!activeState) {
+						ctx.ui.notify("Chưa có workflow active. Dùng: /workflows use <workflow-id>", "warning");
+						return;
+					}
+					const workflow = await getWorkflow(ctx.cwd, activeState.workflowId);
+					if (!workflow || workflow.steps.length === 0) {
+						ctx.ui.notify("Workflow active không hợp lệ hoặc đã bị xóa", "warning");
+						clearWorkflowUI(ctx);
+						return;
+					}
+					ctx.ui.notify(buildCurrentWorkflowMessage(workflow, activeState.currentStepIndex), "info");
+					await refreshWorkflowUI(ctx);
 					return;
 				}
 
@@ -355,7 +390,7 @@ export default function workflowsExtension(pi: ExtensionAPI) {
 					return;
 				}
 
-				ctx.ui.notify("Các lệnh hỗ trợ: /workflows, /workflows view <id>, /workflows use <id>, /workflows next, /workflows prev, /workflows set <step-id|step-number>, /workflows clear", "warning");
+				ctx.ui.notify("Các lệnh hỗ trợ: /workflows, /workflows current, /workflows view <id>, /workflows use <id>, /workflows next, /workflows prev, /workflows set <step-id|step-number>, /workflows clear", "warning");
 			} catch (error) {
 				ctx.ui.notify(error instanceof Error ? error.message : "Workflow command failed", "error");
 			}
