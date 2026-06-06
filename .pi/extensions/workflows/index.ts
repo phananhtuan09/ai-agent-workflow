@@ -29,6 +29,8 @@ interface ActiveWorkflowState {
 const STATUS_KEY = "workflows";
 const WORKFLOW_DIR = ".pi/workflows";
 const ACTIVE_STATE_FILE = ".pi/workflows/.active-workflow.json";
+const SUBAGENT_ACTIVE_FILE = ".pi/workflows/.subagent-active";
+let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 function getWorkflowDir(cwd: string) {
 	return path.join(cwd, WORKFLOW_DIR);
@@ -36,6 +38,10 @@ function getWorkflowDir(cwd: string) {
 
 function getActiveStatePath(cwd: string) {
 	return path.join(cwd, ACTIVE_STATE_FILE);
+}
+
+function getSubagentActivePath(cwd: string) {
+	return path.join(cwd, SUBAGENT_ACTIVE_FILE);
 }
 
 function normalizeStepIndex(index: number, total: number) {
@@ -162,7 +168,9 @@ function setWorkflowStatus(ctx: ExtensionContext, workflow: WorkflowDefinition, 
 		[
 			theme.fg("accent", "↪ Workflow:"),
 			theme.bold(workflow.name),
-			theme.fg("dim", `· ${summary.currentIndex + 1}/${summary.total} · ${currentLabel} → ${nextLabel}`),
+			theme.fg("dim", `· ${summary.currentIndex + 1}/${summary.total} ·`),
+			theme.fg("success", theme.bold(currentLabel)),
+			theme.fg("dim", `→ ${nextLabel}`),
 			nextValue ? theme.fg("accent", nextSuffix) : undefined,
 		].filter(Boolean).join(" "),
 	);
@@ -177,6 +185,10 @@ function renderWorkflowStatus(ctx: ExtensionContext, workflow: WorkflowDefinitio
 }
 
 async function refreshWorkflowUI(ctx: ExtensionContext) {
+	if (await pathExists(getSubagentActivePath(ctx.cwd))) {
+		clearWorkflowUI(ctx);
+		return;
+	}
 	const state = await loadActiveState(ctx.cwd);
 	if (!state) {
 		clearWorkflowUI(ctx);
@@ -281,7 +293,22 @@ async function activateWorkflow(ctx: ExtensionContext, workflow: WorkflowDefinit
 
 export default function workflowsExtension(pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
+		if (refreshTimer) {
+			clearInterval(refreshTimer);
+			refreshTimer = undefined;
+		}
 		await refreshWorkflowUI(ctx);
+		refreshTimer = setInterval(() => {
+			void refreshWorkflowUI(ctx);
+		}, 1200);
+	});
+
+	pi.on("session_shutdown", async (_event, ctx) => {
+		if (refreshTimer) {
+			clearInterval(refreshTimer);
+			refreshTimer = undefined;
+		}
+		clearWorkflowUI(ctx);
 	});
 
 	pi.registerCommand("workflows", {

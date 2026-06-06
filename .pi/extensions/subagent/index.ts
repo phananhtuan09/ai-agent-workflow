@@ -16,6 +16,7 @@ const REVIEW_TOOLS = ["read"];
 const EXPLORE_TOOLS = ["read", "bash"];
 const STATUS_KEY = "subagent";
 const WIDGET_KEY = "subagent-progress";
+const SUBAGENT_ACTIVE_FILE = ".pi/workflows/.subagent-active";
 const LOADING_INDICATOR_ID = "subagent-loading";
 const STATUS_CLEAR_DELAY_MS = 4000;
 const PROGRESS_CLEAR_DELAY_MS = 8000;
@@ -88,6 +89,24 @@ function setDoneStatus(ctx: ExtensionContext, label: string, isSuccess: boolean)
 
 function showLoadingMessage(_pi: ExtensionAPI, _label: string) {
 	// Intentionally no-op: avoid high-contrast custom follow-up cards for transient loading state.
+}
+
+function getSubagentActivePath(cwd: string) {
+	return path.join(cwd, SUBAGENT_ACTIVE_FILE);
+}
+
+async function markSubagentActive(cwd: string) {
+	const activePath = getSubagentActivePath(cwd);
+	await fs.mkdir(path.dirname(activePath), { recursive: true });
+	await fs.writeFile(activePath, `${Date.now()}\n`, "utf8");
+}
+
+async function clearSubagentActive(cwd: string) {
+	try {
+		await fs.unlink(getSubagentActivePath(cwd));
+	} catch {
+		// Ignore missing marker file.
+	}
 }
 
 function hasFlag(args: string, flag: string): boolean {
@@ -206,6 +225,7 @@ function renderProgressWidget(ctx: ExtensionContext, state: SubagentProgressStat
 function startProgress(ctx: ExtensionContext, state: Omit<SubagentProgressState, "startedAt" | "activity"> & { activity?: string[] }) {
 	cancelStatusClearTimer();
 	cancelProgressTimers();
+	void markSubagentActive(ctx.cwd);
 	ctx.ui.setWorkingIndicator(getLoadingIndicator(ctx));
 	ctx.ui.setWorkingMessage(`${state.status}...`);
 	const progressState: SubagentProgressState = {
@@ -237,6 +257,7 @@ function clearProgress(ctx: ExtensionContext) {
 	cancelProgressTimers();
 	ctx.ui.setWidget(WIDGET_KEY, undefined);
 	ctx.ui.setWorkingMessage();
+	void clearSubagentActive(ctx.cwd);
 }
 
 function finishProgress(
@@ -259,6 +280,7 @@ function finishProgress(
 	const icon = options.isSuccess ? theme.fg("success", "✓") : theme.fg("warning", "!");
 	ctx.ui.setWorkingIndicator();
 	ctx.ui.setStatus(STATUS_KEY, icon + theme.fg("dim", ` sub-agent: ${options.status} · ${elapsed}`));
+	void clearSubagentActive(ctx.cwd);
 	scheduleStatusClear(ctx);
 	clearProgressTimer = setTimeout(() => {
 		try {
