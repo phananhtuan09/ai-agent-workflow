@@ -156,30 +156,51 @@ function formatElapsed(startedAt: number): string {
 	return `${minutes}:${seconds}`;
 }
 
+function getAnimatedBadge(theme: ExtensionContext["ui"]["theme"], startedAt: number): string {
+	const frames = ["·", "•", "●", "•"] as const;
+	const frame = frames[Math.floor((Date.now() - startedAt) / 350) % frames.length];
+	return theme.fg("accent", frame);
+}
+
+function getProgressHeadline(theme: ExtensionContext["ui"]["theme"], state: SubagentProgressState): string {
+	if (state.status === "complete") {
+		return theme.fg("success", `✓ ${state.step}`);
+	}
+	if (state.status === "failed") {
+		return theme.fg("warning", `! ${state.step}`);
+	}
+	return theme.fg("accent", `… ${state.step}`);
+}
+
+function getProgressMeta(state: SubagentProgressState): string {
+	if (Date.now() - state.startedAt >= LONG_RUNNING_AFTER_MS) {
+		return state.artifacts ? `${state.artifacts} · waiting for model` : "waiting for model";
+	}
+	return state.artifacts ?? "running";
+}
+
+function getProgressBackground(theme: ExtensionContext["ui"]["theme"], status: SubagentProgressState["status"], text: string): string {
+	if (status === "complete") return theme.bg("toolPendingBg", text);
+	if (status === "failed") return theme.bg("selectedBg", text);
+	return theme.bg("customMessageBg", text);
+}
+
 function renderProgressWidget(ctx: ExtensionContext, state: SubagentProgressState) {
-	const theme = ctx.ui.theme;
 	const elapsed = formatElapsed(state.startedAt);
-	const activity = [...state.activity];
-	if (Date.now() - state.startedAt >= LONG_RUNNING_AFTER_MS && !activity.some((item) => item.includes("still running"))) {
-		activity.push("No recent sub-agent event — model may still be thinking");
-	}
-
-	const latestActivity = activity.at(-1) ?? "Starting...";
-	const headerParts = [
-		theme.bold("Sub-agent"),
-		theme.fg("dim", state.mode),
-		state.phase ? theme.fg("muted", state.phase) : undefined,
-		theme.fg("dim", elapsed),
+	const badge = getAnimatedBadge(ctx.ui.theme, state.startedAt);
+	const titleParts = [
+		`${badge} ${ctx.ui.theme.bold(state.mode)}`,
+		state.phase ? ctx.ui.theme.fg("muted", state.phase) : undefined,
+		ctx.ui.theme.fg("dim", elapsed),
 	].filter(Boolean);
-	const lines = [headerParts.join(theme.fg("dim", " · "))];
-	lines.push(`${theme.fg("accent", "Status:")} ${state.step}`);
-	if (state.artifacts) {
-		lines.push(`${theme.fg("accent", "Progress:")} ${state.artifacts}`);
-	}
-	lines.push(`${theme.fg("accent", "Last:")} ${latestActivity}`);
+	const latestActivity = state.activity.at(-1) ?? "starting";
+	const box = new Box(1, 0, (text) => getProgressBackground(ctx.ui.theme, state.status, text));
+	box.addChild(new Text(titleParts.join(ctx.ui.theme.fg("dim", "   ")), 0, 0));
+	box.addChild(new Text(getProgressHeadline(ctx.ui.theme, state), 0, 0));
+	box.addChild(new Text(ctx.ui.theme.fg("dim", `${getProgressMeta(state)} · ${latestActivity}`), 0, 0));
 
-	ctx.ui.setWidget(WIDGET_KEY, lines);
-	ctx.ui.setStatus(STATUS_KEY, theme.fg("accent", "◌") + theme.fg("dim", ` sub-agent: ${state.status} · ${elapsed}`));
+	ctx.ui.setWidget(WIDGET_KEY, () => box);
+	ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("accent", "◌") + ctx.ui.theme.fg("dim", " sub-agent active"));
 }
 
 function startProgress(ctx: ExtensionContext, state: Omit<SubagentProgressState, "startedAt" | "activity"> & { activity?: string[] }) {
