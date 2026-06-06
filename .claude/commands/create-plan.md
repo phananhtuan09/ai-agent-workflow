@@ -60,7 +60,7 @@ INLINE MODE FORMAT (≤ 20 lines):
 ---
 
 SHARED RULES:
-- All output files must be written in English
+- All assistant responses, questions, and generated plan files must be written in Vietnamese
 - No file paths in tasks — file mapping is done by /enrich-plan
 - No [DISCOVER] tasks — that is handled by /enrich-plan
 - Each task = one small diff, described as intent

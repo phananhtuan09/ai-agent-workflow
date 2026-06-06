@@ -67,3 +67,4 @@ Details:
 
 - One details file exists per phase at docs/ai/plans/{name}-phase-{N}-details.md
 - ## Enrich Summary appended to plan file
+- All assistant responses and generated detail/summary content must be written in Vietnamese

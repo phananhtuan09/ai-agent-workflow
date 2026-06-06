@@ -29,7 +29,7 @@ SPEC FORMAT (≤ 40 lines, business logic only — no tech details):
 - ...
 
 RULES:
-- All output files must be written in English
+- All assistant responses, questions, and generated spec files must be written in Vietnamese
 - No technology, framework, or implementation details
 - No project context (already in CLAUDE.md)
 - AC must be verifiable — "user can X" not "system should Y"

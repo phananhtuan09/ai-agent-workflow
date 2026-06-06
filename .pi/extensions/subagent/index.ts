@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext, WorkingIndicatorOptions } from "@earendil-works/pi-coding-agent";
+import { Box, Text } from "@earendil-works/pi-tui";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { Type } from "typebox";
@@ -14,10 +15,23 @@ import { resolveExistingPaths, runDelegatedReview } from "./delegated-runner.ts"
 const REVIEW_TOOLS = ["read"];
 const EXPLORE_TOOLS = ["read", "bash"];
 const STATUS_KEY = "subagent";
+const WIDGET_KEY = "subagent-progress";
 const LOADING_INDICATOR_ID = "subagent-loading";
 const STATUS_CLEAR_DELAY_MS = 4000;
+const PROGRESS_CLEAR_DELAY_MS = 8000;
 const RESULT_PREVIEW_LIMIT = 1200;
+const MESSAGE_BODY_PREVIEW_LIMIT = 600;
+const PROGRESS_ACTIVITY_LIMIT = 4;
+const LONG_RUNNING_AFTER_MS = 15000;
+const SUBAGENT_VIETNAMESE_RULE = [
+	"Additional required rule:",
+	"- Respond in Vietnamese.",
+	"- If the prompt requires an exact output format, required headings, labels, checklist markers, or file structure, keep that format exactly as requested and write the content under it in Vietnamese.",
+	"- Keep code, identifiers, file paths, and command names unchanged unless the task explicitly asks to translate them.",
+].join("\n");
 let clearStatusTimer: ReturnType<typeof setTimeout> | undefined;
+let clearProgressTimer: ReturnType<typeof setTimeout> | undefined;
+let progressRefreshTimer: ReturnType<typeof setInterval> | undefined;
 
 function getLoadingIndicator(ctx: ExtensionContext): WorkingIndicatorOptions {
 	const theme = ctx.ui.theme;
@@ -92,6 +106,14 @@ function toPreview(text: string): string {
 	return text.length <= RESULT_PREVIEW_LIMIT ? text : `${text.slice(0, RESULT_PREVIEW_LIMIT).trimEnd()}\n\n...[truncated]`;
 }
 
+function toCompactPreview(text: string): string {
+	return text.length <= MESSAGE_BODY_PREVIEW_LIMIT ? text : `${text.slice(0, MESSAGE_BODY_PREVIEW_LIMIT).trimEnd()}\n...[truncated]`;
+}
+
+function withVietnameseRule(prompt: string): string {
+	return `${prompt.trimEnd()}\n\n---\n${SUBAGENT_VIETNAMESE_RULE}\n`;
+}
+
 interface PlanPhase {
 	name: string;
 	tasks: string[];
@@ -101,6 +123,130 @@ interface ReadinessPacket {
 	specPath: string;
 	planPath: string;
 	detailPaths: string[];
+}
+
+interface SubagentProgressState {
+	mode: string;
+	status: string;
+	step: string;
+	phase?: string;
+	artifacts?: string;
+	startedAt: number;
+	activity: string[];
+}
+
+function cancelProgressTimers() {
+	if (clearProgressTimer) {
+		clearTimeout(clearProgressTimer);
+		clearProgressTimer = undefined;
+	}
+	if (progressRefreshTimer) {
+		clearInterval(progressRefreshTimer);
+		progressRefreshTimer = undefined;
+	}
+}
+
+function formatElapsed(startedAt: number): string {
+	const elapsedMs = Math.max(0, Date.now() - startedAt);
+	const totalSeconds = Math.floor(elapsedMs / 1000);
+	const minutes = Math.floor(totalSeconds / 60)
+		.toString()
+		.padStart(2, "0");
+	const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+	return `${minutes}:${seconds}`;
+}
+
+function renderProgressWidget(ctx: ExtensionContext, state: SubagentProgressState) {
+	const theme = ctx.ui.theme;
+	const elapsed = formatElapsed(state.startedAt);
+	const activity = [...state.activity];
+	if (Date.now() - state.startedAt >= LONG_RUNNING_AFTER_MS && !activity.some((item) => item.includes("still running"))) {
+		activity.push("No recent sub-agent event — model may still be thinking");
+	}
+
+	const latestActivity = activity.at(-1) ?? "Starting...";
+	const headerParts = [
+		theme.bold("Sub-agent"),
+		theme.fg("dim", state.mode),
+		state.phase ? theme.fg("muted", state.phase) : undefined,
+		theme.fg("dim", elapsed),
+	].filter(Boolean);
+	const lines = [headerParts.join(theme.fg("dim", " · "))];
+	lines.push(`${theme.fg("accent", "Status:")} ${state.step}`);
+	if (state.artifacts) {
+		lines.push(`${theme.fg("accent", "Progress:")} ${state.artifacts}`);
+	}
+	lines.push(`${theme.fg("accent", "Last:")} ${latestActivity}`);
+
+	ctx.ui.setWidget(WIDGET_KEY, lines);
+	ctx.ui.setStatus(STATUS_KEY, theme.fg("accent", "◌") + theme.fg("dim", ` sub-agent: ${state.status} · ${elapsed}`));
+}
+
+function startProgress(ctx: ExtensionContext, state: Omit<SubagentProgressState, "startedAt" | "activity"> & { activity?: string[] }) {
+	cancelStatusClearTimer();
+	cancelProgressTimers();
+	ctx.ui.setWorkingIndicator(getLoadingIndicator(ctx));
+	ctx.ui.setWorkingMessage(`${state.status}...`);
+	const progressState: SubagentProgressState = {
+		...state,
+		startedAt: Date.now(),
+		activity: state.activity?.slice(-PROGRESS_ACTIVITY_LIMIT) ?? [],
+	};
+	renderProgressWidget(ctx, progressState);
+	progressRefreshTimer = setInterval(() => {
+		try {
+			renderProgressWidget(ctx, progressState);
+		} catch {
+			cancelProgressTimers();
+		}
+	}, 1000);
+	return progressState;
+}
+
+function updateProgress(ctx: ExtensionContext, state: SubagentProgressState, patch: Partial<Omit<SubagentProgressState, "startedAt" | "activity">>, activity?: string) {
+	Object.assign(state, patch);
+	if (activity) {
+		state.activity.push(activity);
+		state.activity = state.activity.slice(-PROGRESS_ACTIVITY_LIMIT);
+	}
+	renderProgressWidget(ctx, state);
+}
+
+function clearProgress(ctx: ExtensionContext) {
+	cancelProgressTimers();
+	ctx.ui.setWidget(WIDGET_KEY, undefined);
+	ctx.ui.setWorkingMessage();
+}
+
+function finishProgress(
+	ctx: ExtensionContext,
+	state: SubagentProgressState | undefined,
+	options: { status: string; step: string; isSuccess: boolean; activity?: string },
+) {
+	if (!state) return;
+	cancelProgressTimers();
+	ctx.ui.setWorkingMessage();
+	const theme = ctx.ui.theme;
+	state.status = options.status;
+	state.step = options.step;
+	if (options.activity) {
+		state.activity.push(options.activity);
+		state.activity = state.activity.slice(-PROGRESS_ACTIVITY_LIMIT);
+	}
+	renderProgressWidget(ctx, state);
+	const elapsed = formatElapsed(state.startedAt);
+	const icon = options.isSuccess ? theme.fg("success", "✓") : theme.fg("warning", "!");
+	ctx.ui.setWorkingIndicator();
+	ctx.ui.setStatus(STATUS_KEY, icon + theme.fg("dim", ` sub-agent: ${options.status} · ${elapsed}`));
+	scheduleStatusClear(ctx);
+	clearProgressTimer = setTimeout(() => {
+		try {
+			ctx.ui.setWidget(WIDGET_KEY, undefined);
+		} catch {
+			// Ignore stale extension context after command/session teardown.
+		}
+		clearProgressTimer = undefined;
+	}, PROGRESS_CLEAR_DELAY_MS);
 }
 
 function stripEnrichSummary(content: string): string {
@@ -201,6 +347,37 @@ function buildEnrichSummary(planPath: string, phaseSummaries: Array<{ name: stri
 	return `\n\n## Enrich Summary\nTotal files: ${totalFiles} (${totalModified} modified, ${totalCreated} created)\n${phaseBreakdown}\n\nDetails:\n${detailLines}\n`;
 }
 
+function getMessageStatus(details: unknown): "success" | "error" {
+	const exitCode = typeof details === "object" && details && "exitCode" in details ? (details as { exitCode?: unknown }).exitCode : undefined;
+	return exitCode === 0 || exitCode === undefined ? "success" : "error";
+}
+
+function registerSubagentMessageRenderer(pi: ExtensionAPI, customType: string, title: string) {
+	pi.registerMessageRenderer(customType, (message, options, theme) => {
+		const status = getMessageStatus(message.details);
+		const icon = status === "success" ? theme.fg("success", "✓") : theme.fg("warning", "!");
+		const titleColor = status === "success" ? "success" : "warning";
+		const heading = `${icon} ${theme.fg(titleColor, theme.bold(title))}`;
+		const preview = options.expanded ? String(message.content ?? "") : toCompactPreview(String(message.content ?? ""));
+		const lines = [heading, "", preview];
+		if (options.expanded && message.details && typeof message.details === "object") {
+			const details = message.details as Record<string, unknown>;
+			const meta: string[] = [];
+			if (typeof details.exitCode === "number") meta.push(`exitCode=${details.exitCode}`);
+			if (details.auto === true) meta.push("auto=true");
+			if (typeof details.planPath === "string") meta.push(`plan=${details.planPath}`);
+			if (typeof details.phases === "number") meta.push(`phases=${details.phases}`);
+			if (meta.length > 0) {
+				lines.push("");
+				lines.push(theme.fg("dim", meta.join(" · ")));
+			}
+		}
+		const box = new Box(1, 1, (text) => theme.bg("customMessageBg", text));
+		box.addChild(new Text(lines.join("\n"), 0, 0));
+		return box;
+	});
+}
+
 async function runDelegatedCommand(params: {
 	cwd: string;
 	prompt: string;
@@ -209,7 +386,7 @@ async function runDelegatedCommand(params: {
 }) {
 	return runDelegatedReview({
 		cwd: params.cwd,
-		prompt: params.prompt,
+		prompt: withVietnameseRule(params.prompt),
 		tools: params.tools,
 		signal: params.signal,
 	});
@@ -222,34 +399,64 @@ async function runReviewReadinessPacket(
 	customType = "subagent-review-readiness",
 ): Promise<{ exitCode: number; finalText: string; stderr: string }> {
 	ctx.ui.notify(`Running isolated readiness review for ${2 + packet.detailPaths.length} artifacts`, "info");
+	const progress = startProgress(ctx, {
+		mode: "review-readiness",
+		status: "running",
+		step: `reviewing ${2 + packet.detailPaths.length} artifacts`,
+		artifacts: `${2 + packet.detailPaths.length} artifacts`,
+		activity: ["Started delegated readiness review"],
+	});
 	setRunningStatus(ctx, "Delegated readiness review running");
 	showLoadingMessage(pi, "readiness review");
-	const result = await runDelegatedCommand({
-		cwd: ctx.cwd,
-		prompt: buildReviewReadinessPrompt(ctx.cwd, packet.specPath, packet.planPath, packet.detailPaths),
-		tools: REVIEW_TOOLS,
-		signal: ctx.signal,
-	});
+	try {
+		const result = await runDelegatedCommand({
+			cwd: ctx.cwd,
+			prompt: buildReviewReadinessPrompt(ctx.cwd, packet.specPath, packet.planPath, packet.detailPaths),
+			tools: REVIEW_TOOLS,
+			signal: ctx.signal,
+		});
 
-	setDoneStatus(ctx, "Delegated readiness review complete", result.exitCode === 0);
-	ctx.ui.notify(
-		result.exitCode === 0 ? "Readiness review complete" : "Readiness review failed",
-		result.exitCode === 0 ? "info" : "error",
-	);
-	pi.sendMessage(
-		{
-			customType,
-			content: `${getReviewPrefix(result.exitCode, "Delegated readiness review complete", "Delegated readiness review failed")}${toPreview(result.finalText)}`,
-			display: true,
-			details: { exitCode: result.exitCode, stderr: result.stderr },
-		},
-		{ triggerTurn: false, deliverAs: "followUp" },
-	);
+		finishProgress(ctx, progress, {
+			status: result.exitCode === 0 ? "complete" : "failed",
+			step: result.exitCode === 0 ? "review finished" : "review failed",
+			isSuccess: result.exitCode === 0,
+			activity: result.exitCode === 0 ? "Readiness review complete" : "Readiness review failed",
+		});
+		setDoneStatus(ctx, "Delegated readiness review complete", result.exitCode === 0);
+		ctx.ui.notify(
+			result.exitCode === 0 ? "Readiness review complete" : "Readiness review failed",
+			result.exitCode === 0 ? "info" : "error",
+		);
+		pi.sendMessage(
+			{
+				customType,
+				content: `${getReviewPrefix(result.exitCode, "Delegated readiness review complete", "Delegated readiness review failed")}${toPreview(result.finalText)}`,
+				display: true,
+				details: { exitCode: result.exitCode, stderr: result.stderr },
+			},
+			{ triggerTurn: false, deliverAs: "followUp" },
+		);
 
-	return result;
+		return result;
+	} catch (error) {
+		finishProgress(ctx, progress, {
+			status: "failed",
+			step: "review failed",
+			isSuccess: false,
+			activity: error instanceof Error ? error.message : "Readiness review failed",
+		});
+		setDoneStatus(ctx, "Delegated readiness review failed", false);
+		throw error;
+	}
 }
 
 export default function subagentExtension(pi: ExtensionAPI) {
+	registerSubagentMessageRenderer(pi, "subagent-review-plan", "Sub-agent plan review");
+	registerSubagentMessageRenderer(pi, "subagent-review-spec", "Sub-agent spec review");
+	registerSubagentMessageRenderer(pi, "subagent-review-readiness", "Sub-agent readiness review");
+	registerSubagentMessageRenderer(pi, "subagent-readiness-brief", "Sub-agent readiness brief");
+	registerSubagentMessageRenderer(pi, "subagent-enrich-plan", "Sub-agent enrich plan");
+
 	pi.registerCommand("review-plan", {
 		description: "Review a plan file before enrichment with an isolated delegated Pi run",
 		handler: async (args, ctx) => {
@@ -262,9 +469,17 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				return;
 			}
 
+			let progress: SubagentProgressState | undefined;
 			try {
 				const [planPath] = await resolveExistingPaths(ctx.cwd, args);
 				ctx.ui.notify(`Running isolated plan review for ${planPath}`, "info");
+				progress = startProgress(ctx, {
+					mode: "review-plan",
+					status: "running",
+					step: "reviewing plan file",
+					artifacts: "1 plan file",
+					activity: ["Started delegated plan review"],
+				});
 				setRunningStatus(ctx, "Delegated plan review running");
 				showLoadingMessage(pi, "plan review");
 				const result = await runDelegatedCommand({
@@ -274,6 +489,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					signal: ctx.signal,
 				});
 
+				finishProgress(ctx, progress, {
+					status: result.exitCode === 0 ? "complete" : "failed",
+					step: result.exitCode === 0 ? "plan review finished" : "plan review failed",
+					isSuccess: result.exitCode === 0,
+					activity: result.exitCode === 0 ? "Plan review complete" : "Plan review failed",
+				});
 				setDoneStatus(ctx, "Delegated plan review complete", result.exitCode === 0);
 				ctx.ui.notify(result.exitCode === 0 ? "Plan review complete" : "Plan review failed", result.exitCode === 0 ? "info" : "error");
 				pi.sendMessage(
@@ -286,6 +507,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					{ triggerTurn: false, deliverAs: "followUp" },
 				);
 			} catch (error) {
+				finishProgress(ctx, progress, {
+					status: "failed",
+					step: "plan review failed",
+					isSuccess: false,
+					activity: error instanceof Error ? error.message : "Plan review failed",
+				});
 				setDoneStatus(ctx, "Delegated plan review failed", false);
 				ctx.ui.notify(error instanceof Error ? error.message : "Plan review failed", "error");
 			}
@@ -304,9 +531,17 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				return;
 			}
 
+			let progress: SubagentProgressState | undefined;
 			try {
 				const [specPath] = await resolveExistingPaths(ctx.cwd, args);
 				ctx.ui.notify(`Running isolated spec review for ${specPath}`, "info");
+				progress = startProgress(ctx, {
+					mode: "review-spec",
+					status: "running",
+					step: "reviewing spec file",
+					artifacts: "1 spec file",
+					activity: ["Started delegated spec review"],
+				});
 				setRunningStatus(ctx, "Delegated spec review running");
 				showLoadingMessage(pi, "spec review");
 				const result = await runDelegatedCommand({
@@ -316,6 +551,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					signal: ctx.signal,
 				});
 
+				finishProgress(ctx, progress, {
+					status: result.exitCode === 0 ? "complete" : "failed",
+					step: result.exitCode === 0 ? "spec review finished" : "spec review failed",
+					isSuccess: result.exitCode === 0,
+					activity: result.exitCode === 0 ? "Spec review complete" : "Spec review failed",
+				});
 				setDoneStatus(ctx, "Delegated spec review complete", result.exitCode === 0);
 				ctx.ui.notify(result.exitCode === 0 ? "Spec review complete" : "Spec review failed", result.exitCode === 0 ? "info" : "error");
 				pi.sendMessage(
@@ -328,6 +569,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					{ triggerTurn: false, deliverAs: "followUp" },
 				);
 			} catch (error) {
+				finishProgress(ctx, progress, {
+					status: "failed",
+					step: "spec review failed",
+					isSuccess: false,
+					activity: error instanceof Error ? error.message : "Spec review failed",
+				});
 				setDoneStatus(ctx, "Delegated spec review failed", false);
 				ctx.ui.notify(error instanceof Error ? error.message : "Spec review failed", "error");
 			}
@@ -346,6 +593,7 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				return;
 			}
 
+			let progress: SubagentProgressState | undefined;
 			try {
 				const resolvedPaths = await resolveExistingPaths(ctx.cwd, args);
 				if (resolvedPaths.length < 3) {
@@ -355,6 +603,13 @@ export default function subagentExtension(pi: ExtensionAPI) {
 
 				const [specPath, planPath, ...detailPaths] = resolvedPaths;
 				ctx.ui.notify(`Running isolated readiness brief for ${resolvedPaths.length} artifacts`, "info");
+				progress = startProgress(ctx, {
+					mode: "readiness-brief",
+					status: "running",
+					step: `summarizing ${resolvedPaths.length} artifacts`,
+					artifacts: `${resolvedPaths.length} artifacts`,
+					activity: ["Started delegated readiness brief"],
+				});
 				setRunningStatus(ctx, "Delegated readiness brief running");
 				showLoadingMessage(pi, "readiness brief");
 				const result = await runDelegatedCommand({
@@ -364,6 +619,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					signal: ctx.signal,
 				});
 
+				finishProgress(ctx, progress, {
+					status: result.exitCode === 0 ? "complete" : "failed",
+					step: result.exitCode === 0 ? "brief finished" : "brief failed",
+					isSuccess: result.exitCode === 0,
+					activity: result.exitCode === 0 ? "Readiness brief complete" : "Readiness brief failed",
+				});
 				setDoneStatus(ctx, "Delegated readiness brief complete", result.exitCode === 0);
 				ctx.ui.notify(result.exitCode === 0 ? "Readiness brief complete" : "Readiness brief failed", result.exitCode === 0 ? "info" : "error");
 				pi.sendMessage(
@@ -376,6 +637,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					{ triggerTurn: false, deliverAs: "followUp" },
 				);
 			} catch (error) {
+				finishProgress(ctx, progress, {
+					status: "failed",
+					step: "brief failed",
+					isSuccess: false,
+					activity: error instanceof Error ? error.message : "Readiness brief failed",
+				});
 				setDoneStatus(ctx, "Delegated readiness brief failed", false);
 				ctx.ui.notify(error instanceof Error ? error.message : "Readiness brief failed", "error");
 			}
@@ -408,6 +675,13 @@ export default function subagentExtension(pi: ExtensionAPI) {
 
 				if (withBrief) {
 					ctx.ui.notify("Auto-running readiness brief for the reviewed packet", "info");
+					const progress = startProgress(ctx, {
+						mode: "readiness-brief",
+						status: "running",
+						step: `summarizing ${resolvedPaths.length} artifacts`,
+						artifacts: `${resolvedPaths.length} artifacts`,
+						activity: ["Started follow-up readiness brief"],
+					});
 					setRunningStatus(ctx, "Delegated readiness brief running");
 					showLoadingMessage(pi, "readiness brief");
 					const briefResult = await runDelegatedCommand({
@@ -415,6 +689,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 						prompt: buildReadinessBriefPrompt(ctx.cwd, specPath, planPath, detailPaths),
 						tools: REVIEW_TOOLS,
 						signal: ctx.signal,
+					});
+					finishProgress(ctx, progress, {
+						status: briefResult.exitCode === 0 ? "complete" : "failed",
+						step: briefResult.exitCode === 0 ? "brief finished" : "brief failed",
+						isSuccess: briefResult.exitCode === 0,
+						activity: briefResult.exitCode === 0 ? "Readiness brief complete" : "Readiness brief failed",
 					});
 					setDoneStatus(ctx, "Delegated readiness brief complete", briefResult.exitCode === 0);
 					ctx.ui.notify(briefResult.exitCode === 0 ? "Readiness brief complete" : "Readiness brief failed", briefResult.exitCode === 0 ? "info" : "error");
@@ -447,14 +727,24 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				return;
 			}
 
+			let progress: SubagentProgressState | undefined;
 			try {
 				const withPlanReview = hasFlag(args, "--review-plan");
 				const cleanedArgs = removeFlag(args, "--review-plan");
 				const [planAbsolutePath] = await resolveExistingPaths(ctx.cwd, cleanedArgs);
 				const planRelativePath = path.relative(ctx.cwd, planAbsolutePath).replace(/\\/g, "/");
 
+				progress = startProgress(ctx, {
+					mode: "enrich-plan-pi",
+					status: "running",
+					step: "preparing plan enrichment",
+					artifacts: "0 detail files",
+					activity: [`Started enrich for ${planRelativePath}`],
+				});
+
 				if (withPlanReview) {
 					ctx.ui.notify("Auto-running plan review before enrichment", "info");
+					updateProgress(ctx, progress, { step: "reviewing plan before enrich" }, "Started plan review before enrich");
 					setRunningStatus(ctx, "Delegated plan review running");
 					showLoadingMessage(pi, "plan review");
 					const planReviewResult = await runDelegatedCommand({
@@ -463,6 +753,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 						tools: REVIEW_TOOLS,
 						signal: ctx.signal,
 					});
+					updateProgress(
+						ctx,
+						progress,
+						{ step: planReviewResult.exitCode === 0 ? "plan review finished" : "plan review failed" },
+						planReviewResult.exitCode === 0 ? "Plan review complete" : "Plan review failed",
+					);
 					setDoneStatus(ctx, "Delegated plan review complete", planReviewResult.exitCode === 0);
 					ctx.ui.notify(planReviewResult.exitCode === 0 ? "Plan review complete" : "Plan review failed", planReviewResult.exitCode === 0 ? "info" : "error");
 					pi.sendMessage(
@@ -484,13 +780,19 @@ export default function subagentExtension(pi: ExtensionAPI) {
 
 				ctx.ui.notify(`Running Pi-only enrich for ${phases.length} phase(s)`, "info");
 				showLoadingMessage(pi, "plan enrichment");
+				updateProgress(ctx, progress, { step: "exploring plan phases", phase: `0/${phases.length}` }, `Loaded ${phases.length} phase(s)`);
 
 				for (let index = 0; index < phases.length; index += 1) {
 					const phase = phases[index];
+					updateProgress(ctx, progress, {
+						step: "mapping files and symbols for current phase",
+						phase: `${index + 1}/${phases.length} — ${normalizePhaseDisplayName(phase.name)}`,
+						artifacts: `${phaseSummaries.length} detail file${phaseSummaries.length === 1 ? "" : "s"} created`,
+					}, `Exploring phase ${index + 1}/${phases.length}: ${normalizePhaseDisplayName(phase.name)}`);
 					setRunningStatus(ctx, `Exploring ${phase.name}`);
 					const result = await runDelegatedReview({
 						cwd: ctx.cwd,
-						prompt: buildExplorePrompt(phase.name, phase.tasks),
+						prompt: withVietnameseRule(buildExplorePrompt(phase.name, phase.tasks)),
 						tools: EXPLORE_TOOLS,
 						signal: ctx.signal,
 					});
@@ -506,11 +808,22 @@ export default function subagentExtension(pi: ExtensionAPI) {
 						modified: countNonNoneBullets(parseExploreSection(result.finalText, "Files to modify")),
 						created: countNonNoneBullets(parseExploreSection(result.finalText, "Files to create")),
 					});
+					updateProgress(ctx, progress, {
+						artifacts: `${phaseSummaries.length} detail file${phaseSummaries.length === 1 ? "" : "s"} created`,
+						step: "writing phase details",
+					}, `Phase ${index + 1} complete → ${detailRelativePath}`);
 				}
 
+				updateProgress(ctx, progress, { step: "updating enrich summary" }, "Updating enrich summary in plan file");
 				const updatedPlan = stripEnrichSummary(originalPlan) + buildEnrichSummary(planRelativePath, phaseSummaries);
 				await fs.writeFile(planAbsolutePath, updatedPlan.endsWith("\n") ? updatedPlan : `${updatedPlan}\n`, "utf8");
 
+				finishProgress(ctx, progress, {
+					status: "complete",
+					step: "enrich summary updated",
+					isSuccess: true,
+					activity: "Enrich summary updated",
+				});
 				setDoneStatus(ctx, "Pi-only enrich complete", true);
 				ctx.ui.notify(`Enrich complete: ${phaseSummaries.length} phase(s)`, "info");
 				pi.sendMessage(
@@ -523,6 +836,12 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					{ triggerTurn: false, deliverAs: "followUp" },
 				);
 			} catch (error) {
+				finishProgress(ctx, progress, {
+					status: "failed",
+					step: "enrichment failed",
+					isSuccess: false,
+					activity: error instanceof Error ? error.message : "Pi-only enrich failed",
+				});
 				setDoneStatus(ctx, "Pi-only enrich failed", false);
 				ctx.ui.notify(error instanceof Error ? error.message : "Pi-only enrich failed", "error");
 			}
@@ -553,19 +872,44 @@ export default function subagentExtension(pi: ExtensionAPI) {
 				};
 			}
 
-			setRunningStatus(ctx, `Exploring ${phaseName}`);
-			const result = await runDelegatedReview({
-				cwd: ctx.cwd,
-				prompt: buildExplorePrompt(phaseName, tasks),
-				tools: EXPLORE_TOOLS,
-				signal,
+			const progress = startProgress(ctx, {
+				mode: "explore_phase",
+				status: "running",
+				step: "exploring files and symbols for phase",
+				phase: normalizePhaseDisplayName(phaseName),
+				artifacts: `${tasks.length} task${tasks.length === 1 ? "" : "s"}`,
+				activity: [`Started explore for ${normalizePhaseDisplayName(phaseName)}`],
 			});
-			setDoneStatus(ctx, `Explore complete for ${phaseName}`, result.exitCode === 0);
+			setRunningStatus(ctx, `Exploring ${phaseName}`);
+			try {
+				const result = await runDelegatedReview({
+					cwd: ctx.cwd,
+					prompt: withVietnameseRule(buildExplorePrompt(phaseName, tasks)),
+					tools: EXPLORE_TOOLS,
+					signal,
+				});
+				finishProgress(ctx, progress, {
+					status: result.exitCode === 0 ? "complete" : "failed",
+					step: result.exitCode === 0 ? "phase exploration finished" : "phase exploration failed",
+					isSuccess: result.exitCode === 0,
+					activity: result.exitCode === 0 ? `Explore complete for ${normalizePhaseDisplayName(phaseName)}` : `Explore failed for ${normalizePhaseDisplayName(phaseName)}`,
+				});
+				setDoneStatus(ctx, `Explore complete for ${phaseName}`, result.exitCode === 0);
 
-			return {
-				content: [{ type: "text", text: result.finalText }],
-				details: { exitCode: result.exitCode, stderr: result.stderr },
-			};
+				return {
+					content: [{ type: "text", text: result.finalText }],
+					details: { exitCode: result.exitCode, stderr: result.stderr },
+				};
+			} catch (error) {
+				finishProgress(ctx, progress, {
+					status: "failed",
+					step: "phase exploration failed",
+					isSuccess: false,
+					activity: error instanceof Error ? error.message : `Explore failed for ${normalizePhaseDisplayName(phaseName)}`,
+				});
+				setDoneStatus(ctx, `Explore failed for ${phaseName}`, false);
+				throw error;
+			}
 		},
 	});
 }
