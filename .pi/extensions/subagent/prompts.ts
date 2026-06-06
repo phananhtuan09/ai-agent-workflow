@@ -194,6 +194,8 @@ Rules:
 - Prefer concrete likely paths over abstract descriptions.
 - For implementation phases, do not return all sections as 'none' unless the phase truly requires no file changes.
 - Use common project conventions visible in the repo or implied by the plan (for example: src/components, src/hooks, src/types, src/utils, src/__tests__).
+- Return only valid JSON. Do not wrap it in markdown fences.
+- Do not add prose before or after the JSON.
 
 Phase:
 ${phaseName}
@@ -201,18 +203,13 @@ ${phaseName}
 Tasks:
 ${taskLines}
 
-Required output:
-Files to modify:
-- ...
+Required JSON schema:
+{
+  "filesToModify": ["path — reason", "..."],
+  "filesToCreate": ["path — reason", "..."],
+  "relevantSymbols": ["symbol — reason", "..."],
+  "notes": ["short note", "..."]
+}
 
-Files to create:
-- ...
-
-Relevant symbols:
-- ...
-
-Notes:
-- ...
-
-If a section has no findings, write '- none'.`;
+If a field has no findings, return an empty array.`;
 }

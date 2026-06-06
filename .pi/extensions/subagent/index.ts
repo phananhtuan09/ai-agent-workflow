@@ -340,9 +340,10 @@ function parseExploreSection(result: string, sectionName: string): string[] {
 	const headingVariants = [
 		escapedName,
 		`\\*\\*${escapedName}\\*\\*`,
+		`\\*\\*${escapedName}:\\*\\*`,
 		`###\\s+${escapedName}`,
 	].join("|");
-	const regex = new RegExp(`^(?:${headingVariants}):?\\s*\\r?\\n([\\s\\S]*?)(?=^(?:\\*\\*?[A-Z][^\\n:]*\\*\\*?|###\\s+.+|[A-Z][^\\n:]*):?\\s*$|$)`, "m");
+	const regex = new RegExp(`^(?:${headingVariants}):?\\s*\\r?\\n([\\s\\S]*?)(?=^(?:\\*\\*[A-Z][^\\n]*\\*\\*|###\\s+.+|[A-Z][^\\n:]*):?\\s*$|$)`, "m");
 	const match = result.match(regex);
 	if (!match) return [];
 	return match[1]
@@ -352,11 +353,41 @@ function parseExploreSection(result: string, sectionName: string): string[] {
 		.map((line) => line.replace(/^\*\s+/, "- "));
 }
 
+function parseExploreJson(result: string): { filesToModify: string[]; filesToCreate: string[]; relevantSymbols: string[]; notes: string[] } | null {
+	const trimmed = result.trim();
+	const candidates: string[] = [];
+	if (trimmed.startsWith("{")) candidates.push(trimmed);
+	const fencedMatch = trimmed.match(/```json\s*([\s\S]*?)```/i);
+	if (fencedMatch) candidates.push(fencedMatch[1].trim());
+	const bareMatch = trimmed.match(/\{[\s\S]*\}/);
+	if (bareMatch) candidates.push(bareMatch[0].trim());
+
+	for (const candidate of candidates) {
+		try {
+			const parsed = JSON.parse(candidate) as Record<string, unknown>;
+			const normalize = (value: unknown) => Array.isArray(value)
+				? value.map((item) => String(item).trim()).filter(Boolean).filter((item) => item.toLowerCase() !== "none")
+				: [];
+			return {
+				filesToModify: normalize(parsed.filesToModify),
+				filesToCreate: normalize(parsed.filesToCreate),
+				relevantSymbols: normalize(parsed.relevantSymbols),
+				notes: normalize(parsed.notes),
+			};
+		} catch {
+			// Try next candidate.
+		}
+	}
+
+	return null;
+}
+
 function formatPhaseDetails(phaseNumber: number, phaseName: string, exploreResult: string): string {
-	const filesToModify = parseExploreSection(exploreResult, "Files to modify");
-	const filesToCreate = parseExploreSection(exploreResult, "Files to create");
-	const relevantSymbols = parseExploreSection(exploreResult, "Relevant symbols");
-	const notes = parseExploreSection(exploreResult, "Notes").slice(0, 3);
+	const jsonResult = parseExploreJson(exploreResult);
+	const filesToModify = jsonResult?.filesToModify ?? parseExploreSection(exploreResult, "Files to modify");
+	const filesToCreate = jsonResult?.filesToCreate ?? parseExploreSection(exploreResult, "Files to create");
+	const relevantSymbols = jsonResult?.relevantSymbols ?? parseExploreSection(exploreResult, "Relevant symbols");
+	const notes = (jsonResult?.notes ?? parseExploreSection(exploreResult, "Notes")).slice(0, 3);
 	const displayPhaseName = normalizePhaseDisplayName(phaseName);
 
 	const sections = [`## Phase ${phaseNumber} Details — ${displayPhaseName}`, ""];
@@ -854,8 +885,8 @@ export default function subagentExtension(pi: ExtensionAPI) {
 					phaseSummaries.push({
 						name: phase.name,
 						detailPath: detailRelativePath,
-						modified: countNonNoneBullets(parseExploreSection(result.finalText, "Files to modify")),
-						created: countNonNoneBullets(parseExploreSection(result.finalText, "Files to create")),
+						modified: countNonNoneBullets(parseExploreJson(result.finalText)?.filesToModify ?? parseExploreSection(result.finalText, "Files to modify")),
+						created: countNonNoneBullets(parseExploreJson(result.finalText)?.filesToCreate ?? parseExploreSection(result.finalText, "Files to create")),
 					});
 					updateProgress(ctx, progress, {
 						artifacts: `${phaseSummaries.length} detail file${phaseSummaries.length === 1 ? "" : "s"} created`,
