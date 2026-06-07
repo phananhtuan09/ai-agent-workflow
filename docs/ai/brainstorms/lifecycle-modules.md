@@ -109,7 +109,7 @@ Agents:
 
 ---
 
-## Artifact Design (theo RULES.md)
+## Artifact Design (theo `AI_WORKFLOW_RULES.md`)
 
 | Module | Artifact | Giới hạn |
 |--------|----------|----------|
@@ -124,7 +124,7 @@ Agents:
 
 ---
 
-## RULES.md Constraints cho Module Mới
+## `AI_WORKFLOW_RULES.md` Constraints cho Module Mới
 
 1. Mỗi module chỉ được đọc artifacts đã tồn tại — không tự explore khi có file sẵn
 2. Mỗi module có một artifact output duy nhất — không sinh nhiều files từ 1 command

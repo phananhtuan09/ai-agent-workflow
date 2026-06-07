@@ -1,77 +1,92 @@
 ---
 phase: project
-title: Project Standards
-description: Code conventions and project structure standards
+title: AI Workflow Build Docs
+description: Guide for AI agents to read the workflow-building documents in this repository
 ---
 
-# Project Standards
+# AI Workflow Build Docs
 
 ## Purpose
-This directory contains project-wide standards that govern code quality, structure, and conventions. These standards are used by the `code-review` command to validate code.
+This folder contains only the documents needed to design, evolve, and maintain the AI agent workflow of this repository.
 
-## Standards Documentation
+It is not a general project implementation guide.
+It does not describe coding conventions or project structure for a real application codebase cloned from this workflow.
 
-### CODE_CONVENTIONS.md
-Defines coding standards including:
-- Naming conventions (variables, functions, classes, constants)
-- Import order and formatting
-- Function size and complexity guidelines
-- Error handling strategy
-- Test rules
-- Comments policy
+Read these files when the task is about workflow logic, routing, commands, artifacts, harness design, or agent behavior.
 
-### PROJECT_STRUCTURE.md
-Defines project organization including:
-- Folder layout and directory structure
-- Module boundaries and dependency direction
-- Design patterns in use
-- Test file placement and naming
-- Config/secrets handling
+## Read Order
+Use this order when the task is about building or changing the workflow system:
 
-## Generating Standards
+1. `docs/ai/project/README.md`
+2. `docs/ai/project/AI_WORKFLOW_RULES.md`
+3. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+4. `docs/ai/project/HARNESS_ARCHITECTURE.md` when the task touches harness design
 
-### Auto-Generation
-Use the `generate-standards` command to auto-generate these files from your codebase:
-- Command: `.cursor/commands/generate-standards.md`
-- Output: Updates `CODE_CONVENTIONS.md` and `PROJECT_STRUCTURE.md`
-- Process: Analyzes codebase + brief Q&A to infer standards
+If documents conflict, follow the more specific file for the current workflow task.
 
-### Manual Editing
-Both files can be edited manually at any time. They are marked with a note indicating they can be auto-generated.
+## When To Read Which File
 
-## Usage in Workflow
+### `docs/ai/project/AI_WORKFLOW_RULES.md`
+Read when:
+- designing or changing the AI agent workflow
+- adding commands, skills, phases, or artifacts
+- deciding whether a workflow pattern is worth keeping
+- reviewing if a proposal is too complex or unnecessary
 
-### Development Workflow (4 phases)
-1) Plan: define goals, scope, and Acceptance Criteria; create a todo checklist from the plan before any coding.
-2) Implementation: make small, shippable edits; provide status updates before actions; perform edits via file editing tools.
-3) Testing: cover main and edge flows; run linter/type/build on changed files and auto-fix issues (up to 3 attempts).
-4) Review: self-review; when todos are done and checks pass, provide a concise summary and ship.
+This file defines the mandatory principles that every workflow change must follow.
 
-### Code Review
-The `code-review` command checks conformance to these standards and project structure:
-- Reports violations of explicit rules
-- Avoids subjective design opinions or performance guesses
-- Focuses on adherence to conventions and structure
+### `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+Read when:
+- implementing or updating the standard coding workflow
+- deciding routing for feature, bug fix, refactor, or small update tasks
+- aligning new commands with the repository's execution flow
+- checking which artifact should be produced in each phase
 
-### Implementation
-When implementing features (`execute-plan`), follow these standards:
-- Adhere to naming conventions
-- Respect module boundaries
-- Follow error handling patterns
-- Place tests according to structure rules
+This file defines the standard end-to-end workflow used by the agent system.
 
-## Related Documentation
-- Feature planning: `../planning/`
-- Implementation notes: `../implementation/`
-- Test plans: `../testing/`
+### `docs/ai/project/HARNESS_ARCHITECTURE.md`
+Read when:
+- designing the harness or runtime integration model
+- adding policy, approval, memory, observability, or delegation behavior
+- making the workflow portable across different coding-agent runtimes
+- deciding architectural boundaries between content, orchestration, and runtime bindings
 
-## Navigation
-- Code conventions: `CODE_CONVENTIONS.md`
-- Project structure: `PROJECT_STRUCTURE.md`
-- Planning template: `../planning/feature-template.md`
-- Implementation template: `../implementation/feature-template.md`
-- Testing templates: `../testing/unit-template.md`, `../testing/integration-template.md`, `../testing/web-template.md`
+This file defines the target architecture direction for the harness workflow.
 
----
+## Task Routing Guide
 
-**Note**: These standards are project-specific and should reflect actual patterns in your codebase. Regenerate when codebase evolves significantly.
+### Workflow design task
+Read:
+- `docs/ai/project/README.md`
+- `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+
+### Harness architecture task
+Read:
+- `docs/ai/project/README.md`
+- `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/HARNESS_ARCHITECTURE.md`
+
+### Workflow implementation task
+Read:
+- `docs/ai/project/README.md`
+- the workflow document that defines the behavior being implemented or changed
+
+### Workflow review task
+Read:
+- `docs/ai/project/README.md`
+- whichever workflow document defines the expected behavior
+
+## Agent Behavior Expectations
+- Treat this folder as workflow-building documentation only.
+- Do not use this folder as the coding standard for an external application project.
+- Do not invent workflow phases that are not documented.
+- Do not add commands, artifacts, or roles unless they satisfy the mandatory rules.
+- Prefer the simplest workflow that still preserves reviewability and control.
+- Keep workflow artifacts readable by humans.
+- Escalate when the repository documents do not cover an ambiguous decision.
+
+## Related Files
+- `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+- `docs/ai/project/HARNESS_ARCHITECTURE.md`
