@@ -42,12 +42,12 @@ irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/insta
 ```
 
 Choose from:
-- **Codex** → `.agents/skills/`, `.agents/roles/`, `.agents/knowledge/`, `.agents/themes/`, `.codex/`, and root `AGENTS.md`
-- **Google Antigravity** → `.agents/skills/` and root `AGENTS.md`
-- **Pi** → `.pi/extensions/` and root `AGENTS.md`
+- **Codex** → `.agents/skills/`, `.agents/roles/`, `.agents/knowledge/`, `.agents/themes/`, and `.codex/`
+- **Google Antigravity** → `.agents/skills/`
+- **Pi** → `.pi/extensions/`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`, and supporting Claude config files
 
-Every install also syncs shared workflow assets: `docs/ai/` and root `AGENTS.md`.
+Every install also syncs shared workflow assets: `docs/ai/`.
 
 ### Pi Review Workflow
 
@@ -350,7 +350,7 @@ Initialize chat with project conventions.
 ```
 User: /init-chat
 
-→ Reads AGENTS.md and project standards
+→ Reads `~/.codex/AGENTS.md` and project standards
 → Confirms: workflow, tooling, communication rules
 ```
 
@@ -452,16 +452,16 @@ docs/ai/
     ├── CODE_CONVENTIONS.md
     └── PROJECT_STRUCTURE.md
 
-AGENTS.md               # Universal AI instructions
+AGENTS.md               # Universal AI instructions (synced to ~/.codex/AGENTS.md)
 ```
 
 ### Tool-Specific Files
 
 | Tool | Commands | Skills | Other |
 |------|----------|--------|-------|
-| **Codex** | - | `.agents/skills/*/SKILL.md` | `.agents/roles/*.md`, `.agents/knowledge/**`, `.agents/themes/*.theme.json`, `.codex/`, `AGENTS.md` |
-| **Google Antigravity** | - | `.agents/skills/*/SKILL.md` | `AGENTS.md` |
-| **Claude Code** | `.claude/commands/*.md` | `.claude/skills/*/SKILL.md` | `.claude/CLAUDE.md`, `.claude/themes/`, `.claude/output-styles/`, `.claude/agents/`, `.claude/scripts/`, `.claude/settings.json`, `.claude/statusline.sh` |
+| **Codex** | - | `.agents/skills/*/SKILL.md` | `.agents/roles/*.md`, `.agents/knowledge/**`, `.agents/themes/*.theme.json`, `.codex/` |
+| **Google Antigravity** | - | `.agents/skills/*/SKILL.md` | - |
+| **Claude Code** | `.claude/commands/*.md` | `.claude/skills/*/SKILL.md` | `.claude/themes/`, `.claude/output-styles/`, `.claude/agents/`, `.claude/scripts/`, `.claude/settings.json`, `.claude/statusline.sh` |
 
 ---
 
@@ -506,7 +506,7 @@ Skills provide specialized knowledge that AI agents can load on-demand:
 ## After Installation
 
 1. **Review generated files** in your editor
-2. **Customize** `AGENTS.md` for your project's specific rules
+2. **Customize** `~/.codex/AGENTS.md` for your project's specific rules
 3. **Run** `/init-chat` to load project context
 4. **Start** with `/create-plan` for your first feature
 5. **Commit** the new files so your team can use them

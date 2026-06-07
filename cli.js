@@ -28,7 +28,7 @@ Pi install target:
 
 When installing for Pi, the CLI syncs:
   - docs/ai/
-  - AGENTS.md
+  - ~/.codex/AGENTS.md
   - .pi/extensions/
   - .pi/workflows/
 
