@@ -811,7 +811,16 @@ export default function subagentExtension(pi: ExtensionAPI) {
 			try {
 				const withPlanReview = hasFlag(args, "--review-plan");
 				const cleanedArgs = removeFlag(args, "--review-plan");
-				const [planAbsolutePath] = await resolveExistingPaths(ctx.cwd, cleanedArgs);
+				if (!cleanedArgs) {
+					ctx.ui.notify("Usage: /enrich-plan-pi docs/ai/plans/<file>.md [--review-plan]", "warning");
+					return;
+				}
+				const resolvedPlanPaths = await resolveExistingPaths(ctx.cwd, cleanedArgs);
+				if (resolvedPlanPaths.length === 0) {
+					ctx.ui.notify("Usage: /enrich-plan-pi docs/ai/plans/<file>.md [--review-plan]", "warning");
+					return;
+				}
+				const planAbsolutePath = resolvedPlanPaths[0];
 				const planRelativePath = path.relative(ctx.cwd, planAbsolutePath).replace(/\\/g, "/");
 
 				progress = startProgress(ctx, {
