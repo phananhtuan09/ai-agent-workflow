@@ -1,35 +1,49 @@
 Create a plan from a spec file or inline task description.
 
 INPUT (two modes):
-- File mode: path to spec file (e.g. docs/ai/specs/{feature-name}.md)
-- Inline mode: quoted description (e.g. "Fix: avatar not updating after save")
+- File mode: path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
+- Inline mode: quoted description (e.g. `"Fix: avatar not updating after save"`)
 
 ROUTING — detect mode from input:
-- If input ends in .md → File mode
+- If input ends in `.md` → File mode
 - If input is a quoted string → Inline mode
 
 ---
 
 FILE MODE PROCESS:
-1. Read spec file
-2. Write single plan file to docs/ai/plans/{feature-name}.md
+1. Read the spec file completely
+2. Confirm the spec is planning-ready:
+   - Scope is clear enough to sequence work
+   - Acceptance criteria are identifiable and testable
+   - No critical product behavior is missing for planning
+3. If the spec is not planning-ready:
+   - Do not invent missing behavior
+   - Ask concise follow-up questions or tell the user the spec must be expanded first
+4. If the spec is planning-ready:
+   - Write a single plan file to `docs/ai/plans/{feature-name}.md`
+   - `{feature-name}` must match the spec slug
 
-FILE MODE FORMAT (≤ 60 lines):
+FILE MODE FORMAT (hard cap: 80 lines):
 
 ## Spec
-docs/ai/specs/{feature-name}.md · ACs: #1 #2 #3
+`docs/ai/specs/{feature-name}.md` · Covered ACs: #1 #2 #3
 
-## Approach
-[3-5 sentences: technical approach, which layers are touched]
+## Execution Strategy
+[2-4 sentences: phase order, dependency logic, and high-level execution approach. Do not introduce new user-visible behavior or technical design not already implied by the spec.]
+
+## Spec Coverage
+- AC1 → Phase 1 / Task 1
+- AC2 → Phase 2 / Task 1
+- AC3 → Phase 2 / Task 2, Phase 3 / Task 1
 
 ## Tasks
 
 ### Phase 1: {name}
-- [ ] Task described as intent, not implementation
-- [ ] ...
+- [ ] Task 1: described as intent and outcome, not implementation
+- [ ] Task 2: ...
 
 ### Phase 2: {name}
-- [ ] ...
+- [ ] Task 1: ...
 
 ## Test Checklist
 - [ ] Unit: ...
@@ -39,16 +53,17 @@ docs/ai/specs/{feature-name}.md · ACs: #1 #2 #3
 ---
 
 INLINE MODE PROCESS:
-1. Derive a slug from the description (e.g. "fix-avatar-update")
-2. Write small plan to docs/ai/plans/{slug}.md
+1. Derive a kebab-case slug from the description (e.g. `fix-avatar-update`)
+2. Restate the task clearly
+3. Write a small plan to `docs/ai/plans/{slug}.md`
 
-INLINE MODE FORMAT (≤ 20 lines):
+INLINE MODE FORMAT (hard cap: 24 lines):
 
 ## Task
 [Restate the problem clearly in 1 sentence]
 
-## Approach
-[1-2 sentences: what to change and why]
+## Execution Strategy
+[1-2 sentences: what will be changed and why, at a high level]
 
 ## Tasks
 
@@ -57,12 +72,32 @@ INLINE MODE FORMAT (≤ 20 lines):
 - [ ] Task 2
 - [ ] Task 3 (max 5 total)
 
+[Optional only when regression risk is meaningful]
+## Test Checklist
+- [ ] ...
+
 ---
 
 SHARED RULES:
 - All assistant responses, questions, and generated plan files must be written in Vietnamese
-- No file paths in tasks — file mapping is done by /enrich-plan
-- No [DISCOVER] tasks — that is handled by /enrich-plan
-- Each task = one small diff, described as intent
-- One plan file only — never split into multiple files
-- Inline mode: no ## Spec section, no ## Test Checklist unless regression needed
+- Do not introduce new product behavior, validation rules, persistence rules, fallback behavior, or visible UX behavior that is not already in the spec or explicitly approved by the user
+- If planning requires a missing assumption, do not silently choose it; either ask or mark it clearly as `ASSUMPTION — cần xác nhận`
+- No file paths in tasks — file mapping is done by `/enrich-plan`
+- No exact function names, schema/model names, storage keys, API shapes, or code structure decisions in the plan
+- No `[DISCOVER]` tasks — that is handled by `/enrich-plan`
+- Each task must be intent-based, small enough for one focused change set, and traceable to at least one acceptance criterion or explicit requirement
+- One plan file only — never split the plan into multiple main plan files
+- Inline mode: no `## Spec` section; keep the plan short and include `## Test Checklist` only when regression risk justifies it
+- Use `/enrich-plan` for file-level mapping, technical touchpoints, symbol discovery, and implementation detail
+
+SELF-CHECK BEFORE WRITING THE FILE:
+- Is the spec planning-ready, or are critical behavior rules still missing?
+- Does every acceptance criterion appear in `## Spec Coverage`?
+- Does every `## Spec Coverage` mapping point to a real task in the referenced phase?
+- Did you avoid unresolved assumptions unless they are clearly marked as `ASSUMPTION — cần xác nhận`?
+- Does every phase help cover at least one acceptance criterion or explicit requirement?
+- Does the plan avoid introducing new behavior that is not in the spec?
+- Does the plan stay intent-based rather than design-heavy?
+- Did you avoid file paths, symbol mapping, and implementation detail that belongs in `/enrich-plan`?
+- Is the test checklist aligned with the actual risks in this feature?
+- Does the final plan stay within the hard cap for its mode?

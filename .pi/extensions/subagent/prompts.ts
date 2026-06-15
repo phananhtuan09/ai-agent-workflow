@@ -24,7 +24,10 @@ Review the provided plan for readiness before enrichment.
 Rules:
 - Read only the provided plan file.
 - Do not modify files.
-- Focus on plan contract quality, task clarity, phase structure, obvious scope drift, and obvious coverage gaps.
+- Focus on plan contract quality, task clarity, phase structure, line-cap compliance, obvious scope drift, and real coverage gaps.
+- In file mode, verify that spec coverage entries point to real tasks and that the tasks meaningfully support the mapped ACs.
+- Flag if the plan appears to add new product behavior beyond the spec contract visible in the plan.
+- Inline mode may omit a test checklist when regression risk is low.
 - Keep the output concise and use the exact format below.
 ${OUTPUT_LIMIT_RULES}
 
@@ -61,7 +64,11 @@ Rules:
 - Read only the provided spec file.
 - Do not modify files.
 - Do not suggest implementation details, frameworks, or file mapping.
-- Focus on structural correctness, AC verifiability, ambiguity, contradictions, and missing edge cases.
+- Focus on structural correctness, required section presence, AC verifiability, ambiguity, contradictions, missing edge cases, tier declaration, and size/AC-count fit for the declared tier.
+- Tier rules in this workflow:
+  - Lite: 25-39 lines, usually up to 7 ACs
+  - Standard: 40-90 lines, usually up to 12 ACs
+  - Extended: 91-140 lines, usually up to 18 ACs
 - Keep the output concise and use the exact format below.
 ${OUTPUT_LIMIT_RULES}
 
