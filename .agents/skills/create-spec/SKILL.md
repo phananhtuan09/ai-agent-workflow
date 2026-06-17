@@ -1,6 +1,6 @@
 ---
 name: create-spec
-description: Use when the user asks to create a spec, write a specification, or define requirements for a feature. Creates a spec file in docs/ai/specs/.
+description: Use when the user asks to create a spec, write a specification, or define requirements for a feature. Creates a durable spec file in docs/ai/specs/ with both business intent and technical approach.
 ---
 
 # Create Spec
@@ -29,7 +29,7 @@ Create a spec file for the described feature.
      - If the feature includes migration, fallback, or quota behavior, it cannot be Lite
      - If the feature has more than 3 distinct behavior areas, it cannot be Lite
      - Distinct behavior areas means separate user-facing behavior clusters such as setup/configuration, main action flow, persistence, sharing/export, fallback/recovery, or admin controls
-1. Evaluate whether the current description already covers: problem, scope, key behavioral rules, edge cases, and out of scope
+1. Evaluate whether the current description already covers: problem, scope, key behavioral rules, technical approach, edge cases, and out of scope
 2. If critical information is missing:
    - Ask only the missing questions (max 5), batch them into one block, then wait for answers
    - After answers arrive, reclassify complexity if needed before writing the spec
@@ -64,6 +64,12 @@ Create a spec file for the described feature.
 ## Key Behavioral Rules
 [Use as needed. For Standard/Extended, usually 3-8 bullets. Include persistence, validation, fallback, reset/default behavior, visible output rules, compatibility expectations, or other constraints that affect acceptance.]
 
+## Technical Approach
+[Describe the intended implementation direction at the architecture/pattern level. No file-by-file task breakdown.]
+
+## Architecture / Pattern Notes
+[Optional. Use when existing project patterns, boundaries, or architectural constraints materially affect implementation.]
+
 ## Acceptance Criteria
 [Lite specs may use a flat list. Standard/Extended specs should group ACs by behavior area.]
 
@@ -84,12 +90,17 @@ Create a spec file for the described feature.
 ## Open Questions
 - ...
 - If there are no open questions, write: `- Không có.`
+
+## Decision Log
+- ...
+- If there are no durable implementation decisions yet, write: `- Chưa có quyết định kỹ thuật bền cần ghi nhận.`
 ```
 
 ## Rules
 
 - All assistant responses, questions, and generated spec files must be written in Vietnamese
-- Do not include implementation details such as file paths, function names, schema/model names, framework choices, storage keys, or code structure
+- Include technical approach and architecture notes only at the durable design level
+- Do not include implementation details such as file paths, function names, schema/model names, storage keys, or step-by-step code tasks
 - You may include behavioral constraints that are required to keep planning bounded: validation limits, persistence scope, fallback behavior, reset/default behavior, compatibility expectations, and visible error/empty states
 - Compatibility and migration expectations are allowed only at the user-visible or product-contract level
 - Do not include migration mechanisms such as schema changes, migration scripts, table/collection changes, or refactor steps
@@ -98,7 +109,7 @@ Create a spec file for the described feature.
 - Group acceptance criteria by behavior area when the feature is Standard or Extended
 - Keep paragraphs short; prefer bullets over prose
 - If something is unclear after answers -> list it in Open Questions, do not assume
-- A spec is only valid if a planner can create a plan without inventing new product behavior
+- A spec is only valid if an executor can implement from it and later sync it without inventing new product behavior
 
 ## Self-Check Before Writing The File
 
@@ -108,5 +119,6 @@ Create a spec file for the described feature.
 - Does the AC count stay within the usual range for that tier? If not, did you split the feature or add a short addendum?
 - Are all acceptance criteria testable?
 - Are key persistence, validation, fallback, reset/default, and empty/error-state rules included when relevant?
-- Are implementation details excluded?
-- Can a planner create a plan from this spec without inventing new behavior?
+- Does the technical approach stay at a durable architecture/pattern level?
+- Are low-level implementation details excluded?
+- Can an executor implement from this spec and later sync it without inventing new behavior?

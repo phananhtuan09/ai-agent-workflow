@@ -3,7 +3,7 @@
 Workflow tracker này dùng để hiển thị workflow hiện tại ở footer của PI TUI.
 
 ## Files
-- `feature-standard.json`: workflow đầy đủ cho feature flow
+- `feature-standard.json`: workflow chuẩn theo spec-driven flow mới
 - `.active-workflow.json`: state workflow đang active trong session hiện tại
 
 ## Commands
@@ -20,7 +20,7 @@ Workflow tracker này dùng để hiển thị workflow hiện tại ở footer 
 Footer hiển thị theo dạng compact:
 
 ```text
-↪ Workflow: Feature Standard · 3/8 · Create plan → Review plan (/review-plan)
+↪ Workflow: Feature Standard · 2/4 · Review spec → Execute spec (/execute-spec)
 ```
 
 ## Workflow JSON shape
@@ -28,11 +28,11 @@ Mỗi step nên có tối thiểu:
 
 ```json
 {
-  "id": "create-plan",
-  "title": "Create plan",
+  "id": "execute-spec",
+  "title": "Execute spec",
   "type": "command",
-  "value": "/create-plan",
-  "hint": "Gõ /create-plan @docs/ai/specs/<file>.md"
+  "value": "/execute-spec",
+  "hint": "Gõ /execute-spec @docs/ai/specs/<file>.md"
 }
 ```
 

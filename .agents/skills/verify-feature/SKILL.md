@@ -1,11 +1,11 @@
 ---
 name: verify-feature
-description: Use when the user asks to verify, check, or validate a feature against its spec. Generates a verification checklist.
+description: Use when the user asks to verify, check, or validate a feature against its latest synced spec. Generates a verification checklist.
 ---
 
 # Verify Feature
 
-Read the spec file, generate a verification checklist.
+Read the latest synced spec file and generate a verification checklist.
 
 ## Input
 
@@ -43,6 +43,7 @@ intentionally not tested]
 ## Rules
 
 - All output files must be written in English
+- Treat the provided spec file as the latest durable source of truth
 - Every AC must have at least one manual verification step
 - Steps written as: "[do X] -> [expect Y]" - unambiguous, no interpretation
 - Do not invent test cases beyond what ACs specify

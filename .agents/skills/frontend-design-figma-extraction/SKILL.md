@@ -179,7 +179,7 @@ Use `status: partial` if any planned extraction sections remain unfinished.
 - If a partial file exists, resume from it instead of starting over by default.
 - If `docs/ai/requirements/figma-template.md` is missing, use the fallback structure and continue.
 
-## Integration with Create Plan
+## Integration with Spec-Driven Workflow
 
-`create-plan` should read the generated `DD-MM-YYYY-figma-{name}.md` file.
-If that file does not exist yet, `create-plan` should stop guessing and tell the user to run `/extract-figma` first.
+`/spec` should read the generated `DD-MM-YYYY-figma-{name}.md` file when turning a design into a durable feature spec.
+If that file does not exist yet, the spec creation flow should stop guessing and tell the user to run `/extract-figma` first.

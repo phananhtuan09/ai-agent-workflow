@@ -18,4 +18,4 @@ EX: Adding 10 skills to the workflow when only 3 are regularly invoked makes the
 ## 4. Separate AI and Human Responsibility
 Be explicit about what the agent has verified and what requires human judgment. Never mark something as done if it can only be confirmed by a human.
 
-EX: After `/execute-plan`, the summary must list what the agent verified automatically (build passes, logic matches plan) separately from what the human must check manually (UI looks correct, edge case under real data). Mixing both into one checklist hides what still needs attention.
+EX: After `/execute-spec` or `/execute-task`, the summary must list what the agent verified automatically (build passes, logic matches spec) separately from what the human must check manually (UI looks correct, edge case under real data). Mixing both into one checklist hides what still needs attention.

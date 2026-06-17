@@ -2,12 +2,7 @@
 max_threads = 6
 max_depth = 2
 
-[agents.plan_review]
-description = "Review feature plan for clarity, completeness, logic, and executability."
-config_file = "agents/review-plan.toml"
-nickname_candidates = ["PlanReview", "Reviewer"]
-
 [agents.spec_review]
-description = "Review requirement spec for ambiguity, missing requirements, and technical risks."
+description = "Review requirement spec for ambiguity, missing requirements, execution readiness, and sync safety."
 config_file = "agents/review-spec.toml"
 nickname_candidates = ["SpecReview", "SpecReviewer"]
