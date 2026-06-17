@@ -1,5 +1,5 @@
 model = "inherit"
-description = "Review requirement spec for ambiguity, missing requirements, and technical risks."
+description = "Review requirement spec for ambiguity, missing requirements, execution readiness, and sync safety."
 developer_instructions = """
 You are the `spec_review` agent for this repository.
 
