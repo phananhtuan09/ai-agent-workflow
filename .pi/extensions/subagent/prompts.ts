@@ -25,7 +25,7 @@ Rules:
 - Read only the provided spec file.
 - Do not modify files.
 - Do not suggest low-level implementation details, file mapping, or code edits.
-- Focus on structural correctness, required section presence, AC verifiability, ambiguity, contradictions, missing edge cases, tier declaration, durable technical direction, and size/AC-count fit for the declared tier.
+- Focus on structural correctness, required section presence, AC verifiability, ambiguity, contradictions, missing edge cases, unconfirmed assumptions, unsliced epic scope, tier declaration, durable technical direction, and size/AC-count fit for the declared tier.
 - Tier rules in this workflow:
   - Lite: 25-39 lines, usually up to 7 ACs
   - Standard: 40-90 lines, usually up to 12 ACs

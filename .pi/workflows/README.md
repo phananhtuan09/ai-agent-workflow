@@ -3,7 +3,7 @@
 Workflow tracker này dùng để hiển thị workflow hiện tại ở footer của PI TUI.
 
 ## Files
-- `feature-standard.json`: workflow chuẩn theo spec-driven flow mới
+- `feature-standard.json`: workflow chuẩn theo pre-spec gate + spec-sync flow mới
 - `.active-workflow.json`: state workflow đang active trong session hiện tại
 
 ## Commands
@@ -20,8 +20,14 @@ Workflow tracker này dùng để hiển thị workflow hiện tại ở footer 
 Footer hiển thị theo dạng compact:
 
 ```text
-↪ Workflow: Feature Standard · 2/4 · Review spec → Execute spec (/execute-spec)
+↪ Workflow: Feature Standard · 3/7 · Decide → Create spec (/create-spec)
 ```
+
+## Workflow Notes
+- Workflow này là human-controlled: human tự chọn step muốn chạy.
+- `Shape`, `Recon`, `Decide` là gate step để hiển thị và nhắc flow, không bắt buộc phải là command riêng.
+- Nếu human bắt đầu ở `/create-spec`, agent vẫn phải chạy pass nhẹ `Shape + Recon + Decide` trước khi viết spec.
+- `Review spec` là optional check, không phải step chuẩn bắt buộc trong workflow tracker mặc định.
 
 ## Workflow JSON shape
 Mỗi step nên có tối thiểu:

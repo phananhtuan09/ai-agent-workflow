@@ -1,14 +1,6 @@
----
-name: create-spec
-description: Use when the user asks to create a spec, write a specification, or define requirements for a feature. Creates a durable spec file in docs/ai/specs/ with both business intent and technical approach.
----
-
-# Create Spec
-
 Create a spec file for the described feature.
 
-## Process
-
+PROCESS:
 1. Run `Shape`
    - Capture:
      - what the human expects to happen
@@ -78,11 +70,10 @@ Create a spec file for the described feature.
 11. Write the spec file to `docs/ai/specs/{feature-name}.md`
    - `{feature-name}` must be a kebab-case slug derived from the feature name
 
-## Spec Format
+SPEC FORMAT (concise, bullet-first, behavior-complete — no implementation details):
 
-```markdown
 ## Tier
-[Lite | Standard | Extended]
+[`Lite` | `Standard` | `Extended`]
 
 ## Problem
 [1-2 sentences: what is broken or missing]
@@ -123,10 +114,8 @@ Create a spec file for the described feature.
 ## Decision Log
 - ...
 - If there are no durable implementation decisions yet, write: `- Chưa có quyết định kỹ thuật bền cần ghi nhận.`
-```
 
-## Rules
-
+RULES:
 - All assistant responses, questions, and generated spec files must be written in Vietnamese
 - Before writing the spec, always perform `Shape` + `Recon` + `Decide`
 - The agent may refuse to write a spec yet if `Decide` is not `write-spec`
@@ -134,30 +123,25 @@ Create a spec file for the described feature.
 - If feasibility is uncertain, require a spike instead of speculating in the spec
 - If the request conflicts with the codebase or business rules, surface that conflict before spec creation
 - Include technical approach and architecture notes only at the durable design level
-- Do not include implementation details such as file paths, function names, schema/model names, storage keys, or step-by-step code tasks
+- Do not include implementation details such as file paths, function names, schema/model names, framework choices, storage keys, or code structure
 - You may include behavioral constraints that are required to keep planning bounded: validation limits, persistence scope, fallback behavior, reset/default behavior, compatibility expectations, and visible error/empty states
-- Compatibility and migration expectations are allowed only at the user-visible or product-contract level
+- Compatibility and migration expectations are allowed only at the user-visible or product-contract level, for example: old saved settings remain usable, upgrade does not force the user to reconfigure, or incompatible old selections reset safely
 - Do not include migration mechanisms such as schema changes, migration scripts, table/collection changes, or refactor steps
-- No project context (already provided by repository instructions such as `AGENTS.md`)
+- No project context (already provided by repository instructions such as `AGENTS.md` or `.claude/CLAUDE.md`)
 - Acceptance criteria must be verifiable and user-observable where applicable
 - Group acceptance criteria by behavior area when the feature is Standard or Extended
 - Keep paragraphs short; prefer bullets over prose
-- If something is unclear after answers -> list it in Open Questions, do not assume
-- A spec is only valid if an executor can implement from it and later sync it without inventing new product behavior
+- If something is unclear after answers, list it in Open Questions and do not assume
+- A spec is only valid if an executor can implement from this spec and later sync it without inventing new product behavior
 
-## Allowed Outcomes
-
-The command does not always produce a spec file.
-
-Valid outcomes are:
+ALLOWED OUTCOMES:
 - `Spec written`
 - `Questions needed`
 - `Slice proposed`
 - `Spike required`
 - `Conflict escalated`
 
-## Self-Check Before Writing The File
-
+SELF-CHECK BEFORE WRITING THE FILE:
 - Did `Shape` identify the expected behavior, happy path, and must-not-happen behavior?
 - Did `Recon` check current behavior, nearby patterns, and constraints?
 - Was `Decide` made explicitly before writing?
@@ -171,5 +155,5 @@ Valid outcomes are:
 - Are all acceptance criteria testable?
 - Are key persistence, validation, fallback, reset/default, and empty/error-state rules included when relevant?
 - Does the technical approach stay at a durable architecture/pattern level?
-- Are low-level implementation details excluded?
+- Are implementation details excluded?
 - Can an executor implement from this spec and later sync it without inventing new behavior?

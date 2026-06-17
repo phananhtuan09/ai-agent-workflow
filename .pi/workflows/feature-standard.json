@@ -1,21 +1,35 @@
 {
   "id": "feature-standard",
   "name": "Feature Standard",
-  "description": "Workflow chuẩn mới cho feature: spec, execute, sync spec, verify.",
+  "description": "Workflow chuẩn cho feature: Shape, Recon, Decide trước spec; sau đó execute, sync, verify.",
   "steps": [
+    {
+      "id": "shape",
+      "title": "Shape",
+      "type": "gate",
+      "value": "shape",
+      "hint": "Làm rõ expectation, happy path, must-not-happen, và rough size"
+    },
+    {
+      "id": "recon",
+      "title": "Recon",
+      "type": "gate",
+      "value": "recon",
+      "hint": "Check behavior hiện tại, pattern gần nhất, constraint, và conflict"
+    },
+    {
+      "id": "decide",
+      "title": "Decide",
+      "type": "gate",
+      "value": "decide",
+      "hint": "Chọn: write spec / ask / slice / spike / conflict"
+    },
     {
       "id": "spec",
       "title": "Create spec",
       "type": "command",
-      "value": "/spec",
-      "hint": "Gõ /spec \"mô tả feature\""
-    },
-    {
-      "id": "review-spec",
-      "title": "Review spec",
-      "type": "sub-agent",
-      "value": "/review-spec",
-      "hint": "Gõ /review-spec @docs/ai/specs/<file>.md"
+      "value": "/create-spec",
+      "hint": "Gõ /create-spec \"mô tả feature\" sau khi đã shape, recon, decide"
     },
     {
       "id": "execute-spec",

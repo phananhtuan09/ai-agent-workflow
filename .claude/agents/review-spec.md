@@ -53,26 +53,34 @@ Notes:
    - Fail if: feature scope is so broad that key behaviors are left implicit
    - Fail if: spec mixes in unrelated feature requests without clear boundaries
 
-5. **Behavioral rules included when relevant**: Important constraints are explicit.
+5. **No unconfirmed assumptions**: The spec should only contain behavior that was either stated by the human or justified by codebase reality.
+   - Fail if: the spec introduces product behavior, constraints, or exclusions with no clear grounding in the request
+   - Warn if: likely assumptions appear in behavioral rules or acceptance criteria but might still be valid if later confirmed
+
+6. **Behavioral rules included when relevant**: Important constraints are explicit.
    - Fail if: the feature clearly involves persistence, validation, fallback, reset/default behavior, compatibility, or visible empty/error states, but the spec omits them entirely
 
-6. **Out of Scope present**: Section must exist even if short.
+7. **Out of Scope present**: Section must exist even if short.
    - Fail if: `## Out of Scope` is missing entirely
 
-7. **Open Questions explicit**: Unresolved items must be isolated.
+8. **Open Questions explicit**: Unresolved items must be isolated.
    - Fail if: unresolved questions are buried inside other sections
 
-8. **Execution readiness**: An executor should be able to implement from the spec without inventing product behavior.
+9. **Execution readiness**: An executor should be able to implement from the spec without inventing product behavior.
    - Fail if: important user-visible behavior must still be guessed
    - Warn if: technical approach is missing for a feature that clearly depends on existing architecture constraints
 
-9. **Tier-aware size check**:
+10. **Slice readiness**: The spec should describe one executable slice, not an unsliced epic.
+   - Fail if: the spec obviously bundles multiple large behavior areas that should be split before execution
+   - Warn if: the spec is technically executable but likely to sprawl during implementation because slice boundaries are weak
+
+11. **Tier-aware size check**:
    - Warn if: a `Lite` spec exceeds 39 lines
    - Warn if: a `Standard` spec exceeds 90 lines
    - Fail if: an `Extended` spec exceeds 140 lines without being split or using a short addendum
    - Warn if: the spec is bloated, repetitive, or hard to scan even when within line limits
 
-10. **Tier-aware AC count check**:
+12. **Tier-aware AC count check**:
    - Warn if: a `Lite` spec exceeds 7 ACs
    - Warn if: a `Standard` spec exceeds 12 ACs
    - Fail if: an `Extended` spec exceeds 18 ACs without being split or using a short addendum

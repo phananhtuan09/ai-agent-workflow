@@ -1,7 +1,7 @@
 ---
 phase: project
 title: Workflow Coding Standard
-description: Standard coding workflow for planning, executing, and verifying work in this repository
+description: Standard coding workflow for shaping, spec creation, execution, sync, and verification in this repository
 ---
 
 # Workflow Coding Standard
@@ -11,26 +11,50 @@ This document defines the standard coding workflow that AI agents should follow 
 
 It covers:
 - task routing
-- required workflow phases
+- the pre-spec gate
+- required delivery phases
+- human-controlled step execution
 - expected artifacts
 - spec sync rules
-- when to use the standard spec-driven flow versus short execution paths
+- when to use the standard flow versus shorter execution paths
+
+The workflow is designed to prevent three common failures:
+- the agent makes unconfirmed assumptions
+- the spec does not match the real codebase
+- large features enter implementation without being sliced first
+
+## Core Rule
+Before writing a spec, the agent must run a lightweight pre-spec gate:
+1. `Shape`
+2. `Recon`
+3. `Decide`
+
+These steps are usually ephemeral notes in chat, not durable files.
 
 ## Routing
 
 | Task type | Standard workflow |
 |---|---|
-| New feature | `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` |
-| Fix bug (user-visible or business-impacting) | `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` |
+| New feature | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` |
+| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` |
 | Refactor | `/execute-task "Refactor: ..."` |
 | Small update (1-2 files) | `/execute-task "..."` |
 
-## Standard Spec-Driven Flow
+Rule:
+- the human decides which step to run
+- the agent does not choose a mode
+- if the human starts at `/spec`, the agent must still do a lightweight `Shape` + `Recon` + `Decide` pass before writing the spec
+
+## Standard Flow
 
 ```text
-User request
+Human intent
   ↓
-Routing decision
+Shape
+  ↓
+Recon
+  ↓
+Decide
   ↓
 /spec
   ↓
@@ -43,15 +67,71 @@ human feedback / iterative fixes as needed
 /verify-feature
 ```
 
-## Phase Rules
+## Pre-Spec Gate
 
-### 1. `/spec`
+### 1. `Shape`
 Purpose:
-- capture the feature intent before implementation
-- keep one durable source of truth for both behavior and technical direction
-- make later execution and verification consistent with the same artifact
+- clarify expected behavior before the agent commits it into a spec
 
 Rules:
+- answer these questions:
+  - What does the human expect to happen?
+  - What is the happy path?
+  - What must not happen?
+  - Does this look `Small`, `Medium`, `Large`, or `Epic`?
+- keep this lightweight
+- ask only focused questions when the request is materially ambiguous
+- ask only what is needed to avoid guessing
+
+Expected output:
+- short shaping notes, usually not persisted
+
+### 2. `Recon`
+Purpose:
+- reality-check the request against the current codebase
+
+Rules:
+- check these questions:
+  - What does the codebase currently do?
+  - Where is the closest existing pattern?
+  - What constraints or dependencies matter?
+  - Would the requested behavior conflict with the current architecture or product rules?
+- this is not a full implementation plan
+- keep exploration local to the relevant code paths
+- surface conflicts early instead of forcing the request into the existing system
+
+Expected output:
+- short codebase notes, usually not persisted
+
+### 3. `Decide`
+Purpose:
+- choose the right next move before creating a durable spec
+
+Rules:
+- make one explicit decision:
+  - write the spec now
+  - ask focused human questions
+  - split the work into slices
+  - run a spike first
+  - escalate a codebase or business-rule conflict
+- do not write a spec until this decision is explicit
+- do not spec an unsliced epic
+- if the request conflicts with the codebase or standards, surface that before spec creation
+
+Expected output:
+- one explicit decision statement
+
+## Delivery Phases
+
+### 4. `/spec`
+Purpose:
+- create the durable source of truth for the approved slice
+
+Rules:
+- write the spec only after `Shape` + `Recon` + `Decide`
+- do not include assumptions that were not confirmed
+- do not write one spec for a whole epic; spec only the next executable slice
+- keep the spec aligned with the codebase context discovered during recon
 - focus on user value, scope, behavior, and implementation direction
 - include both behavioral constraints and technical approach
 - keep technical detail at the architecture and pattern level, not file-by-file task breakdown
@@ -80,7 +160,7 @@ Expected output:
 - `## Edge Cases / Failure States` when relevant
 - `## Decision Log` when relevant
 
-### 2. `/execute-spec`
+### 5. `/execute-spec`
 Purpose:
 - implement directly from the spec
 - allow iterative code changes without promoting temporary planning artifacts into durable workflow state
@@ -91,6 +171,7 @@ Rules:
 - make code changes in focused iterations
 - do not introduce new product behavior, validation rules, persistence rules, fallback behavior, or visible UX behavior that is not already in the spec or explicitly approved
 - if a required decision is missing, stop and ask instead of guessing
+- if execution reveals that the spec is too broad or not feasible as written, go back to `Decide` before expanding scope
 - user feedback may trigger additional edit turns before spec sync
 - execution may use temporary internal task breakdown, but it should not create durable plan artifacts by default
 
@@ -100,7 +181,7 @@ Execution expectations:
 - validate changed behavior where practical
 - record important implementation decisions so they can be synced back into the spec later
 
-### 3. `/sync-spec`
+### 6. `/sync-spec`
 Purpose:
 - reconcile the durable spec with the implemented codebase state
 - keep the spec useful for future updates after iterative implementation turns
@@ -126,7 +207,7 @@ Human confirmation required for:
 - `## Key Behavioral Rules`
 - `## Out of Scope`
 
-### 4. `/verify-feature`
+### 7. `/verify-feature`
 Purpose:
 - verify the implemented feature against the latest synced spec
 
@@ -136,24 +217,22 @@ Rules:
 - flag unresolved questions or partial coverage
 - write to `docs/ai/verifications/{feature}.md`
 
-## Shorter Flows
+## Human-Controlled Execution
 
-### Refactor or very small update
-Use:
-- `/execute-task "..."` or `/execute-task "Refactor: ..."`
+The workflow is not mode-based.
 
-Guidance:
-- use only for local, low-risk work
-- skip spec creation when no durable feature knowledge is needed
-- keep exploration minimal and local to the change
+The human decides which step to invoke next:
+- `/execute-task` for small, local work
+- `/spec` when durable feature knowledge is needed
+- `/execute-spec` after the spec is approved enough to build
+- `/sync-spec` after implementation stabilizes
+- `/verify-feature` when checking the implemented result against the latest spec
 
-### Spec-driven bug fix
-Use:
-- `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature`
-
-Guidance:
-- use this path when the bug changes user-visible behavior, business rules, or long-term product knowledge
-- keep the spec durable and sync it after code settles
+Agent behavior rules:
+- do not silently choose a larger or smaller workflow mode
+- if the current step is too early or too late, say so explicitly and recommend the next step
+- if a request is too broad for one spec, `Decide` must recommend slicing before `/spec`
+- if feasibility is uncertain, `Decide` must recommend a spike before `/spec`
 
 ## Workflow Artifacts
 
@@ -165,7 +244,7 @@ Guidance:
 
 ## Usage Notes
 - Choose the lightest workflow that still gives enough control.
-- Use the full flow for new or ambiguous work.
-- Use short flows only when the task is already well understood.
+- `Shape` and `Recon` exist to protect spec quality, not to create extra ceremony.
+- Let the human control step entry; let the agent enforce the gate conditions inside the chosen step.
 - If the task changes shape during execution, re-scope the workflow instead of forcing the original path.
 - Keep durable workflow knowledge in the spec; keep temporary execution reasoning out of persistent workflow artifacts unless it remains useful after implementation.

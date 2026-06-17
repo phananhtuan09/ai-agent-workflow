@@ -1,18 +1,10 @@
----
-name: execute-spec
-description: Use when the user asks to implement a feature or user-visible bug fix from a spec file. Executes directly from the spec and writes an implementation summary.
----
-
-# Execute Spec
-
 Execute the spec file provided.
 
-## Input
+INPUT: path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
 
-Path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
+---
 
-## Hard Constraints — non-negotiable
-
+HARD CONSTRAINTS — non-negotiable:
 - Read the spec before making code changes
 - Treat the spec as the source of truth for behavior
 - Do NOT create durable plan artifacts by default
@@ -21,8 +13,9 @@ Path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
 - If the spec turns out to be too broad for one safe implementation pass, stop and send the work back to `Decide`
 - Use only lightweight local exploration needed to implement the current change safely
 
-## Startup
+---
 
+STARTUP:
 1. Read the spec file completely
 2. Identify the acceptance criteria, behavioral rules, technical approach, and open questions
 3. If critical product behavior is unresolved:
