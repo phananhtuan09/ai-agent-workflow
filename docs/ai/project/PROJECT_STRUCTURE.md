@@ -13,7 +13,9 @@
 - docs/ai/testing/: test plans per feature
   - `unit-{name}.md`: unit test docs (created by `/writing-test`)
   - `integration-{name}.md`: integration test docs (created by `/writing-integration-test`)
-  - `web-{name}.md`: browser UI test docs (created by `/test-web-orchestrator`)
+  - `web-{name}.md`: browser UI test docs (legacy/orchestrator-oriented flows only)
+- docs/ai/verifications/: implementation and runtime verification artifacts per feature
+  - `{name}.md`: verification record extended by `/verify-feature` and `/verify-runtime`
 - docs/ai/tooling/: cross-tool workflow mapping and migration references
 
 ## Design Patterns (in use)
@@ -68,8 +70,9 @@
 - `docs/ai/testing/`: test plans and results
   - `unit-{name}.md`: unit test docs (from `/writing-test`)
   - `integration-{name}.md`: integration test docs (from `/writing-integration-test`)
-  - `web-{name}.md`: browser UI test docs (from `/test-web-orchestrator`)
+  - `web-{name}.md`: browser UI test docs (legacy/orchestrator-oriented flows)
   - Run tests via `/run-test` command
+- `docs/ai/verifications/`: implementation and runtime verification artifacts aligned to synced specs
 - `docs/ai/tooling/`: cross-tool capability mapping and migration references used by sync workflows
 
 ## Guiding Questions (for AI regeneration)

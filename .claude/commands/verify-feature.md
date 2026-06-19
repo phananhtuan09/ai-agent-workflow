@@ -1,38 +1,57 @@
-Read the spec file, generate a verification checklist.
+Verify implementation readiness against the latest synced spec and record what was actually checked.
 
-INPUT: path to spec file (e.g. docs/ai/specs/{feature-name}.md)
+INPUT:
+- Required: spec path (e.g. docs/ai/specs/{feature-name}.md)
+- Optional: summary path (e.g. docs/ai/summaries/{feature-name}.md)
+- Optional: focused file or module scope when the feature touches a narrow area
 
 OUTPUT: docs/ai/verifications/{feature-name}.md
 
-VERIFICATION FORMAT:
+IMPLEMENTATION WORKFLOW:
+1. Read the synced spec.
+2. Inspect the relevant implementation surfaces.
+3. Map acceptance criteria to code areas before judging coverage.
+4. Run only the relevant implementation checks for the changed feature.
+5. Record passed checks, failed checks, coverage gaps, and runtime follow-ups.
 
-## Source
-docs/ai/specs/{feature-name}.md
+IMPLEMENTATION OUTPUT FORMAT:
 
-## Manual Verification
-[One test scenario per AC — written as step-by-step human action]
-- [ ] AC1: [action] → [expected result]
-- [ ] AC2: [action] → [expected result]
+## Sources
+- Spec: docs/ai/specs/{feature-name}.md
+- Summary: [optional]
 
-## Automated Verification
-- [ ] Unit: [what to test]
-- [ ] Integration: [what to test]
+## Implementation Surfaces
+- AC1 → [file/module/function]
+- AC2 → [file/module/function]
 
-## Edge Cases
-[Only from explicit AC conditions + Open Questions already answered]
-- [ ] ...
+## Executed Checks
+- Lint: [command] → Pass/Fail/Blocked
+- Typecheck: [command] → Pass/Fail/Blocked
+- Build: [command] → Pass/Fail/Blocked
+- Tests: [command] → Pass/Fail/Blocked
+- Migration Check: [command] → Pass/Fail/Blocked
+- Docker Build: [command] → Pass/Fail/Blocked
 
-## Excluded (Out of Scope)
-[Items from spec's Out of Scope — listed so reviewer knows they are
-intentionally not tested]
-- ...
+## Passed
+- [what has implementation evidence]
+
+## Failed
+- [what failed and why]
+
+## Coverage Gaps
+- [acceptance criteria or rules lacking implementation-level evidence]
+
+## Needs Runtime Verification
+- [observable behaviors to verify at runtime]
+
+## Final Status
+Pass | Fail | Partial | Blocked
 
 RULES:
 - All output files must be written in English
-- Every AC must have at least one manual verification step
-- Steps written as: "[do X] → [expect Y]" — unambiguous, no interpretation
-- Do not invent test cases beyond what ACs specify
-- Out of Scope in spec → excluded from verification, not edge case source
-- Open Questions not yet answered → flag as:
-  ⚠️ "Unresolved — cannot verify until clarified"
-- Do not create test scenarios for unresolved Open Questions
+- Do not modify code, specs, or tests during implementation verification
+- Do not write new unit tests in this command
+- Run only the checks that are relevant to the feature's change type
+- If a relevant check cannot run because of missing environment, setup, or tooling, mark it as `Blocked`
+- If implementation evidence is incomplete but some checks passed, use final status `Partial`
+- Keep runtime behavior judgments out of this phase; move them into `/verify-runtime`

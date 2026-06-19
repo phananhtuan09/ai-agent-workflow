@@ -71,6 +71,7 @@ Read:
 Read:
 - `docs/ai/project/README.md`
 - the workflow document that defines the behavior being implemented or changed
+- when touching verification flow, also read the command contracts for `/verify-feature` and `/verify-runtime`
 
 ### Workflow review task
 Read:

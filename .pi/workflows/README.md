@@ -20,7 +20,7 @@ Workflow tracker này dùng để hiển thị workflow hiện tại ở footer 
 Footer hiển thị theo dạng compact:
 
 ```text
-↪ Workflow: Feature Standard · 3/7 · Decide → Create spec (/create-spec)
+↪ Workflow: Feature Standard · 3/8 · Decide → Create spec (/create-spec)
 ```
 
 ## Workflow Notes
@@ -28,6 +28,8 @@ Footer hiển thị theo dạng compact:
 - `Shape`, `Recon`, `Decide` là gate step để hiển thị và nhắc flow, không bắt buộc phải là command riêng.
 - Nếu human bắt đầu ở `/create-spec`, agent vẫn phải chạy pass nhẹ `Shape + Recon + Decide` trước khi viết spec.
 - `Review spec` là optional check, không phải step chuẩn bắt buộc trong workflow tracker mặc định.
+- `Verify feature` là implementation verification.
+- `Verify runtime` là runtime behavior verification sau khi implementation verification đã xong.
 
 ## Workflow JSON shape
 Mỗi step nên có tối thiểu:

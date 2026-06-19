@@ -1,7 +1,7 @@
 {
   "id": "feature-standard",
   "name": "Feature Standard",
-  "description": "Workflow chuẩn cho feature: Shape, Recon, Decide trước spec; sau đó execute, sync, verify.",
+  "description": "Workflow chuẩn cho feature: Shape, Recon, Decide trước spec; sau đó execute, sync, verify implementation, rồi verify runtime.",
   "steps": [
     {
       "id": "shape",
@@ -50,7 +50,14 @@
       "title": "Verify feature",
       "type": "skill",
       "value": "verify-feature",
-      "hint": "Yêu cầu agent verify feature theo latest synced spec"
+      "hint": "Yêu cầu agent verify implementation theo latest synced spec"
+    },
+    {
+      "id": "verify-runtime",
+      "title": "Verify runtime",
+      "type": "command",
+      "value": "/verify-runtime",
+      "hint": "Gõ /verify-runtime @docs/ai/specs/<file>.md --url <runtime-url>"
     }
   ]
 }

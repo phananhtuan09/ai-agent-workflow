@@ -18,10 +18,11 @@ It covers:
 - spec sync rules
 - when to use the standard flow versus shorter execution paths
 
-The workflow is designed to prevent three common failures:
+The workflow is designed to prevent four common failures:
 - the agent makes unconfirmed assumptions
 - the spec does not match the real codebase
 - large features enter implementation without being sliced first
+- the agent claims feature completion without implementation and runtime evidence
 
 ## Core Rule
 Before writing a spec, the agent must run a lightweight pre-spec gate:
@@ -35,8 +36,8 @@ These steps are usually ephemeral notes in chat, not durable files.
 
 | Task type | Standard workflow |
 |---|---|
-| New feature | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` |
-| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` |
+| New feature | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` |
+| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` |
 | Refactor | `/execute-task "Refactor: ..."` |
 | Small update (1-2 files) | `/execute-task "..."` |
 
@@ -65,6 +66,8 @@ human feedback / iterative fixes as needed
 /sync-spec
   ↓
 /verify-feature
+  ↓
+/verify-runtime
 ```
 
 ## Pre-Spec Gate
@@ -209,13 +212,70 @@ Human confirmation required for:
 
 ### 7. `/verify-feature`
 Purpose:
-- verify the implemented feature against the latest synced spec
+- verify the implemented feature against the latest synced spec at the implementation level
 
 Rules:
 - verify against the latest synced acceptance criteria and behavioral rules
-- separate automated verification from manual checks
-- flag unresolved questions or partial coverage
+- map acceptance criteria to implementation surfaces before judging coverage
+- run only the relevant implementation checks for the changed feature
+- separate executed checks, failures, coverage gaps, and runtime follow-ups
+- do not modify code, write new tests, or sync the spec during verification
+- flag unresolved questions, blocked checks, or partial coverage explicitly
 - write to `docs/ai/verifications/{feature}.md`
+
+Typical checks when relevant:
+- lint
+- typecheck
+- build
+- existing unit or integration tests
+- migration check or dry-run
+- docker build or packaging validation
+
+Expected output sections:
+- `## Sources`
+- `## Implementation Surfaces`
+- `## Executed Checks`
+- `## Passed`
+- `## Failed`
+- `## Coverage Gaps`
+- `## Needs Runtime Verification`
+- `## Final Status`
+
+### 8. `/verify-runtime`
+Purpose:
+- verify runtime behavior against the latest synced spec after implementation verification is complete
+
+Rules:
+- read the latest synced spec and the current verification artifact before runtime checks
+- classify acceptance criteria as automatically verifiable, manual-only, or blocked before execution
+- verify only observable runtime behavior; do not infer hidden system behavior without evidence
+- record evidence and a status for each acceptance criterion checked at runtime
+- do not modify code, sync the spec, or repair failures during runtime verification
+- append or update runtime verification sections in `docs/ai/verifications/{feature}.md`
+
+Per-acceptance-criterion runtime results:
+- `Pass`
+- `Fail`
+- `Partial`
+- `Blocked`
+- `Not automatically verifiable`
+
+Final runtime status:
+- `Pass`
+- `Fail`
+- `Partial`
+- `Blocked`
+
+Status rule:
+- `Not automatically verifiable` is valid only at the acceptance-criterion level, not as the final runtime status
+
+Expected output sections:
+- `## Runtime Target`
+- `## Runtime Coverage Matrix`
+- `## Automated Runtime Checks`
+- `## Manual Follow-ups`
+- `## Evidence Summary`
+- `## Runtime Status`
 
 ## Human-Controlled Execution
 
@@ -226,7 +286,8 @@ The human decides which step to invoke next:
 - `/spec` when durable feature knowledge is needed
 - `/execute-spec` after the spec is approved enough to build
 - `/sync-spec` after implementation stabilizes
-- `/verify-feature` when checking the implemented result against the latest spec
+- `/verify-feature` when checking implementation readiness against the latest spec
+- `/verify-runtime` when checking runtime behavior against the latest synced spec
 
 Agent behavior rules:
 - do not silently choose a larger or smaller workflow mode
@@ -240,7 +301,7 @@ Agent behavior rules:
 |---|---|
 | `docs/ai/specs/{feature}.md` | `/spec` and later updated by `/sync-spec` |
 | `docs/ai/summaries/{feature}.md` | `/execute-spec` |
-| `docs/ai/verifications/{feature}.md` | `/verify-feature` |
+| `docs/ai/verifications/{feature}.md` | `/verify-feature` and later extended by `/verify-runtime` |
 
 ## Usage Notes
 - Choose the lightest workflow that still gives enough control.

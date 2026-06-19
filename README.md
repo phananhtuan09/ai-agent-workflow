@@ -1,13 +1,13 @@
 # AI Agent Workflow
 
-A standardized AI workflow system for modern AI coding assistants. Initialize structured planning, implementation, testing, and review workflows into ANY repository with ONE command.
+A standardized AI workflow system for modern AI coding assistants. Initialize structured spec, execution, sync, and verification workflows into any repository with one command.
 
 ## Features
 
 - **Multi-Platform Support**: Works with Codex, Claude Code, Google Antigravity, and Pi
-- **Structured Workflows**: Plan → Implement → Test → Review methodology
-- **9 Pre-built Commands**: Create plans, execute tasks, run tests, code reviews, and more
-- **7 Reusable Skills**: Design fundamentals, accessibility, theme generation, quality checks
+- **Structured Workflows**: Shape → Recon → Decide → Spec → Execute → Sync → Verify
+- **Pre-built Commands**: Spec creation, execution, sync, verification, testing, reviews, and more
+- **Reusable Skills**: Verification, quality checks, design fundamentals, theme generation, and more
 - **Project Wiki Bootstrap**: Seed a shared `project-wiki/` knowledge base alongside workflow docs
 - **Universal Standards**: `AGENTS.md` works across all AI tools
 - **Bootstrap Installer**: One command from GitHub, no npm registry required
@@ -139,17 +139,19 @@ npx ai-workflow-init --all
 
 ---
 
-## Core Workflow: Plan → Implement → Test → Review
+## Core Workflow: Spec → Execute → Sync → Verify
 
-This workflow system follows a 4-phase development cycle:
+This workflow system follows a verification-first development cycle:
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│    PLAN     │ → │  IMPLEMENT  │ → │    TEST     │ → │   REVIEW    │
-│             │    │             │    │             │    │             │
-│ /create-plan│    │/execute-plan│    │/writing-test│    │/code-review │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+┌─────────────┐    ┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────────┐
+│    SPEC     │ → │   EXECUTE   │ → │  SYNC SPEC   │ → │ VERIFY FEAT. │ → │ VERIFY RUNTIME │
+│             │    │             │    │              │    │              │    │                │
+│/create-spec │    │/execute-spec│    │ /sync-spec   │    │/verify-feature│   │ /verify-runtime│
+└─────────────┘    └─────────────┘    └──────────────┘    └──────────────┘    └────────────────┘
 ```
+
+Legacy planning and test-generation commands are still available, but the default feature workflow is spec-driven and ends with implementation plus runtime verification.
 
 ---
 
@@ -381,25 +383,28 @@ User: /write-dev-docs memoization
 Best for: Small features, quick fixes, solo work.
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│    PLAN     │ → │  IMPLEMENT  │ → │    TEST     │ → │   REVIEW    │
-│             │    │             │    │             │    │             │
-│ /create-plan│    │/execute-plan│    │/writing-test│    │/code-review │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+┌─────────────┐    ┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────────┐
+│    SPEC     │ → │   EXECUTE   │ → │  SYNC SPEC   │ → │ VERIFY FEAT. │ → │ VERIFY RUNTIME │
+│             │    │             │    │              │    │              │    │                │
+│/create-spec │    │/execute-spec│    │ /sync-spec   │    │/verify-feature│   │ /verify-runtime│
+└─────────────┘    └─────────────┘    └──────────────┘    └──────────────┘    └────────────────┘
 ```
 
 ```bash
-# 1. Plan the feature
-/create-plan
+# 1. Create the feature spec
+/create-spec "user profile"
 
-# 2. Implement phase by phase
-/execute-plan user-profile
+# 2. Implement from the spec
+/execute-spec @docs/ai/specs/user-profile.md
 
-# 3. Write tests
-/writing-test user-profile
+# 3. Sync durable spec details to implementation
+/sync-spec @docs/ai/specs/user-profile.md
 
-# 4. Review before PR
-/code-review
+# 4. Verify implementation coverage
+/verify-feature @docs/ai/specs/user-profile.md
+
+# 5. Verify observable runtime behavior
+/verify-runtime @docs/ai/specs/user-profile.md --url http://localhost:3000
 ```
 
 ### Example: Complex Requirements
