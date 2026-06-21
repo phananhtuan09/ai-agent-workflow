@@ -21,6 +21,7 @@ AUTO-SYNC ALLOWED:
 You may update these sections automatically when the codebase confirms them:
 - `## Technical Approach`
 - `## Architecture / Pattern Notes`
+- `## Agent Constraints Chosen For This Slice`
 - `## Decision Log`
 - implementation constraints
 - technical clarifications
@@ -33,6 +34,7 @@ Do NOT silently change these sections:
 - `## Acceptance Criteria`
 - `## Key Behavioral Rules`
 - `## Out of Scope`
+- any user-visible recommendation or ranking rule that changes from transparent logic to hidden scoring, or the reverse
 
 If the implementation no longer matches those sections:
 - do not force the code to fit the spec during sync
@@ -54,6 +56,10 @@ When drift changes user-visible behavior or acceptance:
 - stop before applying that part
 - report the proposed delta
 - wait for confirmation
+
+When the spec says logic should be transparent, visible, simple, or non-hidden:
+- treat hidden weighted scoring or opaque heuristics in code as business-level drift
+- do not silently normalize that drift into the spec
 
 DONE WHEN:
 - the technical sections match the implemented codebase

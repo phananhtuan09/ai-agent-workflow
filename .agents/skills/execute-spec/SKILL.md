@@ -44,6 +44,8 @@ Path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
 6. Record important implementation decisions for later spec sync
 7. Do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded under `## Agent Constraints Chosen For This Slice`
 8. If execution requires choosing one of those rules to complete the slice safely, record it explicitly for later sync instead of leaving it implicit in code
+9. If the spec says the logic should be transparent, visible, simple, or non-hidden, do not implement it as an opaque weighted score or hidden heuristic
+10. In those cases, prefer readable rule chains, named tie-breakers, or UI-visible reasons that can be traced back to the spec
 
 ## Iterative Feedback
 

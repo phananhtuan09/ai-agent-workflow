@@ -181,6 +181,7 @@ Assumption rules:
   - chosen to keep scope small
 - `## Agent Constraints Chosen For This Slice` is required when the agent had to choose a default rule to keep the slice executable without overbuilding
 - examples include default fairness rules, ranking logic, tolerance thresholds, tie-breakers, or temporary simplifications such as equal split, simple priority ordering, or single-round snapshot behavior
+- if the spec says a recommendation, ranking, or leading state must come from visible or transparent rules, the spec must describe those rules in readable terms instead of leaving them implicit
 - if no such constraints were chosen, the section may be omitted
 
 ### 5. `/execute-spec`
@@ -199,6 +200,8 @@ Rules:
 - execution may use temporary internal task breakdown, but it should not create durable plan artifacts by default
 - do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded as agent-chosen slice constraints
 - if execution requires choosing such a rule to complete the slice safely, record it for sync back into the spec instead of leaving it implicit in code
+- if the spec says the logic should be transparent, visible, simple, or non-hidden, do not implement it as an opaque weighted scoring formula or hidden heuristic
+- in those cases, prefer ordered readable rules such as explicit priority checks, named tie-breakers, or directly rendered reasons that the user can inspect from the UI
 
 Execution expectations:
 - make minimal, scoped changes
@@ -247,6 +250,10 @@ Human confirmation required for:
 - `## Acceptance Criteria`
 - `## Key Behavioral Rules`
 - `## Out of Scope`
+- transparent-vs-hidden recommendation logic or any user-visible decision rule that changed in meaning
+
+Sync rule for transparent logic:
+- if the spec says recommendation logic should be visible, transparent, or non-hidden, and the implementation instead uses hidden weighted scoring or opaque heuristics, treat that as business-level drift, not a technical-only sync
 
 ### 7. `/verify-feature`
 Purpose:
