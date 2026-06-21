@@ -9,10 +9,11 @@ OUTPUT: docs/ai/verifications/{feature-name}.md
 
 IMPLEMENTATION WORKFLOW:
 1. Read the synced spec.
-2. Inspect the relevant implementation surfaces.
-3. Map acceptance criteria to code areas before judging coverage.
-4. Run only the relevant implementation checks for the changed feature.
-5. Record passed checks, failed checks, coverage gaps, and runtime follow-ups.
+2. If `docs/ai/verifications/{feature-name}.md` already exists, read it first and preserve still-valid sections instead of rewriting blindly.
+3. Inspect the relevant implementation surfaces.
+4. Map acceptance criteria to code areas before judging coverage.
+5. Run only the relevant implementation checks for the changed feature.
+6. Record passed checks, failed checks, coverage gaps, and runtime follow-ups.
 
 EXECUTION REQUIREMENT:
 - Creating `docs/ai/verifications/{feature-name}.md` is not sufficient by itself.
@@ -63,3 +64,6 @@ RULES:
 - If a relevant check cannot run because of missing environment, setup, or tooling, mark it as `Blocked`
 - If implementation evidence is incomplete but some checks passed, use final status `Partial`
 - Keep runtime behavior judgments out of this phase; move them into `/verify-runtime`
+- Do not include runtime-only evidence in this phase
+- `/verify-feature` may update implementation-level sections, but must not delete valid runtime sections previously added by `/verify-runtime`
+- If current implementation evidence conflicts with older verification content, replace only the conflicting implementation section and note the reason in `## Executed Checks` or `## Failed`

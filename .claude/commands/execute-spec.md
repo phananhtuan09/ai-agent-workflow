@@ -69,10 +69,14 @@ Write summary to `docs/ai/summaries/{feature-name}.md`
 
 ## Summary Rules
 
-- AC ✅ only if: test passed with evidence OR human explicitly confirmed
-- AC ⚠️ if: not tested yet, test skipped, or test failed
-- Never mark an AC as verified based only on intent or code inspection
+- `## Verified` may include only checks actually executed during implementation
+- `## Not Verified` must list pending checks, manual-only checks, blocked checks, or checks intentionally deferred to verification
+- Never list the same AC or claim in both `## Verified` and `## Not Verified`
+- Never mark an AC as verified based only on intent
+- If implementation confidence comes from code inspection, say so explicitly instead of implying runtime proof
 - If no automated test exists, say `No automated coverage`
+- The summary is an execution handoff artifact, not the final verification artifact
+- If later `/verify-feature` or `/verify-runtime` findings differ, the verification artifact is the source of truth
 
 ## Blocked Rule
 

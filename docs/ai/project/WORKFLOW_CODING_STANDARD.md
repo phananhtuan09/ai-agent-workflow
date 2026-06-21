@@ -183,6 +183,21 @@ Execution expectations:
 - follow project code conventions and structure rules
 - validate changed behavior where practical
 - record important implementation decisions so they can be synced back into the spec later
+- write a concise execution summary to `docs/ai/summaries/{feature}.md`
+
+Required summary sections:
+- `## Done`
+- `## Not Done / Blocked`
+- `## Decisions`
+- `## Verified`
+- `## Not Verified`
+
+Summary rules:
+- `## Verified` may include only checks that were actually executed during implementation
+- `## Not Verified` must contain pending checks, manual-only checks, or checks intentionally deferred to verification
+- do not mark an acceptance criterion as verified in both sections
+- if later verification changes the confidence level, the verification artifact is the source of truth
+- the summary is an execution handoff artifact, not the final verification artifact
 
 ### 6. `/sync-spec`
 Purpose:
@@ -215,6 +230,7 @@ Purpose:
 - verify the implemented feature against the latest synced spec at the implementation level
 
 Rules:
+- if `docs/ai/verifications/{feature}.md` already exists, read it first and preserve still-valid sections instead of rewriting blindly
 - verify against the latest synced acceptance criteria and behavioral rules
 - map acceptance criteria to implementation surfaces before judging coverage
 - run only the relevant implementation checks for the changed feature
@@ -222,6 +238,7 @@ Rules:
 - do not modify code, write new tests, or sync the spec during verification
 - flag unresolved questions, blocked checks, or partial coverage explicitly
 - write to `docs/ai/verifications/{feature}.md`
+- do not include runtime-only evidence in this phase; leave runtime behavior to `/verify-runtime`
 
 Typical checks when relevant:
 - lint
@@ -241,17 +258,41 @@ Expected output sections:
 - `## Needs Runtime Verification`
 - `## Final Status`
 
+Section intent:
+- `## Sources`: latest synced spec, relevant code paths, existing verification artifact if present
+- `## Implementation Surfaces`: files, components, routes, scripts, or other concrete surfaces mapped to ACs
+- `## Executed Checks`: only checks actually run in this phase, with command or inspection method
+- `## Passed`: ACs or checks supported by executed evidence
+- `## Failed`: ACs or checks that failed, with concrete reason
+- `## Coverage Gaps`: ACs or behaviors not proven yet
+- `## Needs Runtime Verification`: observable behaviors that still need browser/manual/runtime proof
+- `## Final Status`: one of `Pass`, `Partial`, `Fail`, `Blocked`
+
+Status rules:
+- `Pass`: all implementation-level checks needed for this phase passed and no material coverage gaps remain
+- `Partial`: some checks passed but meaningful coverage gaps or deferred runtime proof remain
+- `Fail`: at least one required implementation-level check failed
+- `Blocked`: the phase could not complete because required inputs, environment, or artifacts were unavailable
+
+Overwrite rules:
+- `/verify-feature` may update the implementation-level sections above
+- `/verify-feature` must not delete valid runtime sections that were previously appended by `/verify-runtime`
+- when older content conflicts with current evidence, replace only the conflicting section and note the reason in `## Executed Checks` or `## Failed`
+
 ### 8. `/verify-runtime`
 Purpose:
 - verify runtime behavior against the latest synced spec after implementation verification is complete
 
 Rules:
 - read the latest synced spec and the current verification artifact before runtime checks
+- if the verification file does not exist yet, stop and recommend running `/verify-feature` first
+- if the verification file already exists from another session, append or update runtime sections in place instead of recreating the file from scratch
 - classify acceptance criteria as automatically verifiable, manual-only, or blocked before execution
 - verify only observable runtime behavior; do not infer hidden system behavior without evidence
 - record evidence and a status for each acceptance criterion checked at runtime
 - do not modify code, sync the spec, or repair failures during runtime verification
 - append or update runtime verification sections in `docs/ai/verifications/{feature}.md`
+- do not rewrite implementation-level sections produced by `/verify-feature` except to add a narrow cross-reference when runtime evidence changes the overall conclusion
 
 Per-acceptance-criterion runtime results:
 - `Pass`
@@ -277,6 +318,16 @@ Expected output sections:
 - `## Evidence Summary`
 - `## Runtime Status`
 
+Runtime append rules:
+- `/verify-runtime` owns only the runtime sections above
+- keep existing implementation-level sections intact
+- if runtime evidence contradicts an earlier implementation-only pass, preserve the earlier section and record the contradiction explicitly in runtime sections
+
+Evidence rules:
+- do not claim `no overflow`, `responsive`, `works on mobile`, or similar layout outcomes from CSS declarations alone when runtime measurement is available
+- prefer concrete evidence such as viewport dimensions, DOM counts, visible text, screenshots, console output, `scrollWidth/clientWidth`, or browser-evaluated state
+- when a claim cannot be proven in the current environment, mark it `Partial`, `Blocked`, or `Not automatically verifiable` instead of upgrading it to `Pass`
+
 ## Human-Controlled Execution
 
 The workflow is not mode-based.
@@ -300,7 +351,7 @@ Agent behavior rules:
 | Artifact path | Produced by |
 |---|---|
 | `docs/ai/specs/{feature}.md` | `/spec` and later updated by `/sync-spec` |
-| `docs/ai/summaries/{feature}.md` | `/execute-spec` |
+| `docs/ai/summaries/{feature}.md` | `/execute-spec` as an execution handoff summary, not final proof |
 | `docs/ai/verifications/{feature}.md` | `/verify-feature` and later extended by `/verify-runtime` |
 
 ## Usage Notes
