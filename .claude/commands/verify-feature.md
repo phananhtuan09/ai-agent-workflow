@@ -14,6 +14,13 @@ IMPLEMENTATION WORKFLOW:
 4. Run only the relevant implementation checks for the changed feature.
 5. Record passed checks, failed checks, coverage gaps, and runtime follow-ups.
 
+EXECUTION REQUIREMENT:
+- Creating `docs/ai/verifications/{feature-name}.md` is not sufficient by itself.
+- Do not stop at scaffold or checklist generation.
+- Complete the command only after you have either:
+  - executed the relevant implementation checks and recorded their results, or
+  - recorded explicit `Blocked` reasons for each check you could not run.
+
 IMPLEMENTATION OUTPUT FORMAT:
 
 ## Sources
@@ -52,6 +59,7 @@ RULES:
 - Do not modify code, specs, or tests during implementation verification
 - Do not write new unit tests in this command
 - Run only the checks that are relevant to the feature's change type
+- The verification artifact must contain actual findings from implementation inspection, not a blank template
 - If a relevant check cannot run because of missing environment, setup, or tooling, mark it as `Blocked`
 - If implementation evidence is incomplete but some checks passed, use final status `Partial`
 - Keep runtime behavior judgments out of this phase; move them into `/verify-runtime`

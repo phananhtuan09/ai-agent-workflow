@@ -1,6 +1,6 @@
 ---
 name: verify-feature
-description: Use when the user asks to verify, check, or validate a feature against its latest synced spec. Generates a verification checklist.
+description: Use when the user asks to verify, check, or validate a feature against its latest synced spec. Generates a verification checklist, then continues with implementation verification instead of stopping at file creation.
 ---
 
 # Verify Feature
@@ -9,11 +9,15 @@ Read the latest synced spec file and generate a verification checklist.
 
 ## Input
 
-Path to spec file (e.g. docs/ai/specs/{feature-name}.md)
+- Required: path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
+- Optional: summary path (e.g. `docs/ai/summaries/{feature-name}.md`)
+- Optional: focused file or module scope when the feature touches a narrow area
 
 ## Output
 
-Write to: docs/ai/verifications/{feature-name}.md
+Write to: `docs/ai/verifications/{feature-name}.md`
+
+After creating the verification artifact, continue immediately with implementation verification for the relevant code paths and checks. Do not stop at scaffold creation.
 
 ## Verification Format
 
@@ -51,3 +55,4 @@ intentionally not tested]
 - Open Questions not yet answered -> flag as:
   "Unresolved - cannot verify until clarified"
 - Do not create test scenarios for unresolved Open Questions
+- After the file is created, continue with implementation verification and record actual findings or explicit `Blocked` reasons
