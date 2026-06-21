@@ -35,6 +35,8 @@ STARTUP:
 4. Reuse existing repository patterns when possible
 5. Validate changed behavior where practical
 6. Record important implementation decisions for later spec sync
+7. Do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded under `## Agent Constraints Chosen For This Slice`
+8. If execution requires choosing one of those rules to complete the slice safely, record it explicitly for later sync instead of leaving it implicit in code
 
 ## Iterative Feedback
 

@@ -32,6 +32,14 @@ Create a spec file for the described feature.
      - `run-spike`
      - `escalate-conflict`
    - If the result is not `write-spec`, stop without creating a spec file
+   - Before writing the spec, classify important assumptions into:
+     - confirmed
+     - inferred but safe
+     - needs confirmation
+     - chosen to keep scope small
+   - If an assumption changes core business behavior, fairness logic, ranking logic, thresholds, or user-visible decision-making:
+     - do not leave it implicit
+     - either ask the human, or record it explicitly as a slice constraint in the spec
 4. If `Decide = ask-human`:
    - Ask only the missing questions (max 5), batch them into one block, then wait
    - After answers arrive, rerun `Shape` + `Recon` + `Decide`
@@ -90,8 +98,24 @@ Create a spec file for the described feature.
 ## Scope
 [2-6 bullets: what the feature does for the user and what is included in this request]
 
+## Assumption Check
+### Confirmed
+- ...
+
+### Inferred But Safe
+- ...
+
+### Needs Confirmation
+- ...
+
+### Chosen To Keep Scope Small
+- ...
+
 ## Key Behavioral Rules
 [Use as needed. For Standard/Extended, usually 3-8 bullets. Include persistence, validation, fallback, reset/default behavior, visible output rules, compatibility expectations, or other constraints that affect acceptance.]
+
+## Agent Constraints Chosen For This Slice
+[Optional. Use when the agent had to choose a default rule or simplification to keep the slice executable without overbuilding.]
 
 ## Technical Approach
 [Describe the intended implementation direction at the architecture/pattern level. No file-by-file task breakdown.]
@@ -136,6 +160,10 @@ Create a spec file for the described feature.
 - Include technical approach and architecture notes only at the durable design level
 - Do not include implementation details such as file paths, function names, schema/model names, storage keys, or step-by-step code tasks
 - You may include behavioral constraints that are required to keep planning bounded: validation limits, persistence scope, fallback behavior, reset/default behavior, compatibility expectations, and visible error/empty states
+- `## Assumption Check` must make unclear business logic visible instead of silently converting it into confirmed intent
+- `## Agent Constraints Chosen For This Slice` is required when the agent chooses a default rule to keep scope small
+- If a core rule is not confirmed but still needed for execution, record it under `Chosen To Keep Scope Small` and `## Agent Constraints Chosen For This Slice`
+- Do not present agent-chosen defaults as if they were directly confirmed by the human
 - Compatibility and migration expectations are allowed only at the user-visible or product-contract level
 - Do not include migration mechanisms such as schema changes, migration scripts, table/collection changes, or refactor steps
 - No project context (already provided by repository instructions such as `AGENTS.md`)
@@ -170,6 +198,8 @@ Valid outcomes are:
 - Does the AC count stay within the usual range for that tier? If not, did you split the feature or add a short addendum?
 - Are all acceptance criteria testable?
 - Are key persistence, validation, fallback, reset/default, and empty/error-state rules included when relevant?
+- Does `## Assumption Check` clearly separate confirmed intent from agent-selected defaults?
+- If the agent chose a default rule to keep scope small, is it recorded in `## Agent Constraints Chosen For This Slice` instead of being hidden inside behavioral rules?
 - Does the technical approach stay at a durable architecture/pattern level?
 - Are low-level implementation details excluded?
 - Can an executor implement from this spec and later sync it without inventing new behavior?

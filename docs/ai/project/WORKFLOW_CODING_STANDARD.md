@@ -120,6 +120,13 @@ Rules:
 - do not write a spec until this decision is explicit
 - do not spec an unsliced epic
 - if the request conflicts with the codebase or standards, surface that before spec creation
+- before writing the spec, classify important assumptions into:
+  - confirmed
+  - inferred but safe
+  - needs confirmation
+  - chosen to keep scope small
+- if an assumption changes core business behavior, fairness logic, ranking logic, thresholds, or user-visible decision-making, it must not stay implicit
+- for those assumptions, the agent must either ask the human, or write them down explicitly as slice constraints in the spec
 
 Expected output:
 - one explicit decision statement
@@ -143,6 +150,7 @@ Rules:
 - write the final tier explicitly in the spec
 - keep the spec concise and scan-friendly within tier limits
 - write to `docs/ai/specs/{feature}.md`
+- if the agent chooses a default rule only to keep scope small, label it explicitly instead of presenting it as confirmed human intent
 
 Tier guidance:
 - `Lite`: 25-39 lines, usually up to 7 ACs
@@ -154,14 +162,26 @@ Expected output:
 - `## Tier`
 - `## Problem`
 - `## Scope`
+- `## Assumption Check`
 - `## Technical Approach`
 - `## Architecture / Pattern Notes` when relevant
 - `## Acceptance Criteria`
 - `## Out of Scope`
 - `## Open Questions`
 - `## Key Behavioral Rules` when relevant
+- `## Agent Constraints Chosen For This Slice` when relevant
 - `## Edge Cases / Failure States` when relevant
 - `## Decision Log` when relevant
+
+Assumption rules:
+- `## Assumption Check` should separate:
+  - confirmed
+  - inferred but safe
+  - needs confirmation
+  - chosen to keep scope small
+- `## Agent Constraints Chosen For This Slice` is required when the agent had to choose a default rule to keep the slice executable without overbuilding
+- examples include default fairness rules, ranking logic, tolerance thresholds, tie-breakers, or temporary simplifications such as equal split, simple priority ordering, or single-round snapshot behavior
+- if no such constraints were chosen, the section may be omitted
 
 ### 5. `/execute-spec`
 Purpose:
@@ -177,6 +197,8 @@ Rules:
 - if execution reveals that the spec is too broad or not feasible as written, go back to `Decide` before expanding scope
 - user feedback may trigger additional edit turns before spec sync
 - execution may use temporary internal task breakdown, but it should not create durable plan artifacts by default
+- do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded as agent-chosen slice constraints
+- if execution requires choosing such a rule to complete the slice safely, record it for sync back into the spec instead of leaving it implicit in code
 
 Execution expectations:
 - make minimal, scoped changes
@@ -215,6 +237,7 @@ Rules:
 Auto-sync allowed for:
 - `## Technical Approach`
 - `## Architecture / Pattern Notes`
+- `## Agent Constraints Chosen For This Slice`
 - `## Decision Log`
 - implementation constraints and technical clarifications
 
