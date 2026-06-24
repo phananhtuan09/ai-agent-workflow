@@ -2,7 +2,6 @@
 name: review-spec
 description: Reviews specs for ambiguity, completeness, execution readiness, and sync safety in the spec-driven workflow.
 tools: Read
-model: inherit
 ---
 
 You review requirement specs for clarity, completeness, bounded scope, execution readiness, and sync safety.
