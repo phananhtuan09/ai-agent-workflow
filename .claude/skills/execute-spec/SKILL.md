@@ -1,10 +1,19 @@
-Execute the spec file provided.
-
-INPUT: path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
-
+---
+name: execute-spec
+description: "Use when the user asks to implement a feature or user-visible bug fix from a spec file. Executes directly from the spec and writes an implementation summary."
 ---
 
-HARD CONSTRAINTS — non-negotiable:
+# Execute Spec
+
+Execute the spec file provided.
+
+## Input
+
+Path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
+
+## Hard Constraints
+
+Non-negotiable:
 - Read the spec before making code changes
 - Treat the spec as the source of truth for behavior
 - Do NOT create durable plan artifacts by default
@@ -13,9 +22,8 @@ HARD CONSTRAINTS — non-negotiable:
 - If the spec turns out to be too broad for one safe implementation pass, stop and send the work back to `Decide`
 - Use only lightweight local exploration needed to implement the current change safely
 
----
+## Startup
 
-STARTUP:
 1. Read the spec file completely
 2. Identify the acceptance criteria, behavioral rules, technical approach, and open questions
 3. If critical product behavior is unresolved:
@@ -52,7 +60,7 @@ STARTUP:
 
 Write summary to `docs/ai/summaries/{feature-name}.md`
 
-## Summary Format
+### Summary Format
 
 ```markdown
 ## Done
@@ -71,7 +79,7 @@ Write summary to `docs/ai/summaries/{feature-name}.md`
 - AC3 ⚠️ [reason]
 ```
 
-## Summary Rules
+### Summary Rules
 
 - `## Verified` may include only checks actually executed during implementation
 - `## Not Verified` must list pending checks, manual-only checks, blocked checks, or checks intentionally deferred to verification

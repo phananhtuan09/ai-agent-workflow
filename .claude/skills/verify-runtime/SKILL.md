@@ -1,14 +1,25 @@
+---
+name: verify-runtime
+description: "Use when the user asks to verify runtime behavior, run end-to-end checks, or validate observable feature behavior against its latest synced spec. Writes runtime verification results into the feature verification artifact."
+---
+
+# Verify Runtime
+
 Verify runtime behavior against the latest synced spec after implementation verification is available.
 
-INPUT:
-- Required: spec path (e.g. docs/ai/specs/{feature-name}.md)
+## Input
+
+- Required: spec path (e.g. `docs/ai/specs/{feature-name}.md`)
 - Required: runtime target (for example `--url http://localhost:3000`)
-- Optional: existing verification file (e.g. docs/ai/verifications/{feature-name}.md)
+- Optional: existing verification file (e.g. `docs/ai/verifications/{feature-name}.md`)
 - Optional: auth or setup notes needed to reach the feature
 
-OUTPUT: docs/ai/verifications/{feature-name}.md
+## Output
 
-RUNTIME WORKFLOW:
+`docs/ai/verifications/{feature-name}.md`
+
+## Runtime Workflow
+
 1. Read the synced spec.
 2. Read the existing verification artifact.
 3. If the verification artifact does not exist yet, stop and recommend running `/verify-feature` first.
@@ -20,8 +31,9 @@ RUNTIME WORKFLOW:
 6. Run bounded runtime checks only for observable behavior.
 7. Record evidence, failures, and remaining manual follow-ups in the verification file.
 
-RUNTIME OUTPUT FORMAT:
+## Runtime Output Format
 
+```markdown
 ## Runtime Target
 - URL / environment / setup notes actually used
 
@@ -41,8 +53,10 @@ RUNTIME OUTPUT FORMAT:
 
 ## Runtime Status
 Pass | Fail | Partial | Blocked
+```
 
-RULES:
+## Rules
+
 - All output files must be written in English
 - Do not modify code, specs, or test files during runtime verification
 - Do not recreate `docs/ai/verifications/{feature-name}.md` from scratch when an implementation-level verification file already exists

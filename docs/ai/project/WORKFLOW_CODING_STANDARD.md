@@ -32,12 +32,14 @@ Before writing a spec, the agent must run a lightweight pre-spec gate:
 
 These steps are usually ephemeral notes in chat, not durable files.
 
+After `verify-runtime` completes, the human may run a final `manual-checklist` step to bundle all artifacts into a single human-readable checklist for sign-off. The agent does not auto-run this step.
+
 ## Routing
 
 | Task type | Standard workflow |
 |---|---|
-| New feature | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` |
-| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` |
+| New feature | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` (human-triggered) |
+| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` (human-triggered) |
 | Refactor | `/execute-task "Refactor: ..."` |
 | Small update (1-2 files) | `/execute-task "..."` |
 
@@ -68,6 +70,8 @@ human feedback / iterative fixes as needed
 /verify-feature
   ↓
 /verify-runtime
+  ↓
+/manual-checklist  ← human-triggered, not auto
 ```
 
 ## Pre-Spec Gate
@@ -369,12 +373,66 @@ The human decides which step to invoke next:
 - `/sync-spec` after implementation stabilizes
 - `/verify-feature` when checking implementation readiness against the latest spec
 - `/verify-runtime` when checking runtime behavior against the latest synced spec
+- `/manual-checklist` when the human is ready to sign off after all AI verification steps complete
 
 Agent behavior rules:
 - do not silently choose a larger or smaller workflow mode
 - if the current step is too early or too late, say so explicitly and recommend the next step
 - if a request is too broad for one spec, `Decide` must recommend slicing before `/spec`
 - if feasibility is uncertain, `Decide` must recommend a spike before `/spec`
+
+### 9. `/manual-checklist`
+Purpose:
+- bundle all artifacts (spec, summary, verification) into a single human-readable checklist
+- give the human immediate status visibility before reading any source artifact
+- list exactly what the human must manually verify, what the AI already verified, and what is still blocked
+- this step does not modify code, does not re-verify, and does not sync the spec
+
+When to run:
+- only when the human is ready to sign off
+- after `/verify-runtime` has completed (or the human has confirmed the feature is implementation-complete enough to review)
+- the agent must not auto-run this step as part of `/verify-runtime`
+
+Input:
+- spec path (e.g. `docs/ai/specs/{feature}.md`)
+- summary path if it exists (e.g. `docs/ai/summaries/{feature}.md`)
+- verification path if it exists (e.g. `docs/ai/verifications/{feature}.md`)
+
+Rules:
+- output checklist file in Vietnamese
+- read the spec, summary, and verification artifact before producing the checklist
+- produce the status header from actual evidence in those artifacts, not from inference
+- put status first so the human sees it before scrolling
+- keep each list item terse; the goal is scannability, not re-narrating the spec
+- map every acceptance criterion to exactly one of: `AI verified`, `Human verify`, `Blocked / Stuck`, `Not Done`
+- preserve evidence pointers (file path, line range, command output) instead of inline-quoting large blocks
+- if any required artifact is missing, mark the feature as `Blocked` and list the missing artifact instead of guessing
+- do not change the spec, summary, or verification file from this step
+- write to `docs/ai/checklists/{feature}.md`
+- if `docs/ai/checklists/{feature}.md` already exists, refresh it from current artifacts and preserve the human's sign-off block (move it to the bottom instead of rewriting)
+
+Status rules:
+- `Ready for Sign-off`: all ACs are either `AI verified` or accepted as deferred; no `Blocked / Stuck` items; human verify items remain but are the only thing blocking sign-off
+- `Needs Human Verify`: implementation and runtime checks passed, but one or more ACs require human manual testing before sign-off
+- `Blocked`: one or more required artifacts (spec, summary, verification) missing, or one or more ACs `Blocked / Stuck` in implementation/runtime
+- `In Progress`: not all ACs are implemented or verified yet (summary shows `Not Done / Blocked`)
+- `Drift Detected`: summary's `## Decisions` or runtime results contradict the latest synced spec; human must confirm before sign-off
+
+Expected output sections:
+- `## Status` (one of the statuses above, with a one-sentence reason)
+- `## Feature Snapshot` (spec tier, AC count, summary present yes/no, verification present yes/no, verification final status)
+- `## AI Verified` (ACs or behaviors the AI has evidence for, with the artifact that proves it)
+- `## Needs Human Verify` (ACs or behaviors only the human can confirm, with concrete test steps)
+- `## Blocked / Stuck` (ACs or items the AI could not finish, with the reason and what's needed to unblock)
+- `## Drift / Open Questions` (any decision in summary that conflicts with spec, or unresolved open questions)
+- `## Sign-off` (human-controlled checklist; do not auto-check)
+- `## Source Artifacts` (paths to spec, summary, verification, and key implementation files)
+
+Out of scope for this step:
+- re-running any verification
+- modifying code, tests, or spec
+- producing a new summary
+- claiming anything about behavior the AI did not already verify
 
 ## Workflow Artifacts
 
@@ -383,6 +441,7 @@ Agent behavior rules:
 | `docs/ai/specs/{feature}.md` | `/spec` and later updated by `/sync-spec` |
 | `docs/ai/summaries/{feature}.md` | `/execute-spec` as an execution handoff summary, not final proof |
 | `docs/ai/verifications/{feature}.md` | `/verify-feature` and later extended by `/verify-runtime` |
+| `docs/ai/checklists/{feature}.md` | `/manual-checklist` as a human sign-off bundle, refreshed from existing artifacts |
 
 ## Usage Notes
 - Choose the lightest workflow that still gives enough control.
@@ -390,3 +449,4 @@ Agent behavior rules:
 - Let the human control step entry; let the agent enforce the gate conditions inside the chosen step.
 - If the task changes shape during execution, re-scope the workflow instead of forcing the original path.
 - Keep durable workflow knowledge in the spec; keep temporary execution reasoning out of persistent workflow artifacts unless it remains useful after implementation.
+- `/manual-checklist` exists to reduce human context-switch when batching feature reviews; use it after `/verify-runtime` only when the human is ready to review, never chain it automatically.

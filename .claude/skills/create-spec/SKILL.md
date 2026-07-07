@@ -1,6 +1,14 @@
+---
+name: create-spec
+description: Use when the user asks to create a spec, write a specification, or define requirements for a feature. Creates a durable spec file in docs/ai/specs/ with both business intent and technical approach.
+---
+
+# Create Spec
+
 Create a spec file for the described feature.
 
-PROCESS:
+## Process
+
 1. Run `Shape`
    - Capture:
      - what the human expects to happen
@@ -70,16 +78,19 @@ PROCESS:
    - Standard: 40-90 lines
    - Extended: 91-140 lines
 10. If the feature cannot be specified clearly within the target range:
-   - Lite should usually stay within 7 ACs
-   - Standard should usually stay within 12 ACs
-   - Extended should usually stay within 18 ACs
-   - If an Extended spec would exceed 18 ACs or 140 lines, you must either split it into sub-features or add a short addendum
-   - Do not bloat the main spec file to absorb unrelated or weakly related behavior
+    - Lite should usually stay within 7 ACs
+    - Standard should usually stay within 12 ACs
+    - Extended should usually stay within 18 ACs
+    - If an Extended spec would exceed 18 ACs or 140 lines, you must either split it into sub-features or add a short addendum
+    - Do not bloat the main spec file to absorb unrelated or weakly related behavior
 11. Write the spec file to `docs/ai/specs/{feature-name}.md`
-   - `{feature-name}` must be a kebab-case slug derived from the feature name
+    - `{feature-name}` must be a kebab-case slug derived from the feature name
 
-SPEC FORMAT (concise, bullet-first, behavior-complete — no implementation details):
+## Spec Format
 
+Concise, bullet-first, behavior-complete — no implementation details:
+
+```markdown
 ## Tier
 [`Lite` | `Standard` | `Extended`]
 
@@ -138,8 +149,10 @@ SPEC FORMAT (concise, bullet-first, behavior-complete — no implementation deta
 ## Decision Log
 - ...
 - If there are no durable implementation decisions yet, write: `- Chưa có quyết định kỹ thuật bền cần ghi nhận.`
+```
 
-RULES:
+## Rules
+
 - All assistant responses, questions, and generated spec files must be written in Vietnamese
 - Before writing the spec, always perform `Shape` + `Recon` + `Decide`
 - The agent may refuse to write a spec yet if `Decide` is not `write-spec`
@@ -162,14 +175,16 @@ RULES:
 - If something is unclear after answers, list it in Open Questions and do not assume
 - A spec is only valid if an executor can implement from this spec and later sync it without inventing new product behavior
 
-ALLOWED OUTCOMES:
+## Allowed Outcomes
+
 - `Spec written`
 - `Questions needed`
 - `Slice proposed`
 - `Spike required`
 - `Conflict escalated`
 
-SELF-CHECK BEFORE WRITING THE FILE:
+## Self-Check Before Writing the File
+
 - Did `Shape` identify the expected behavior, happy path, and must-not-happen behavior?
 - Did `Recon` check current behavior, nearby patterns, and constraints?
 - Was `Decide` made explicitly before writing?

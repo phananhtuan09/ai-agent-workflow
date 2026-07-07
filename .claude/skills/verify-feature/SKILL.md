@@ -1,13 +1,24 @@
+---
+name: verify-feature
+description: "Use when the user asks to verify, check, or validate a feature against its latest synced spec. Generates a verification checklist, then continues with implementation verification instead of stopping at file creation."
+---
+
+# Verify Feature
+
 Verify implementation readiness against the latest synced spec and record what was actually checked.
 
-INPUT:
-- Required: spec path (e.g. docs/ai/specs/{feature-name}.md)
-- Optional: summary path (e.g. docs/ai/summaries/{feature-name}.md)
+## Input
+
+- Required: spec path (e.g. `docs/ai/specs/{feature-name}.md`)
+- Optional: summary path (e.g. `docs/ai/summaries/{feature-name}.md`)
 - Optional: focused file or module scope when the feature touches a narrow area
 
-OUTPUT: docs/ai/verifications/{feature-name}.md
+## Output
 
-IMPLEMENTATION WORKFLOW:
+`docs/ai/verifications/{feature-name}.md`
+
+## Implementation Workflow
+
 1. Read the synced spec.
 2. If `docs/ai/verifications/{feature-name}.md` already exists, read it first and preserve still-valid sections instead of rewriting blindly.
 3. Inspect the relevant implementation surfaces.
@@ -15,15 +26,17 @@ IMPLEMENTATION WORKFLOW:
 5. Run only the relevant implementation checks for the changed feature.
 6. Record passed checks, failed checks, coverage gaps, and runtime follow-ups.
 
-EXECUTION REQUIREMENT:
+## Execution Requirement
+
 - Creating `docs/ai/verifications/{feature-name}.md` is not sufficient by itself.
 - Do not stop at scaffold or checklist generation.
 - Complete the command only after you have either:
-  - executed the relevant implementation checks and recorded their results, or
-  - recorded explicit `Blocked` reasons for each check you could not run.
+  - Executed the relevant implementation checks and recorded their results, or
+  - Recorded explicit `Blocked` reasons for each check you could not run.
 
-IMPLEMENTATION OUTPUT FORMAT:
+## Implementation Output Format
 
+```markdown
 ## Sources
 - Spec: docs/ai/specs/{feature-name}.md
 - Summary: [optional]
@@ -54,8 +67,10 @@ IMPLEMENTATION OUTPUT FORMAT:
 
 ## Final Status
 Pass | Fail | Partial | Blocked
+```
 
-RULES:
+## Rules
+
 - All output files must be written in English
 - Do not modify code, specs, or tests during implementation verification
 - Do not write new unit tests in this command
