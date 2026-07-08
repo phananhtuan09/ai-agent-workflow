@@ -68,6 +68,12 @@ Behavior notes for Pi users:
 
 ### Install Specific Tool
 
+By default, the installer uses the `coding-standard` kit, which matches the current spec-driven workflow bundle.
+
+Available kits now include:
+- `coding-standard` — the current full install flow
+- `workflow-eval` — only the workflow-evaluation standard and mirrored skills
+
 ```bash
 # Install only Codex
 curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool codex
@@ -90,12 +96,22 @@ npx ai-workflow-init --help
 
 # List supported tool ids
 npx ai-workflow-init --list-tools
+
+# List supported workflow kits
+npx ai-workflow-init --list-kits
 ```
 
 The CLI help explicitly includes the Pi install target:
 
 ```bash
 npx ai-workflow-init --tool pi
+```
+
+You can also select a workflow kit explicitly:
+
+```bash
+npx ai-workflow-init --kit coding-standard --tool codex
+npx ai-workflow-init --kit workflow-eval --tool codex
 ```
 
 ```powershell
