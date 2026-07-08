@@ -67,6 +67,35 @@ Exercise
 Verdict
 ```
 
+## Evaluation Input Contract
+Before `Intake`, define the minimum evaluation input:
+- `workflow_name`
+- `workflow_artifacts`
+- `workflow_type`
+  - document
+  - command set
+  - prompt wrapper
+  - skill
+  - runtime binding
+  - end-to-end operating model
+- `claimed_purpose`
+- `claimed_task_classes`
+- `evaluation_goal`
+  - adoption review
+  - comparison
+  - regression review
+  - promotion decision
+- `comparison_target`, when evaluating two variants
+- `runtime_context`
+- `known_constraints`
+
+Required:
+- do not start evaluation until these fields are explicit
+- if a field is unknown, record it as unknown instead of assuming it
+
+Recommended:
+- keep the input contract short enough to fit near the top of the evaluation artifact
+
 ## Evaluation Phases
 
 ### 1. `Intake`
@@ -95,7 +124,13 @@ Rules:
   - promotion decision
 
 Expected output:
-- a short evaluation target definition
+- `Evaluation Target Definition` containing:
+  - workflow name
+  - artifact set under review
+  - claimed purpose
+  - intended task classes
+  - evaluation goal
+  - comparison target, if applicable
 
 ### 2. `Normalize`
 Purpose:
@@ -116,7 +151,20 @@ Rules:
 - reduce ambiguity first so later judgments are comparable
 
 Expected output:
-- one normalized workflow model
+- `Normalized Workflow Model` containing:
+  - entry points
+  - ordered phases
+  - phase inputs
+  - phase outputs
+  - durable artifacts
+  - human responsibilities
+  - agent responsibilities
+  - runtime dependencies
+  - required assumptions
+
+Required:
+- write this as a structured artifact, not loose prose
+- keep verified workflow behavior separate from inferred structure
 
 ### 3. `Audit`
 Purpose:
@@ -136,7 +184,27 @@ Rules:
 - record known risks, blind spots, and likely failure modes
 
 Expected output:
-- a concise audit finding set with severity and rationale
+- `Audit Findings` where each finding includes:
+  - `severity`: `High`, `Medium`, or `Low`
+  - `area`: clarity, artifact usefulness, portability, safety, cost, or failure visibility
+  - `evidence`
+  - `rationale`
+  - `recommended action`
+
+Audit rule mapping:
+- `AI_WORKFLOW_RULES.md` rule 1, optimize for real value:
+  - flag steps or artifacts that add ceremony without visible quality, safety, or efficiency gain
+- rule 2, keep every step human-readable:
+  - flag phases without clear input, output, or next decision
+- rule 3, add only patterns proven by real usage:
+  - flag promotion claims that rely on elegance, completeness, or one-off wins instead of repeated evidence
+- rule 4, separate human judgment from agent verification:
+  - flag places where assumptions or human review are presented like verified workflow facts
+
+Severity guidance:
+- `High`: blocks safe adoption, hides major uncertainty, or breaks reviewability
+- `Medium`: workable with constraints, but portability or consistency is reduced
+- `Low`: useful improvement, wording issue, or local ambiguity without major decision impact
 
 ### 4. `Exercise`
 Purpose:
@@ -179,7 +247,24 @@ When the workflow has been applied to real projects, capture:
 - this is the strongest signal for whether the workflow is portable and reusable
 
 Expected output:
-- exercise evidence tied to concrete scenarios
+- `Scenario Evidence Set` tied to concrete scenarios
+
+Minimum exercise protocol:
+- cover at least one scenario for each claimed task class
+- if the workflow claims runtime or project portability, test across at least two contexts or record portability as unverified
+- for each scenario, record:
+  - scenario name
+  - scenario class
+  - expected workflow behavior
+  - observed workflow behavior
+  - where ambiguity was resolved
+  - which artifacts were consumed by later steps
+  - where the workflow broke down
+  - cost notes when visible
+
+Recommended:
+- reuse the same baseline scenarios across workflow variants when comparing them
+- prefer evidence tables over long narrative writeups
 
 ### 5. `Verdict`
 Purpose:
@@ -197,7 +282,29 @@ Rules:
 - do not promote a workflow pattern based only on elegance, completeness, or theoretical coverage
 
 Expected output:
-- an explicit decision with evidence-backed reasoning
+- `Decision Record` containing:
+  - final status
+  - supported scope
+  - unsupported scope
+  - evidence summary
+  - blocking issues
+  - required changes before promotion, if not ready
+
+Verdict heuristics:
+- `Adopt`:
+  - no unresolved `High` findings
+  - exercise evidence covers the claimed core task classes
+  - artifacts and phase boundaries are reviewable in regular use
+- `Adopt with constraints`:
+  - workflow is useful, but only within explicit runtime, team, or task limits
+  - unresolved issues do not block safe use inside those limits
+- `Keep experimental`:
+  - workflow shows promise, but evidence coverage is still thin or too narrow
+  - portability, repeatability, or artifact usefulness is not proven enough for standard promotion
+- `Reject`:
+  - unresolved `High` issues remain
+  - complexity, ambiguity, or hidden dependency outweighs demonstrated value
+  - repeated exercise results show the workflow breaks in its claimed scope
 
 ## Evaluation Criteria
 Judge the workflow against these dimensions when relevant:
@@ -217,8 +324,10 @@ The evaluation should judge whether the workflow is good enough for its intended
 Write evaluation results to:
 - `docs/ai/workflow-evals/{name}.md`
 
-Recommended sections:
+Required sections:
 - `## Workflow Under Test`
+- `## Scope`
+- `## Input Contract`
 - `## Claimed Purpose`
 - `## Evaluation Goal`
 - `## Normalized Model`
@@ -227,6 +336,34 @@ Recommended sections:
 - `## Evidence`
 - `## Verdict`
 - `## Promotion Decision`
+
+Recommended sections:
+- `## Constraints`
+- `## Follow-up Required`
+
+Recommended structure:
+- `## Workflow Under Test`
+  - identify the workflow name, type, and artifacts under review
+- `## Scope`
+  - state what is in scope and out of scope for this evaluation run
+- `## Input Contract`
+  - record the required evaluation input fields
+- `## Claimed Purpose`
+  - state the workflow's intended value in plain language
+- `## Evaluation Goal`
+  - state adoption, comparison, regression, or promotion decision
+- `## Normalized Model`
+  - rewrite the workflow in normalized form
+- `## Audit Findings`
+  - list findings with severity, evidence, rationale, and action
+- `## Exercise Scenarios`
+  - list scenario setup and expected behavior
+- `## Evidence`
+  - record observed results and downstream artifact use
+- `## Verdict`
+  - state final status, supported scope, and unsupported scope
+- `## Promotion Decision`
+  - state whether the workflow is ready for standard use, constrained use, or continued experimentation
 
 ## Human-Controlled Use
 This workflow is also human-controlled.
@@ -253,3 +390,11 @@ Use these interpretations:
 - `docs/ai/project/AI_WORKFLOW_RULES.md` defines the mandatory rules that the evaluation should enforce
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md` defines the standard coding workflow that may itself be evaluated by this document
 - `docs/ai/workflow-evals/` stores evaluation artifacts produced by this workflow
+
+## Ready-To-Implement Standard
+This document is implementation-ready when used as an evaluation operating spec only if:
+- the evaluation input contract is explicitly filled
+- each phase writes its required output section
+- audit findings use declared severity and evidence
+- exercise scenarios cover the workflow's claimed scope or clearly mark gaps
+- the verdict follows the documented heuristics instead of personal preference
