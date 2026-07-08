@@ -90,5 +90,4 @@ The repository should evolve toward a workflow that is:
 
 ## Related Documents
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
-- `docs/ai/project/HARNESS_ARCHITECTURE.md`
 - `docs/ai/project/README.md`

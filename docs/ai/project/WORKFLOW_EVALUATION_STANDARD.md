@@ -233,4 +233,3 @@ Use these interpretations:
 ## Relationship To Other Documents
 - `docs/ai/project/AI_WORKFLOW_RULES.md` defines the mandatory rules that the evaluation should enforce
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md` defines the standard coding workflow that may itself be evaluated by this document
-- `docs/ai/project/HARNESS_ARCHITECTURE.md` defines broader architectural boundaries such as observability, delegation, and portability that may become part of the evaluation

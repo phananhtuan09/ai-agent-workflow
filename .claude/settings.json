@@ -24,17 +24,7 @@
       "Bash(usermod *)",
       "Bash(crontab *)",
       "Bash(dd *)",
-      "Bash(mkfs *)",
-      "Bash(git commit *)",
-      "Bash(git push *)",
-      "Bash(git pull *)",
-      "Bash(git merge *)",
-      "Bash(git rebase *)",
-      "Bash(git checkout *)",
-      "Bash(git switch *)",
-      "Bash(git reset *)",
-      "Bash(git restore *)",
-      "Bash(git clean *)"
+      "Bash(mkfs *)"
     ]
   }
 }

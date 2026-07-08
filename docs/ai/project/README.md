@@ -20,7 +20,6 @@ Use this order when the task is about building or changing the workflow system:
 1. `docs/ai/project/README.md`
 2. `docs/ai/project/AI_WORKFLOW_RULES.md`
 3. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
-4. `docs/ai/project/HARNESS_ARCHITECTURE.md` when the task touches harness design
 
 If documents conflict, follow the more specific file for the current workflow task.
 
@@ -44,15 +43,6 @@ Read when:
 
 This file defines the standard end-to-end workflow used by the agent system.
 
-### `docs/ai/project/HARNESS_ARCHITECTURE.md`
-Read when:
-- designing the harness or runtime integration model
-- adding policy, approval, memory, observability, or delegation behavior
-- making the workflow portable across different coding-agent runtimes
-- deciding architectural boundaries between content, orchestration, and runtime bindings
-
-This file defines the target architecture direction for the harness workflow.
-
 ## Task Routing Guide
 
 ### Workflow design task
@@ -60,12 +50,6 @@ Read:
 - `docs/ai/project/README.md`
 - `docs/ai/project/AI_WORKFLOW_RULES.md`
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
-
-### Harness architecture task
-Read:
-- `docs/ai/project/README.md`
-- `docs/ai/project/AI_WORKFLOW_RULES.md`
-- `docs/ai/project/HARNESS_ARCHITECTURE.md`
 
 ### Workflow implementation task
 Read:
@@ -90,4 +74,3 @@ Read:
 ## Related Files
 - `docs/ai/project/AI_WORKFLOW_RULES.md`
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
-- `docs/ai/project/HARNESS_ARCHITECTURE.md`
