@@ -20,6 +20,7 @@ Use this order when the task is about building or changing the workflow system:
 1. `docs/ai/project/README.md`
 2. `docs/ai/project/AI_WORKFLOW_RULES.md`
 3. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+4. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
 
 If documents conflict, follow the more specific file for the current workflow task.
 
@@ -43,6 +44,15 @@ Read when:
 
 This file defines the standard end-to-end workflow used by the agent system.
 
+### `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
+Read when:
+- evaluating whether a workflow design is worth adopting, promoting, or replacing
+- comparing two workflow variants
+- reviewing an existing workflow before a promotion or retirement decision
+- updating or changing any workflow artifact and need evidence for the decision
+
+This file defines the standard workflow for evaluating workflows themselves.
+
 ## Task Routing Guide
 
 ### Workflow design task
@@ -62,6 +72,12 @@ Read:
 - `docs/ai/project/README.md`
 - whichever workflow document defines the expected behavior
 
+### Workflow evaluation task
+Read:
+- `docs/ai/project/README.md`
+- `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
+- the workflow artifact being evaluated (the subject under review)
+
 ## Agent Behavior Expectations
 - Treat this folder as workflow-building documentation only.
 - Do not use this folder as the coding standard for an external application project.
@@ -74,3 +90,5 @@ Read:
 ## Related Files
 - `docs/ai/project/AI_WORKFLOW_RULES.md`
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+- `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
+- `docs/ai/workflow-evals/`

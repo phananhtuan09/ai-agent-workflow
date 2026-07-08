@@ -154,10 +154,29 @@ Rules:
   - relative cost in time, tokens, or complexity when visible
 - do not treat a single successful run as proof of general usefulness
 
-Recommended baseline scenarios:
+Recommended baseline scenarios (coding workflow):
 - one small bounded task
 - one ambiguous or conflict-prone task
 - one medium task that requires durable handoff or verification
+
+Recommended baseline scenarios (workflow base):
+When the workflow under evaluation is a reusable base applied to multiple projects:
+- apply base to a new project: record where it breaks and what needs customizing
+- compare two versions of the same phase: run both on the same task, measure output quality and cost
+- update one rule or phase in the base: then apply to a project already using the base and check compatibility
+
+Incremental re-evaluation:
+When the workflow is updated frequently, a full 5-phase run is not always needed. Choose the lightest path:
+- artifact path or naming change → re-run `Audit` on the changed artifact only
+- command or skill behavior change → re-run `Exercise` using existing scenarios
+- phase boundary change → re-run `Normalize` then `Audit`
+- new command, skill, or phase → full `Intake` → `Normalize` → `Audit` → `Exercise` → `Verdict`
+
+Downstream evidence:
+When the workflow has been applied to real projects, capture:
+- which parts stayed unchanged and which were overridden per project
+- which artifacts were skipped and which were added per project
+- this is the strongest signal for whether the workflow is portable and reusable
 
 Expected output:
 - exercise evidence tied to concrete scenarios
@@ -233,3 +252,4 @@ Use these interpretations:
 ## Relationship To Other Documents
 - `docs/ai/project/AI_WORKFLOW_RULES.md` defines the mandatory rules that the evaluation should enforce
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md` defines the standard coding workflow that may itself be evaluated by this document
+- `docs/ai/workflow-evals/` stores evaluation artifacts produced by this workflow
