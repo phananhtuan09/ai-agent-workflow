@@ -81,3 +81,17 @@ When the spec says logic should be transparent, visible, simple, or non-hidden:
 - The technical sections match the implemented codebase
 - Important implementation decisions are reflected in the spec
 - Business-level drift is either confirmed and applied or explicitly reported as pending
+
+## Orchestrator Contract
+
+When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Sync completed without business-level drift blocking progress:
+  `<!-- orchestrator: outcome=continue provides=spec_synced -->`
+- Business-level drift needs human confirmation before continuing:
+  `<!-- orchestrator: outcome=stop-drift -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- Use `stop-drift` whenever sync cannot safely finish without changing business intent
+- If this skill runs standalone, the comment is optional

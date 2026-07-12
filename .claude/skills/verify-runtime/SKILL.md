@@ -69,3 +69,19 @@ Pass | Fail | Partial | Blocked
 - Prefer concrete evidence such as viewport dimensions, DOM counts, visible text, screenshots, console output, `scrollWidth/clientWidth`, or browser-evaluated state
 - Do not claim `responsive`, `no overflow`, `works on mobile`, or similar outcomes from CSS declarations alone when runtime measurement is available
 - Keep automation bounded; do not turn this command into a generic autonomous test orchestrator
+
+## Orchestrator Contract
+
+When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Runtime sections updated with final status `Pass` or `Partial`:
+  `<!-- orchestrator: outcome=continue provides=runtime_verified -->`
+- Final status `Fail`:
+  `<!-- orchestrator: outcome=stop-fail -->`
+- Final status `Blocked`:
+  `<!-- orchestrator: outcome=stop-blocked -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- Use `stop-blocked` if the verification artifact does not exist yet or runtime setup prevents meaningful execution
+- If this skill runs standalone, the comment is optional

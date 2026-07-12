@@ -48,6 +48,19 @@ Rule:
 - the agent does not choose a mode
 - if the human starts at `/spec`, the agent must still do a lightweight `Shape` + `Recon` + `Decide` pass before writing the spec
 
+### Orchestrator-Driven Execution
+
+This repository also allows a limited orchestrator-driven execution mode.
+
+Rules:
+- this mode exists only when the human explicitly invokes `/orchestrator` with a workflow config
+- the default workflow remains human-step-driven; orchestrator mode is an explicit carve-out, not the new default
+- by invoking `/orchestrator`, the human is choosing a predeclared sequence of steps and consented auto-run boundaries ahead of time
+- orchestrator may auto-run only steps marked `auto: true` in the selected workflow config
+- orchestrator must stop at `human_gate: true`, any configured `stop_on_outcome`, missing required contracts, or unknown skill outcome
+- `/manual-checklist` remains human-triggered even inside orchestrator mode; orchestrator must not auto-chain it
+- orchestrator must treat workflow contracts and recorded evidence as the source of truth; it must not infer missing artifact paths or outcomes heuristically
+
 ## Standard Flow
 
 ```text
@@ -157,7 +170,7 @@ Rules:
 - if the agent chooses a default rule only to keep scope small, label it explicitly instead of presenting it as confirmed human intent
 
 Tier guidance:
-- `Lite`: 25-39 lines, usually up to 7 ACs
+- `Lite`: 25-50 lines, usually up to 7 ACs
 - `Standard`: 40-90 lines, usually up to 12 ACs
 - `Extended`: 91-140 lines, usually up to 18 ACs
 - if an `Extended` spec would exceed 18 ACs or 140 lines, split it into sub-features or add a short addendum instead of bloating the main spec
@@ -380,6 +393,7 @@ Agent behavior rules:
 - if the current step is too early or too late, say so explicitly and recommend the next step
 - if a request is too broad for one spec, `Decide` must recommend slicing before `/spec`
 - if feasibility is uncertain, `Decide` must recommend a spike before `/spec`
+- if the human explicitly invokes `/orchestrator`, follow the workflow config until the next stop condition instead of reverting to manual step-by-step mode mid-run
 
 ### 9. `/manual-checklist`
 Purpose:

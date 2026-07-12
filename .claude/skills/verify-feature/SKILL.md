@@ -82,3 +82,19 @@ Pass | Fail | Partial | Blocked
 - Do not include runtime-only evidence in this phase
 - `/verify-feature` may update implementation-level sections, but must not delete valid runtime sections previously added by `/verify-runtime`
 - If current implementation evidence conflicts with older verification content, replace only the conflicting implementation section and note the reason in `## Executed Checks` or `## Failed`
+
+## Orchestrator Contract
+
+When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Final status `Pass` or `Partial`:
+  `<!-- orchestrator: outcome=continue provides=verification_path verification_path=docs/ai/verifications/{feature-name}.md -->`
+- Final status `Fail`:
+  `<!-- orchestrator: outcome=stop-fail -->`
+- Final status `Blocked`:
+  `<!-- orchestrator: outcome=stop-blocked -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- `verification_path` must match the artifact actually written or updated
+- If this skill runs standalone, the comment is optional

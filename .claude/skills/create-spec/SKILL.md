@@ -74,7 +74,7 @@ Create a spec file for the described feature.
      - If the feature has more than 3 distinct behavior areas, it cannot be Lite
      - Distinct behavior areas means separate user-facing behavior clusters such as setup/configuration, main action flow, persistence, sharing/export, fallback/recovery, or admin controls
 9. Choose the spec size target by the final tier:
-   - Lite: 25-39 lines
+   - Lite: 25-50 lines
    - Standard: 40-90 lines
    - Extended: 91-140 lines
 10. If the feature cannot be specified clearly within the target range:
@@ -182,6 +182,27 @@ Concise, bullet-first, behavior-complete — no implementation details:
 - `Slice proposed`
 - `Spike required`
 - `Conflict escalated`
+
+## Orchestrator Contract
+
+When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Spec written:
+  `<!-- orchestrator: outcome=continue provides=spec_path spec_path=docs/ai/specs/{feature-name}.md -->`
+- Questions needed:
+  `<!-- orchestrator: outcome=stop-ask-human -->`
+- Slice proposed:
+  `<!-- orchestrator: outcome=stop-split-slices -->`
+- Spike required:
+  `<!-- orchestrator: outcome=stop-run-spike -->`
+- Conflict escalated:
+  `<!-- orchestrator: outcome=stop-escalate-conflict -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- `spec_path` must match the file actually written
+- When invoked under `/orchestrator` and the run state already contains `shape_checked`, `recon_checked`, and `decision_ready`, do not rerun Process steps 1-3; continue from the post-`Decide` path that matches the current decision
+- If this skill runs standalone, the comment is optional
 
 ## Self-Check Before Writing the File
 

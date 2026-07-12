@@ -24,7 +24,7 @@ Optional but strongly expected when relevant:
 - `## Decision Log`: durable implementation decisions worth preserving after execution
 
 Tier guidance from current workflow:
-- Lite: 25-39 lines, usually up to 7 ACs
+- Lite: 25-50 lines, usually up to 7 ACs
 - Standard: 40-90 lines, usually up to 12 ACs
 - Extended: 91-140 lines, usually up to 18 ACs
 
@@ -74,7 +74,7 @@ Notes:
    - Warn if: the spec is technically executable but likely to sprawl during implementation because slice boundaries are weak
 
 11. **Tier-aware size check**:
-   - Warn if: a `Lite` spec exceeds 39 lines
+   - Warn if: a `Lite` spec exceeds 50 lines
    - Warn if: a `Standard` spec exceeds 90 lines
    - Fail if: an `Extended` spec exceeds 140 lines without being split or using a short addendum
    - Warn if: the spec is bloated, repetitive, or hard to scan even when within line limits
@@ -90,3 +90,16 @@ Return your review as:
 - `pass`: spec is ready for execution and later sync
 - `fail`: list blocking issues with line references
 - `warn`: non-blocking concerns or improvement suggestions
+
+## Orchestrator Contract
+
+When this agent is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Review result `pass` or `warn`:
+  `<!-- orchestrator: outcome=continue -->`
+- Review result `fail`:
+  `<!-- orchestrator: outcome=stop-fail -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- If this agent runs standalone, the comment is optional

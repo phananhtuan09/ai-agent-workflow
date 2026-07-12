@@ -120,3 +120,18 @@ Before writing, read all available artifacts and determine the overall status fr
 - Status header reflects honest evidence
 - `## Sign-off` block is present and human-ready (no auto-checked boxes)
 - File is written to `docs/ai/checklists/{feature}.md`
+
+## Orchestrator Contract
+
+When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Checklist written:
+  `<!-- orchestrator: outcome=continue provides=checklist_path checklist_path=docs/ai/checklists/{feature}.md -->`
+- Required artifact missing or sign-off bundle cannot be produced honestly:
+  `<!-- orchestrator: outcome=stop-blocked -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- `checklist_path` must match the file actually written
+- `/manual-checklist` remains human-triggered; this contract does not allow auto-chaining into it
+- If this skill runs standalone, the comment is optional

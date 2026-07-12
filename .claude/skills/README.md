@@ -20,7 +20,8 @@ Version: 2.0.0
 ├── ux-feedback-patterns/           # Loading, success, error states
 ├── ux-accessibility/               # Keyboard, screen readers, WCAG
 │
-└── quality-code-check/             # Linting, type checking, builds
+├── quality-code-check/             # Linting, type checking, builds
+└── orchestrator/                   # Run workflow configs until next gate
 ```
 
 ---
@@ -175,8 +176,9 @@ skill-name/
 | ux-feedback-patterns | Loading, success, error states |
 | ux-accessibility | Keyboard, screen readers, WCAG |
 | quality-code-check | Linting, type checking, builds |
+| orchestrator | Execute documented workflow configs until the next stop condition |
 
-**Total:** 7 skills
+**Total:** 8 skills
 
 ---
 
@@ -192,6 +194,7 @@ Skills auto-trigger based on keywords in your prompt. Manual invocation:
 /ux-feedback-patterns            # Loading/error states
 /ux-accessibility                # WCAG, keyboard nav
 /quality-code-check              # Linting, type checks
+/orchestrator                    # Run a workflow config until next gate
 ```
 
 ---

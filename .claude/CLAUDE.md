@@ -25,5 +25,6 @@ Routing rule: "Before `/create-spec`, run a lightweight `Shape → Recon → Dec
 
 Notes:
 - The human decides which workflow step to run.
+- The human may explicitly invoke `/orchestrator` to run a documented workflow config until the next gate or blocking outcome.
 - `Decide` may result in: write spec, ask focused questions, split into slices, run a spike, or escalate a conflict.
 - Large or epic work should be sliced before `/create-spec`.

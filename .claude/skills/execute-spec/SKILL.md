@@ -103,3 +103,19 @@ If blocked because the spec is too broad or mixes multiple slices:
 - Report that the spec should be split
 - Point to the affected sections or AC groups
 - Recommend returning to `Decide`
+
+## Orchestrator Contract
+
+When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Summary written and execution completed:
+  `<!-- orchestrator: outcome=continue provides=summary_path summary_path=docs/ai/summaries/{feature-name}.md -->`
+- Blocked by ambiguity, missing context, or unresolved spec behavior:
+  `<!-- orchestrator: outcome=stop-blocked -->`
+- Too broad for one safe pass:
+  `<!-- orchestrator: outcome=stop-too-broad -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- `summary_path` must match the file actually written
+- If this skill runs standalone, the comment is optional

@@ -68,3 +68,19 @@ Pass | Fail | Partial | Blocked
   - `Partial` when some checks passed but meaningful coverage gaps or deferred runtime proof remain
   - `Fail` when at least one required implementation-level check failed
   - `Blocked` when the phase cannot complete because required inputs, environment, or artifacts are unavailable
+
+## Orchestrator Contract
+
+When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
+
+- Final status `Pass` or `Partial`:
+  `<!-- orchestrator: outcome=continue provides=verification_path verification_path=docs/ai/verifications/{feature-name}.md -->`
+- Final status `Fail`:
+  `<!-- orchestrator: outcome=stop-fail -->`
+- Final status `Blocked`:
+  `<!-- orchestrator: outcome=stop-blocked -->`
+
+Rules:
+- Emit the comment only after the main human-readable response is complete
+- `verification_path` must match the artifact actually written or updated
+- If this skill runs standalone, the comment is optional
