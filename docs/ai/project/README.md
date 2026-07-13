@@ -19,8 +19,9 @@ Use this order when the task is about building or changing the workflow system:
 
 1. `docs/ai/project/README.md`
 2. `docs/ai/project/AI_WORKFLOW_RULES.md`
-3. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
-4. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
+3. `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
+4. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+5. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
 
 If documents conflict, follow the more specific file for the current workflow task.
 
@@ -34,6 +35,15 @@ Read when:
 - reviewing if a proposal is too complex or unnecessary
 
 This file defines the mandatory principles that every workflow change must follow.
+
+### `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
+Read when:
+- evaluating a rough idea before spec creation
+- deciding whether to build, reuse, integrate, defer, research, or reject an idea
+- choosing the smallest useful scope before `/create-spec`
+- checking whether an idea should enter the standard coding workflow
+
+This file defines the lightweight pre-spec decision workflow.
 
 ### `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 Read when:
@@ -59,6 +69,7 @@ This file defines the standard workflow for evaluating workflows themselves.
 Read:
 - `docs/ai/project/README.md`
 - `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/WORKFLOW_IDEA_REVIEW.md` when changing pre-spec idea evaluation
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 
 ### Workflow implementation task
@@ -90,6 +101,7 @@ Read:
 
 ## Related Files
 - `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 - `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
 - `docs/ai/workflows/`

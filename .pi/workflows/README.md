@@ -4,6 +4,7 @@ Workflow tracker này dùng để hiển thị workflow hiện tại ở footer 
 
 ## Files
 - `feature-standard.json`: workflow chuẩn theo pre-spec gate + spec-sync flow mới
+- `idea-review.json`: workflow nhẹ để đánh giá idea trước khi quyết định tạo spec, reuse, defer, research, hoặc reject
 - `.active-workflow.json`: state workflow đang active trong session hiện tại
 
 ## Commands
@@ -30,6 +31,7 @@ Footer hiển thị theo dạng compact:
 - `Review spec` là optional check, không phải step chuẩn bắt buộc trong workflow tracker mặc định.
 - `Verify feature` là implementation verification.
 - `Verify runtime` là runtime behavior verification sau khi implementation verification đã xong.
+- `Idea Review` là workflow trước spec: human-controlled, kết thúc bằng verdict `do-now`, `defer`, `reject`, `reuse-or-integrate`, hoặc `research-more`.
 
 ## Workflow JSON shape
 Mỗi step nên có tối thiểu:
