@@ -97,6 +97,7 @@
       "human_gate": true,
       "human_gate_reason": "Implementation vua chay xong. Human can review code/result truoc khi sync spec va verify tiep.",
       "stop_on_outcome": ["stop-blocked", "stop-too-broad"],
+      "uses_repo_lock": true,
       "requires": ["spec_path"],
       "provides": ["summary_path"],
       "skippable": false

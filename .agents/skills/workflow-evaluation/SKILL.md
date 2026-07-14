@@ -1,6 +1,6 @@
 ---
 name: workflow-evaluation
-description: Use when the user asks to evaluate, compare, promote, reject, or review an AI workflow itself rather than implement product code. Reads the workflow under review, normalizes it, audits it, exercises it against realistic scenarios when possible, and writes an evaluation artifact to docs/ai/workflow-evals/.
+description: Use when the user asks to evaluate, compare, promote, reject, or review an AI workflow itself rather than perform the underlying work that workflow guides. Reads the workflow under review, normalizes it, audits it, exercises it against realistic scenarios and available session traces, and writes an evaluation artifact to docs/ai/workflow-evals/.
 ---
 
 # Workflow Evaluation
@@ -27,9 +27,11 @@ Do not re-invent the evaluation flow from memory when the standard is available.
 - checking whether a workflow is portable enough for its intended scope
 
 Do not use this skill for:
+- performing the underlying work that another workflow is meant to guide
 - implementing product features
 - fixing application code
-- replacing the standard coding workflow for normal build tasks
+- operating the workflow under review as if it were the work itself
+- replacing the normal execution or verification steps inside the workflow being evaluated
 
 ## Input
 
@@ -44,8 +46,17 @@ Optional:
 - comparison target
 - runtime context
 - known constraints
+- session traces, when available:
+  - chat history
+  - command transcript
+  - tool-call trace
+  - artifact trail
+  - handoff notes
+  - decision log
+  - failure or retry log
 
 If the workflow subject is spread across multiple files, reconstruct it explicitly before judging it.
+If session traces are unavailable, record them as unavailable instead of inventing runtime behavior.
 
 ## Output
 
@@ -61,9 +72,10 @@ If the user asks only for a partial phase such as `Audit`, you may produce that 
 3. Run `Intake`.
 4. Run `Normalize`.
 5. Run `Audit`.
-6. Run `Exercise` when realistic evidence can be gathered.
-7. Run `Verdict`.
-8. Write the evaluation artifact.
+6. Run `Exercise` when realistic evidence or session traces can be gathered.
+7. Include `Session Trace Evidence` when real session history is available, or explicitly mark it unavailable.
+8. Run `Verdict`.
+9. Write the evaluation artifact.
 
 ## Phase Requirements
 

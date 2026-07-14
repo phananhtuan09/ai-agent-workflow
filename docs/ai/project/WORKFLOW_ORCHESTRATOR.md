@@ -25,12 +25,14 @@ Orchestrator **không thay thế** workflow coding standard, mà là amendment c
 
 1. Orchestrator = 1 skill mới (`orchestrator`)
 2. Config định nghĩa steps trong file JSON riêng (không nằm trong `AGENTS.md` hay `WORKFLOW_CODING_STANDARD.md`)
-3. State file riêng để audit + hiển thị vị trí hiện tại (không cần lệnh `resume`, human chỉ gọi `/orchestrator next`/`/orchestrator continue`)
+3. Mỗi run có state file riêng để audit + hiển thị vị trí hiện tại (không cần lệnh `resume`, human chỉ gọi `/orchestrator next --run <run-id>` / `/orchestrator continue --run <run-id>`)
 4. `Shape` / `Recon` / `Decide` là `exec: inline` — agent tự đọc `WORKFLOW_CODING_STANDARD.md` để biết phải làm gì, không tách thành skill
 5. Outcome contract khép kín — orchestrator đọc HTML comment cuối output của skill; nếu thiếu comment thì outcome = `unknown` → pause cho human (không fallback heuristic)
 6. `manual-checklist` dù config có ghi `auto: true` thì orchestrator cũng override cấm auto-chain (workflow coding standard bắt buộc human-triggered)
 7. Skill trả explicit contract/artifact metadata trong comment → orchestrator ghi vào state, step sau đọc từ state (không path inference ngầm)
 8. Slice đầu tiên gồm: orchestrator skill + 1 workflow config (`feature-standard`) + amendment section trong `WORKFLOW_CODING_STANDARD.md` + contract-emitter update cho các skill tham gia workflow (`create-spec`, `execute-spec`, `sync-spec`, `verify-feature`, `verify-runtime`, `manual-checklist`)
+9. Cho phép nhiều run cùng tồn tại, nhưng chỉ dùng 1 global repo lock đơn giản. Step nào cần chặn chạy song song thì khai báo lock này; nếu lock đang do run khác giữ thì run hiện tại dừng ngay và báo user
+10. Phải có cleanup path cho run-state và stale lock; không để state tăng mãi hoặc orphan lock block workflow vô thời hạn
 
 ## Outcome enum (khép kín, duy nhất)
 
@@ -84,12 +86,15 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 | `steps[].requires` | string[]? | Danh sách contract-id/artifact key tối thiểu phải tồn tại trong state trước khi step này chạy |
 | `steps[].skippable` | bool? | `false` = invariant, không cho skip dù human gọi `--skip`. Default `true` |
 | `steps[].inputs` | object? | Metadata cho input phụ (vd runtime URL) — hỏi khi đến step, không hỏi upfront |
+| `steps[].uses_repo_lock` | bool? | `true` = step phải acquire global repo lock trước khi chạy. Slice đầu chỉ có 1 lock loại này |
 
 ## Orchestrator rules (áp dụng lên tất cả workflow config)
 
 - `manual-checklist` luôn được orchestrator override thành `human_gate: true` dù config khai báo khác (workflow coding standard cấm auto-chain)
 - Outcome contract: orchestrator chỉ đọc dòng `<!-- orchestrator: outcome=... provides=... *_path=... -->` cuối output của skill; **không có fallback heuristic** — thiếu comment hoặc không match enum = `unknown` = pause cho human
-- State file ở `docs/ai/workflows/.orchestrator-state.json` (single active run; không multi-run cho slice đầu)
+- State file theo run ở `docs/ai/workflows/runs/{run-id}.json`
+- Registry active runs ở `docs/ai/workflows/.orchestrator-runs.json`
+- Global lock ở `docs/ai/workflows/.orchestrator-lock.json`
 - Run-id tự sinh theo format `<workflow-id>--<feature-slug>--<timestamp>`
 - Skill trả explicit contract/artifact metadata trong comment → orchestrator ghi vào state `contracts` + `artifact_paths`; step sau đọc từ state (không path inference từ slug)
 - `requires` check: trước khi chạy step, orchestrator verify mọi contract-id trong `requires` đã tồn tại trong state. `skip` **không** satisfy `requires`; nếu contract thiếu thì pause, báo blocker
@@ -97,6 +102,40 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 - `skippable: false` override lệnh `--skip` từ human — báo "step này là invariant, không skip được"
 - Human có thể skip 1 step khi gọi orchestrator (vd `/orchestrator next --skip`) — chấp nhận nếu `skippable != false`; skip được log vào state history kèm warning
 - Khi pause ở human_gate, orchestrator KHÔNG tự resume — human gọi lệnh kế tiếp để tiếp
+- Trước mọi `start` / `next` / `continue`, orchestrator phải check global repo lock cho step sắp chạy. Nếu step khai báo `uses_repo_lock = true` và lock đang do run khác giữ thì run hiện tại dừng ngay với owner run id, feature slug, step id, và thời điểm acquire
+- `status`, `list`, và `cleanup` vẫn được phép chạy khi có lock; chỉ chặn invocation làm workflow tiến lên
+- Nếu step có `uses_repo_lock = true`, orchestrator acquire lock trước khi chạy và release ngay sau khi state của step đã được ghi
+- Nếu lock tồn tại nhưng owner run không còn `status=running` hoặc `current_step_id` không còn khớp step đang giữ lock, lock được xem là orphan và có thể bị cleanup xoá
+- Nếu lock đã stale theo TTL nhưng owner vẫn trông như đang chạy, orchestrator không tự clear; phải pause và yêu cầu human chạy cleanup explicit để tránh clear nhầm run còn sống
+- Cleanup path bắt buộc:
+  - archive run terminal (`completed`, `blocked`) sang `docs/ai/workflows/runs/archive/`
+  - archive run `paused` quá TTL stale
+  - xoá orphan lock
+  - chỉ force-release stale lock khi human explicit invoke cleanup
+
+## Run status lifecycle
+
+- Allowed `status` values:
+  - `running`: orchestrator đang thực thi invocation hiện tại cho run này
+  - `paused`: run dừng ở human gate, lock contention, hoặc một outcome cần human quyết định trước khi chạy tiếp
+  - `blocked`: run gặp failure cứng hoặc thiếu invariant bắt buộc; coi như terminal cho cleanup
+  - `completed`: run đã đi hết workflow config
+- `paused` dùng cho các tình huống:
+  - `human_gate: true`
+  - `unknown`
+  - `stop-ask-human`
+  - `stop-split-slices`
+  - `stop-run-spike`
+  - `stop-escalate-conflict`
+  - `stop-too-broad`
+  - `stop-drift`
+  - repo lock đang do run khác giữ
+- `blocked` dùng cho các tình huống:
+  - `stop-blocked`
+  - `stop-fail`
+  - contract mismatch giữa `provides` khai báo và comment emit thực tế
+  - thiếu workflow file, run state, hoặc required contract tối thiểu để step chạy
+- `completed` chỉ set khi step cuối cùng của workflow kết thúc với `continue`
 
 ## Contract keys chuẩn cho `feature-standard`
 
@@ -112,8 +151,8 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 
 ## Sample config: `feature-standard` (slice đầu)
 
-Đây là JSON sẽ được đặt tại `docs/ai/workflows/feature-standard.json` sau khi chốt.
-`review-spec` **không** ở trong slice đầu — giữ optional như hiện tại (xem `.pi/workflows/README.md:30`). Slice sau có thể thêm nếu đủ evidence theo `AI_WORKFLOW_RULES.md:42`.
+Đây là JSON đã được dùng tại `docs/ai/workflows/feature-standard.json` và là source of truth cho workflow hiện tại.
+Sample dưới đây phải khớp với config thật.
 
 ```json
 {
@@ -179,6 +218,21 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
       "skippable": false
     },
     {
+      "id": "review-spec",
+      "title": "Review spec",
+      "type": "subagent",
+      "value": "review-spec",
+      "hint": "Review spec một lần cho clarity, bounded scope, và execution readiness",
+      "exec": "subagent",
+      "subagent": "review-spec",
+      "auto": true,
+      "human_gate": true,
+      "human_gate_reason": "Spec vừa được tạo và review xong. Human cần đọc kết quả review-spec trước khi cho phép execute.",
+      "stop_on_outcome": ["stop-fail"],
+      "requires": ["spec_path"],
+      "skippable": false
+    },
+    {
       "id": "execute-spec",
       "title": "Execute spec",
       "type": "command",
@@ -187,8 +241,10 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
       "exec": "skill",
       "skill": "execute-spec",
       "auto": true,
-      "human_gate": false,
+      "human_gate": true,
+      "human_gate_reason": "Implementation vừa chạy xong. Human cần review code/result trước khi sync spec và verify tiếp.",
       "stop_on_outcome": ["stop-blocked", "stop-too-broad"],
+      "uses_repo_lock": true,
       "requires": ["spec_path"],
       "provides": ["summary_path"],
       "skippable": false
@@ -201,9 +257,8 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
       "hint": "Reconcile spec với codebase sau implement",
       "exec": "skill",
       "skill": "sync-spec",
-      "auto": false,
-      "human_gate": true,
-      "human_gate_reason": "Spec vừa được implement. Human cần đọc spec synced trước khi tiếp tục verify để chốt business intent không bị drift ngầm.",
+      "auto": true,
+      "human_gate": false,
       "requires": ["spec_path", "summary_path"],
       "provides": ["spec_synced"],
       "skippable": false
@@ -261,11 +316,12 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 
 ## Ghi chú thêm
 
-- `review-spec` **bỏ** khỏi slice đầu — giữ optional như `.pi/workflows/README.md:30` hiện tại. Thêm vào workflow mặc định cần evidence theo `AI_WORKFLOW_RULES.md:42`
+- Workflow config thật hiện tại **có** `review-spec` trong slice đầu và sample này đã được kéo về khớp config checked-in
 - `verify-runtime` có `inputs.url = ask-at-step` → orchestrator hỏi runtime URL khi đến đúng step này, không hỏi upfront ngay từ đầu
 - `requires` mang nghĩa "artifact/contract tối thiểu đã tồn tại trong state", **không** mang nghĩa "step trước từng chạy" và **không** được satisfy bởi skip log
 - `Shape` / `Recon` / `Decide` cũng được contract hóa (`shape_checked`, `recon_checked`, `decision_ready`) và pin `skippable: false` để pre-spec gate không thể bị skip mà vẫn vào `/create-spec`
 - `spec` / `execute-spec` / `sync-spec` / `verify-feature` / `verify-runtime` được pin `skippable: false` vì đều là provider của downstream contracts trong workflow chuẩn
+- `execute-spec` chỉ là consumer đầu tiên của `uses_repo_lock = true`; sau này step khác muốn chặn chạy song song chỉ cần bật cùng flag này
 - `verify-runtime` có `requires: ["spec_synced", "verification_path"]` + `skippable: false` đảm bảo invariant "latest synced spec tồn tại và verification artifact đã được tạo trước" không bị phá dù human cố skip
 - `manual-checklist` có `requires: ["spec_path", "summary_path", "verification_path", "runtime_verified"]` để đảm bảo bundle sign-off chỉ chạy sau khi chuỗi verify cốt lõi đã hoàn tất
 - Slice implement phải update output contract cho các skill tham gia workflow: `create-spec` emit `spec_path`, `execute-spec` emit `summary_path`, `sync-spec` emit `spec_synced`, `verify-feature` emit `verification_path`, `verify-runtime` emit `runtime_verified`, `manual-checklist` emit `checklist_path`
@@ -275,11 +331,12 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 ## Cần human chốt
 
 1. Pin canonical `create-spec` (không `/spec` alias) trong config — đã chốt
-2. `sync-spec` đặt `human_gate: true` đã chốt
+2. `review-spec` nằm trong config thật hiện tại và được coi là source of truth — đã chốt
 3. snake_case cho JSON fields — đã chốt
 4. `requires` + `skippable: false` cho invariants đã thêm
-5. `review-spec` bỏ khỏi slice đầu, giữ optional — đã chốt
+5. `execute-spec` là human gate, còn `sync-spec` auto-run tiếp theo config thật — đã chốt
 6. Bỏ fallback heuristic, thiếu comment = `unknown` = pause — đã chốt
 7. Skill trả explicit contract/path metadata trong comment, không path inference ngầm — đã chốt
+8. Multi-run + single repo lock + cleanup path — đã chốt
 
 Draft này ready cho bước `/create-spec` kế tiếp nếu human chốt.

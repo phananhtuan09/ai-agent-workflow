@@ -58,6 +58,7 @@ Rules:
 - by invoking `/orchestrator`, the human is choosing a predeclared sequence of steps and consented auto-run boundaries ahead of time
 - orchestrator may auto-run only steps marked `auto: true` in the selected workflow config
 - orchestrator must stop at `human_gate: true`, any configured `stop_on_outcome`, missing required contracts, or unknown skill outcome
+- orchestrator may enforce a config-declared repo lock; if another run holds that lock for the next step, the current run must stop and report the owner instead of advancing
 - `/manual-checklist` remains human-triggered even inside orchestrator mode; orchestrator must not auto-chain it
 - orchestrator must treat workflow contracts and recorded evidence as the source of truth; it must not infer missing artifact paths or outcomes heuristically
 

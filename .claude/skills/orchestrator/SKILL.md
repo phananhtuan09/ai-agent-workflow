@@ -11,19 +11,24 @@ Run a predefined workflow config until the next stop condition.
 
 - `/orchestrator start docs/ai/workflows/{workflow}.json`
 - `/orchestrator start docs/ai/workflows/{workflow}.json --slug <feature-slug>`
-- `/orchestrator next`
-- `/orchestrator continue`
-- `/orchestrator next --skip`
+- `/orchestrator next --run <run-id>`
+- `/orchestrator continue --run <run-id>`
+- `/orchestrator next --run <run-id> --skip`
 - `/orchestrator status`
+- `/orchestrator status --run <run-id>`
+- `/orchestrator list`
+- `/orchestrator cleanup`
+- `/orchestrator cleanup --force-release-lock --run <run-id>`
 
 ## Inputs
 
 - Required on `start`: path to a workflow JSON file
 - Required on `start`: feature slug for artifact naming
 - Optional on `start`: runtime notes if the workflow needs them
-- Required on `next` / `continue`: existing state file at `docs/ai/workflows/.orchestrator-state.json`
+- Required on `next` / `continue`: explicit `run_id`
 - Optional on `next --skip`: explicit human request to skip the current step
-- Required on `status`: existing state file at `docs/ai/workflows/.orchestrator-state.json`
+- Optional on `status`: explicit `run_id`; without it, summarize active runs
+- Optional on `cleanup --force-release-lock`: owner run id of the stale repo lock
 
 `feature_slug` rules:
 
@@ -31,13 +36,15 @@ Run a predefined workflow config until the next stop condition.
 - `feature_slug` must be kebab-case because it becomes the shared artifact stem for spec, summary, verification, and checklist files
 - If the human omits it, derive a kebab-case slug from the feature description or workflow subject, show the derived slug to the human, and record that derived value in state before running the first step
 
-## State File
+## State Files
 
-Use one active-run state file for slice 1:
+Use one state file per run:
 
-- Path: `docs/ai/workflows/.orchestrator-state.json`
+- Path: `docs/ai/workflows/runs/{run-id}.json`
 - Keep it human-readable JSON
-- Overwrite only the active-run fields that changed
+- Overwrite only the fields that changed
+- Keep an active-run registry at `docs/ai/workflows/.orchestrator-runs.json`
+- Keep the global repo lock at `docs/ai/workflows/.orchestrator-lock.json`
 
 Minimum fields:
 
@@ -47,23 +54,26 @@ Minimum fields:
   "workflow_id": "feature-standard",
   "workflow_path": "docs/ai/workflows/feature-standard.json",
   "feature_slug": "my-feature",
-  "status": "running",
+  "status": "paused",
+  "updated_at": "2026-07-12T10-35-00Z",
   "current_step_id": "execute-spec",
+  "holds_repo_lock": false,
   "contracts": {
     "shape_checked": true,
     "recon_checked": true,
-    "decision_ready": true,
-    "spec_synced": true,
-    "runtime_verified": false
+    "decision_ready": true
   },
   "artifact_paths": {
-    "spec_path": "docs/ai/specs/my-feature.md",
-    "summary_path": "docs/ai/summaries/my-feature.md",
-    "verification_path": "docs/ai/verifications/my-feature.md"
+    "spec_path": "docs/ai/specs/my-feature.md"
   },
   "history": [
     {
       "step_id": "shape",
+      "action": "run",
+      "outcome": "continue"
+    },
+    {
+      "step_id": "review-spec",
       "action": "run",
       "outcome": "continue"
     }
@@ -74,13 +84,16 @@ Minimum fields:
 ## Execution Model
 
 1. Load the workflow config.
-2. If `start`, initialize a new state file with empty contracts and artifact paths.
+2. If `start`, initialize a new run state with empty contracts and artifact paths, then add it to the run registry.
    - resolve and persist `feature_slug` before the first step runs
 3. Determine the next pending step from config order.
 4. Before running a step:
+   - run lightweight cleanup: remove orphan locks, archive terminal runs if policy allows, and report stale locks
+   - if a repo lock is held by another run for the next step that declares `uses_repo_lock`, stop immediately and report the owner run instead of advancing
    - verify every `requires` contract exists in state
    - reject `--skip` if `skippable` is `false`
    - collect step inputs only when the step is reached
+   - if the step declares `uses_repo_lock`, acquire the repo lock before execution
 5. Execute by `exec` type:
    - `inline`: perform the documented step directly in chat
    - `skill`: run the named skill
@@ -93,10 +106,40 @@ Minimum fields:
    - write outcome to history
    - add any emitted contracts to `contracts`
    - add any emitted `*_path` fields to `artifact_paths`
+   - update `updated_at`
+   - release any lock held by the step after the state write completes
 8. Continue automatically only when:
    - the step outcome is `continue`
    - the next step has `auto: true`
    - no `human_gate`, `stop_on_outcome`, missing contract, or unknown outcome blocks progress
+
+## Run Status Lifecycle
+
+Allowed `status` values:
+
+- `running`: the current invocation is actively executing this run
+- `paused`: the run is waiting for human review, human input, lock availability, or an explicit resume
+- `blocked`: the run hit a hard failure or invariant violation and should be treated as terminal for cleanup
+- `completed`: the workflow reached its final step successfully
+
+Use `paused` for:
+
+- `human_gate: true`
+- `unknown`
+- `stop-ask-human`
+- `stop-split-slices`
+- `stop-run-spike`
+- `stop-escalate-conflict`
+- `stop-too-broad`
+- `stop-drift`
+- repo lock held by another run
+
+Use `blocked` for:
+
+- `stop-blocked`
+- `stop-fail`
+- declared `provides` contracts missing from a `continue` outcome
+- missing workflow file, run state, or required contracts/artifacts that make the next step impossible to run
 
 ## Inline Step Contracts
 
@@ -144,10 +187,22 @@ Rules:
 - `manual-checklist` is always human-triggered, even if the config says otherwise
 - `requires` means contract or artifact presence in state, not "a previous step once ran"
 - `provides` means contracts that must be recorded when the step succeeds with `continue`
+- `uses_repo_lock` means the step needs the single shared repo lock; if another run already holds it, the current invocation must stop immediately
 - If a step hits `human_gate: true`, stop immediately after writing state
 - If a step outcome matches `stop_on_outcome`, stop immediately after writing state
-- If the workflow path or state file is missing, stop and report the missing file
-- `status` must read and summarize the current state without advancing, skipping, or mutating the workflow
+- If the workflow path or run state is missing, stop and report the missing file
+- `status` must read and summarize state without advancing, skipping, or mutating the workflow
+- `list` must show every non-archived run with run id, feature slug, current step, status, and whether the run holds the repo lock
+- Only `start` / `next` / `continue` are blocked by another run's repo lock; `status`, `list`, and `cleanup` remain available
+
+## Cleanup Rules
+
+- `cleanup` archives terminal runs into `docs/ai/workflows/runs/archive/`
+- terminal means `completed` or `blocked`
+- `cleanup` may also archive stale paused runs after the configured TTL
+- `cleanup` removes orphan locks automatically when the owner run is missing, archived, or no longer on the locked step
+- `cleanup` does not auto-release a stale lock whose owner still appears `running`; require explicit `cleanup --force-release-lock --run <run-id>`
+- Keep run state human-readable after archival; do not silently delete the only copy
 
 ## Output
 
@@ -156,10 +211,11 @@ After each invocation, return:
 - current run status
 - current or next step id
 - why execution stopped or continued
-- state file path
+- run state path
 - any artifact paths newly recorded this turn
+- any lock owner that blocked progress
 
-For `status`, return:
+For `status --run <run-id>`, return:
 
 - workflow id
 - feature slug
@@ -169,8 +225,30 @@ For `status`, return:
 - recorded contracts
 - recorded artifact paths
 
+For `status` without `--run`, return:
+
+- active run ids
+- feature slugs
+- current steps
+- statuses
+- repo lock holder if any
+
+For `list`, return:
+
+- active run ids
+- feature slugs
+- current steps
+- statuses
+- repo lock holder if any
+
+For `cleanup`, return:
+
+- archived run ids
+- removed orphan locks
+- stale locks still requiring human force-release
+
 ## Done When
 
-- `start` created the state file and either advanced until a stop condition or reported why it could not start
+- `start` created a run state and either advanced until a stop condition or reported why it could not start
 - `next` / `continue` advanced exactly until the next stop condition
-- state and contracts remain consistent with the workflow config
+- global repo lock, run registry, and per-run state remain consistent with the workflow config
