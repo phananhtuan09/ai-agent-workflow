@@ -99,6 +99,7 @@ If the user asks only for a partial phase such as `Audit`, you may produce that 
 
 ### `Audit`
 - Perform static review before scenario execution.
+- If session traces exist, compare declared workflow behavior against actual conversation, tool use, handoff, and artifact patterns.
 - Record findings with:
   - severity
   - area
@@ -107,22 +108,41 @@ If the user asks only for a partial phase such as `Audit`, you may produce that 
   - recommended action
 - Check especially for:
   - unclear phase boundaries
+  - unclear entry or exit conditions
   - artifacts with no regular reader
   - hidden runtime dependence
-  - reliance on undocumented conventions
-  - blurred lines between human judgment and verified facts
+  - reliance on undocumented conventions or hidden chat memory
+  - blurred lines between assumptions, human judgment, agent judgment, and verified facts
+  - poor failure visibility, missing stop conditions, or unsafe escalation behavior
 
 ### `Exercise`
 - Use realistic scenarios when the user wants a real evaluation rather than a paper review.
+- Treat available real session traces as primary evidence alongside synthetic scenarios.
 - Cover at least one scenario per claimed task class when feasible.
+- Include success-path and stress-path scenarios when the workflow claims safety, reliability, or portability.
 - Record:
   - scenario class
   - expected behavior
   - observed behavior
   - ambiguity resolution
   - artifact consumption
-  - breakdowns
+  - breakdowns, loops, escalations, or safe stops
   - visible cost notes
+
+### `Session Trace Evidence`
+- When real chat/session history is available, record:
+  - user request or session trigger
+  - explicit phase transitions
+  - inferred, skipped, or blurred phase transitions
+  - questions asked by the agent and whether they were necessary
+  - decisions made by the human, agent, or tools
+  - tool calls, commands, artifacts, and handoffs
+  - hidden context, memory, or unstated assumptions
+  - errors, loops, premature execution, unsafe actions, retries, or escalations
+  - whether later steps consumed earlier outputs
+  - divergence between declared workflow and actual session behavior
+- Use session traces to identify real failure modes, not to prove general usefulness from one successful session.
+- If traces are unavailable, write `session traces unavailable` and avoid claiming runtime evidence.
 
 ### `Verdict`
 - Choose exactly one:
@@ -143,6 +163,7 @@ The final file must include:
 - `## Normalized Model`
 - `## Audit Findings`
 - `## Exercise Scenarios`
+- `## Session Trace Evidence`
 - `## Evidence`
 - `## Verdict`
 - `## Promotion Decision`
