@@ -1,6 +1,6 @@
 ---
 name: workflow-evaluation
-description: Use when the user asks to evaluate, compare, promote, reject, or review an AI workflow itself rather than perform the underlying work that workflow guides. Reads the workflow under review, normalizes it, audits it, exercises it against realistic scenarios and available session traces, and writes an evaluation artifact to docs/ai/workflow-evals/.
+description: Use when the user asks to evaluate, compare, promote, reject, improve, or review an AI workflow itself rather than perform the underlying work that workflow guides. Diagnoses observed workflow failures, gathers evidence, exercises realistic scenarios and session traces, and writes a human-readable Vietnamese HTML report to docs/ai/workflow-evals/.
 ---
 
 # Workflow Evaluation
@@ -41,11 +41,15 @@ Minimum required input:
 - claimed purpose
 - claimed task classes
 - evaluation goal
+- workflow version
+- observable expected behavior
 
 Optional:
 - comparison target
 - runtime context
 - known constraints
+- known usage incidents
+- change under test, when proving an improvement
 - session traces, when available:
   - raw transcript path(s)
   - normalized trace directory from `python3 .agents/skills/workflow-evaluation/extract_session_trace.py`
@@ -71,9 +75,25 @@ If session traces are unavailable, record them as unavailable instead of inventi
 ## Output
 
 Write to:
-- `docs/ai/workflow-evals/{name}.md`
+- `docs/ai/workflow-evals/{name}.html`
 
-If the user asks only for a partial phase such as `Audit`, you may produce that phase alone in the response, but a full workflow evaluation should still end in the durable artifact above.
+Use `docs/ai/project/templates/workflow-evaluation-report.html` as the report structure and visual baseline.
+
+Output rules:
+- write all human-facing content in Vietnamese
+- preserve code identifiers, paths, commands, quoted evidence, and canonical status values when translation would reduce traceability
+- show canonical verdicts with Vietnamese labels, for example `Chấp nhận có điều kiện (Adopt with constraints)`
+- produce one self-contained HTML5 file with inline CSS and no JavaScript, CDN, external font, or build dependency
+- escape untrusted session-trace content before inserting it into HTML
+- do not embed secrets, credentials, tokens, or unnecessary raw transcript content
+- keep the report responsive, print-friendly, keyboard-readable, and scannable by a human reviewer
+- replace every `{{PLACEHOLDER}}`; the final report must not contain unresolved template tokens
+- do not mirror the evaluation phases as top-level report sections; show only information that helps a human make a decision
+- keep methodology, normalized models, full traces, and lower-priority findings in the collapsible evidence appendix
+- use charts only for real counts, rates, or comparable before/after results; show `Chưa đo` instead of inventing a score
+- keep the decision summary under 120 words and show no more than five key findings on the main page
+
+If the user asks only for a partial phase, return a concise Vietnamese summary in the response. A full workflow evaluation must end in the durable HTML artifact above.
 
 ## Session Trace Preflight
 
@@ -112,19 +132,31 @@ If normalized artifacts already exist and match the target session, reuse them i
 2. If only raw session transcript paths or local Opencode session identifiers are available, run the skill-local extractor and update the input contract to point at the normalized artifact set.
 3. Define the evaluation input contract explicitly.
 4. Run `Intake`.
-5. Run `Normalize`.
-6. Run `Audit`.
-7. Run `Exercise` when realistic evidence or session traces can be gathered.
-8. Include `Session Trace Evidence` when real session history is available, or explicitly mark it unavailable.
-9. Run `Verdict`.
-10. Write the evaluation artifact.
+5. Run `Observe` when real usage or incidents exist.
+6. Run `Normalize`.
+7. Run `Diagnose`.
+8. Run `Baseline Exercise` when realistic evidence or session traces can be gathered.
+9. Write an `Improvement Contract` for findings selected for remediation.
+10. If a changed workflow version exists, run `Re-evaluate` with regression, neighbor, and control scenarios.
+11. Include session-trace evidence when real session history is available, or explicitly mark it unavailable.
+12. Run `Verdict`.
+13. Render the Vietnamese HTML report from `docs/ai/project/templates/workflow-evaluation-report.html`.
 
 ## Phase Requirements
 
 ### `Intake`
 - Identify the workflow artifact set under review.
 - State the workflow's claimed purpose in plain language.
-- State intended task classes and evaluation goal.
+- State intended task classes, workflow version, evaluation goal, and observable expected behavior.
+
+### `Observe`
+- Convert usage pain into incidents with:
+  - expected behavior
+  - observed behavior
+  - first divergence
+  - impact
+  - supporting evidence
+- Separate isolated anomalies, repeated patterns, usability friction, and unverified suspicion.
 
 ### `Normalize`
 - Rewrite the workflow into a comparable model:
@@ -139,15 +171,20 @@ If normalized artifacts already exist and match the target session, reuse them i
   - required assumptions
 - Keep verified facts separate from inferred structure.
 
-### `Audit`
-- Perform static review before scenario execution.
+### `Diagnose`
+- Combine static review with observed incidents and trace evidence.
 - If session traces exist, compare declared workflow behavior against actual conversation, tool use, handoff, and artifact patterns.
 - Record findings with:
   - severity
+  - evidence status
   - area
+  - failure layer
+  - claim and trigger condition
   - evidence
-  - rationale
-  - recommended action
+  - impact
+  - root-cause hypothesis and confidence
+  - smallest recommended change
+  - re-test scenario
 - Check especially for:
   - unclear phase boundaries
   - unclear entry or exit conditions
@@ -157,8 +194,8 @@ If normalized artifacts already exist and match the target session, reuse them i
   - blurred lines between assumptions, human judgment, agent judgment, and verified facts
   - poor failure visibility, missing stop conditions, or unsafe escalation behavior
 
-### `Exercise`
-- Use realistic scenarios when the user wants a real evaluation rather than a paper review.
+### `Baseline Exercise`
+- Freeze the workflow version, scenario input, expected behavior, prohibited behavior, and pass/fail rule before execution.
 - Treat available real session traces as primary evidence alongside synthetic scenarios.
 - Cover at least one scenario per claimed task class when feasible.
 - Include success-path and stress-path scenarios when the workflow claims safety, reliability, or portability.
@@ -170,6 +207,17 @@ If normalized artifacts already exist and match the target session, reuse them i
   - artifact consumption
   - breakdowns, loops, escalations, or safe stops
   - visible cost notes
+
+### `Improvement Contract`
+- Link each selected finding to one falsifiable hypothesis.
+- Define the smallest targeted change, success threshold, regression protection, and re-evaluation set.
+- Keep the baseline unchanged while collecting baseline evidence; implementation of the workflow change is a separate task.
+
+### `Re-evaluate`
+- Compare identified baseline and changed workflow versions.
+- Replay at least one regression, one neighbor, and one control scenario per tested finding.
+- Classify each hypothesis as `Resolved`, `Improved but below threshold`, `Inconclusive`, `Regressed`, or `Hypothesis rejected`.
+- Do not claim improvement from clearer wording alone; require observable before/after evidence.
 
 ### `Session Trace Evidence`
 - When real chat/session history is available, record:
@@ -184,7 +232,7 @@ If normalized artifacts already exist and match the target session, reuse them i
   - whether later steps consumed earlier outputs
   - divergence between declared workflow and actual session behavior
 - Use session traces to identify real failure modes, not to prove general usefulness from one successful session.
-- If traces are unavailable, write `session traces unavailable` and avoid claiming runtime evidence.
+- If traces are unavailable, write `Session trace không khả dụng (session traces unavailable)` and avoid claiming runtime evidence.
 
 ### `Verdict`
 - Choose exactly one:
@@ -192,23 +240,19 @@ If normalized artifacts already exist and match the target session, reuse them i
   - `Adopt with constraints`
   - `Keep experimental`
   - `Reject`
+- Render it respectively as `Chấp nhận`, `Chấp nhận có điều kiện`, `Tiếp tục thử nghiệm`, or `Từ chối`, followed by the canonical value in parentheses.
 - State supported scope, unsupported scope, evidence summary, and blocking issues.
 
 ## Required Artifact Sections
 
-The final file must include:
-- `## Workflow Under Test`
-- `## Scope`
-- `## Input Contract`
-- `## Claimed Purpose`
-- `## Evaluation Goal`
-- `## Normalized Model`
-- `## Audit Findings`
-- `## Exercise Scenarios`
-- `## Session Trace Evidence`
-- `## Evidence`
-- `## Verdict`
-- `## Promotion Decision`
+The final HTML file must use the template and include these decision-oriented section IDs with Vietnamese visible headings:
+- `#decision-summary`
+- `#workflow-health`
+- `#key-findings`
+- `#improvement-impact`
+- `#action-plan`
+- `#scope-limitations`
+- `#evidence-appendix`
 
 ## Rules
 
@@ -216,19 +260,24 @@ The final file must include:
 - Do not silently convert workflow design work into workflow adoption
 - Do not present a paper review as if runtime exercise had happened
 - Do not present workflow documents as proof of actual runtime behavior without session traces or scenario evidence
-- If evidence is thin, prefer `Keep experimental` or recommend more `Exercise`
+- If evidence is thin, prefer `Keep experimental` or recommend more `Observe` or `Baseline Exercise`
 - If a field is unknown, mark it unknown instead of assuming it
 - If session traces are unavailable, mark them unavailable instead of inventing them
-- Keep the evaluation artifact concise and reviewable
+- Keep the evaluation artifact concise, visually scannable, and reviewable
 - Use direct evidence from workflow docs, commands, skills, session traces, and existing artifacts when available
-- When reading old workflow artifacts, separate static evidence used in `Audit` from scenario evidence and session-trace evidence used in `Exercise`
+- When reading old workflow artifacts, separate static design evidence from scenario and session-trace evidence
+- Do not claim improvement without a comparable baseline
+- Use stable finding IDs and severity badges
 
 ## Done When
 
 - the workflow subject is explicitly defined
 - normalized structure is written
 - audit findings are evidence-backed
-- exercise evidence is recorded or clearly marked as limited
+- baseline evidence is recorded or clearly marked as limited
 - session trace evidence is recorded when available, or clearly marked unavailable
+- improvement claims include before/after evidence and regression protection
 - verdict matches the standard's heuristics
-- `docs/ai/workflow-evals/{name}.md` is written
+- a self-contained Vietnamese report is written to `docs/ai/workflow-evals/{name}.html`
+- the final HTML contains every required section ID and no unresolved `{{...}}` placeholder
+- charts cite real counts or denominators, and unavailable metrics are labeled `Chưa đo`

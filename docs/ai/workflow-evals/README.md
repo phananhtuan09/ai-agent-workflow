@@ -1,5 +1,5 @@
-# Workflow Evaluations
+# Báo cáo đánh giá workflow
 
 Evaluation artifacts produced by `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`.
 
-Each file `docs/ai/workflow-evals/{name}.md` contains a full evaluation of one workflow or workflow variant.
+Mỗi file `docs/ai/workflow-evals/{name}.html` là một báo cáo HTML tiếng Việt, self-contained và có thể mở trực tiếp bằng trình duyệt để human review một workflow hoặc workflow variant.
