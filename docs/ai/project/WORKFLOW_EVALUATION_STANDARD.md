@@ -102,6 +102,24 @@ Before `Intake`, define the minimum evaluation input:
   - decision log
   - failure or retry log
 
+Preferred local trace ingestion:
+- normalize local runtime transcripts into a shared artifact set before evaluation when possible
+- use the extractor shipped with the `workflow-evaluation` skill to convert raw Claude Code or Codex transcripts into:
+  - Codex or Antigravity: `python3 .agents/skills/workflow-evaluation/extract_session_trace.py ...`
+  - Claude Code: `python3 .claude/skills/workflow-evaluation/extract_session_trace.py ...`
+- the extractor writes:
+  - `docs/ai/session-traces/{runtime}/{session-id}/session-trace.json`
+  - `chat-history.ndjson`
+  - `command-transcript.ndjson`
+  - `tool-call-trace.ndjson`
+  - `artifact-trail.ndjson`
+  - `handoff-notes.json`
+  - `decision-log.json`
+  - `failure-retry-log.json`
+- typical raw transcript sources:
+  - Claude Code: `~/.claude/projects/<project>/<session>.jsonl`
+  - Codex: `~/.codex/sessions/YYYY/MM/DD/<session>.jsonl`
+
 Required:
 - do not start evaluation until these fields are explicit
 - if a field is unknown, record it as unknown instead of assuming it
@@ -110,6 +128,24 @@ Required:
 Recommended:
 - keep the input contract short enough to fit near the top of the evaluation artifact
 - when evaluating a workflow already used in real work, include at least one representative session trace before making a promotion decision
+- prefer normalized trace artifacts over runtime-specific raw transcripts when comparing workflows across Claude Code and Codex
+
+Example normalized trace contract:
+
+```yaml
+session_traces:
+  runtime: codex
+  source_transcript: ~/.codex/sessions/2026/07/14/rollout-2026-07-14T23-11-34-019f6165-e192-7df1-9ba2-1d04d476a678.jsonl
+  normalized_trace_dir: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678
+  session_trace: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/session-trace.json
+  chat_history: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/chat-history.ndjson
+  command_transcript: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/command-transcript.ndjson
+  tool_call_trace: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/tool-call-trace.ndjson
+  artifact_trail: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/artifact-trail.ndjson
+  handoff_notes: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/handoff-notes.json
+  decision_log: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/decision-log.json
+  failure_retry_log: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/failure-retry-log.json
+```
 
 ## Evaluation Phases
 

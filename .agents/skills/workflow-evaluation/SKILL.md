@@ -47,15 +47,19 @@ Optional:
 - runtime context
 - known constraints
 - session traces, when available:
-  - chat history
-  - command transcript
-  - tool-call trace
-  - artifact trail
-  - handoff notes
-  - decision log
-  - failure or retry log
+  - raw transcript path(s)
+  - normalized trace directory from `python3 .agents/skills/workflow-evaluation/extract_session_trace.py`
+  - `session-trace.json`
+  - `chat-history.ndjson`
+  - `command-transcript.ndjson`
+  - `tool-call-trace.ndjson`
+  - `artifact-trail.ndjson`
+  - `handoff-notes.json`
+  - `decision-log.json`
+  - `failure-retry-log.json`
 
 If the workflow subject is spread across multiple files, reconstruct it explicitly before judging it.
+If the user provides only raw Claude Code or Codex transcript paths, normalize them first with `python3 .agents/skills/workflow-evaluation/extract_session_trace.py` for Codex traces or `python3 .claude/skills/workflow-evaluation/extract_session_trace.py` for Claude traces when possible.
 If session traces are unavailable, record them as unavailable instead of inventing runtime behavior.
 
 ## Output
@@ -65,17 +69,42 @@ Write to:
 
 If the user asks only for a partial phase such as `Audit`, you may produce that phase alone in the response, but a full workflow evaluation should still end in the durable artifact above.
 
+## Session Trace Preflight
+
+When `session_traces` are provided as raw Claude Code or Codex transcript path(s), run the extractor before `Intake` or `Audit`:
+
+```bash
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py --input <raw-transcript-path> --runtime codex
+python3 .claude/skills/workflow-evaluation/extract_session_trace.py --input <raw-transcript-path> --runtime claude
+```
+
+When the user asks to audit the latest local session for a runtime, use:
+
+```bash
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime codex --latest --project <repo-cwd>
+python3 .claude/skills/workflow-evaluation/extract_session_trace.py --runtime claude --latest --project <repo-cwd>
+```
+
+After extraction:
+- replace raw transcript references in the input contract with the normalized artifact paths under `docs/ai/session-traces/{runtime}/{session-id}/`
+- use `session-trace.json` as the primary summary artifact
+- use `chat-history.ndjson`, `command-transcript.ndjson`, `tool-call-trace.ndjson`, and `artifact-trail.ndjson` as direct audit evidence
+- keep the original raw transcript path in the artifact for traceability
+
+If normalized artifacts already exist and match the target session, reuse them instead of re-extracting.
+
 ## Execution Flow
 
 1. Read `WORKFLOW_EVALUATION_STANDARD.md`.
-2. Define the evaluation input contract explicitly.
-3. Run `Intake`.
-4. Run `Normalize`.
-5. Run `Audit`.
-6. Run `Exercise` when realistic evidence or session traces can be gathered.
-7. Include `Session Trace Evidence` when real session history is available, or explicitly mark it unavailable.
-8. Run `Verdict`.
-9. Write the evaluation artifact.
+2. If only raw session transcript paths are available, run the skill-local extractor and update the input contract to point at the normalized artifact set.
+3. Define the evaluation input contract explicitly.
+4. Run `Intake`.
+5. Run `Normalize`.
+6. Run `Audit`.
+7. Run `Exercise` when realistic evidence or session traces can be gathered.
+8. Include `Session Trace Evidence` when real session history is available, or explicitly mark it unavailable.
+9. Run `Verdict`.
+10. Write the evaluation artifact.
 
 ## Phase Requirements
 
@@ -173,11 +202,13 @@ The final file must include:
 - Treat the workflow under review as the subject being evaluated
 - Do not silently convert workflow design work into workflow adoption
 - Do not present a paper review as if runtime exercise had happened
+- Do not present workflow documents as proof of actual runtime behavior without session traces or scenario evidence
 - If evidence is thin, prefer `Keep experimental` or recommend more `Exercise`
 - If a field is unknown, mark it unknown instead of assuming it
+- If session traces are unavailable, mark them unavailable instead of inventing them
 - Keep the evaluation artifact concise and reviewable
-- Use direct evidence from workflow docs, commands, skills, and existing artifacts when available
-- When reading old workflow artifacts, separate static evidence used in `Audit` from scenario evidence used in `Exercise`
+- Use direct evidence from workflow docs, commands, skills, session traces, and existing artifacts when available
+- When reading old workflow artifacts, separate static evidence used in `Audit` from scenario evidence and session-trace evidence used in `Exercise`
 
 ## Done When
 
@@ -185,5 +216,6 @@ The final file must include:
 - normalized structure is written
 - audit findings are evidence-backed
 - exercise evidence is recorded or clearly marked as limited
+- session trace evidence is recorded when available, or clearly marked unavailable
 - verdict matches the standard's heuristics
 - `docs/ai/workflow-evals/{name}.md` is written

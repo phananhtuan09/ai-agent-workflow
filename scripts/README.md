@@ -1,4 +1,4 @@
-# Release Scripts
+# Scripts
 
 Scripts để tự động hóa quá trình release: bump version, commit, push GitHub và publish npm.
 
@@ -66,4 +66,3 @@ npm run release:minor
 # Release major version (breaking changes)
 npm run release:major
 ```
-

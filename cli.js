@@ -45,6 +45,13 @@ Examples:
   npx ai-workflow-init --tool pi
   npx ai-workflow-init --tool codex
   npx ai-workflow-init --all
+
+The workflow-eval kit installs:
+  - docs/ai/project/AI_WORKFLOW_RULES.md
+  - docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md
+  - docs/ai/workflow-evals/
+  - docs/ai/session-traces/
+  - the workflow-evaluation skill folder for the selected runtime(s)
 `);
 }
 
