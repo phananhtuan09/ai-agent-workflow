@@ -60,6 +60,12 @@ Optional:
 
 If the workflow subject is spread across multiple files, reconstruct it explicitly before judging it.
 If the user provides only raw Claude Code or Codex transcript paths, normalize them first with `python3 .agents/skills/workflow-evaluation/extract_session_trace.py` for Codex traces or `python3 .claude/skills/workflow-evaluation/extract_session_trace.py` for Claude traces when possible.
+If the user wants Opencode session history, read it from the local Opencode session store instead of assuming there is a raw transcript file:
+- sessions are stored in SQLite, typically at `~/.local/share/opencode/opencode.db`
+- list sessions with `opencode session list`
+- confirm the db path with `opencode db path`
+- normalize the latest matching session with `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --latest --project <repo-cwd>`
+- or normalize a specific session with `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --session-id <session-id>`
 If session traces are unavailable, record them as unavailable instead of inventing runtime behavior.
 
 ## Output
@@ -78,11 +84,18 @@ python3 .agents/skills/workflow-evaluation/extract_session_trace.py --input <raw
 python3 .claude/skills/workflow-evaluation/extract_session_trace.py --input <raw-transcript-path> --runtime claude
 ```
 
+When `session_traces` come from Opencode, use the local database-backed session history:
+
+```bash
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --session-id <session-id>
+```
+
 When the user asks to audit the latest local session for a runtime, use:
 
 ```bash
 python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime codex --latest --project <repo-cwd>
 python3 .claude/skills/workflow-evaluation/extract_session_trace.py --runtime claude --latest --project <repo-cwd>
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --latest --project <repo-cwd>
 ```
 
 After extraction:
@@ -96,7 +109,7 @@ If normalized artifacts already exist and match the target session, reuse them i
 ## Execution Flow
 
 1. Read `WORKFLOW_EVALUATION_STANDARD.md`.
-2. If only raw session transcript paths are available, run the skill-local extractor and update the input contract to point at the normalized artifact set.
+2. If only raw session transcript paths or local Opencode session identifiers are available, run the skill-local extractor and update the input contract to point at the normalized artifact set.
 3. Define the evaluation input contract explicitly.
 4. Run `Intake`.
 5. Run `Normalize`.

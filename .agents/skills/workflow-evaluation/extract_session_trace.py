@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
+import datetime
 import json
 import os
+import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -54,6 +57,8 @@ def detect_runtime(input_path: Optional[Path]):
         return "claude"
     if "/.codex/" in normalized:
         return "codex"
+    if "/.opencode/" in normalized or "/opencode/" in normalized:
+        return "opencode"
     return None
 
 
@@ -90,6 +95,157 @@ def find_latest_transcript(runtime: str, project_path: Optional[str]):
         return pick_latest_file(files)
 
     raise ValueError(f"Unsupported runtime for --latest: {runtime}")
+
+
+def get_opencode_db_path():
+    default_path = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+    if default_path.exists():
+        return default_path
+
+    result = subprocess.run(
+        ["opencode", "db", "path"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return Path(result.stdout.strip()).expanduser()
+
+
+def find_latest_opencode_session(project_path: Optional[str]):
+    normalized_project = os.path.abspath(os.path.expanduser(project_path)) if project_path else None
+    db_path = get_opencode_db_path()
+    if not db_path.exists():
+        raise FileNotFoundError(f"Opencode database not found: {db_path}")
+
+    query = """
+        select id, directory, time_updated
+        from session
+        where time_archived is null
+    """
+    params = []
+    if normalized_project:
+        query += " and directory = ?"
+        params.append(normalized_project)
+    query += " order by time_updated desc limit 1"
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(query, params).fetchone()
+    if row is None:
+        return None
+    return dict(row)
+
+
+def safe_load_json(value):
+    if value is None:
+        return None
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        return value
+
+
+def load_opencode_session(session_id: str):
+    db_path = get_opencode_db_path()
+    if not db_path.exists():
+        raise FileNotFoundError(f"Opencode database not found: {db_path}")
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+
+        session_row = conn.execute(
+            "select * from session where id = ?",
+            [session_id],
+        ).fetchone()
+        if session_row is None:
+            raise ValueError(f"Opencode session not found: {session_id}")
+
+        message_rows = conn.execute(
+            """
+            select *
+            from message
+            where session_id = ?
+            order by time_created asc, id asc
+            """,
+            [session_id],
+        ).fetchall()
+
+        part_rows = conn.execute(
+            """
+            select *
+            from part
+            where session_id = ?
+            order by time_created asc, id asc
+            """,
+            [session_id],
+        ).fetchall()
+
+    parts_by_message = {}
+    for row in part_rows:
+        parts_by_message.setdefault(row["message_id"], []).append({
+            "id": row["id"],
+            "messageID": row["message_id"],
+            "sessionID": row["session_id"],
+            **(safe_load_json(row["data"]) or {}),
+        })
+
+    messages = []
+    for row in message_rows:
+        messages.append({
+            "info": {
+                **(safe_load_json(row["data"]) or {}),
+                "id": row["id"],
+                "sessionID": row["session_id"],
+            },
+            "parts": parts_by_message.get(row["id"], []),
+        })
+
+    return {
+        "source": {
+            "db_path": str(db_path),
+            "session_id": session_row["id"],
+        },
+        "info": {
+            "id": session_row["id"],
+            "slug": session_row["slug"],
+            "projectID": session_row["project_id"],
+            "workspaceID": session_row["workspace_id"],
+            "parentID": session_row["parent_id"],
+            "directory": session_row["directory"],
+            "path": session_row["path"],
+            "title": session_row["title"],
+            "agent": session_row["agent"],
+            "model": safe_load_json(session_row["model"]) or {},
+            "version": session_row["version"],
+            "shareURL": session_row["share_url"],
+            "metadata": safe_load_json(session_row["metadata"]) or {},
+            "summary": {
+                "additions": session_row["summary_additions"],
+                "deletions": session_row["summary_deletions"],
+                "files": session_row["summary_files"],
+                "diffs": safe_load_json(session_row["summary_diffs"]) or [],
+            },
+            "cost": session_row["cost"],
+            "tokens": {
+                "input": session_row["tokens_input"],
+                "output": session_row["tokens_output"],
+                "reasoning": session_row["tokens_reasoning"],
+                "cache": {
+                    "read": session_row["tokens_cache_read"],
+                    "write": session_row["tokens_cache_write"],
+                },
+            },
+            "time": {
+                "created": session_row["time_created"],
+                "updated": session_row["time_updated"],
+                "compacting": session_row["time_compacting"],
+                "archived": session_row["time_archived"],
+            },
+        },
+        "messages": messages,
+    }
 
 
 def ensure_dir(dir_path: Path):
@@ -129,14 +285,14 @@ def increment_counter(counter, key):
     counter[safe_key] = counter.get(safe_key, 0) + 1
 
 
-def build_base_artifact(runtime: str, transcript_path: Path):
+def build_base_artifact(runtime: str, transcript_path, transcript_format: str = "jsonl"):
     return {
         "schema_version": SCHEMA_VERSION,
         "runtime": runtime,
         "source": {
             "transcript_path": str(transcript_path),
-            "transcript_format": "jsonl",
-            "extracted_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+            "transcript_format": transcript_format,
+            "extracted_at": datetime.datetime.utcnow().isoformat() + "Z",
             "extractor": "workflow-evaluation/extract_session_trace.py",
         },
         "session": {
@@ -664,6 +820,169 @@ def parse_codex_transcript(records, transcript_path: Path):
     return artifact
 
 
+def parse_opencode_export(export_data, source_ref: str):
+    session_info = export_data.get("info") or {}
+    artifact = build_base_artifact("opencode", source_ref, transcript_format="sqlite-export")
+    artifact["source"]["db_path"] = ((export_data.get("source") or {}).get("db_path"))
+    artifact["source"]["session_id"] = session_info.get("id")
+
+    model_info = session_info.get("model") or {}
+    artifact["session"]["id"] = session_info.get("id")
+    artifact["session"]["cwd"] = session_info.get("directory")
+    artifact["session"]["started_at"] = (session_info.get("time") or {}).get("created")
+    artifact["session"]["ended_at"] = (session_info.get("time") or {}).get("updated")
+    artifact["session"]["cli_version"] = session_info.get("version")
+    artifact["session"]["model"] = model_info.get("id") or model_info.get("modelID")
+    artifact["session"]["metadata"]["agent"] = session_info.get("agent")
+    artifact["session"]["metadata"]["slug"] = session_info.get("slug")
+    artifact["session"]["metadata"]["project_id"] = session_info.get("projectID")
+    artifact["session"]["metadata"]["workspace_id"] = session_info.get("workspaceID")
+    artifact["session"]["metadata"]["parent_id"] = session_info.get("parentID")
+    artifact["session"]["metadata"]["provider_id"] = model_info.get("providerID")
+    artifact["session"]["metadata"]["path"] = session_info.get("path")
+    artifact["session"]["metadata"]["title"] = session_info.get("title")
+    artifact["session"]["metadata"]["share_url"] = session_info.get("shareURL")
+    artifact["session"]["metadata"]["raw_metadata"] = session_info.get("metadata") or {}
+
+    for index, message in enumerate(export_data.get("messages") or []):
+        message_info = message.get("info") or {}
+        role = message_info.get("role")
+        message_time = message_info.get("time") or {}
+        timestamp = message_time.get("created") or message_time.get("completed")
+
+        for part in message.get("parts") or []:
+            part_type = part.get("type")
+            if part_type == "text":
+                text = part.get("text") or ""
+                part_time = part.get("time") or {}
+                effective_timestamp = part_time.get("start") or part_time.get("end") or timestamp
+                push_if_text(artifact["session_trace"]["chat_history"], {
+                    "index": index,
+                    "timestamp": effective_timestamp,
+                    "runtime": "opencode",
+                    "role": role,
+                    "text": text,
+                })
+                push_normalized_event(artifact, {
+                    "index": index,
+                    "timestamp": effective_timestamp,
+                    "kind": "chat",
+                    "role": role,
+                    "text": text,
+                })
+            elif part_type == "tool":
+                state = part.get("state") or {}
+                tool_name = part.get("tool")
+                call_id = part.get("callID")
+                input_value = state.get("input")
+                output_value = state.get("output")
+                status = state.get("status")
+                part_time = state.get("time") or {}
+                start_ts = part_time.get("start") or timestamp
+                end_ts = part_time.get("end") or start_ts
+                is_error = status in {"error", "failed", "cancelled"}
+
+                artifact["session_trace"]["tool_call_trace"].append({
+                    "index": index,
+                    "timestamp": start_ts,
+                    "runtime": "opencode",
+                    "direction": "call",
+                    "call_id": call_id,
+                    "tool_name": tool_name,
+                    "input": input_value,
+                    "status": status,
+                })
+                artifact["session_trace"]["tool_call_trace"].append({
+                    "index": index,
+                    "timestamp": end_ts,
+                    "runtime": "opencode",
+                    "direction": "result",
+                    "call_id": call_id,
+                    "tool_name": tool_name,
+                    "output": output_value,
+                    "status": status,
+                    "is_error": is_error,
+                })
+
+                command_value = None
+                if isinstance(input_value, dict):
+                    command_value = input_value.get("cmd") or input_value.get("command")
+                artifact["session_trace"]["command_transcript"].append({
+                    "index": index,
+                    "timestamp": end_ts,
+                    "runtime": "opencode",
+                    "source": "tool",
+                    "call_id": call_id,
+                    "tool_name": tool_name,
+                    "command": command_value,
+                    "input": input_value,
+                    "output": output_value,
+                    "status": status,
+                    "title": state.get("title"),
+                })
+
+                if is_error:
+                    artifact["session_trace"]["failure_retry_log"].append({
+                        "index": index,
+                        "timestamp": end_ts,
+                        "runtime": "opencode",
+                        "source": "tool",
+                        "call_id": call_id,
+                        "tool_name": tool_name,
+                        "error": output_value or f"Tool status: {status}",
+                    })
+
+                push_normalized_event(artifact, {
+                    "index": index,
+                    "timestamp": start_ts,
+                    "kind": "tool_call",
+                    "role": role,
+                    "tool_name": tool_name,
+                    "call_id": call_id,
+                    "command": command_value,
+                })
+                push_normalized_event(artifact, {
+                    "index": index,
+                    "timestamp": end_ts,
+                    "kind": "tool_result",
+                    "role": role,
+                    "tool_name": tool_name,
+                    "call_id": call_id,
+                    "is_error": is_error,
+                })
+            elif part_type in {"step-start", "step-finish"}:
+                artifact["session_trace"]["artifact_trail"].append({
+                    "index": index,
+                    "timestamp": timestamp,
+                    "runtime": "opencode",
+                    "type": part_type,
+                    "snapshot": part.get("snapshot"),
+                    "reason": part.get("reason"),
+                    "cost": part.get("cost"),
+                    "tokens": part.get("tokens"),
+                })
+                if part_type == "step-finish" and part.get("reason"):
+                    artifact["session_trace"]["handoff_notes"].append({
+                        "index": index,
+                        "timestamp": timestamp,
+                        "runtime": "opencode",
+                        "type": "step-finish",
+                        "reason": part.get("reason"),
+                    })
+                push_normalized_event(artifact, {
+                    "index": index,
+                    "timestamp": timestamp,
+                    "kind": "artifact",
+                    "role": role,
+                    "artifact_type": part_type,
+                })
+
+    artifact["extraction_notes"].append(
+        "Opencode session history is stored in SQLite and was reconstructed from session, message, and part tables."
+    )
+    return artifact
+
+
 def write_artifact_set(artifact, output_dir: Path):
     ensure_dir(output_dir)
     write_json(output_dir / "session-trace.json", artifact)
@@ -685,9 +1004,10 @@ def write_artifact_set(artifact, output_dir: Path):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Normalize Claude Code or Codex session transcripts for workflow evaluation.")
+    parser = argparse.ArgumentParser(description="Normalize Claude Code, Codex, or Opencode session history for workflow evaluation.")
     parser.add_argument("--input", help="Raw local transcript path.")
-    parser.add_argument("--runtime", choices=["claude", "codex"], help="Runtime name.")
+    parser.add_argument("--runtime", choices=["claude", "codex", "opencode"], help="Runtime name.")
+    parser.add_argument("--session-id", help="Session id for runtimes that store history in a local database, such as Opencode.")
     parser.add_argument("--latest", action="store_true", help="Pick the latest transcript for the runtime.")
     parser.add_argument("--project", help="Filter latest transcript by project/cwd path.")
     parser.add_argument("--output-dir", help="Target output directory.")
@@ -699,27 +1019,49 @@ def main():
     args = parse_args()
     input_path = Path(os.path.expanduser(args.input)).resolve() if args.input else None
     runtime = args.runtime or detect_runtime(input_path)
+    opencode_session_id = args.session_id
 
-    if input_path is None and args.latest:
+    if runtime == "opencode" and args.latest and opencode_session_id is None:
+        latest_session = find_latest_opencode_session(args.project)
+        if latest_session is None:
+            raise ValueError("No Opencode session found for the requested filter.")
+        opencode_session_id = latest_session["id"]
+
+    if runtime != "opencode" and input_path is None and args.latest:
         if runtime is None:
             raise ValueError("--runtime is required when using --latest.")
         input_path = find_latest_transcript(runtime, args.project)
 
-    if input_path is None:
+    if runtime == "opencode" and input_path is None and opencode_session_id is None:
+        raise ValueError("Provide --session-id, --input, or use --latest for runtime opencode.")
+    if runtime != "opencode" and input_path is None:
         raise ValueError("Provide --input or use --latest.")
     if runtime is None:
         runtime = detect_runtime(input_path)
-    if runtime not in {"claude", "codex"}:
+    if runtime not in {"claude", "codex", "opencode"}:
         raise ValueError(f"Unsupported runtime: {runtime}")
-    if not input_path.exists():
+    if input_path is not None and not input_path.exists():
         raise FileNotFoundError(f"Transcript not found: {input_path}")
 
-    records = read_jsonl(input_path)
-    artifact = parse_claude_transcript(records, input_path) if runtime == "claude" else parse_codex_transcript(records, input_path)
+    if runtime == "claude":
+        records = read_jsonl(input_path)
+        artifact = parse_claude_transcript(records, input_path)
+    elif runtime == "codex":
+        records = read_jsonl(input_path)
+        artifact = parse_codex_transcript(records, input_path)
+    else:
+        if input_path is not None:
+            with input_path.open("r", encoding="utf-8") as handle:
+                export_data = json.load(handle)
+            source_ref = str(input_path)
+        else:
+            export_data = load_opencode_session(opencode_session_id)
+            source_ref = f"opencode://session/{opencode_session_id}"
+        artifact = parse_opencode_export(export_data, source_ref)
 
     if artifact["session"]["id"] is None:
-        artifact["session"]["id"] = input_path.stem
-        artifact["extraction_notes"].append("Session id was inferred from the transcript file name.")
+        artifact["session"]["id"] = opencode_session_id or input_path.stem
+        artifact["extraction_notes"].append("Session id was inferred from the available source reference.")
 
     default_output = Path.cwd() / "docs" / "ai" / "session-traces" / runtime / sanitize_file_name(artifact["session"]["id"])
     output_dir = Path(os.path.expanduser(args.output_dir)).resolve() if args.output_dir else default_output
@@ -728,7 +1070,7 @@ def main():
 
     summary = {
         "runtime": artifact["runtime"],
-        "transcript_path": str(input_path),
+        "transcript_path": artifact["source"]["transcript_path"],
         "output_dir": str(output_dir),
         "session_id": artifact["session"]["id"],
         "cwd": artifact["session"]["cwd"],

@@ -103,10 +103,11 @@ Before `Intake`, define the minimum evaluation input:
   - failure or retry log
 
 Preferred local trace ingestion:
-- normalize local runtime transcripts into a shared artifact set before evaluation when possible
-- use the extractor shipped with the `workflow-evaluation` skill to convert raw Claude Code or Codex transcripts into:
+- normalize local runtime session history into a shared artifact set before evaluation when possible
+- use the extractor shipped with the `workflow-evaluation` skill to convert supported runtime history into:
   - Codex or Antigravity: `python3 .agents/skills/workflow-evaluation/extract_session_trace.py ...`
   - Claude Code: `python3 .claude/skills/workflow-evaluation/extract_session_trace.py ...`
+  - Opencode: `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode ...`
 - the extractor writes:
   - `docs/ai/session-traces/{runtime}/{session-id}/session-trace.json`
   - `chat-history.ndjson`
@@ -116,9 +117,14 @@ Preferred local trace ingestion:
   - `handoff-notes.json`
   - `decision-log.json`
   - `failure-retry-log.json`
-- typical raw transcript sources:
+- typical local session-history sources:
   - Claude Code: `~/.claude/projects/<project>/<session>.jsonl`
   - Codex: `~/.codex/sessions/YYYY/MM/DD/<session>.jsonl`
+  - Opencode: SQLite database at `~/.local/share/opencode/opencode.db`
+    - inspect available sessions with `opencode session list`
+    - inspect the db path with `opencode db path`
+    - extract the latest matching session with `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --latest --project <repo-cwd>`
+    - or extract a specific session with `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --session-id <session-id>`
 
 Required:
 - do not start evaluation until these fields are explicit
@@ -128,7 +134,7 @@ Required:
 Recommended:
 - keep the input contract short enough to fit near the top of the evaluation artifact
 - when evaluating a workflow already used in real work, include at least one representative session trace before making a promotion decision
-- prefer normalized trace artifacts over runtime-specific raw transcripts when comparing workflows across Claude Code and Codex
+- prefer normalized trace artifacts over runtime-specific raw transcripts or database exports when comparing workflows across Claude Code, Codex, and Opencode
 
 Example normalized trace contract:
 
