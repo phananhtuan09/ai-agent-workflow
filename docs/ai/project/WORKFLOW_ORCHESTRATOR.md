@@ -28,9 +28,9 @@ Orchestrator **không thay thế** workflow coding standard, mà là amendment c
 3. Mỗi run có state file riêng để audit + hiển thị vị trí hiện tại (không cần lệnh `resume`, human chỉ gọi `/orchestrator next --run <run-id>` / `/orchestrator continue --run <run-id>`)
 4. `Shape` / `Recon` / `Decide` là `exec: inline` — agent tự đọc `WORKFLOW_CODING_STANDARD.md` để biết phải làm gì, không tách thành skill
 5. Outcome contract khép kín — orchestrator đọc HTML comment cuối output của skill; nếu thiếu comment thì outcome = `unknown` → pause cho human (không fallback heuristic)
-6. `manual-checklist` dù config có ghi `auto: true` thì orchestrator cũng override cấm auto-chain (workflow coding standard bắt buộc human-triggered)
+6. `manual-checklist` và `review-pr` dù config có ghi `auto: true` thì orchestrator cũng override cấm auto-chain (workflow coding standard bắt buộc human-triggered)
 7. Skill trả explicit contract/artifact metadata trong comment → orchestrator ghi vào state, step sau đọc từ state (không path inference ngầm)
-8. Slice đầu tiên gồm: orchestrator skill + 1 workflow config (`feature-standard`) + amendment section trong `WORKFLOW_CODING_STANDARD.md` + contract-emitter update cho các skill tham gia workflow (`create-spec`, `execute-spec`, `sync-spec`, `verify-feature`, `verify-runtime`, `manual-checklist`)
+8. Slice đầu tiên gồm: orchestrator skill + 1 workflow config (`feature-standard`) + amendment section trong `WORKFLOW_CODING_STANDARD.md` + contract-emitter update cho các skill/role tham gia workflow (`create-spec`, `execute-spec`, `sync-spec`, `verify-feature`, `verify-runtime`, `manual-checklist`, `review-pr`)
 9. Cho phép nhiều run cùng tồn tại, nhưng chỉ dùng 1 global repo lock đơn giản. Step nào cần chặn chạy song song thì khai báo lock này; nếu lock đang do run khác giữ thì run hiện tại dừng ngay và báo user
 10. Phải có cleanup path cho run-state và stale lock; không để state tăng mãi hoặc orphan lock block workflow vô thời hạn
 
@@ -90,7 +90,7 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 
 ## Orchestrator rules (áp dụng lên tất cả workflow config)
 
-- `manual-checklist` luôn được orchestrator override thành `human_gate: true` dù config khai báo khác (workflow coding standard cấm auto-chain)
+- `manual-checklist` và `review-pr` luôn được orchestrator override thành `human_gate: true` dù config khai báo khác (workflow coding standard cấm auto-chain)
 - Outcome contract: orchestrator chỉ đọc dòng `<!-- orchestrator: outcome=... provides=... *_path=... -->` cuối output của skill; **không có fallback heuristic** — thiếu comment hoặc không match enum = `unknown` = pause cho human
 - State file theo run ở `docs/ai/workflows/runs/{run-id}.json`
 - Registry active runs ở `docs/ai/workflows/.orchestrator-runs.json`
@@ -301,14 +301,34 @@ Sample dưới đây phải khớp với config thật.
       "title": "Manual checklist",
       "type": "command",
       "value": "/manual-checklist",
-      "hint": "Bundle artifacts thành checklist tiếng Việt cho human sign-off",
+      "hint": "Bundle artifacts thành checklist tiếng Việt trước independent PR review",
       "exec": "skill",
       "skill": "manual-checklist",
       "auto": false,
       "human_gate": true,
-      "human_gate_reason": "Bước cuối sign-off — workflow coding standard cấm auto-chain bước này. Human trigger khi đã sẵn sàng review.",
+      "human_gate_reason": "Human hoàn thành manual checks và đọc checklist trước khi trigger PR review.",
       "requires": ["spec_path", "summary_path", "verification_path", "runtime_verified"],
-      "provides": ["checklist_path"]
+      "provides": ["checklist_path"],
+      "skippable": false
+    },
+    {
+      "id": "review-pr",
+      "title": "Review PR",
+      "type": "subagent",
+      "value": "review-pr",
+      "hint": "Review diff và evidence; tách Must fix, human decision, và manual verification trước khi tạo PR",
+      "exec": "subagent",
+      "subagent": "review-pr",
+      "auto": false,
+      "human_gate": true,
+      "human_gate_reason": "PR review hoàn tất. Human quyết định có tạo/approve PR hay quay lại sửa.",
+      "stop_on_outcome": ["stop-fail", "stop-ask-human", "stop-blocked"],
+      "requires": ["spec_path", "summary_path", "verification_path", "runtime_verified", "checklist_path"],
+      "provides": ["pr_review_path"],
+      "skippable": false,
+      "inputs": {
+        "base_ref": "ask-at-step"
+      }
     }
   ]
 }
@@ -323,8 +343,9 @@ Sample dưới đây phải khớp với config thật.
 - `spec` / `execute-spec` / `sync-spec` / `verify-feature` / `verify-runtime` được pin `skippable: false` vì đều là provider của downstream contracts trong workflow chuẩn
 - `execute-spec` chỉ là consumer đầu tiên của `uses_repo_lock = true`; sau này step khác muốn chặn chạy song song chỉ cần bật cùng flag này
 - `verify-runtime` có `requires: ["spec_synced", "verification_path"]` + `skippable: false` đảm bảo invariant "latest synced spec tồn tại và verification artifact đã được tạo trước" không bị phá dù human cố skip
-- `manual-checklist` có `requires: ["spec_path", "summary_path", "verification_path", "runtime_verified"]` để đảm bảo bundle sign-off chỉ chạy sau khi chuỗi verify cốt lõi đã hoàn tất
-- Slice implement phải update output contract cho các skill tham gia workflow: `create-spec` emit `spec_path`, `execute-spec` emit `summary_path`, `sync-spec` emit `spec_synced`, `verify-feature` emit `verification_path`, `verify-runtime` emit `runtime_verified`, `manual-checklist` emit `checklist_path`
+- `manual-checklist` có `requires: ["spec_path", "summary_path", "verification_path", "runtime_verified"]` để đảm bảo manual-check bundle chỉ chạy sau khi chuỗi verify cốt lõi đã hoàn tất
+- `review-pr` yêu cầu thêm `checklist_path`, có `inputs.base_ref = ask-at-step`, và không thể bị skip để diff review luôn có phạm vi rõ ràng
+- Slice implement phải update output contract cho các skill/role tham gia workflow: `create-spec` emit `spec_path`, `execute-spec` emit `summary_path`, `sync-spec` emit `spec_synced`, `verify-feature` emit `verification_path`, `verify-runtime` emit `runtime_verified`, `manual-checklist` emit `checklist_path`, `review-pr` emit `pr_review_path`
 - State file schema sẽ nằm trong spec slice, không mô tả ở draft này để giữ file review ngắn
 - Spec slice phải bao gồm cả update tới `WORKFLOW_CODING_STANDARD.md` để reconcile mâu thuẫn control model (line 46-47, 365)
 

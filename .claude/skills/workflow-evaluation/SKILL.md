@@ -47,6 +47,7 @@ Optional:
 - runtime context
 - known constraints
 - known usage incidents
+- workflow observations from `docs/ai/workflow-observations/`, when available
 - change under test, when proving an improvement
 - session traces, when available:
   - raw transcript path(s)
@@ -61,6 +62,8 @@ Optional:
   - `failure-retry-log.json`
 
 If the workflow subject is spread across multiple files, reconstruct it explicitly before judging it.
+Treat workflow observations as `agent-reported-observation` incident candidates. Corroborate them with session traces, artifacts, human correction, repeated observations, or exercises before upgrading their evidence status.
+If observation paths are not supplied, scan `docs/ai/workflow-observations/*.md` and select files whose `workflow_name` matches the evaluation subject. Record the selected paths in the evaluation evidence.
 If the user provides only raw Claude Code or Codex transcript paths, normalize them first with `python3 .claude/skills/workflow-evaluation/extract_session_trace.py` for Claude traces or `python3 .agents/skills/workflow-evaluation/extract_session_trace.py` for Codex traces when possible.
 If session traces are unavailable, record them as unavailable instead of inventing runtime behavior.
 
@@ -117,7 +120,7 @@ If normalized artifacts already exist and match the target session, reuse them i
 2. If only raw session transcript paths are available, run the skill-local extractor and update the input contract to point at the normalized artifact set.
 3. Define the evaluation input contract explicitly.
 4. Run `Intake`.
-5. Run `Observe` when real usage or incidents exist.
+5. Read relevant workflow observations and run `Observe` when real usage or incidents exist.
 6. Run `Normalize`.
 7. Run `Diagnose`.
 8. Run `Baseline Exercise` when realistic evidence or session traces can be gathered.
@@ -135,6 +138,7 @@ If normalized artifacts already exist and match the target session, reuse them i
 - State intended task classes, workflow version, evaluation goal, and observable expected behavior.
 
 ### `Observe`
+- Read matching files under `docs/ai/workflow-observations/` when available.
 - Convert usage pain into incidents with:
   - expected behavior
   - observed behavior
@@ -142,6 +146,8 @@ If normalized artifacts already exist and match the target session, reuse them i
   - impact
   - supporting evidence
 - Separate isolated anomalies, repeated patterns, usability friction, and unverified suspicion.
+- Keep an observation's agent hypothesis separate from observed facts.
+- Do not infer a workflow failure rate from observation counts without a known session denominator.
 
 ### `Normalize`
 - Rewrite the workflow into a comparable model:
@@ -248,8 +254,9 @@ The final HTML file must use the template and include these decision-oriented se
 - If evidence is thin, prefer `Keep experimental` or recommend more `Observe` or `Baseline Exercise`
 - If a field is unknown, mark it unknown instead of assuming it
 - If session traces are unavailable, mark them unavailable instead of inventing them
+- Do not present `agent-reported-observation` as an observed or confirmed failure without corroborating evidence
 - Keep the evaluation artifact concise, visually scannable, and reviewable
-- Use direct evidence from workflow docs, commands, skills, session traces, and existing artifacts when available
+- Use direct evidence from workflow docs, commands, skills, workflow observations, session traces, and existing artifacts when available
 - When reading old workflow artifacts, separate static design evidence from scenario and session-trace evidence
 - Do not claim improvement without a comparable baseline
 - Use stable finding IDs and severity badges

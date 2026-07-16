@@ -1,11 +1,11 @@
 ---
 name: manual-checklist
-description: "Use when the human is ready to sign off after all AI verification steps complete. Bundles spec, summary, and verification artifacts into a single scannable checklist with immediate status visibility. Trigger phrases: \"manual checklist\", \"sign off checklist\", \"review checklist\", \"create checklist\", \"generate checklist\". Do not use for re-running verification, modifying code, or syncing the spec."
+description: "Use when the human is ready to complete manual checks after AI verification and before PR review. Bundles spec, summary, and verification artifacts into a single scannable checklist with immediate status visibility. Trigger phrases: \"manual checklist\", \"review checklist\", \"create checklist\", \"generate checklist\". Do not use for re-running verification, modifying code, or syncing the spec."
 ---
 
 # Manual Checklist
 
-Bundle all workflow artifacts (spec, summary, verification) into a single human-readable checklist for sign-off.
+Bundle all workflow artifacts (spec, summary, verification) into a single human-readable checklist before independent PR review.
 
 ## When To Run
 
@@ -27,11 +27,11 @@ Write to: `docs/ai/checklists/{feature}.md`
 
 Before writing, read all available artifacts and determine the overall status from evidence:
 
-- `Ready for Sign-off`: all ACs are either AI-verified or deferred; no `Blocked / Stuck` items; human-verify items remain but are the only thing between now and sign-off
-- `Needs Human Verify`: implementation and runtime checks passed, but one or more ACs require human manual testing before sign-off
+- `Ready for PR Review`: all ACs are either AI-verified or deferred; no `Blocked / Stuck` items; human-verify items remain but are the only thing between now and PR review
+- `Needs Human Verify`: implementation and runtime checks passed, but one or more ACs require human manual testing before PR review
 - `Blocked`: one or more required artifacts (spec, summary, verification) missing, or one or more ACs Blocked / Stuck in implementation/runtime
 - `In Progress`: not all ACs are implemented or verified yet (summary shows Not Done / Blocked)
-- `Drift Detected`: summary's Decisions or runtime results contradict the latest synced spec; human must confirm before sign-off
+- `Drift Detected`: summary's Decisions or runtime results contradict the latest synced spec; human must confirm before PR review
 
 ## Checklist Format
 
@@ -67,10 +67,10 @@ Before writing, read all available artifacts and determine the overall status fr
 - {quyết định trong summary mâu thuẫn với spec}
 - {câu hỏi mở chưa giải quyết từ spec}
 
-## Sign-off
+## Next Gate
 - [ ] Tôi đã đọc spec và kiểm tra toàn bộ manual checklist
 - [ ] Tôi đã sửa các chỗ lệch spec (files: ...)
-- [ ] Feature sẵn sàng merge / deploy
+- [ ] Sẵn sàng cho `/review-pr`
 
 ## Artifacts nguồn
 - Spec: docs/ai/specs/{feature}.md
@@ -95,7 +95,7 @@ Before writing, read all available artifacts and determine the overall status fr
 ### Status Rules
 - Produce the status from actual evidence in the artifacts, not from inference
 - Put trạng thái first so the human sees it before scrolling
-- Never mark a feature Ready for Sign-off when any AC is Blocked / Stuck
+- Never mark a feature Ready for PR Review when any AC is Blocked / Stuck
 
 ### Content Rules
 - Keep each list item terse; the goal is scannability, not re-narrating the spec
@@ -111,14 +111,14 @@ Before writing, read all available artifacts and determine the overall status fr
 
 ### Refresh Rules
 - If `docs/ai/checklists/{feature}.md` already exists, refresh all sections from current artifacts
-- Preserve the human's existing Sign-off block — move it to the bottom, do not reset or delete checkmarks
+- Preserve the human's existing Next Gate block, or a legacy Sign-off block — move it to the bottom, do not reset or delete checkmarks
 - If a previously signed-off item now shows as Blocked or Drift Detected, flag it explicitly in Lệch spec / Câu hỏi mở
 
 ## Done When
 
 - All ACs from the spec are mapped to exactly one status section
 - Trạng thái header reflects honest evidence
-- Sign-off block is present and human-ready (no auto-checked boxes)
+- Next Gate block is present and human-ready (no auto-checked boxes)
 - File is written to `docs/ai/checklists/{feature}.md`
 
 ## Orchestrator Contract
@@ -127,7 +127,7 @@ When this skill is run under `/orchestrator`, append exactly one HTML comment as
 
 - Checklist written:
   `<!-- orchestrator: outcome=continue provides=checklist_path checklist_path=docs/ai/checklists/{feature}.md -->`
-- Required artifact missing or sign-off bundle cannot be produced honestly:
+- Required artifact missing or checklist bundle cannot be produced honestly:
   `<!-- orchestrator: outcome=stop-blocked -->`
 
 Rules:

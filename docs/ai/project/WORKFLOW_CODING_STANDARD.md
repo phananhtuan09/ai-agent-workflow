@@ -32,14 +32,14 @@ Before writing a spec, the agent must run a lightweight pre-spec gate:
 
 These steps are usually ephemeral notes in chat, not durable files.
 
-After `verify-runtime` completes, the human may run a final `manual-checklist` step to bundle all artifacts into a single human-readable checklist for sign-off. The agent does not auto-run this step.
+After `verify-runtime` completes, the human may run `manual-checklist` to bundle evidence and complete human-only checks. The final workflow review is `review-pr`, which prepares the feature for human PR approval without creating a PR.
 
 ## Routing
 
 | Task type | Standard workflow |
 |---|---|
-| New feature | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` (human-triggered) |
-| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` (human-triggered) |
+| New feature | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` → `/review-pr` (both human-triggered) |
+| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` → `/review-pr` (both human-triggered) |
 | Refactor | `/execute-task "Refactor: ..."` |
 | Small update (1-2 files) | `/execute-task "..."` |
 
@@ -59,7 +59,7 @@ Rules:
 - orchestrator may auto-run only steps marked `auto: true` in the selected workflow config
 - orchestrator must stop at `human_gate: true`, any configured `stop_on_outcome`, missing required contracts, or unknown skill outcome
 - orchestrator may enforce a config-declared repo lock; if another run holds that lock for the next step, the current run must stop and report the owner instead of advancing
-- `/manual-checklist` remains human-triggered even inside orchestrator mode; orchestrator must not auto-chain it
+- `/manual-checklist` and `/review-pr` remain human-triggered even inside orchestrator mode; orchestrator must not auto-chain either step
 - orchestrator must treat workflow contracts and recorded evidence as the source of truth; it must not infer missing artifact paths or outcomes heuristically
 
 ## Standard Flow
@@ -85,7 +85,9 @@ human feedback / iterative fixes as needed
   ↓
 /verify-runtime
   ↓
-/manual-checklist  ← human-triggered, not auto
+/manual-checklist  ← human-triggered, complete human-only checks
+  ↓
+/review-pr         ← human-triggered, prepare PR approval
 ```
 
 ## Pre-Spec Gate
@@ -281,6 +283,12 @@ Rules:
 - if `docs/ai/verifications/{feature}.md` already exists, read it first and preserve still-valid sections instead of rewriting blindly
 - verify against the latest synced acceptance criteria and behavioral rules
 - map acceptance criteria to implementation surfaces before judging coverage
+- for each acceptance criterion, record the smallest suitable evidence strategy:
+  - observable user behavior normally goes to `/verify-runtime` for bounded runtime/E2E checks
+  - UX quality or business judgment normally goes to human verification surfaced by `/manual-checklist`
+  - implementation checks such as lint, typecheck, build, and focused inspection apply when relevant
+  - focused unit or integration tests are used only when they have clear regression value: non-trivial validation or business rules, permission/authorization, persistence or state transitions, integration boundaries, or a regression bug
+- do not add fixed `unit-test` or `integration-test` workflow phases, and do not require test infrastructure merely to satisfy the workflow
 - run only the relevant implementation checks for the changed feature
 - separate executed checks, failures, coverage gaps, and runtime follow-ups
 - do not modify code, write new tests, or sync the spec during verification
@@ -296,9 +304,17 @@ Typical checks when relevant:
 - migration check or dry-run
 - docker build or packaging validation
 
+Evidence allocation rules:
+- the default evidence for an observable feature flow is `/verify-runtime`, using bounded MCP/browser E2E checks when a runtime target is available
+- `/manual-checklist` surfaces UX quality, business judgment, and other human-only checks before PR review; it does not re-run them
+- `/execute-spec` may add or update a focused automated test only for the risk-sensitive cases above; it must not create a test suite or test infrastructure solely for compliance
+- `/verify-feature` verifies existing or newly added focused tests but does not write tests itself
+- when risk-sensitive behavior has neither focused automated evidence nor a credible runtime/manual path, record it as a coverage gap; the absence of unit/integration tests alone is not a failure for UI-first, simple, or test-hostile projects
+
 Expected output sections:
 - `## Sources`
 - `## Implementation Surfaces`
+- `## Evidence Strategy`
 - `## Executed Checks`
 - `## Passed`
 - `## Failed`
@@ -309,6 +325,7 @@ Expected output sections:
 Section intent:
 - `## Sources`: latest synced spec, relevant code paths, existing verification artifact if present
 - `## Implementation Surfaces`: files, components, routes, scripts, or other concrete surfaces mapped to ACs
+- `## Evidence Strategy`: the smallest evidence type selected for each AC or behavior area, with a reason
 - `## Executed Checks`: only checks actually run in this phase, with command or inspection method
 - `## Passed`: ACs or checks supported by executed evidence
 - `## Failed`: ACs or checks that failed, with concrete reason
@@ -318,9 +335,11 @@ Section intent:
 
 Status rules:
 - `Pass`: all implementation-level checks needed for this phase passed and no material coverage gaps remain
-- `Partial`: some checks passed but meaningful coverage gaps or deferred runtime proof remain
+- `Partial`: some checks passed but meaningful coverage gaps remain, especially risk-sensitive behavior without a credible evidence path
 - `Fail`: at least one required implementation-level check failed
 - `Blocked`: the phase could not complete because required inputs, environment, or artifacts were unavailable
+
+Deferred runtime or manual proof alone does not make `/verify-feature` `Partial` when the evidence strategy explicitly assigns it to `/verify-runtime` or `/manual-checklist`.
 
 Overwrite rules:
 - `/verify-feature` may update the implementation-level sections above
@@ -387,7 +406,8 @@ The human decides which step to invoke next:
 - `/sync-spec` after implementation stabilizes
 - `/verify-feature` when checking implementation readiness against the latest spec
 - `/verify-runtime` when checking runtime behavior against the latest synced spec
-- `/manual-checklist` when the human is ready to sign off after all AI verification steps complete
+- `/manual-checklist` when the human is ready to complete manual checks after AI verification
+- `/review-pr` when the human wants an independent, evidence-bound review before creating a PR
 
 Agent behavior rules:
 - do not silently choose a larger or smaller workflow mode
@@ -404,7 +424,7 @@ Purpose:
 - this step does not modify code, does not re-verify, and does not sync the spec
 
 When to run:
-- only when the human is ready to sign off
+- only when the human is ready to complete manual checks before PR review
 - after `/verify-runtime` has completed (or the human has confirmed the feature is implementation-complete enough to review)
 - the agent must not auto-run this step as part of `/verify-runtime`
 
@@ -424,14 +444,14 @@ Rules:
 - if any required artifact is missing, mark the feature as `Blocked` and list the missing artifact instead of guessing
 - do not change the spec, summary, or verification file from this step
 - write to `docs/ai/checklists/{feature}.md`
-- if `docs/ai/checklists/{feature}.md` already exists, refresh it from current artifacts and preserve the human's sign-off block (move it to the bottom instead of rewriting)
+- if `docs/ai/checklists/{feature}.md` already exists, refresh it from current artifacts and preserve the human's `## Next Gate` block, or a legacy `## Sign-off` block (move it to the bottom instead of rewriting)
 
 Status rules:
-- `Ready for Sign-off`: all ACs are either `AI verified` or accepted as deferred; no `Blocked / Stuck` items; human verify items remain but are the only thing blocking sign-off
-- `Needs Human Verify`: implementation and runtime checks passed, but one or more ACs require human manual testing before sign-off
+- `Ready for PR Review`: all ACs are either `AI verified` or accepted as deferred; no `Blocked / Stuck` items; human verify items remain but are the only thing blocking PR review
+- `Needs Human Verify`: implementation and runtime checks passed, but one or more ACs require human manual testing before PR review
 - `Blocked`: one or more required artifacts (spec, summary, verification) missing, or one or more ACs `Blocked / Stuck` in implementation/runtime
 - `In Progress`: not all ACs are implemented or verified yet (summary shows `Not Done / Blocked`)
-- `Drift Detected`: summary's `## Decisions` or runtime results contradict the latest synced spec; human must confirm before sign-off
+- `Drift Detected`: summary's `## Decisions` or runtime results contradict the latest synced spec; human must confirm before PR review
 
 Expected output sections:
 - `## Status` (one of the statuses above, with a one-sentence reason)
@@ -440,7 +460,7 @@ Expected output sections:
 - `## Needs Human Verify` (ACs or behaviors only the human can confirm, with concrete test steps)
 - `## Blocked / Stuck` (ACs or items the AI could not finish, with the reason and what's needed to unblock)
 - `## Drift / Open Questions` (any decision in summary that conflicts with spec, or unresolved open questions)
-- `## Sign-off` (human-controlled checklist; do not auto-check)
+- `## Next Gate` (human-controlled manual-check list before `/review-pr`; do not auto-check)
 - `## Source Artifacts` (paths to spec, summary, verification, and key implementation files)
 
 Out of scope for this step:
@@ -449,6 +469,25 @@ Out of scope for this step:
 - producing a new summary
 - claiming anything about behavior the AI did not already verify
 
+### 10. `/review-pr`
+Purpose:
+- independently review the PR diff and existing evidence after manual checks
+- separate direct evidence that must be fixed from inferred risks, human decisions, and manual-only verification
+- prepare a concise PR-ready review artifact; do not create or approve a PR
+
+When to run:
+- only after `/manual-checklist` is complete and human-only checks have been completed or explicitly accepted as deferred
+- use an explicit base ref to define the PR diff
+
+Rules:
+- read the spec, summary, verification artifact, checklist, and base diff directly
+- write `docs/ai/reviews/{feature}.md` in Vietnamese
+- classify every finding as `Verified`, `Observed, limited scope`, `Inferred risk`, `Human decision required`, or `Manual verification required`
+- use `Must fix` only for direct evidence or a direct violation of an approved spec/safety rule; do not turn assumptions into bugs
+- report `Needs Fix`, `Needs Human Decision`, `Ready for Human PR Approval`, or `Blocked`
+- do not modify feature code, tests, specs, summaries, verification artifacts, or the checklist
+- if a fix is required, return to implementation and repeat the affected sync/verification/manual-check sequence before another PR review
+
 ## Workflow Artifacts
 
 | Artifact path | Produced by |
@@ -456,7 +495,8 @@ Out of scope for this step:
 | `docs/ai/specs/{feature}.md` | `/spec` and later updated by `/sync-spec` |
 | `docs/ai/summaries/{feature}.md` | `/execute-spec` as an execution handoff summary, not final proof |
 | `docs/ai/verifications/{feature}.md` | `/verify-feature` and later extended by `/verify-runtime` |
-| `docs/ai/checklists/{feature}.md` | `/manual-checklist` as a human sign-off bundle, refreshed from existing artifacts |
+| `docs/ai/checklists/{feature}.md` | `/manual-checklist` as a human manual-check bundle before PR review, refreshed from existing artifacts |
+| `docs/ai/reviews/{feature}.md` | `/review-pr` as an independent PR readiness review |
 
 ## Usage Notes
 - Choose the lightest workflow that still gives enough control.
@@ -464,4 +504,5 @@ Out of scope for this step:
 - Let the human control step entry; let the agent enforce the gate conditions inside the chosen step.
 - If the task changes shape during execution, re-scope the workflow instead of forcing the original path.
 - Keep durable workflow knowledge in the spec; keep temporary execution reasoning out of persistent workflow artifacts unless it remains useful after implementation.
-- `/manual-checklist` exists to reduce human context-switch when batching feature reviews; use it after `/verify-runtime` only when the human is ready to review, never chain it automatically.
+- `/manual-checklist` exists to reduce human context-switch when batching feature reviews; use it after `/verify-runtime` only when the human is ready to complete manual checks, never chain it automatically.
+- `/review-pr` is the final human-triggered quality gate before PR creation; it must distinguish direct evidence from agent assumptions and human-only verification.

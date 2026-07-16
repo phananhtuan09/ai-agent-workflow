@@ -31,6 +31,9 @@ After opening or creating the verification artifact, continue immediately with i
 - AC1 → [file/module/function]
 - AC2 → [file/module/function]
 
+## Evidence Strategy
+- AC1 → [implementation check | focused automated test | runtime/E2E | manual checklist] → [reason]
+
 ## Executed Checks
 - [check or inspection actually executed] → Pass/Fail/Blocked
 
@@ -56,6 +59,14 @@ Pass | Fail | Partial | Blocked
 - Treat the provided spec file as the latest durable source of truth
 - If `docs/ai/verifications/{feature-name}.md` already exists, read it first and preserve still-valid sections instead of rewriting blindly
 - Map acceptance criteria to implementation surfaces before judging coverage
+- For each AC, record the smallest suitable evidence strategy before judging coverage:
+  - observable user behavior normally belongs to `/verify-runtime` using bounded runtime/E2E checks when a target is available
+  - UX quality or business judgment normally belongs to human verification surfaced by `/manual-checklist`
+  - lint, typecheck, build, and focused code inspection cover implementation-level correctness when relevant
+  - a focused automated unit or integration test is warranted only when it has clear regression value: non-trivial validation or business rules, permission/authorization, persistence or state transitions, integration boundaries, or a regression bug
+- Do not require unit or integration tests as a fixed workflow phase, and do not treat their absence alone as a failure for UI-first, simple, or test-hostile projects
+- Do not create new test infrastructure or invent test cases in this verification phase; verify tests that implementation chose to add or update, plus existing relevant tests
+- When a risk-sensitive behavior has neither focused automated evidence nor a credible runtime/manual evidence path, record the reason and missing evidence in `## Coverage Gaps`
 - Record only implementation-level evidence in this phase
 - Do not invent test cases beyond what the synced spec and implemented behavior require
 - Do not include runtime-only evidence in this phase; move that into `/verify-runtime`
@@ -65,9 +76,10 @@ Pass | Fail | Partial | Blocked
 - If current implementation evidence conflicts with older verification content, replace only the conflicting implementation section and note the reason in `## Executed Checks` or `## Failed`
 - Use final status:
   - `Pass` when all required implementation-level checks passed and no material coverage gaps remain
-  - `Partial` when some checks passed but meaningful coverage gaps or deferred runtime proof remain
+  - `Partial` when some checks passed but meaningful coverage gaps remain, especially risk-sensitive behavior without a credible evidence path
   - `Fail` when at least one required implementation-level check failed
   - `Blocked` when the phase cannot complete because required inputs, environment, or artifacts are unavailable
+- Deferred runtime or manual proof alone is not a `Partial` result here when it is explicitly assigned to `/verify-runtime` or `/manual-checklist`
 
 ## Orchestrator Contract
 

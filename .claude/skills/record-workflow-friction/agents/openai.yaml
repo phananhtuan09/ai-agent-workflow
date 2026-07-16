@@ -1,0 +1,7 @@
+interface:
+  display_name: "Record Workflow Friction"
+  short_description: "Capture workflow problems as evaluation evidence"
+  default_prompt: "Use $record-workflow-friction to record the current workflow problem for later evaluation."
+
+policy:
+  allow_implicit_invocation: false

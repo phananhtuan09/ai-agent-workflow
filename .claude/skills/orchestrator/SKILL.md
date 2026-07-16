@@ -184,7 +184,7 @@ Rules:
 
 ## Workflow Rules
 
-- `manual-checklist` is always human-triggered, even if the config says otherwise
+- `manual-checklist` and `review-pr` are always human-triggered, even if the config says otherwise
 - `requires` means contract or artifact presence in state, not "a previous step once ran"
 - `provides` means contracts that must be recorded when the step succeeds with `continue`
 - `uses_repo_lock` means the step needs the single shared repo lock; if another run already holds it, the current invocation must stop immediately

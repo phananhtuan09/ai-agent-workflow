@@ -18,8 +18,8 @@
 Routing rule: "Before `/create-spec`, run a lightweight `Shape → Recon → Decide` pass."
 | Task type | Workflow |
 |---|---|
-| New feature | `Shape` → `Recon` → `Decide` → `/create-spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` |
-| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/create-spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` |
+| New feature | `Shape` → `Recon` → `Decide` → `/create-spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` → `/review-pr` |
+| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/create-spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` → `/review-pr` |
 | Refactor (no behavior change) | `/execute-task "Refactor: ..."` |
 | Small update (1-2 files) | `/execute-task "..."` |
 

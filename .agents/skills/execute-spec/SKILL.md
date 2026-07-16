@@ -40,12 +40,17 @@ Path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
 2. Break the work into temporary internal steps only as needed
 3. Explore the nearby codebase just enough to implement safely
 4. Reuse existing repository patterns when possible
-5. Validate changed behavior where practical
-6. Record important implementation decisions for later spec sync
-7. Do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded under `## Agent Constraints Chosen For This Slice`
-8. If execution requires choosing one of those rules to complete the slice safely, record it explicitly for later sync instead of leaving it implicit in code
-9. If the spec says the logic should be transparent, visible, simple, or non-hidden, do not implement it as an opaque weighted score or hidden heuristic
-10. In those cases, prefer readable rule chains, named tie-breakers, or UI-visible reasons that can be traced back to the spec
+5. Choose the smallest verification evidence that fits the changed behavior:
+   - Default for observable user behavior: leave concrete runtime/E2E evidence for `/verify-runtime` and human-only judgment for manual verification surfaced by `/manual-checklist`
+   - Run relevant existing automated tests when the repository already has them
+   - Add or update a focused automated test only when it has clear regression value: non-trivial validation or business rules, permission/authorization, persistence or state transitions, integration boundaries, or a regression bug being fixed
+   - Do not introduce a test suite, test infrastructure, or unit/integration tests merely to satisfy a workflow ritual
+6. Validate changed behavior where practical
+7. Record important implementation decisions for later spec sync
+8. Do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded under `## Agent Constraints Chosen For This Slice`
+9. If execution requires choosing one of those rules to complete the slice safely, record it explicitly for later sync instead of leaving it implicit in code
+10. If the spec says the logic should be transparent, visible, simple, or non-hidden, do not implement it as an opaque weighted score or hidden heuristic
+11. In those cases, prefer readable rule chains, named tie-breakers, or UI-visible reasons that can be traced back to the spec
 
 ## Iterative Feedback
 
@@ -85,7 +90,7 @@ Write summary to `docs/ai/summaries/{feature-name}.md`
 - Never list the same AC or claim in both `## Verified` and `## Not Verified`
 - Never mark an AC as verified based only on intent
 - If implementation confidence comes from code inspection, say so explicitly instead of implying runtime proof
-- If no automated test exists, say `No automated coverage`
+- If no automated test exists for an AC, say `No automated coverage — [reason]; runtime/manual evidence planned: [method]`
 - The summary is an execution handoff artifact, not the final verification artifact
 - If later `/verify-feature` or `/verify-runtime` findings differ, the verification artifact is the source of truth
 

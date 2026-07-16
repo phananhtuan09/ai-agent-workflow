@@ -140,6 +140,10 @@ Truoc `Intake`, hay dinh nghia toi thieu cac input sau cho danh gia:
   - observed behavior
   - impact
   - available evidence
+- `workflow_observations`, neu human da yeu cau agent ghi nhan friction bang skill `record-workflow-friction`
+  - cac file phu hop trong `docs/ai/workflow-observations/`
+  - mac dinh co evidence status `agent-reported-observation`
+  - neu input khong truyen path cu the, scan cac file co `workflow_name` khop voi workflow dang danh gia va ghi lai danh sach path da chon
 - `change_under_test`, neu dang re-evaluate mot cai tien
 - `comparison_target`, neu dang danh gia hai bien the
 - `runtime_context`
@@ -181,6 +185,7 @@ Bat buoc:
 - khong bat dau danh gia cho den khi cac truong nay duoc lam ro
 - neu mot truong chua biet, ghi ro la unknown thay vi tu suy doan
 - neu khong co session traces, ghi `session_traces: unavailable` thay vi tu tao ra hanh vi runtime
+- khong nang `agent-reported-observation` thanh observed hoac confirmed failure neu chua duoc doi chieu voi trace, artifact, human correction, observation lap lai, hoac controlled exercise
 - dien dat ky vong duoi dang hanh vi co the quan sat duoc thay vi nhan xet chu quan nhu `easy`, `robust`, hoac `good`
 
 Dinh dang expectation:
@@ -264,6 +269,7 @@ Chi dung phase nay khi workflow da tung duoc su dung. Neu chua co lich su su dun
 
 Quy tac:
 - thu thap cac session dai dien noi workflow can su can thiep bat ngo tu human, tao ra ket qua sai hoac thieu, bi loop, dung sai, hoac ton chi phi bat thuong
+- khi co `workflow_observations`, dung chung lam incident candidate va giu nguyen evidence status `agent-reported-observation` cho den khi co bang chung doi chieu
 - khong bat dau bang mot gia thuyet ve viec rule nao cua workflow dang sai
 - voi moi incident, ghi:
   - user intent
@@ -273,6 +279,7 @@ Quy tac:
   - practical impact
   - supporting trace hoac artifact
 - chuyen pain mang tinh chu quan thanh tin hieu failure co the quan sat duoc
+- tach `Agent Hypothesis (Unverified)` khoi observed facts; khong dung observation count de suy ra failure rate neu khong biet tong so session
 - nhom cac incident lap lai theo pattern hanh vi, khong theo do giong nhau ve cau chu
 - phan biet:
   - isolated execution anomaly
@@ -395,6 +402,7 @@ Huong dan severity:
 
 Suc manh cua bang chung:
 - chi dua vao workflow text thi moi ho tro duoc `design risk`
+- workflow observation do agent ghi lai chi ho tro `agent-reported-observation` cho den khi duoc corroborate
 - session trace ho tro cho hanh vi `observed`
 - pattern lap lai tren cac trace tuong duong se tang do manh cho claim cap workflow
 - mot exercise co kiem soat ma tai hien duoc hanh vi do se xac nhan finding trong pham vi da test
@@ -762,6 +770,7 @@ Su dung cac cach hieu sau:
 ## Quan he voi cac tai lieu khac
 - `docs/ai/project/AI_WORKFLOW_RULES.md` dinh nghia cac quy tac bat buoc ma evaluation can enforce
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md` dinh nghia mot workflow type co the tu no tro thanh doi tuong duoc danh gia boi tai lieu nay
+- `docs/ai/workflow-observations/` luu friction notes do human yeu cau skill `record-workflow-friction` tao ra trong luc workflow khac dang chay
 - cac workflow document, command set, skill, prompt wrapper, runtime binding, hoac operating model khac cung co the duoc danh gia boi tai lieu nay khi dap ung input contract
 - `docs/ai/workflow-evals/` luu cac bao cao danh gia HTML tieng Viet, self-contained, duoc tao boi workflow nay
 
