@@ -1,0 +1,4 @@
+interface:
+  display_name: "Herdr Agent Orchestrator"
+  short_description: "Manage existing agents across Herdr workspaces"
+  default_prompt: "Use $herdr-orchestrate-agents to summarize all existing Herdr agents and identify which ones need my input."
