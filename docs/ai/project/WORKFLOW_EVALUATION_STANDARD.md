@@ -1,790 +1,546 @@
 ---
 phase: project
 title: Tieu chuan Danh gia Workflow
-description: Quy trinh chuan de danh gia bat ky workflow AI agent nao va tao bao cao HTML tieng Viet de con nguoi de doc
+description: Tieu chuan trace-first de tim friction trong session agent, quy nguyen nhan, va cai thien workflow bang evidence
 ---
 
 # Tieu chuan Danh gia Workflow
 
 ## Muc dich
-Tai lieu nay dinh nghia mot workflow rieng de danh gia cac workflow AI agent nhu mot doi tuong can review.
 
-Day khong phai workflow coding tieu chuan.
-No ton tai de danh gia xem mot workflow co:
-- huu ich hay khong
-- ro rang hay khong
-- du tinh portable cho pham vi muc tieu hay khong
-- an toan de adopt hoac promote hay khong
-- dang that bai theo cach co the quan sat duoc trong qua trinh su dung thuc te hay khong
-- co duoc cai thien sau mot thay doi co chu dich hay khong
+Tai lieu nay dinh nghia cach danh gia mot AI workflow dua tren hai nguon bang chung khac nhau:
 
-Workflow nay ap dung cho bat ky workflow AI agent nao, khong chi workflow coding dang duoc su dung trong repository nay.
+- hanh vi agent co the quan sat trong session thuc te
+- artifact va contract ma workflow khai bao
 
-## Tai sao can tai lieu nay
-Operational workflow tra loi nhung cau hoi nhu:
-- agent nen thuc hien mot task nhu the nao
-- human va agent nen phoi hop nhu the nao
-- can tao, tieu thu, hoac review artifact nao
-- khi nao workflow nen dung, escalate, retry, hoac handoff
+Khi muc tieu la cai thien mot workflow dang duoc su dung, session history la diem xuat phat. Evaluator phai tim van de agent thuc su gap truoc, sau do moi map van de do ve workflow.
 
-Workflow danh gia nay tra loi mot cau hoi khac:
-- thiet ke workflow co dang de dung, giu lai, so sanh, hay promote hay khong
-- hanh vi quan sat duoc bat dau lech khoi ky vong tu diem nao
-- bang chung nao ho tro cho mot van de cua workflow
-- thay doi nho nhat nao co kha nang cai thien workflow
-- workflow da thay doi co hoat dong tot hon tren cac scenario tuong duong ma khong bi regression hay khong
+Khi muc tieu la adoption hoac promotion cua mot workflow moi chua co lich su su dung, evaluator co the bat dau tu artifact workflow va controlled exercise.
 
-Neu khong co mot luong danh gia rieng, thay doi workflow thuong bi danh gia bang truc giac, mot vai case thanh cong rieng le, prompt trong co dep hay khong, hoac do quen tay cua nguoi van hanh thay vi bang bang chung lap lai tren pham vi ma workflow tuyen bo ho tro.
+Workflow evaluation khong chi kiem tra agent co tuan thu phase hay khong. No phai tra loi:
 
-Vi vay, workflow danh gia nay khong chi la review tai lieu. No la mot vong lap bang chung:
-
-```text
-Pain khi su dung
-  → incident co the quan sat
-  → first divergence
-  → gia thuyet root cause
-  → baseline
-  → thay doi co chu dich
-  → so sanh truoc/sau
-  → retained learning
-```
+- agent bat dau lech khoi ket qua mong doi tai dau
+- agent dang ton them cong vao discovery huu ich, workflow overhead, rework, recovery, hay repetition khong tao evidence moi
+- human phai can thiep o dau va vi sao
+- van de la do workflow, do workflow lam nang them, hay nam ngoai workflow
+- thay doi workflow nho nhat nao co the cai thien hanh vi quan sat duoc
+- thay doi do co cai thien tren session tuong duong ma khong gay regression hay khong
 
 ## Nguyen tac cot loi
-Hay coi workflow dang duoc review la doi tuong dang bi danh gia.
 
-Khong tron lan:
-- xay workflow
-- dung workflow de hoan thanh cong viec goc ma no huong dan
-- danh gia xem workflow do co du tot de giu lai hay khong
+### 1. Trace-first khi muc tieu la cai thien
 
-Day la ba task khac nhau va can duoc tach rieng.
+Neu `evaluation_goal` la `workflow improvement`, `regression review`, hoac chan doan usage pain va co session history, dung `trace-first`.
 
-Moi finding da duoc xac nhan phai giu duoc chuoi sau:
+Khong duoc doc workflow artifact de dinh huong pass chan doan hanh vi dau tien. Pass dau chi duoc dung:
+
+- user request
+- chat history
+- tool calls va command results
+- artifact reads va writes
+- human corrections
+- errors, retries, stops, va final outcome
+
+Chi sau khi behavioral findings da duoc ghi lai moi doc workflow artifact de attribution va de xuat thay doi. Quy tac nay giam confirmation bias va tranh viec chi tim nhung loi ma workflow text da dat ten san.
+
+### 2. Artifact-first chi cho adoption hoac khi trace khong ton tai
+
+Dung `artifact-first` khi:
+
+- workflow moi chua co session history
+- muc tieu la review clarity, safety, portability, hoac adoption cua thiet ke
+- can so sanh hai artifact workflow truoc controlled exercise
+
+Static inspection chi tao duoc `design risk`. No khong duoc trinh bay nhu runtime failure neu khong co trace hoac exercise.
+
+### 3. Session va behavioral episode la don vi danh gia
+
+Khong mac dinh coi workflow phase la don vi phan tich. Trong trace-first evaluation, hay segment session thanh cac episode co muc dich quan sat duoc, vi du:
+
+- hieu request va xac dinh scope
+- tim context hoac doc code
+- hoi clarification
+- chon approach
+- bat dau mutation
+- verify
+- gap failure
+- retry hoac doi hypothesis
+- rework
+- handoff hoac ket thuc
+
+Workflow phase chi duoc map vao episode sau khi pass behavioral analysis hoan tat.
+
+### 4. Khong gan moi van de cua agent cho workflow
+
+Moi finding phai co mot `cause_attribution`:
+
+- `workflow-caused`: rule, gate, artifact, hoac omission cua workflow truc tiep tao ra hanh vi
+- `workflow-exacerbated`: van de co nguon khac nhung workflow khong ngan chan hoac lam chi phi tang
+- `model-execution`: agent hieu, lap luan, hoac thuc thi sai du workflow da ro
+- `runtime-tool`: runtime, tool, integration, parser, hoac command bi loi
+- `task-environment`: task ambiguity, codebase, external state, hoac environment tao ra van de
+- `inconclusive`: chua du evidence de attribution
+
+Khong them rule vao workflow de sua mot van de `model-execution`, `runtime-tool`, hoac `task-environment` neu chua co evidence workflow co the ngan chan no voi chi phi hop ly.
+
+### 5. Moi finding giu duoc evidence chain
 
 ```text
-Claim → Evidence → Impact → Hypothesis → Recommended change → Re-test
+Observed pattern
+  → First divergence
+  → Impact va excess work
+  → Cause attribution
+  → Root-cause hypothesis
+  → Smallest workflow change, neu phu hop
+  → Re-test
 ```
 
-Static inspection co the phat hien mot design risk. Nhung khong duoc trinh bay no nhu mot runtime failure da duoc xac nhan neu khong co bang chung tu luc thuc thi.
+## Chon evaluation strategy
 
-## Khi nao nen dung workflow nay
+| Evaluation goal | Strategy mac dinh | Output chinh |
+|---|---|---|
+| Cai thien workflow dang dung | `trace-first` | behavioral findings va prioritized improvement experiments |
+| Chan doan agent chay nhieu, loop, rework, hoac can human sua | `trace-first` | friction patterns, first divergence, cause attribution |
+| Chung minh mot thay doi da cai thien | `trace-first` | before/after tren regression, neighbor, control sessions |
+| Adoption hoac promotion workflow moi | `artifact-first` | design risks, exercise evidence, adoption verdict |
+| Review clarity hoac contract | `artifact-first` | static findings; runtime claims bi gioi han |
+| Portability qua runtime hoac project | `trace-first` neu co trace, neu khong `artifact-first` + exercise | comparative evidence va limitations |
 
-| Truong hop danh gia | Dung workflow nay |
-|---|---|
-| Chan doan mot workflow kho su dung | `Intake` → `Observe` → `Normalize` → `Diagnose` → `Baseline Exercise` → `Improvement Contract` → `Verdict` |
-| Chung minh mot thay doi workflow co cai thien hanh vi hay khong | cac phase truoc do → external change → `Re-evaluate` → `Verdict` |
-| De xuat workflow moi | `Intake` → `Normalize` → `Diagnose` → `Baseline Exercise` → `Verdict` |
-| So sanh hai bien the workflow | `Intake` → `Normalize` → `Diagnose` → `Baseline Exercise` → `Re-evaluate` → `Verdict` |
-| Quyet dinh co nen promote mot pattern dang experimental | `Intake` → `Observe` → `Normalize` → `Diagnose` → `Baseline Exercise` → `Verdict` |
-| Review xem mot workflow hien co co nen tiep tuc lam standard hay khong | `Intake` → `Observe` → `Normalize` → `Diagnose` → `Baseline Exercise` → `Verdict` |
+Neu user khong chi ro strategy:
 
-Khong dung workflow nay de:
-- thuc hien cong viec goc ma mot workflow khac dang huong dan
-- implement mot product feature
-- fix product code
-- van hanh workflow support, research, planning, design, security, DevOps, documentation, hay coding nhu chinh cong viec can lam
-- thay the cac buoc execution hoac verification binh thuong ben trong workflow dang duoc danh gia
-
-## Luong chuan
-
-```text
-Workflow candidate hoac workflow variant
-  ↓
-Intake
-  ↓
-Observe, neu da co su dung thuc te
-  ↓
-Normalize
-  ↓
-Diagnose
-  ↓
-Baseline Exercise
-  ↓
-Improvement Contract
-  ↓
-Thay doi workflow co chu dich ben ngoai tien trinh danh gia nay
-  ↓
-Re-evaluate bang cac scenario tuong duong
-  ↓
-Verdict
-```
-
-`Observe`, `Improvement Contract`, va `Re-evaluate` la bat buoc khi muc tieu la cai thien mot workflow dang ton tai va chung minh su cai thien do. Mot review adoption lan dau co the ket thuc sau `Baseline Exercise` va `Verdict`.
+- chon `trace-first` khi co session history va muc tieu lien quan den usage hoac improvement
+- chon `artifact-first` khi khong co trace hoac muc tieu chi la review thiet ke/adoption
 
 ## Evaluation Input Contract
-Truoc `Intake`, hay dinh nghia toi thieu cac input sau cho danh gia:
+
+Bat buoc:
+
 - `workflow_name`
 - `workflow_artifacts`
+- `workflow_version`
 - `workflow_type`
-  - document
-  - command set
-  - prompt wrapper
-  - skill
-  - runtime binding
-  - end-to-end operating model
 - `claimed_purpose`
 - `claimed_task_classes`
 - `evaluation_goal`
-  - adoption review
-  - comparison
-  - regression review
-  - promotion decision
+- `evaluation_strategy`: `trace-first` hoac `artifact-first`
 - `expected_behavior`
-  - ket qua co the quan sat duoc ma workflow can tao ra
-  - ket qua bi cam hoac hanh vi khong an toan
-  - bang chung workflow can de lai
-- `workflow_version`
-- `known_incidents`, neu workflow da tung duoc su dung
-  - user intent
-  - expected behavior
-  - observed behavior
-  - impact
-  - available evidence
-- `workflow_observations`, neu human da yeu cau agent ghi nhan friction bang skill `record-workflow-friction`
-  - cac file phu hop trong `docs/ai/workflow-observations/`
-  - mac dinh co evidence status `agent-reported-observation`
-  - neu input khong truyen path cu the, scan cac file co `workflow_name` khop voi workflow dang danh gia va ghi lai danh sach path da chon
-- `change_under_test`, neu dang re-evaluate mot cai tien
-- `comparison_target`, neu dang danh gia hai bien the
+- `prohibited_behavior`
 - `runtime_context`
+
+Bat buoc cho `trace-first`:
+
+- `session_corpus`
+  - session path hoac normalized trace path
+  - selection rule
+  - inclusion criteria
+  - exclusion criteria
+  - known denominator
+- `behavior_questions`, vi du:
+  - agent dang gap friction gi
+  - agent bat dau rework tai dau
+  - cong phat sinh nao khong tao evidence moi
+  - human phai can thiep o dau
+- cac cohort key co the biet:
+  - task class
+  - workflow version
+  - runtime
+  - model
+  - repository hoac project
+  - outcome
+
+Optional:
+
+- `comparison_target`
 - `known_constraints`
-- `session_traces`, neu co san
-  - chat history
-  - command transcript
-  - tool-call trace
-  - artifact trail
-  - handoff notes
-  - decision log
-  - failure or retry log
+- `known_incidents`
+- `change_under_test`
+- `agent_observations`
+- `workflow_observations` cu de backward compatibility
+- `session_traces`
+- `baseline_scenarios`
+- `evaluation_quality_plan`
+- `human_reference_review`
+- `calibration_set`
+- `quality_thresholds`
 
-Huong uu tien cho local trace ingestion:
-- neu co the, chuan hoa local runtime session history thanh mot bo artifact dung chung truoc khi danh gia
-- dung extractor duoc ship kem trong skill `workflow-evaluation` de chuyen doi runtime history duoc ho tro thanh:
-  - Codex hoac Antigravity: `python3 .agents/skills/workflow-evaluation/extract_session_trace.py ...`
-  - Claude Code: `python3 .claude/skills/workflow-evaluation/extract_session_trace.py ...`
-  - Opencode: `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode ...`
-- extractor se ghi ra:
-  - `docs/ai/session-traces/{runtime}/{session-id}/session-trace.json`
-  - `chat-history.ndjson`
-  - `command-transcript.ndjson`
-  - `tool-call-trace.ndjson`
-  - `artifact-trail.ndjson`
-  - `handoff-notes.json`
-  - `decision-log.json`
-  - `failure-retry-log.json`
-- cac nguon session-history local thuong gap:
-  - Claude Code: `~/.claude/projects/<project>/<session>.jsonl`
-  - Codex: `~/.codex/sessions/YYYY/MM/DD/<session>.jsonl`
-  - Opencode: co so du lieu SQLite tai `~/.local/share/opencode/opencode.db`
-    - xem session co san bang `opencode session list`
-    - xem duong dan db bang `opencode db path`
-    - extract session moi nhat phu hop bang `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --latest --project <repo-cwd>`
-    - hoac extract mot session cu the bang `python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --session-id <session-id>`
+Neu mot field chua biet, ghi `unknown`. Khong suy doan de lam input contract trong co ve day du.
 
-Bat buoc:
-- khong bat dau danh gia cho den khi cac truong nay duoc lam ro
-- neu mot truong chua biet, ghi ro la unknown thay vi tu suy doan
-- neu khong co session traces, ghi `session_traces: unavailable` thay vi tu tao ra hanh vi runtime
-- khong nang `agent-reported-observation` thanh observed hoac confirmed failure neu chua duoc doi chieu voi trace, artifact, human correction, observation lap lai, hoac controlled exercise
-- dien dat ky vong duoi dang hanh vi co the quan sat duoc thay vi nhan xet chu quan nhu `easy`, `robust`, hoac `good`
-
-Dinh dang expectation:
+Expected behavior phai co the quan sat:
 
 ```text
 Given condition X,
-the workflow should produce behavior Y,
+the agent should produce behavior Y,
 must not produce behavior Z,
 and should leave evidence E.
 ```
 
-Khuyen nghi:
-- giu input contract ngan gon de co the dat gan dau evaluation artifact
-- khi danh gia mot workflow da duoc dung trong cong viec thuc te, nen co it nhat mot session trace dai dien truoc khi ra quyet dinh promotion
-- uu tien normalized trace artifacts thay vi transcript thô hoac database export theo tung runtime khi so sanh workflow giua Claude Code, Codex, va Opencode
+## Session Corpus Contract
 
-Vi du normalized trace contract:
+Trace-first evaluation phai noi ro vi sao cac session duoc chon. Khong cherry-pick chi success case hoac chi failure case neu muc tieu la tim repeated pattern.
 
-```yaml
-session_traces:
-  runtime: codex
-  source_transcript: ~/.codex/sessions/2026/07/14/rollout-2026-07-14T23-11-34-019f6165-e192-7df1-9ba2-1d04d476a678.jsonl
-  normalized_trace_dir: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678
-  session_trace: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/session-trace.json
-  chat_history: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/chat-history.ndjson
-  command_transcript: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/command-transcript.ndjson
-  tool_call_trace: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/tool-call-trace.ndjson
-  artifact_trail: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/artifact-trail.ndjson
-  handoff_notes: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/handoff-notes.json
-  decision_log: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/decision-log.json
-  failure_retry_log: docs/ai/session-traces/codex/019f6165-e192-7df1-9ba2-1d04d476a678/failure-retry-log.json
-```
+Uu tien cohort co the so sanh duoc theo:
 
-## Cac phase danh gia
+- cung task class hoac decision rule
+- cung workflow version
+- cung runtime/model khi dang do workflow effect
+- cung project context khi codebase complexity co the anh huong chi phi
+- outcome duoc ghi ro, khong chi chon session co artifact dep
 
-### 1. `Intake`
-Muc dich:
-- xac dinh chinh xac workflow nao dang duoc danh gia
+Neu corpus tron nhieu context, report phai segment ket qua thay vi gop count thanh mot failure rate.
 
-Quy tac:
-- xac dinh bo artifact cua workflow dang duoc review:
-  - document
-  - command set
-  - prompt wrapper
-  - skill
-  - runtime binding
-  - end-to-end operating model
-- mo ta muc dich workflow tuyen bo bang ngon ngu don gian
-- dinh nghia cac lop task ma workflow du kien ho tro, vi du:
-  - small bounded execution tasks
-  - ambiguous planning or decision tasks
-  - research and synthesis tasks
-  - review, audit, or verification tasks
-  - incident, support, or triage tasks
-  - feature delivery or bug-fix tasks
-  - design, documentation, or migration tasks
-  - coordination or handoff-heavy tasks
-  - portability across projects, teams, tools, or runtimes
-- neu ro muc tieu danh gia:
-  - adoption review
-  - comparison
-  - regression review
-  - promotion decision
+Mot session co the xac nhan `observed once`. Pattern lap lai can co numerator va denominator, vi du `4/6 comparable sessions`. Neu denominator khong biet, ghi `recurrence unknown`.
 
-Expected output:
-- `Evaluation Target Definition` gom:
-  - workflow name
-  - workflow version
-  - artifact set under review
-  - claimed purpose
-  - intended task classes
-  - evaluation goal
-  - observable expected behavior
-  - comparison target, neu co
+## Local Trace Ingestion
 
-### 2. `Observe`
-Muc dich:
-- bien pain trong qua trinh su dung thuc te thanh cac incident co the review duoc thay vi dua vao tri nho hoac su khong hai long chung chung
-
-Chi dung phase nay khi workflow da tung duoc su dung. Neu chua co lich su su dung, ghi `no observed incidents` va tiep tuc bang designed scenarios.
-
-Quy tac:
-- thu thap cac session dai dien noi workflow can su can thiep bat ngo tu human, tao ra ket qua sai hoac thieu, bi loop, dung sai, hoac ton chi phi bat thuong
-- khi co `workflow_observations`, dung chung lam incident candidate va giu nguyen evidence status `agent-reported-observation` cho den khi co bang chung doi chieu
-- khong bat dau bang mot gia thuyet ve viec rule nao cua workflow dang sai
-- voi moi incident, ghi:
-  - user intent
-  - expected behavior
-  - observed behavior
-  - first point noi expected va observed behavior bat dau lech nhau
-  - practical impact
-  - supporting trace hoac artifact
-- chuyen pain mang tinh chu quan thanh tin hieu failure co the quan sat duoc
-- tach `Agent Hypothesis (Unverified)` khoi observed facts; khong dung observation count de suy ra failure rate neu khong biet tong so session
-- nhom cac incident lap lai theo pattern hanh vi, khong theo do giong nhau ve cau chu
-- phan biet:
-  - isolated execution anomaly
-  - repeated workflow failure pattern
-  - usability friction
-  - unverified suspicion
-
-Expected output:
-- `Workflow Incident Set` gom:
-  - incident ID
-  - source session hoac scenario
-  - expected behavior
-  - observed behavior
-  - first divergence
-  - impact
-  - evidence links
-  - recurrence count hoac `unknown`
-
-Vi du ve tin hieu failure co the quan sat:
-
-| Pain duoc bao cao | Tin hieu co the quan sat |
-|---|---|
-| Agent hieu sai request | Output vi pham mot acceptance criterion da duoc neu ro |
-| Workflow qua nang | Step hoac artifact tao them chi phi nhung khong duoc dung lai o buoc sau |
-| Agent hoi qua nhieu | Cau hoi lap lai context da biet hoac khong anh huong den quyet dinh |
-| Agent hoi qua it | No tu suy doan mot unknown quan trong voi business roi tiep tuc |
-| Ket qua khong nhat quan | Cac lan chay tuong duong tao ra quyet dinh hoac ket qua khac nhau mot cach dang ke |
-| Handoff kho khan | Khong the tai tao state, evidence, hoac pending decisions |
-
-### 3. `Normalize`
-Muc dich:
-- ep cac workflow khac nhau ve mot cau truc co the so sanh duoc
-
-Quy tac:
-- viet lai workflow thanh mot normalized model voi cac truong sau:
-  - entry points
-  - ordered phases
-  - input for each phase
-  - output for each phase
-  - durable artifacts
-  - human responsibilities
-  - agent responsibilities
-  - runtime or tool dependencies
-  - assumptions that must hold for the workflow to work
-- chua danh gia o buoc nay
-- giam ambiguity truoc de cac judgement ve sau co the so sanh duoc
-
-Expected output:
-- `Normalized Workflow Model` gom:
-  - entry points
-  - ordered phases
-  - phase inputs
-  - phase outputs
-  - durable artifacts
-  - human responsibilities
-  - agent responsibilities
-  - runtime dependencies
-  - required assumptions
-
-Bat buoc:
-- viet no duoi dang artifact co cau truc, khong phai loose prose
-- tach rieng verified workflow behavior khoi inferred structure
-
-### 4. `Diagnose`
-Muc dich:
-- ket hop static review va bang chung quan sat duoc de xac dinh workflow that bai o dau va tai sao
-
-Quy tac:
-- kiem tra xem moi step co human-readable hay khong
-- kiem tra xem moi phase co input, output, va next decision ro rang hay khong
-- danh dau cac artifact lap lai thong tin da co san hoac khong co nguoi doc thuong xuyen
-- danh dau cac step mang tinh nghi le nhung khong cai thien chat luong, an toan, hay hieu qua thuc thi
-- tach verified workflow properties khoi inferred properties
-- neu co session traces, kiem tra xem hanh vi workflow duoc khai bao co khop voi conversation, tool use, va handoff pattern thuc te hay khong
-- xac dinh xem workflow co phu thuoc qua nang vao:
-  - hidden chat memory
-  - mot runtime cu the
-  - informal operator judgment
-  - undocumented conventions
-- ghi lai cac risk, blind spot, va failure mode co kha nang xay ra
-- voi moi incident quan sat duoc, truy nguoc ve first divergence thay vi gan nguyen nhan tu output cuoi cung
-- phan loai moi finding theo failure layer:
-  - input contract
-  - decision logic
-  - execution control
-  - output or evidence contract
-- phan biet `design risk` voi `confirmed behavior failure`
-- viet root-cause hypothesis co the bi phan chung cho cac failure da xac nhan hoac lap lai
-
-Expected output:
-- `Audit Findings`, trong do moi finding gom:
-  - `severity`: `Critical`, `High`, `Medium`, hoac `Low`
-  - `status`: `design risk`, `observed once`, `repeated`, hoac `confirmed by exercise`
-  - `area`: clarity, artifact usefulness, portability, safety, cost, hoac failure visibility
-  - `failure_layer`
-  - `claim`
-  - `trigger_condition`
-  - `evidence`
-  - `impact`
-  - `root_cause_hypothesis`
-  - `confidence`
-  - `smallest_recommended_change`
-  - `re-test_scenario`
-
-Mapping theo audit rule:
-- rule 1 trong `AI_WORKFLOW_RULES.md`, optimize for real value:
-  - danh dau cac step hoac artifact chi tao them nghi le ma khong tang ro rang chat luong, an toan, hay hieu qua
-- rule 2, keep every step human-readable:
-  - danh dau cac phase khong co input, output, hoac next decision ro rang
-- rule 3, add only patterns proven by real usage:
-  - danh dau cac claim ve promotion duoc xay tren su dep, day du, hoac mot vai lan thanh cong thay vi bang chung lap lai
-- rule 4, separate human judgment from agent verification:
-  - danh dau noi ma assumption hoac human review bi trinh bay nhu mot su that workflow da duoc verify
-
-Huong dan severity:
-- `Critical`: cho phep hanh dong khong duoc uy quyen, gay mat du lieu, vo bien gioi bao mat, hoac mot ket qua khac bat buoc phai chan adoption bat ke tong diem
-- `High`: chan viec adopt an toan, che giau bat dinh lon, hoac lam workflow mat kha nang review
-- `Medium`: van dung duoc neu co rang buoc, nhung portability hoac consistency bi giam
-- `Low`: cai thien huu ich, van de wording, hoac ambiguity cuc bo khong anh huong lon den quyet dinh
-
-Suc manh cua bang chung:
-- chi dua vao workflow text thi moi ho tro duoc `design risk`
-- workflow observation do agent ghi lai chi ho tro `agent-reported-observation` cho den khi duoc corroborate
-- session trace ho tro cho hanh vi `observed`
-- pattern lap lai tren cac trace tuong duong se tang do manh cho claim cap workflow
-- mot exercise co kiem soat ma tai hien duoc hanh vi do se xac nhan finding trong pham vi da test
-
-Khong suy ra nhan qua chi tu su tuong quan. Root-cause hypothesis van chi la gia thuyet cho den khi mot thay doi co chu dich lam thay doi hanh vi nhu du doan.
-
-### 5. `Baseline Exercise`
-Muc dich:
-- test workflow hien tai tren cac scenario thuc te va dong bang mot baseline de so sanh ve sau
-
-Quy tac:
-- chay workflow voi mot tap nho scenario dai dien
-- uu tien lop scenario on dinh hon la vi du dung mot lan
-- toi thieu, phai cover cac task class va operating context ma workflow tuyen bo ho tro
-- neu co real session traces, dung chung no nhu bang chung chinh ben canh cac scenario tong hop
-- bao gom ca success-path va stress-path khi workflow co claim ve safety, reliability, hoac portability
-- thu thap bang chung nhu:
-  - ambiguity duoc giai o dau
-  - assumption nao van bi de ngam
-  - artifact co thuc su duoc dung lai boi step sau hoac actor sau hay khong
-  - real chat history co the hien cung mot decision pattern ma workflow tuyen bo dang dung hay khong
-  - human judgment, agent judgment, tool output, hoac external system state da anh huong ket qua o dau
-  - workflow bi vo, bi loop, escalate, hoac dung dung cach o dau
-  - chi phi tuong doi ve thoi gian, tokens, handoffs, tools, hoac complexity neu nhin thay duoc
-- khong coi mot lan chay thanh cong la bang chung cho tinh huu ich tong quat
-- dong bang workflow version, scenario input, expected behavior, va evaluation rule truoc khi chay baseline
-- khi mot finding den tu incident thuc te, neu co the thi dua mot phien ban co the tai hien cua incident do thanh regression scenario
-
-Khuyen nghi cac lop baseline scenario:
-- mot task nho, bounded trong domain ma workflow tuyen bo ho tro
-- mot task ambiguity, thieu thong tin, hoac de gay xung dot
-- mot task muc vua can handoff, review, persistence, hoac verification ve sau
-- mot task failure-path noi thieu input, tool/runtime khong san sang, hoac khong the ra quyet dinh an toan
-
-Cho cong viec cai tien, phan loai scenario thanh:
-- `regression`: tai hien mot incident da biet va kiem tra xem targeted failure da duoc fix chua
-- `neighbor`: bien doi incident nhung giu cung decision rule nen tang va kiem tra xem cai tien co tong quat duoc hay khong
-- `control`: dai dien cho hanh vi da tung hoat dong dung va kiem tra xem thay doi moi co gay regression hay khong
-
-Mot thay doi khong duoc coi la da chung minh chi boi viec pass regression scenario goc cua no.
-
-Huong dan scenario theo loai workflow:
-- workflow coding hoac spec-driven:
-  - cover mot thay doi nho, mot thay doi ambiguity, va mot thay doi muc vua can durable handoff hoac verification
-  - neu co session traces, so sanh luong khai bao voi lich su chat va tool thuc te
-- workflow research hoac synthesis:
-  - cover mot task tim fact hep, mot task ambiguity ve chat luong nguon, va mot task synthesis co bang chung mau thuan
-  - neu co session traces, kiem tra xem buoc chon nguon va synthesis co duoc tuan thu thuc te hay khong
-- workflow review, audit, hoac security:
-  - cover mot clean case, mot case co van de ro rang, va mot case co van de tinh te hoac ambiguity
-  - neu co session traces, kiem tra xem finding co duoc neo vao bang chung thay vi chi suy luan hay khong
-- workflow planning hoac product:
-  - cover mot request da du scope ro, mot request chua ro, va mot request can prioritization hoac trade-off
-  - neu co session traces, kiem tra xem cac decision point co duoc lam ro va ghi lai hay khong
-- workflow support, incident, hoac triage:
-  - cover mot case thong thuong, mot case khan cap/escalation, va mot case co tin hieu thieu hoac mau thuan
-  - neu co session traces, kiem tra xem escalation va stop condition co duoc tuan thu khong
-- workflow design hoac documentation:
-  - cover mot cap nhat artifact don gian, mot case can dong bo giua nhieu tai lieu, va mot case can quyet dinh ve audience hoac scope
-  - neu co session traces, kiem tra xem artifact tao ra co thuc su duoc consumer dung lai hay khong
-- workflow DevOps, release, hoac migration:
-  - cover mot duong di thong thuong, mot duong rollback/failure, va mot case co rang buoc theo environment
-  - neu co session traces, kiem tra xem operational risk co duoc surface som du khong
-- reusable workflow base:
-  - ap base vao mot context moi va ghi lai cai gi bi vo hoac can customize
-  - so sanh hai phien ban cua cung mot phase tren cung scenario va ghi lai chat luong output cung chi phi
-  - cap nhat mot rule hoac phase trong base, sau do ap no vao mot context da dung base va kiem tra tinh tuong thich
-
-Incremental re-evaluation:
-Khi workflow thay doi thuong xuyen, khong phai luc nao cung can mot full evaluation run. Chon duong nhe nhat:
-- thay doi artifact path hoac naming → chay lai `Diagnose` chi tren artifact da doi
-- thay doi hanh vi command hoac skill → chay `Re-evaluate` voi frozen scenarios
-- thay doi ranh gioi phase → chay lai `Normalize`, `Diagnose`, va cac scenario bi anh huong
-- them command, skill, hoac phase moi → full `Intake` → `Normalize` → `Diagnose` → `Baseline Exercise` → `Verdict`
-- thay doi nham giai quyet mot finding → luon replay `regression`, `neighbor`, va `control` scenarios
-
-Bang chung tu session trace:
-Khi co real chat/session history, hay thu thap:
-- user request hoac trigger bat dau session
-- cac workflow phase transition duoc the hien ro trong session
-- cac workflow phase transition bi suy dien, bi bo qua, hoac bi mo
-- cac cau hoi agent da hoi va chung co thuc su can thiet hay khong
-- cac quyet dinh do human, agent, hoac tools dua ra
-- tool calls, commands, artifacts, va handoffs duoc tao trong session
-- noi agent dua vao hidden context, memory, hoac assumption khong noi ra
-- noi workflow da ngan chan hoac that bai trong viec ngan chan loi, loop, thuc thi som, hoac hanh dong khong an toan
-- cac output tu buoc truoc co duoc buoc sau dung lai hay khong
-- noi ma session thuc te lech khoi workflow duoc khai bao
-
-Dung session trace de xac dinh cac failure mode thuc te, khong phai de chung minh tinh huu ich tong quat chi bang mot success case.
-
-Downstream evidence:
-Khi workflow da duoc ap dung vao project thuc te hoac cac session lap lai, hay ghi lai:
-- phan nao duoc giu nguyen va phan nao bi override theo tung project hoac session
-- artifact nao bi bo qua va artifact nao duoc them vao theo tung project hoac session
-- failure mode nao trong session trace lap lai qua nhieu context
-- day la tin hieu manh nhat de biet workflow co portable va reusable hay khong
-
-Expected output:
-- `Scenario Evidence Set` gan voi cac scenario cu the
-- `Session Trace Evidence Set` gan voi cac session thuc te khi trace co san
-
-Minimum exercise protocol:
-- cover it nhat mot scenario cho moi claimed task class
-- neu workflow tuyen bo co portability giua runtime hoac project, test it nhat hai context hoac ghi ro portability la chua verify
-- voi moi scenario, ghi:
-  - scenario name
-  - scenario class
-  - workflow version
-  - expected workflow behavior
-  - prohibited behavior
-  - observed workflow behavior
-  - pass or fail rule
-  - ambiguity duoc resolve o dau
-  - artifact nao duoc buoc sau dung lai
-  - workflow bi vo o dau
-  - ghi chu chi phi neu co the quan sat
-
-Khuyen nghi:
-- tai su dung cung mot bo baseline scenarios giua cac workflow variant khi so sanh
-- uu tien bang bang chung thay vi mo ta dai dong
-
-### 6. `Improvement Contract`
-Muc dich:
-- bien mot finding da co bang chung thanh mot gia thuyet cai tien nho va co the kiem chung
-
-Quy tac:
-- khong thiet ke lai toan bo workflow neu mot thay doi nho hon da du de test root-cause hypothesis
-- dinh nghia mot behavioral change chinh cho moi improvement contract
-- noi ro cai gi can cai thien, cai gi phai giu nguyen, va bang chung nao se phan chung gia thuyet
-- giu rieng vai tro evaluation khoi implementation: phase nay chi khuyen nghi va dinh nghia thay doi; workflow owner hoac mot task implementation khac se ap dung thay doi
-- giu nguyen baseline workflow version va bang chung truoc khi co bat ky thay doi nao
-
-Dinh dang bat buoc:
+Uu tien normalized trace artifacts thay vi raw transcript:
 
 ```text
-Finding:
-Van de workflow da duoc ho tro bang chung.
-
-Hypothesis:
-Neu ap dung thay doi X, hanh vi Y se cai thien vi bang chung cho thay nguyen nhan Z.
-
-Targeted change:
-Thay doi workflow nho nhat de kiem tra gia thuyet.
-
-Success threshold:
-Ket qua co the quan sat can dat de coi finding da duoc giai quyet hoac cai thien.
-
-Regression protection:
-Hanh vi bat buoc phai giu nguyen.
-
-Re-evaluation set:
-Regression, neighbor, va control scenarios can replay.
+docs/ai/session-traces/{runtime}/{session-id}/session-trace.json
+docs/ai/session-traces/{runtime}/{session-id}/chat-history.ndjson
+docs/ai/session-traces/{runtime}/{session-id}/command-transcript.ndjson
+docs/ai/session-traces/{runtime}/{session-id}/tool-call-trace.ndjson
+docs/ai/session-traces/{runtime}/{session-id}/artifact-trail.ndjson
+docs/ai/session-traces/{runtime}/{session-id}/handoff-notes.json
+docs/ai/session-traces/{runtime}/{session-id}/decision-log.json
+docs/ai/session-traces/{runtime}/{session-id}/failure-retry-log.json
 ```
 
-Expected output:
-- `Improvement Contract Set` lien ket 1-1 voi nhung finding duoc chon de remediation
+Commands:
 
-### 7. `Re-evaluate`
-Muc dich:
-- xac dinh xem workflow da thay doi co cai thien hanh vi du doan ma khong gay regression khong chap nhan duoc hay khong
+```bash
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime codex --latest --project <repo-cwd>
+python3 .claude/skills/workflow-evaluation/extract_session_trace.py --runtime claude --latest --project <repo-cwd>
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --latest --project <repo-cwd>
+```
 
-Quy tac:
-- so sanh mot baseline workflow version da dinh danh voi mot changed version da dinh danh
-- replay cung frozen inputs, expected behaviors, pass/fail rules, va operating context neu co the
-- toi thieu phai chay:
-  - regression scenario gan voi finding
-  - mot neighbor scenario de test kha nang tong quat hoa
-  - mot control scenario de bao ve hanh vi da dung truoc do
-- ghi lai cac khac biet ve environment hoac model khien viec so sanh khong con nghiem ngat
-- so sanh ca hanh vi va chi phi; khong duoc claim la da cai thien chi vi workflow text trong ro hon
-- phan loai ket qua cho moi improvement hypothesis thanh:
-  - `Resolved`
-  - `Improved but below threshold`
-  - `Inconclusive`
-  - `Regressed`
-  - `Hypothesis rejected`
-- giu lai cac finding moi bat ngo thay vi giau chung trong summary so sanh
+Opencode history thuong nam tai `~/.local/share/opencode/opencode.db`. Dung `opencode session list` va `opencode db path` de xac dinh session.
 
-Bang chung truoc/sau:
+Extractor chi chuan hoa runtime events. File co ten `decision-log.json` hoac `failure-retry-log.json` khong tu dong co nghia moi decision hay failure da duoc semantic classification day du. Evaluator van phai doi chieu chat, tool result, command transcript, artifact trail, va final outcome.
 
-| Measure | Baseline version | Changed version | Result |
-|---|---|---|---|
-| Target behavior | observed result | observed result | improved, unchanged, hoac worse |
-| Prohibited behavior | occurrence count | occurrence count | improved, unchanged, hoac worse |
-| Control behavior | observed result | observed result | preserved hoac regressed |
-| Human intervention | count hoac description | count hoac description | improved, unchanged, hoac worse |
-| Cost | time, tokens, steps, hoac handoffs | time, tokens, steps, hoac handoffs | improved, unchanged, hoac worse |
+Neu trace khong kha dung:
 
-Expected output:
-- `Before/After Evidence Set`
-- `Improvement Result` cho moi hypothesis duoc test
-- `Regression Findings`, neu co
+- ghi `session_traces: unavailable`
+- khong tao behavioral claim
+- neu muc tieu la workflow improvement, ket qua chi co the la `insufficient runtime evidence`
+- co the chuyen sang artifact-first review neu user chap nhan scope do
 
-Gioi han bang chung:
-- neu khong co baseline duoc giu lai truoc khi workflow thay doi, ghi ket qua la `Inconclusive` tru khi co the tai tao va exercise old version trong dieu kien tuong duong
-- y kien hoi cuu rang phien ban moi "cam thay tot hon" khong phai bang chung cua su cai thien
+## Bon phase evaluation
 
-### 8. `Verdict`
-Muc dich:
-- bien quyet dinh promote hay reject thanh minh bach
+Workflow chi co bon phase human-facing:
 
-Quy tac:
-- chon mot trang thai cuoi cung:
-  - `Adopt`
-  - `Adopt with constraints`
-  - `Keep experimental`
-  - `Reject`
-- noi ro workflow hoat dong tot o dau
-- noi ro no khong nen duoc dung o dau
-- neu chua san sang de promote, noi ro can thay doi gi truoc khi promote
-- khong promote mot pattern workflow chi dua tren su dep, tinh day du, hoac do bao phu ly thuyet
-- tach maturity scoring khoi final decision; chi mot finding `Critical` cung co the chan adoption bat ke tong diem
+```text
+Frame -> Diagnose -> Decide -> Validate
+```
 
-Expected output:
-- `Decision Record` gom:
-  - final status
-  - supported scope
-  - unsupported scope
-  - evidence summary
-  - blocking issues
-  - required changes before promotion, neu chua san sang
+Outcome reconstruction, behavioral segmentation, work classification, pattern aggregation, cause attribution, workflow mapping, controlled exercise, va replay van ton tai. Chung la checklist noi bo cua bon phase, khong phai cac phase ngang hang hoac artifact bat buoc rieng.
 
-Heuristic cho verdict:
-- `Adopt`:
-  - khong con finding `Critical` chua giai quyet
-  - khong con finding `High` chua giai quyet
-  - exercise evidence cover duoc cac core task class ma workflow tuyen bo
-  - artifact va ranh gioi phase co the review duoc trong su dung thuong xuyen
-- `Adopt with constraints`:
-  - workflow huu ich, nhung chi trong cac gioi han ro rang ve runtime, team, hoac task
-  - van de con ton dong khong chan viec su dung an toan trong cac gioi han do
-- `Keep experimental`:
-  - workflow co tiem nang, nhung evidence coverage van mong hoac qua hep
-  - portability, repeatability, hoac artifact usefulness chua duoc chung minh de promote thanh standard
-- `Reject`:
-  - con it nhat mot van de `Critical` chua giai quyet
-  - con it nhat mot van de `High` chua giai quyet
-  - complexity, ambiguity, hoac hidden dependency lon hon gia tri da duoc chung minh
-  - ket qua exercise lap lai cho thay workflow vo trong chinh pham vi ma no tuyen bo
+### 1. `Frame`
 
-Khi muc tieu danh gia la cai thien thay vi adoption, can bao cao them finding-level result tu `Re-evaluate`. Khong duoc bien `Improved` thanh `Adopt` neu chua dap ung day du heuristic adoption.
+Muc dich: dong khung mot cau hoi co the tra loi bang evidence va mot corpus co the review.
 
-## Tieu chi danh gia
-Danh gia workflow theo cac chieu sau khi phu hop:
-- do ro rang cua ranh gioi giua cac phase
-- do ro rang cua entry va exit conditions
-- do huu ich cua artifact
-- kha nang human review
-- su tach bach giua assumption, human judgment, agent judgment, va verified facts
-- portability qua cac project, team, tool, runtime, hoac domain ma workflow tuyen bo ho tro
-- muc do phu thuoc vao hidden memory, undocumented conventions, hoac local operator knowledge
-- chi phi tuong xung voi gia tri
-- do hien lo failure va hanh vi stop/escalation an toan
-- muc do phu hop voi kich thuoc task va risk level ma workflow tuyen bo
-- tinh lap lai duoc tren cac scenario dai dien va real session traces
-- tinh tuong thich voi downstream consumer hoac phase ve sau
-- traceability tu session history den declared workflow behavior
-- chat luong chan doan: finding co xac dinh duoc first divergence va tach duoc symptom khoi likely cause
-- suc manh bang chung: claim duoc gan nhan design risk, observed behavior, repeated pattern, hoac exercise-confirmed finding
-- do hop le cua cai tien: so sanh truoc/sau dung scenario tuong duong va explicit threshold
-- kha nang chong regression: targeted improvement van giu duoc hanh vi da dung truoc do
-- anti-gaming: keyword cua workflow hoac cac step mang tinh nghi le khong duoc thuong neu khong anh huong den execution hoac evidence
+Bat buoc:
 
-Khong workflow nao can toi uu tat ca cac chieu nay.
-Danh gia can tra loi xem workflow co du tot cho pham vi muc tieu va muc do rui ro cua no hay khong.
+- dong bang workflow version, evaluation goal, strategy, va behavior questions
+- dinh nghia expected behavior, prohibited behavior, va evidence can de chung minh outcome
+- ghi selection, inclusion, exclusion, denominator, va cohort keys khi dung trace-first
+- ghi ro trace nao incomplete, compacted, thieu tool result, hoac thieu final outcome
+- chi doc metadata can de xac dinh workflow version; khong doc workflow rules truoc blind pass
 
-## Evaluation Artifact
-Ghi ket qua danh gia vao:
-- `docs/ai/workflow-evals/{name}.html`
+Voi artifact-first:
 
-Report contract:
-- dung `docs/ai/project/templates/workflow-evaluation-report.html` lam cau truc va visual baseline chuan
-- toan bo giai thich huong toi human phai viet bang tieng Viet
-- giu nguyen code identifiers, file paths, commands, quoted evidence, va canonical status values neu dich se lam giam traceability
-- hien verdict theo dang nhan tieng Viet theo sau boi canonical value, vi du `Chap nhan co dieu kien (Adopt with constraints)`
-- tao mot file HTML5 tu chua, self-contained, voi inline CSS
-- khong yeu cau JavaScript, build step, CDN, external fonts, hoac network access
-- dung semantic HTML, responsive tables, visible focus states, do tuong phan mau du, va print-friendly styles
-- lam cho evidence chain va decision summary co the scan nhanh truoc khi vao detailed findings
-- coi HTML report la mot projection huong quyet dinh cua evaluation, khong phai mot ban dump theo tung phase cua quy trinh audit noi bo
-- giu cac contract chi tiet, normalized model, traces, va raw evidence trong appendix co the mo ra, tru khi chung anh huong truc tiep den quyet dinh
-- chi dung chart cho du lieu da do hoac da dem; khong bao gio tu che phan tram, diem so, hoac do chinh xac de tao hieu ung thi giac
-- neu mot metric khong co san, gan nhan `Chua do` thay vi uoc luong
-- escape moi noi dung trace khong dang tin truoc khi chen vao HTML
-- khong bao gio embed secrets, credentials, tokens, hoac raw transcript khong can thiet
-- thay the tat ca template placeholder; mot final report con `{{...}}` la chua hoan chinh
+- xac dinh artifact set, claimed purpose, task classes, version, va scope can review
+- neu muc tieu thuc su la runtime improvement nhung trace khong co, dung `insufficient runtime evidence`
 
-Required report sections:
-- `#decision-summary` — quyet dinh, confidence, blocking issue, va hanh dong human can thuc hien
-- `#workflow-health` — tong quan bang visual ve finding, evidence coverage, scenario result, va cost neu co du lieu
-- `#key-findings` — toi da nam finding quan trong nhat, uu tien theo impact
-- `#improvement-impact` — before/after va regression status khi co workflow change
-- `#action-plan` — remediation duoc uu tien, owner hoac next gate, va re-test can chay
-- `#scope-limitations` — pham vi da chung minh, chua chung minh, va gioi han cua evidence
-- `#evidence-appendix` — chi tiet audit co the mo khi can
+Output duy nhat la `Evaluation Brief`. Khong can tao artifact rieng neu noi dung nay co the nam trong report cuoi.
 
-Conditional section rules:
-- khi khong co workflow change dang duoc test, `#improvement-impact` phai ghi `Chua co thay doi de so sanh`
-- khi khong co baseline cho mot claim cai thien, `#improvement-impact` phai gan nhan claim do la `Chua chung minh (Inconclusive)`
-- khi khong co session traces, hien gioi han nay trong `#scope-limitations`; khong them mot top-level trace section rong
+`Frame Gate` dat khi cau hoi co the quan sat, strategy dung voi evidence hien co, va denominator khong bi suy doan.
 
-Recommended sections:
-- `## Constraints`
-- `## Follow-up Required`
+### 2. `Diagnose`
 
-Recommended structure:
+Muc dich: tim first divergence, excess work, pattern, va likely cause truoc khi de xuat thay doi.
+
+#### Trace-first blind pass
+
+Voi moi session:
+
+- reconstruct user intent, acceptance criteria, final/partial/failed outcome, human intervention, va artifact da tao
+- doi chieu final response voi command result, tool result, file state, test output, va artifact; final response khong phai proof
+- segment theo intent, decision, hoac hypothesis khi segmentation giup tim first divergence; khong bat episode trung workflow phase
+- tim misunderstanding, missing/unnecessary clarification, premature execution, repeated read/command khong tao evidence moi, edit-revert, rework, recovery loop, unused artifact, manual repair, unsafe action, missing stop, poor escalation, va unsupported conclusion
+- phan loai visible work khi no giup giai thich impact:
+  - `productive-discovery`
+  - `productive-execution`
+  - `workflow-overhead`
+  - `rework`
+  - `recovery`
+  - `coordination-cost`
+  - `avoidable-repetition`
+  - `unknown`
+- aggregate theo decision pattern hoac failure mechanism, ghi numerator/denominator, va giu counterexample
+
+Nhieu token, duration, hoac tool calls khong tu no la finding. Evaluator phai noi no voi outcome, first divergence, excess work, va evidence moi duoc tao ra.
+
+#### Attribution va workflow mapping
+
+Chi sau khi behavioral findings da duoc ghi, doc workflow artifact va:
+
+- phan loai `workflow-caused`, `workflow-exacerbated`, `model-execution`, `runtime-tool`, `task-environment`, hoac `inconclusive`
+- ghi direct evidence, alternative explanation, confidence, va evidence co the lam attribution thay doi
+- map finding vao input contract, decision logic, execution control, output/evidence contract, runtime binding, missing/excessive rule, hoac `not related`
+- kiem tra workflow co rule dung nhung agent khong tuan thu hay khong
+
+#### Artifact-first diagnose
+
+- normalize entry points, ordered phases, inputs/outputs, artifacts, responsibilities, dependencies, assumptions, va stop/retry/escalation rules
+- kiem tra unclear boundaries, unused artifact, hidden dependency, weak failure visibility, unsafe escalation, excessive ceremony, va ambiguity giua human judgment, agent judgment, va tool evidence
+- gan tat ca static finding la `design risk`; khong claim runtime failure neu chua co trace hoac exercise
+
+Output la toi da nam candidate findings tren main report.
+
+`Evidence Gate` dat cho mot behavioral finding khi:
+
+- main claim co direct evidence reference
+- first divergence duoc xac dinh hoac ghi `unknown`
+- recurrence co numerator/denominator hoac ghi `recurrence unknown`
+- alternative explanation da duoc xem xet
+- evidence status khong bi nang cap qua muc evidence thuc co
+
+Finding khong dat gate chi duoc giu la `unverified suspicion` hoac evidence gap.
+
+### 3. `Decide`
+
+Muc dich: route moi finding den dung owner va chi tao workflow experiment khi evidence ho tro.
+
+| Attribution | Default decision |
+|---|---|
+| `workflow-caused` | xem xet targeted workflow experiment |
+| `workflow-exacerbated` | sua mechanism nho nhat lam tang chi phi hoac risk |
+| `model-execution` | `do not change workflow` tru khi co evidence workflow co the ngan chan voi chi phi hop ly |
+| `runtime-tool` | route den runtime, tool, integration, hoac recovery |
+| `task-environment` | route den context, environment, hoac task contract |
+| `inconclusive` | thu thap them evidence; khong thay doi |
+
+Moi workflow improvement experiment phai co:
+
+- observed pattern va first divergence
+- attribution va confidence
+- falsifiable hypothesis
+- smallest targeted change
+- observable success threshold
+- regression protection
+- regression, neighbor, va control replay set
+
+Chi adoption/promotion evaluation moi tao canonical verdict `Adopt`, `Adopt with constraints`, `Keep experimental`, hoac `Reject`.
+
+Output cua phase la mot trong ba trang thai cho moi finding:
+
+- `do not change workflow`
+- `need more evidence`
+- `run targeted improvement experiment`
+
+`Attribution Gate` dat khi recommendation phu hop voi cause attribution va khong dung workflow change de che mot model, runtime, tool, hoac environment problem chua duoc chung minh.
+
+### 4. `Validate`
+
+Muc dich: kiem chung ca chat luong evaluator lan tac dong cua workflow change. Mot report day du khong tu no chung minh evaluation dung.
+
+#### Evaluator quality validation
+
+Moi evaluation phai:
+
+- audit claim-to-evidence cho tat ca main findings
+- cong khai `evaluation_quality_status`: `calibrated`, `partially-calibrated`, hoac `uncalibrated`
+- ghi metric `Chua do` khi khong co human reference hoac calibration set
+
+Y nghia status:
+
+- `calibrated`: calibration set dai dien cho supported cohort va cac quality threshold khai bao da dat
+- `partially-calibrated`: co human review nhung coverage con hep, mot so metric chua do, hoac threshold chua dat day du
+- `uncalibrated`: khong co human reference/calibration evidence du de danh gia evaluator quality
+
+Khi co human reference review hoac calibration set, do toi thieu:
+
+- `evidence_support_rate`: ty le main claim co direct evidence thuc su ho tro claim
+- `first_divergence_agreement`: human va evaluator co chon cung decision point khong
+- `attribution_agreement`: human va evaluator co dong y source category khong
+- `unsupported_workflow_attribution`: so claim `workflow-caused`/`workflow-exacerbated` khong du evidence
+
+Calibration target khoi dau:
+
+- `100%` main findings co direct evidence
+- toi thieu `80%` agreement ve first divergence va attribution tren it nhat nam session duoc human review
+- `0` unsupported workflow attribution trong sample da audit
+
+Sample nho chi la calibration evidence, khong phai statistical proof. Khi human va evaluator bat dong, ghi disagreement va evidence; human label khong duoc coi la oracle khong can review.
+
+Khong co calibration set khong cam evaluator tao exploratory findings, nhung evaluator khong duoc claim quy trinh evaluation da duoc kiem chung.
+
+#### Workflow change validation
+
+Khi co changed version:
+
+- replay cung input, expected/prohibited behavior, pass/fail rule, va operating context neu co the
+- chay regression, neighbor, va control set
+- so sanh target behavior, human intervention, rework, recovery, repetition, duration, token, hoac tool calls chi khi co du lieu do duoc
+- phan loai `Resolved`, `Improved but below threshold`, `Inconclusive`, `Regressed`, hoac `Hypothesis rejected`
+- khong claim improvement chi vi wording ro hon, artifact dep hon, hoac agent tuan thu phase nhieu hon
+
+Voi artifact-first, validation dung controlled success va stress/failure exercises. Finding van la `design risk` cho den khi exercise hoac trace corroborate no.
+
+`Validation Gate` dat khi evaluator quality status va limitation duoc cong khai, main findings vuot claim-to-evidence audit, va moi improvement claim co comparable replay evidence.
+
+### Mapping tu flow cu
+
+| Flow cu | Bon phase moi |
+|---|---|
+| Intake, Corpus Selection | `Frame` |
+| Outcome Reconstruction, Behavioral Segmentation, Friction Detection | `Diagnose` |
+| Work Classification, Pattern Aggregation | `Diagnose` |
+| Cause Attribution, Workflow Mapping | `Diagnose` |
+| Improvement Contract, Improvement Decision | `Decide` |
+| Baseline Exercise, Re-evaluate | `Validate` |
+| HTML report | output rendering, khong phai evaluation phase |
+
+## Finding Contract
+
+Moi behavioral finding gom:
+
+- `finding_id`
+- `severity`: `Critical`, `High`, `Medium`, `Low`
+- `evidence_status`: `agent-reported-observation`, `trace-observed`, `repeated-pattern`, `exercise-confirmed`
+- `cohort` va denominator
+- `observed_pattern`
+- `trigger_condition`
+- `first_divergence`
+- `impact`
+- `work_classification`
+- `human_intervention`
+- `cause_attribution`
+- `alternative_explanation`
+- `root_cause_hypothesis`
+- `confidence`
+- `workflow_mapping`, neu co
+- `smallest_recommended_change`, hoac `do not change workflow`
+- `re-test`
+
+Severity:
+
+- `Critical`: unsafe authorization, data loss, security boundary violation, hoac adoption blocker bat ke frequency
+- `High`: repeated behavior lam workflow khong an toan, khong review duoc, hoac sai outcome quan trong
+- `Medium`: rework, overhead, portability, consistency, hoac recovery problem co impact ro
+- `Low`: friction cuc bo hoac cai thien nho
+
+Observation do skill `record-workflow-friction` tao ra chi co evidence status `agent-reported-observation`. No co the mo ta bat ky friction nao trong agent execution, khong chi workflow problem. Chi sau attribution evaluator moi duoc goi no la workflow failure.
+
+## Observation Sources
+
+Uu tien scan:
+
+- `docs/ai/agent-observations/*.md`
+- `docs/ai/workflow-observations/*.md` de backward compatibility
+
+Observation co the thuoc:
+
+- workflow
+- model execution
+- runtime/tool
+- environment
+- task ambiguity
+- human-agent coordination
+- unknown
+
+Khong loc observation chi vi `workflow_name` khong khop neu session/task subject co lien quan den corpus. Ghi ro selection rule va paths da chon.
+
+## Report Contract
+
+Ghi report vao:
+
+```text
+docs/ai/workflow-evals/{name}.html
+```
+
+Dung `docs/ai/project/templates/workflow-evaluation-report.html`.
+
+Bat buoc:
+
+- human-facing content bang tieng Viet
+- self-contained HTML5, inline CSS, khong JavaScript/CDN/build dependency
+- escape untrusted trace content
+- khong embed secret, credential, token, hoac raw transcript khong can thiet
+- chart chi dung count/rate/measure that; neu chua co thi ghi `Chua do`
+- cong khai `evaluation_quality_status` va human/calibration coverage; neu chua co thi ghi `uncalibrated`
+- decision summary duoi 120 tu
+- toi da nam finding chinh tren main page
+- methodology, normalized workflow, full trace va lower findings nam trong appendix
+- khong con unresolved `{{PLACEHOLDER}}`
+
+Required section IDs:
+
 - `#decision-summary`
-  - mo dau bang mot cau verdict ro rang va mot quyet dinh human can dua ra
-  - giu phan giai thich duoi 120 tu
-- `#workflow-health`
-  - dung metric cards gon va visual bars cho count hoac measured rate
-  - hien `Chua do` khi khong co con so nao co the bao ve duoc
+- `#session-behavior`
 - `#key-findings`
-  - toi da nam finding; moi card gom van de, evidence, impact, va recommended action
-  - chuyen finding uu tien thap hon xuong appendix
+- `#cause-attribution`
 - `#improvement-impact`
-  - visualize hanh vi baseline va changed behavior, dong thoi hien regression, neighbor, va control results
-  - bo qua cac chart chi de trang tri ma khong giup so sanh hanh vi
 - `#action-plan`
-  - sap xep action theo decision impact, khong theo thu tu tai lieu
-  - neu ro smallest change, success threshold, va re-test
 - `#scope-limitations`
-  - lam ro unsupported claims va evidence gaps truoc khi vao appendix
 - `#evidence-appendix`
-  - giu input contract, expected behavior, incidents, normalized model, full findings, scenarios, trace references, va evidence excerpts trong `<details>` blocks
 
-Huong dan cho HTML de nguoi doc:
-- bat dau bang header gon gom workflow name, evaluated version, report date, evaluation goal, va verdict badge
-- uu tien mot visual hierarchy manh thay vi nhieu card co trong so ngang nhau
-- dung mot so summary cards nho cho decision status, blocking findings, evidence coverage, va scenario outcome
-- dung severity badge va finding ID on dinh de human co the scan va thao luan nhanh
-- dung CSS hoac inline SVG charts van de hieu khi khong co mau va in ra dung
-- moi chart phai gan nhan source count, denominator, hoac `Chua do`
-- dat evidence, impact, va action gan nhau trong tung finding card hien thi
-- dung `<details>` cho methodology, normalized models, raw evidence, va trace excerpts
-- tranh mot muc luc dai neu report co duoi tam section hien thi
-- them footer voi generation timestamp va source artifact paths
+Voi trace-first report, main page phai uu tien:
 
-## Cach su dung co human kiem soat
-Workflow nay cung la human-controlled.
+- corpus coverage
+- repeated behavioral patterns
+- first divergence
+- rework, recovery, repetition, va human intervention
+- cause attribution
+- evaluator quality status va claim-to-evidence audit
+- prioritized improvement experiments
 
-Human se quyet dinh khi nao chay workflow evaluation, vi du:
-- truoc khi them mot standard command moi
-- truoc khi promote mot pattern dang experimental
-- khi so sanh hai thiet ke workflow thay the
-- khi workflow co ve hoat dong duoc nhung thieu bang chung co the review
-- khi co pain lap lai trong qua trinh su dung nhung chua ro step nao cua workflow dang fail
-- sau mot thay doi workflow tuyen bo la fix duoc mot finding da biet
+Normalized workflow model va phase compliance chi nam trong appendix tru khi no truc tiep gay ra mot finding chinh.
 
-Quy tac hanh vi cho agent:
-- khong am tham bien cong viec thiet ke workflow thanh cong viec workflow evaluation
-- khong am tham bien workflow evaluation thanh workflow adoption
-- khong chinh workflow dang test trong luc dang thu thap baseline
-- neu bang chung qua mong, hay de xuat them `Observe` hoac `Baseline Exercise` thay vi noi qua muc do confidence
-- khong claim co cai thien neu khong co bang chung before/after co the so sanh
+Voi artifact-first adoption report, `#decision-summary` phai hien canonical verdict bang nhan tieng Viet kem gia tri tieng Anh.
 
-## Huong dan dien giai quyet dinh
-Su dung cac cach hieu sau:
-- `Adopt`: bang chung du manh cho pham vi muc tieu va viec su dung thuong xuyen
-- `Adopt with constraints`: huu ich, nhung chi trong cac gioi han duoc neu ro
-- `Keep experimental`: co tiem nang, nhung chua duoc chung minh de promote thanh standard
-- `Reject`: complexity, ambiguity, hoac bang chung yeu lon hon gia tri
+## Anti-patterns
 
-## Quan he voi cac tai lieu khac
-- `docs/ai/project/AI_WORKFLOW_RULES.md` dinh nghia cac quy tac bat buoc ma evaluation can enforce
-- `docs/ai/project/WORKFLOW_CODING_STANDARD.md` dinh nghia mot workflow type co the tu no tro thanh doi tuong duoc danh gia boi tai lieu nay
-- `docs/ai/workflow-observations/` luu friction notes do human yeu cau skill `record-workflow-friction` tao ra trong luc workflow khac dang chay
-- cac workflow document, command set, skill, prompt wrapper, runtime binding, hoac operating model khac cung co the duoc danh gia boi tai lieu nay khi dap ung input contract
-- `docs/ai/workflow-evals/` luu cac bao cao danh gia HTML tieng Viet, self-contained, duoc tao boi workflow nay
+- coi viec di qua day du step hoac tao report dep la proof evaluation dung
+- bien checklist noi bo thanh phase/artifact rieng ma khong tao decision value
+- doc workflow truoc blind trace pass trong trace-first evaluation
+- danh gia session chi bang muc do tuan thu phase
+- coi nhieu tool calls hoac token cao la failure ma khong co outcome/first divergence
+- gan runtime, model, task, hoac environment problem cho workflow
+- them workflow rule cho moi anomaly cua agent
+- bao cao recurrence ma khong co denominator
+- coi final response la proof ma khong doi chieu tool/artifact evidence
+- coi extractor bucket la semantic diagnosis day du
+- claim evaluator da duoc kiem chung khi khong co human reference/calibration evidence
+- claim improvement ma khong replay scenario tuong duong
+- dung mot success session de promote workflow
 
-## Tieu chuan san sang de implement
-Tai lieu nay duoc coi la implementation-ready khi duoc dung nhu evaluation operating spec chi khi:
-- evaluation input contract duoc dien ro rang
-- moi phase ghi ra output section bat buoc cua no
-- expected behavior co the quan sat va co pass/fail rule
-- pain trong su dung thuc te duoc bieu dien thanh incidents co first divergence va evidence khi co san
-- audit findings dung dung severity, evidence status, failure layer, va root-cause hypothesis da khai bao
-- baseline scenarios cover duoc pham vi workflow tuyen bo hoac danh dau ro cho trong
-- session traces duoc dua vao khi co san, hoac duoc danh dau unavailable mot cach ro rang
-- moi de xuat cai tien duoc gan voi mot finding va mot bo re-test
-- claim cai tien so sanh cac workflow version da xac dinh tren regression, neighbor, va control scenarios
-- baseline thieu hoac khong the so sanh duoc phai gan nhan `Inconclusive`
-- verdict theo dung heuristic da ghi, khong theo so thich ca nhan
-- artifact cuoi cung la mot bao cao HTML5 tieng Viet hop le, self-contained, tai `docs/ai/workflow-evals/{name}.html`
+## Done Criteria
+
+Moi evaluation hoan tat khi:
+
+- `Frame`, `Diagnose`, `Decide`, va `Validate` co output co the review
+- main findings vuot `Evidence Gate`
+- recommendation vuot `Attribution Gate`
+- `evaluation_quality_status` va limitation duoc cong khai
+- report khong dung process completeness lam proxy cho diagnostic quality
+
+Trace-first evaluation con phai co:
+
+- corpus selection va denominator duoc ghi ro
+- session outcome duoc reconstruct bang evidence
+- blind behavioral pass xay ra truoc workflow mapping
+- findings co first divergence, work classification, va cause attribution
+- repeated claims co numerator/denominator hoac ghi recurrence unknown
+- chi workflow-caused/workflow-exacerbated findings moi tao workflow improvement contract
+- before/after claim co regression, neighbor, va control evidence
+- report phan biet ro agent problem voi workflow problem
+
+Artifact-first evaluation con phai co:
+
+- normalized workflow structure duoc ghi
+- static findings duoc gan `design risk`
+- exercise evidence co hoac limitations duoc ghi ro
+- adoption verdict khop evidence va supported scope
+
+Moi full evaluation phai tao mot self-contained Vietnamese HTML report dung report contract.

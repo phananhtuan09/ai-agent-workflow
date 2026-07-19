@@ -68,3 +68,9 @@ Each extracted session directory contains:
 - `normalized_events`
 - `stats`
 - `extraction_notes`
+
+## Interpretation Limit
+
+The extractor normalizes runtime events; it does not complete the behavioral diagnosis. A populated or empty `decision-log.json` or `failure-retry-log.json` is not proof that every semantic decision, failure, retry, or rework episode was captured.
+
+For workflow improvement, `workflow-evaluation` must reconstruct outcomes and behavioral episodes from chat, commands, tool results, artifacts, human corrections, and final state before mapping findings to workflow rules.

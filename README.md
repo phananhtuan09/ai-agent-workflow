@@ -72,7 +72,7 @@ By default, the installer uses the `coding-standard` kit, which matches the curr
 
 Available kits now include:
 - `coding-standard` — the current full install flow
-- `workflow-eval` — only the workflow-evaluation standard and mirrored skills
+- `workflow-eval` — trace-first evaluation standard, session-trace docs, report template, and mirrored evaluation/friction skills
 
 ```bash
 # Install only Codex

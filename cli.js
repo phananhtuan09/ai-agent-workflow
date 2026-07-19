@@ -49,9 +49,12 @@ Examples:
 The workflow-eval kit installs:
   - docs/ai/project/AI_WORKFLOW_RULES.md
   - docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md
+  - docs/ai/project/templates/workflow-evaluation-report.html
+  - docs/ai/agent-observations/
+  - docs/ai/workflow-observations/ (legacy compatibility)
   - docs/ai/workflow-evals/
   - docs/ai/session-traces/
-  - the workflow-evaluation skill folder for the selected runtime(s)
+  - workflow-evaluation and record-workflow-friction skills for the selected runtime(s)
 `);
 }
 

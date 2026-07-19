@@ -1,11 +1,11 @@
 # Workflow Observations
 
-Human-requested notes about friction encountered while an AI agent is running a workflow or skill.
+Legacy location for workflow-specific observations created with schema `ai-workflow/observation-v1`.
 
-Create observations with `record-workflow-friction` and store one observation per file:
+New observations created by `record-workflow-friction` belong in:
 
 ```text
-docs/ai/workflow-observations/YYYY-MM-DD-{workflow}-{short-slug}.md
+docs/ai/agent-observations/YYYY-MM-DD-{subject}-{short-slug}.md
 ```
 
-Every observation has evidence status `agent-reported-observation`. The `workflow-evaluation` skill may use it as an incident candidate, but must corroborate it before presenting it as an observed, repeated, or confirmed workflow failure.
+`workflow-evaluation` continues to scan this directory for backward compatibility. Existing files remain `agent-reported-observation` evidence and require corroboration before they can support a workflow failure claim.

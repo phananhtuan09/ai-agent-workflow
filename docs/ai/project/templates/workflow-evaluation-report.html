@@ -117,7 +117,7 @@
 
     .hero-meta strong { color: #fff; }
 
-    .verdict {
+    .decision-label {
       display: inline-flex;
       margin-top: 22px;
       padding: 9px 14px;
@@ -355,14 +355,15 @@
   <main class="shell">
     <header class="hero">
       <div class="hero-copy">
-        <p class="kicker">Workflow audit · Báo cáo ra quyết định</p>
+        <p class="kicker">Trace-first workflow evaluation · Báo cáo hành vi</p>
         <h1>{{WORKFLOW_NAME}}</h1>
         <p class="hero-summary">{{ONE_LINE_CONCLUSION}}</p>
-        <span class="verdict">{{VERDICT_LABEL}}</span>
+        <span class="decision-label">{{DECISION_LABEL}}</span>
       </div>
       <div class="hero-meta">
         <span><strong>Phiên bản:</strong> {{WORKFLOW_VERSION}}</span>
         <span><strong>Mục tiêu:</strong> {{EVALUATION_GOAL}}</span>
+        <span><strong>Chiến lược:</strong> {{EVALUATION_STRATEGY}}</span>
         <span><strong>Ngày:</strong> {{REPORT_DATE}}</span>
         <span><strong>Runtime:</strong> {{RUNTIME_CONTEXT}}</span>
       </div>
@@ -370,8 +371,9 @@
 
     <nav class="quick-nav" aria-label="Đi tới nội dung chính">
       <a href="#decision-summary">Quyết định</a>
-      <a href="#workflow-health">Sức khỏe workflow</a>
+      <a href="#session-behavior">Hành vi session</a>
       <a href="#key-findings">Finding chính</a>
+      <a href="#cause-attribution">Nguyên nhân</a>
       <a href="#improvement-impact">Cải thiện</a>
       <a href="#action-plan">Hành động</a>
       <a href="#scope-limitations">Giới hạn</a>
@@ -387,28 +389,36 @@
         </div>
         <div class="metric-grid">
           <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">{{CONFIDENCE}}</span><span class="metric-note">{{CONFIDENCE_BASIS}}</span></div>
-          <div class="metric"><span class="metric-label">Finding chặn</span><span class="metric-value">{{BLOCKING_FINDINGS}}</span><span class="metric-note">Critical + High chưa xử lý</span></div>
-          <div class="metric"><span class="metric-label">Scenario</span><span class="metric-value">{{SCENARIO_RESULT}}</span><span class="metric-note">{{SCENARIO_DENOMINATOR}}</span></div>
+          <div class="metric"><span class="metric-label">Corpus</span><span class="metric-value">{{CORPUS_SIZE}}</span><span class="metric-note">{{CORPUS_BASIS}}</span></div>
+          <div class="metric"><span class="metric-label">Pattern lặp lại</span><span class="metric-value">{{REPEATED_PATTERNS}}</span><span class="metric-note">{{PATTERN_DENOMINATOR}}</span></div>
+          <div class="metric"><span class="metric-label">Human intervention</span><span class="metric-value">{{HUMAN_INTERVENTIONS}}</span><span class="metric-note">{{INTERVENTION_BASIS}}</span></div>
           <div class="metric"><span class="metric-label">Evidence</span><span class="metric-value">{{EVIDENCE_STATUS}}</span><span class="metric-note">{{EVIDENCE_BASIS}}</span></div>
+          <div class="metric"><span class="metric-label">Evaluator quality</span><span class="metric-value">{{EVALUATION_QUALITY_STATUS}}</span><span class="metric-note">{{CALIBRATION_BASIS}}</span></div>
         </div>
       </div>
     </section>
 
-    <section class="panel" id="workflow-health">
-      <h2>Sức khỏe workflow</h2>
-      <p class="section-intro">Các visual dưới đây chỉ dùng dữ liệu đã đếm hoặc đo. Chỉ số chưa có baseline phải hiển thị là “Chưa đo”.</p>
-      <div class="visual-grid">{{WORKFLOW_HEALTH_VISUALS}}</div>
+    <section class="panel" id="session-behavior">
+      <h2>Hành vi quan sát trong session</h2>
+      <p class="section-intro">Ưu tiên outcome, first divergence, rework, recovery, repetition và human intervention. Chỉ dùng dữ liệu đã đếm hoặc đo; chỉ số chưa có baseline phải hiển thị là “Chưa đo”.</p>
+      <div class="visual-grid">{{SESSION_BEHAVIOR_VISUALS}}</div>
     </section>
 
     <section class="panel" id="key-findings">
       <h2>Điều đáng quan tâm nhất</h2>
-      <p class="section-intro">Tối đa năm finding ảnh hưởng trực tiếp đến quyết định. Chi tiết còn lại nằm trong evidence appendix.</p>
+      <p class="section-intro">Tối đa năm behavioral finding ảnh hưởng trực tiếp đến outcome hoặc chi phí thực thi. Mỗi finding phải có first divergence và cohort denominator khi claim lặp lại.</p>
       <div class="finding-list">{{KEY_FINDINGS}}</div>
+    </section>
+
+    <section class="panel" id="cause-attribution">
+      <h2>Vấn đề đến từ đâu?</h2>
+      <p class="section-intro">Phân biệt workflow-caused, workflow-exacerbated, model-execution, runtime-tool, task-environment và inconclusive trước khi đề xuất thay đổi workflow.</p>
+      {{CAUSE_ATTRIBUTION}}
     </section>
 
     <section class="panel" id="improvement-impact">
       <h2>Workflow đã cải thiện chưa?</h2>
-      <p class="section-intro">So sánh cùng scenario và pass/fail rule giữa baseline với phiên bản thay đổi.</p>
+      <p class="section-intro">So sánh cùng input, pass/fail rule và operating context giữa baseline với phiên bản thay đổi. Không claim cải thiện chỉ từ wording rõ hơn.</p>
       {{IMPROVEMENT_IMPACT}}
     </section>
 
@@ -419,6 +429,7 @@
 
     <section class="panel" id="scope-limitations">
       <h2>Phạm vi và giới hạn</h2>
+      <p class="section-intro">Nêu rõ evaluator đang calibrated, partially-calibrated hay uncalibrated; metric không có human reference hoặc calibration set phải ghi “Chưa đo”.</p>
       <div class="split">
         <div class="split-card"><h3>Đã có bằng chứng</h3>{{SUPPORTED_SCOPE}}</div>
         <div class="split-card"><h3>Chưa được chứng minh</h3>{{LIMITATIONS}}</div>
