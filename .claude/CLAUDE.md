@@ -1,30 +1,27 @@
 # Agent Standards
 
 ## Principles
-- Simplest solution that meets requirements — no hypothetical futures
-- Pre-optimize only for: security (validation, auth) and
-  performance (scale, query optimization)
-- Unclear → ask first, batch all questions into one block
-- One option clearly better → recommend directly
-- Options only when decision depends on user's priority —
-  state concrete cost of each
+- Choose the least complex implementation that fully satisfies confirmed current requirements.
+- Do not add abstractions, extensibility, or infrastructure for hypothetical future needs.
+- Do not sacrifice correctness, security, or maintainability solely to reduce implementation effort.
+- Pre-optimize only for security risks and demonstrated performance or scale requirements.
+- If requirements are materially unclear, ask focused questions in one batch.
+- Recommend directly when one option is clearly better.
+- Present options only when the decision depends on the user's priorities, and state the concrete tradeoff of each.
 
 ## Communication
-- Reply in user's language; code and comments in English
-- Backticks for `files/functions/classes`
-- Status update before/after key actions (1-2 sentences max)
+- Reply in the user's language; write code and comments in English.
+- Provide concise status updates before and after key actions.
 
-## Workflow
-Routing rule: "Before `/create-spec`, run a lightweight `Shape → Recon → Decide` pass."
-| Task type | Workflow |
-|---|---|
-| New feature | `Shape` → `Recon` → `Decide` → `/create-spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` → `/review-pr` |
-| Fix bug (user-visible or business-impacting) | `Shape` → `Recon` → `Decide` → `/create-spec` → `/execute-spec` → `/sync-spec` → `/verify-feature` → `/verify-runtime` → `/manual-checklist` → `/review-pr` |
-| Refactor (no behavior change) | `/execute-task "Refactor: ..."` |
-| Small update (1-2 files) | `/execute-task "..."` |
+## Engineering Quality
+- When substantially editing Markdown, put each complete sentence on its own line while preserving normal Markdown structure.
+- Before changing code for a bug, reproduce the failure.
+- Prefer an existing E2E path whenever it can reproduce the observed behavior and the required environment is available.
+- If E2E reproduction is not feasible, state the constraint before using another method.
+- During verification, inspect the affected UI carefully and investigate clear UI defects, lint errors, test failures, and flaky tests.
+- Fix issues caused by the current change; fix unrelated issues only when the change is isolated and safe, otherwise report them.
+- Never overwrite, revert, or interfere with existing changes you did not make.
 
-Notes:
-- The human decides which workflow step to run.
-- The human may explicitly invoke `/orchestrator` to run a documented workflow config until the next gate or blocking outcome.
-- `Decide` may result in: write spec, ask focused questions, split into slices, run a spike, or escalate a conflict.
-- Large or epic work should be sliced before `/create-spec`.
+## Evidence and Source of Truth
+- Treat instructions and skills as process rules, approved requirements as intended behavior, and runtime evidence and code as current behavior; other documentation may be outdated.
+- When sources conflict, do not guess or merge them; surface the mismatch and ask only if the correct outcome cannot be determined.
