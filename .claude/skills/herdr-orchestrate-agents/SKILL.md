@@ -61,6 +61,19 @@ Use globally unique agent names such as `payment-api-codex` or `admin-web-review
 
 If the project exists but no agent is running, tell the user to open the coding agent in that workspace and give it a unique name. If the project is absent, tell the user to open it as a workspace inside the current Herdr session.
 
+## Sending Input Reliably
+
+`herdr pane run <pane-id> "<text>"` is meant to send text and Enter together, but PTY behavior varies by OS. On Windows (Git Bash / ConPTY) especially, a prompt containing literal newlines can garble or truncate in the target's input box (lines overwrite each other), and typing very long content through the PTY carries the same risk on any OS. Apply this to every send that uses `herdr pane run` — the checkpoint prompt in Inspect and the rewritten prompt in Dispatch:
+
+1. **Route anything non-trivial through one fixed payload file.** Never type multi-line or long content directly into the pane. Instead:
+   - Resolve a single, OS-neutral path once per machine: `<home>/.herdr/dispatch-payload.txt`, where `<home>` is `$HOME` on Linux/macOS or `$USERPROFILE` on Windows (e.g. resolve with `${HOME:-$USERPROFILE}` in bash). Use this exact same path and filename every time — never invent a new filename or a per-dispatch name.
+   - Overwrite this one file's full content with the Write tool before every send (a full overwrite, not an append) — each dispatch replaces whatever the previous dispatch left there, so no stale content can leak into a later send and no file clutter accumulates.
+   - Send only a short, single-line instruction through `herdr pane run` pointing at that path, e.g.: `Đọc nội dung file <resolved-path> và thực hiện đúng theo yêu cầu trong đó.` This instruction line itself must stay short and newline-free.
+   - A genuinely short one-line follow-up (e.g. a brief reply to a `blocked` target) can skip the file and go directly through `herdr pane run` with the text itself, since there is nothing to garble.
+2. **Verify submission, then fall back if needed.** Immediately after `herdr pane run`, re-check `herdr agent list` (or re-read the pane) for that pane ID. If status is `working` (or the pane shows a processing indicator), the send succeeded. If it is still `idle` and the sent text is visibly sitting unsent in the input box, run `herdr pane send-keys <pane-id> Enter` once to submit it, then re-check status again. This step is independent of message length or the file-based routing above — apply it to every send.
+
+Never report a send as successful (a filled-in checkpoint result, or "Gửi prompt: thành công") until this status check confirms the target actually started processing.
+
 ## Route The Request
 
 Choose exactly one workflow:
@@ -153,11 +166,13 @@ After `Next:`, finish with the concatenation of `END_HERDR_CHECKPOINT_` and `<ch
 Write all field values in Vietnamese.
 ```
 
-Send it with the resolved pane ID:
+Write this checkpoint prompt verbatim into the fixed payload file and send the short file-pointer instruction instead, per [Sending Input Reliably](#sending-input-reliably):
 
 ```bash
-herdr pane run <pane-id> "<checkpoint-prompt>"
+herdr pane run <pane-id> "Đọc nội dung file <resolved-path> và trả lời đúng theo yêu cầu trong đó."
 ```
+
+Confirm the send actually submitted (status check, `send-keys Enter` fallback if needed) before waiting for the end marker.
 
 Wait for the end marker:
 
@@ -218,15 +233,15 @@ Tiêu chí hoàn tất
 - If the target is `blocked`, allow a concise answer or clarification after confirming it came from the user.
 - If the task is destructive, security-sensitive, or materially ambiguous, preview it and request confirmation before sending.
 
-Send the final prompt with the resolved pane ID:
+Write the rewritten prompt (keeping its natural block structure and line breaks) into the fixed payload file, then send only the short file-pointer instruction per [Sending Input Reliably](#sending-input-reliably):
 
 ```bash
-herdr pane run <pane-id> "<rewritten-prompt>"
+herdr pane run <pane-id> "Đọc nội dung file <resolved-path> và thực hiện đúng theo yêu cầu trong đó."
 ```
 
-Use `pane run` because it sends text and Enter together. Do not use `agent send` for prompt submission because it writes literal text without guaranteeing submission.
+Use `pane run` because it sends text and Enter together. Do not use `agent send` for prompt submission because it writes literal text without guaranteeing submission. Then confirm the send actually submitted (status check, `send-keys Enter` fallback if still `idle` with unsent text) per [Sending Input Reliably](#sending-input-reliably).
 
-After sending, report:
+After confirming submission, report:
 
 ```text
 Target: <workspace> / <agent> / <pane-id>
