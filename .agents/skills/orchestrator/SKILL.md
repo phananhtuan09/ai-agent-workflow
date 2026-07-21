@@ -11,8 +11,10 @@ Run a predefined workflow config until the next stop condition.
 
 - `/orchestrator start docs/ai/workflows/{workflow}.json`
 - `/orchestrator start docs/ai/workflows/{workflow}.json --slug <feature-slug>`
+- `/orchestrator start docs/ai/workflows/{workflow}.json --slug <feature-slug> --input <key>=<value>`
 - `/orchestrator next --run <run-id>`
 - `/orchestrator continue --run <run-id>`
+- `/orchestrator continue --run <run-id> --input <key>=<value>`
 - `/orchestrator next --run <run-id> --skip`
 - `/orchestrator status`
 - `/orchestrator status --run <run-id>`
@@ -27,6 +29,7 @@ Run a predefined workflow config until the next stop condition.
 - Optional on `start`: runtime notes if the workflow needs them
 - Required on `next` / `continue`: explicit `run_id`
 - Optional on `next --skip`: explicit human request to skip the current step
+- Optional on `start` / `continue`: one or more `--input <key>=<value>` overrides for the step being executed
 - Optional on `status`: explicit `run_id`; without it, summarize active runs
 - Optional on `cleanup --force-release-lock`: owner run id of the stale repo lock
 
@@ -66,6 +69,11 @@ Minimum fields:
   "artifact_paths": {
     "spec_path": "docs/ai/specs/my-feature.md"
   },
+  "step_inputs": {
+    "execute-spec": {
+      "spec_path": "docs/ai/specs/my-feature.md"
+    }
+  },
   "history": [
     {
       "step_id": "shape",
@@ -92,12 +100,15 @@ Minimum fields:
    - if a repo lock is held by another run for the next step that declares `uses_repo_lock`, stop immediately and report the owner run instead of advancing
    - verify every `requires` contract exists in state
    - reject `--skip` if `skippable` is `false`
-   - collect step inputs only when the step is reached
+   - collect step inputs only when the step is reached; resolve `default:<value>` metadata without prompting, persist inputs under `step_inputs.<step-id>`, and reuse them when a resumable step runs again
+   - merge explicit `--input` overrides into the current step's stored inputs before execution
+   - if the step declares `cwd_from`, resolve that key from `artifact_paths`, require an existing absolute directory, and use it as the working directory for the complete step
    - if the step declares `uses_repo_lock`, acquire the repo lock before execution
 5. Execute by `exec` type:
+   - pass the step's recorded inputs, required contract values, and artifact paths explicitly to the executor
    - `inline`: perform the documented step directly in chat
-   - `skill`: run the named skill
-   - `subagent`: dispatch to the named subagent
+   - `skill`: run the named skill in the resolved working directory
+   - `subagent`: dispatch to the named subagent with the resolved working directory in its task contract
 6. Parse the last occurrence of an orchestrator HTML comment when the step is a skill or subagent.
    - Match the last `<!-- orchestrator: ... -->` block in the output
    - Do not require it to be the literal final line if later whitespace or harmless trailing text appears
@@ -132,6 +143,9 @@ Use `paused` for:
 - `stop-escalate-conflict`
 - `stop-too-broad`
 - `stop-drift`
+- `stop-budget`
+- `stop-total-budget`
+- `stop-no-progress`
 - repo lock held by another run
 
 Use `blocked` for:
@@ -173,6 +187,9 @@ Accepted outcomes:
 - `stop-too-broad`
 - `stop-fail`
 - `stop-drift`
+- `stop-budget`
+- `stop-total-budget`
+- `stop-no-progress`
 - `unknown`
 
 Rules:
@@ -180,6 +197,7 @@ Rules:
 - If a skill/subagent output contains no orchestrator comment, treat outcome as `unknown`
 - Do not infer paths or outcomes heuristically from prose
 - If a step ends with `continue` but does not emit every declared `provides` contract, stop and mark the run blocked
+- `stop-budget`, `stop-total-budget`, and `stop-no-progress` keep the current step pending; `continue` reruns that same step with its stored inputs and any explicit policy overrides
 - `skip` never satisfies `requires`
 
 ## Workflow Rules
@@ -187,6 +205,7 @@ Rules:
 - `manual-checklist` and `review-pr` are always human-triggered, even if the config says otherwise
 - `requires` means contract or artifact presence in state, not "a previous step once ran"
 - `provides` means contracts that must be recorded when the step succeeds with `continue`
+- `cwd_from` names an `artifact_paths` key whose absolute directory becomes the working directory for that step
 - `uses_repo_lock` means the step needs the single shared repo lock; if another run already holds it, the current invocation must stop immediately
 - If a step hits `human_gate: true`, stop immediately after writing state
 - If a step outcome matches `stop_on_outcome`, stop immediately after writing state

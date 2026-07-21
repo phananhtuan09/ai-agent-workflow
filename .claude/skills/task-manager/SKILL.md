@@ -1,38 +1,165 @@
 ---
 name: task-manager
-description: |
-  Manage a local task backlog (human intents) that sits before the spec workflow. Centralized store, per-project and cross-project views.
-  Use when: the user wants to add/list/start/delete tasks, see a task board, check what's doing, or clean up done tasks.
-  Keywords: task, todo, backlog, intent, task list, task board, what to do, what's next, doing, done, task manager
-  Do NOT use for: spec creation, code implementation, bug reporting — this is for human-intent task tracking only.
+description: Manage the centralized local task backlog before implementation workflows. Use when the user wants to add, list, start, requeue, complete, delete, or clean tasks without dispatching them to Herdr agents. The store is shared with herdr-orchestrate-agents, so task views preserve and display assignment, execution, and workflow-router metadata when present.
 ---
 
 # Task Manager
 
-Manage the local task backlog stored at `~/.ai-workflow/tasks.json`. Tasks represent raw human intent before the spec workflow.
+Manage human-intent tasks in `~/.ai-workflow/tasks.json`.
+This skill owns standalone backlog actions.
+Use `herdr-orchestrate-agents` when the user wants to assign tasks to agent sessions or synchronize agent outcomes.
 
-## Usage
+## Store Contract
 
-`/task <action> [args]`
+Accept version 1 and version 2 stores.
+Write version 2 on the next mutation and preserve unknown fields.
 
-## Actions
+```jsonc
+{
+  "version": 2,
+  "projects": [
+    {
+      "id": "p_<random6>",
+      "name": "folder-name",
+      "root": "/absolute/path"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t_<random6>",
+      "project_id": "p_xxx",
+      "title": "ý định của người dùng",
+      "details": "optional",
+      "status": "todo | doing | done",
+      "assignment": "optional orchestration metadata",
+      "execution": "optional orchestration metadata",
+      "workflow": "optional workflow-router metadata",
+      "created": "ISO",
+      "updated": "ISO"
+    }
+  ]
+}
+```
 
-| Action | Args | Description |
-|---|---|---|
-| `add` | `"<title>"` | Create a todo task for the current project |
-| `list` | | Show all tasks for the current project, grouped by status |
-| `list` | `--all` | Show tasks across all registered projects |
-| `start` | `<id>` | Mark a task as doing (max 1 doing per project) |
-| `done` | `<id>` | Mark a task as done |
-| `delete` | `<id>` | Permanently remove a task |
-| `clean` | | Remove all done tasks for the current project (asks confirmation) |
-| `current` | | Show the currently active (doing) task |
-| `reset` | | Reset the entire task store (emergency recovery) |
+The `assignment`, `execution`, and `workflow` objects are owned by orchestration.
+Always preserve them unless an explicit requeue removes the active assignment and workflow run link.
 
-## Project Matching
+## Project Resolution
 
-The current project is identified by the working directory folder name. First access in a new project auto-registers it.
+1. Normalize the current working directory to an absolute path.
+2. Match `projects[].root` exactly first.
+3. Use a name match only for legacy data when it refers to the same root.
+4. If no project matches, register `p_` plus 6 random lowercase hexadecimal characters.
+5. Allow different roots with the same folder name to be separate projects.
 
-## Store
+## Operations
 
-`~/.ai-workflow/tasks.json` — centralized, local-only, zero-dependency JSON.
+### `task add "<title>"`
+
+1. Resolve the current project.
+2. Generate `t_` plus 6 random lowercase hexadecimal characters.
+3. Create a `todo` task with ISO timestamps.
+4. Write the store.
+5. Return the task ID, title, and project.
+
+Task titles must be concise Vietnamese text.
+
+### `task list`
+
+1. Resolve the current project.
+2. Group tasks by `doing`, `todo`, then `done`.
+3. Show assignment, execution, and workflow annotations when present.
+4. Show at most 10 completed tasks unless the user requests more.
+
+### `task list --all`
+
+1. Read all projects and tasks.
+2. Omit projects with no tasks.
+3. Sort projects by name, then group tasks by status.
+4. Show assignment, execution, and workflow annotations when present.
+
+Use this compact format:
+
+```text
+[payment-api]
+  DOING (1)
+    t_ab12cd  "Sửa lỗi hoàn tiền"  -> payment-codex  [GNHF: AWAITING HUMAN]
+  TODO (2)
+    t_ef34ab  "Bổ sung test idempotency"
+  DONE (1)
+    t_98cd76  "Cập nhật tài liệu API"  [verified]
+```
+
+Use the stored agent name when present, otherwise the agent type.
+Do not query Herdr from this skill.
+Display stored execution state only.
+Display workflow router and current step when present.
+
+### `task start <id>`
+
+1. Find the task across all projects.
+2. Reject missing or already completed tasks.
+3. Refuse when another task in the same project is already `doing`.
+4. Set the task to `doing` and update its timestamp.
+5. Do not create assignment metadata.
+
+Use `herdr-orchestrate-agents` instead when starting means dispatching to an agent.
+
+### `task todo <id>`
+
+1. Find the task across all projects.
+2. Set it to `todo`.
+3. Remove `assignment`, `execution`, and `workflow` because the task is no longer owned by a session or workflow run.
+4. Update its timestamp and write the store.
+
+### `task done <id>`
+
+1. Find the task across all projects.
+2. Reject missing or already completed tasks.
+3. Set it to `done`.
+4. Set `execution.state` to `completed` while preserving any existing execution evidence.
+5. Preserve assignment history.
+6. Update its timestamp and write the store.
+
+### `task delete <id>`
+
+Find the task across all projects and permanently remove it.
+Return the deleted task ID and title.
+
+### `task clean`
+
+1. Resolve the current project.
+2. Count completed tasks.
+3. Ask for confirmation before removing them.
+4. Write once after confirmation.
+
+### `task current`
+
+Show every `doing` task in the current project with stored assignment, execution state, and workflow step when present.
+If none exists, point the user to `task list`.
+
+### `task reset`
+
+Use only for corrupted-store recovery after explicit user confirmation.
+Replace the store with:
+
+```json
+{"version":2,"projects":[],"tasks":[]}
+```
+
+## File I/O Rules
+
+- Read the complete file immediately before every mutation.
+- Create a missing store with version 2 and empty arrays.
+- Write atomically through a temporary file and rename.
+- Preserve unknown fields at every level.
+- If JSON parsing fails, do not overwrite the file.
+- Warn about corruption and suggest `task reset`.
+- Resolve `~` through the user's home directory.
+
+## Constraints
+
+- Standalone `task start` allows at most one `doing` task per project.
+- Task titles and user-facing output must be in Vietnamese.
+- The store is local only and must not trigger network calls.
+- This skill does not inspect or control Herdr sessions.

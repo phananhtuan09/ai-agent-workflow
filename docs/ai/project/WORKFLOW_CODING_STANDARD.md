@@ -61,6 +61,11 @@ Rules:
 - orchestrator may enforce a config-declared repo lock; if another run holds that lock for the next step, the current run must stop and report the owner instead of advancing
 - `/manual-checklist` and `/review-pr` remain human-triggered even inside orchestrator mode; orchestrator must not auto-chain either step
 - orchestrator must treat workflow contracts and recorded evidence as the source of truth; it must not infer missing artifact paths or outcomes heuristically
+- a step may declare `cwd_from` to run against an isolated implementation workspace recorded by an earlier step; orchestrator must fail closed when that directory cannot be resolved
+- a bounded implementation step may return `stop-budget`; this pauses on the same step and allows an explicit continuation with a new incremental budget instead of converting useful partial progress into a terminal failure
+- long-running implementation should use bounded epochs plus a cumulative feature budget; productive epochs may continue automatically while total limits remain
+- `stop-total-budget` and `stop-no-progress` must pause on the same implementation step so a human can change compatible limits or runtime policy without losing the preserved workspace; changing approved scope, agent, or worker prompt requires a new run
+- resumable step inputs must be persisted and reused; the human may override the current step with explicit `--input <key>=<value>` values when continuing
 
 ## Standard Flow
 

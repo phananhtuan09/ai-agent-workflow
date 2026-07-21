@@ -1,4 +1,4 @@
 interface:
-  display_name: "Herdr Agent Orchestrator"
-  short_description: "Manage existing agents across Herdr workspaces"
-  default_prompt: "Use $herdr-orchestrate-agents to summarize all existing Herdr agents and identify which ones need my input."
+  display_name: "Herdr Task Orchestrator"
+  short_description: "Assign and sync tasks across Herdr agents"
+  default_prompt: "Use $herdr-orchestrate-agents to show my task board and help assign pending tasks to existing Herdr agents."

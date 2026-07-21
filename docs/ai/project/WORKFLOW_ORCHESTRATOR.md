@@ -49,6 +49,9 @@ Orchestrator chỉ chấp nhận các outcome sau khi parse comment:
 | `stop-too-broad` | Spec quá broad cho 1 pass — pause |
 | `stop-fail` | Fail cứng (review, verify) — pause |
 | `stop-drift` | Drift business-level (sync-spec) — pause, chốt delta với human |
+| `stop-budget` | Hết budget của step resumable — pause và giữ nguyên current step để chạy tiếp |
+| `stop-total-budget` | Chạm tổng epoch/token budget của feature — pause để human tăng binding limit hoặc tạo run mới với scope hẹp hơn |
+| `stop-no-progress` | Epoch không tạo tiến độ có bằng chứng — pause để kiểm tra blocker thay vì tiếp tục đốt token |
 | `unknown` | Thiếu comment hoặc không match enum — **pause cho human**, không đoán tiếp |
 
 Quy ước comment dạng:
@@ -85,7 +88,8 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 | `steps[].provides` | string[]? | Danh sách contract-id step phải emit khi `outcome=continue` (vd `spec_path`, `summary_path`, `spec_synced`) |
 | `steps[].requires` | string[]? | Danh sách contract-id/artifact key tối thiểu phải tồn tại trong state trước khi step này chạy |
 | `steps[].skippable` | bool? | `false` = invariant, không cho skip dù human gọi `--skip`. Default `true` |
-| `steps[].inputs` | object? | Metadata cho input phụ (vd runtime URL) — hỏi khi đến step, không hỏi upfront |
+| `steps[].inputs` | object? | Metadata cho input phụ; `ask-at-step` hỏi khi đến step, `default:<value>` tự resolve và lưu để reuse |
+| `steps[].cwd_from` | string? | Key trong `artifact_paths`; absolute directory tại key này trở thành working directory của toàn bộ step |
 | `steps[].uses_repo_lock` | bool? | `true` = step phải acquire global repo lock trước khi chạy. Slice đầu chỉ có 1 lock loại này |
 
 ## Orchestrator rules (áp dụng lên tất cả workflow config)
@@ -99,6 +103,10 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
 - Skill trả explicit contract/artifact metadata trong comment → orchestrator ghi vào state `contracts` + `artifact_paths`; step sau đọc từ state (không path inference từ slug)
 - `requires` check: trước khi chạy step, orchestrator verify mọi contract-id trong `requires` đã tồn tại trong state. `skip` **không** satisfy `requires`; nếu contract thiếu thì pause, báo blocker
 - `provides` check: nếu step kết thúc với `outcome=continue` nhưng comment không emit đủ contract-id đã khai báo trong `provides`, orchestrator pause và mark run là blocked do contract mismatch
+- Step input phải được lưu theo step id và reuse khi một resumable step chạy lại; chỉ hỏi lại khi human explicit override
+- `start` và `continue` có thể nhận `--input <key>=<value>` để override input của step hiện tại; override được merge vào input đã lưu trước khi thực thi
+- Nếu step có `cwd_from`, orchestrator phải resolve absolute directory từ `artifact_paths`, xác nhận directory tồn tại, rồi chạy toàn bộ skill/subagent trong directory đó
+- `stop-budget`, `stop-total-budget`, và `stop-no-progress` giữ current step ở trạng thái pending; lần `continue` kế tiếp chạy lại chính step đó thay vì chuyển sang step sau
 - `skippable: false` override lệnh `--skip` từ human — báo "step này là invariant, không skip được"
 - Human có thể skip 1 step khi gọi orchestrator (vd `/orchestrator next --skip`) — chấp nhận nếu `skippable != false`; skip được log vào state history kèm warning
 - Khi pause ở human_gate, orchestrator KHÔNG tự resume — human gọi lệnh kế tiếp để tiếp
@@ -129,6 +137,9 @@ Skill không thêm comment → chạy độc lập vẫn hoạt động bình th
   - `stop-escalate-conflict`
   - `stop-too-broad`
   - `stop-drift`
+  - `stop-budget`
+  - `stop-total-budget`
+  - `stop-no-progress`
   - repo lock đang do run khác giữ
 - `blocked` dùng cho các tình huống:
   - `stop-blocked`

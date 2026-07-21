@@ -1,275 +1,444 @@
 ---
 name: herdr-orchestrate-agents
-description: Manage existing Codex, Claude Code, OpenCode, and other coding-agent sessions across Herdr workspaces from one orchestrator pane. Use when the user asks to list agent status across projects, find sessions needing input, inspect a specific session's recent output, rewrite a raw task into a stronger prompt, or dispatch a prompt to an existing Herdr-managed agent. Do not use to create, start, close, focus, attach, or rename workspaces, panes, sessions, or agents.
+description: Coordinate a shared task backlog with existing Codex, Claude Code, OpenCode, and other agent sessions in Herdr. Use when the user wants to capture tasks, view a task-centric board, assign a stored or new task to an existing Herdr agent, follow up by task ID, or sync task outcomes from agent sessions. Do not use to list all agent statuses, inspect an unrelated session, or create, start, close, focus, attach, or rename Herdr resources.
 ---
 
-# Herdr Orchestrate Agents
+# Herdr Task Orchestrator
 
-Manage existing coding-agent processes through Herdr without leaving the current orchestrator conversation. Treat Herdr workspaces as projects and named agent targets as chat sessions.
+Use the centralized task store as the source of truth and Herdr as the execution transport.
+Organize work around task IDs instead of asking the user to remember which session owns each task.
+
+Do not reproduce the Herdr sidebar.
+Never provide a general overview of all agent statuses.
+Show live agent state only when it explains the state of an assigned task.
 
 ## Operating Boundary
 
+Store-only actions such as capture and task board can run without Herdr.
 Before any Herdr command, verify:
 
 ```bash
 test "${HERDR_ENV:-}" = 1
 ```
 
-If the check fails, stop and tell the user to open the orchestrator inside Herdr.
+If the check fails, continue only with store-only actions.
+For dispatch, sync, inspect, or follow-up, stop and tell the user to open the orchestrator inside Herdr.
 
-Operate against the current Herdr session only. Prefer one Herdr session with multiple project workspaces. Named Herdr sessions are separate runtime namespaces and are not part of a unified overview unless the user explicitly requests cross-session handling.
-
+Operate against the current Herdr session only.
 Never perform these actions under this skill:
 
 - create or start a workspace, tab, pane, session, or coding agent
 - close, stop, focus, attach, move, or rename Herdr resources
-- approve permissions or answer business/product questions on the user's behalf
+- approve permissions or answer product decisions on the user's behalf
 - send input to an ambiguous target
+- inspect an unrelated session that has no task assignment
 
-If a required project or agent is missing, state exactly what the user must open manually. Do not fall back to creating it. Use `herdr-guide` instead if the user explicitly changes scope and asks to create or start resources.
-
-Sending a user-authorized task prompt or a bounded inspect checkpoint to an existing agent is the only allowed mutation.
+Use `herdr-guide` when the user explicitly asks for direct pane or session control.
 
 ## Output Language
 
-Return every user-facing response from every workflow in Vietnamese, including Overview, Inspect, Passive inspect, Dispatch, Prompt preview, ambiguity questions, warnings, and setup prerequisites.
+Return all user-facing output in Vietnamese unless the user explicitly requests another language.
+Preserve commands, paths, IDs, agent names, workspace labels, code, and Herdr status values exactly.
+Write stored task titles in Vietnamese.
 
-- Translate headings, summaries, status explanations, recommendations, and rewritten prompts into Vietnamese by default.
-- Preserve literal commands, paths, IDs, agent names, workspace labels, code, and Herdr status enums such as `working` or `blocked`.
-- Preserve an exact worker quote only when it is evidence the user must see; explain it in Vietnamese.
-- Use another language only when the user explicitly requests it.
+## Task Store
 
-## Discover Live State
+Read and write `~/.ai-workflow/tasks.json`, shared with `task-manager`.
+Accept version 1 data without requiring a separate migration.
+On the next mutation, write version 2 and preserve every unknown field.
 
-Start each operation from fresh Herdr data rather than remembered IDs:
+Use this compatible schema:
+
+```jsonc
+{
+  "version": 2,
+  "projects": [
+    {
+      "id": "p_<random6>",
+      "name": "folder-name",
+      "root": "/absolute/path"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t_<random6>",
+      "project_id": "p_xxx",
+      "title": "ý định ngắn gọn của người dùng",
+      "details": "optional durable context and constraints",
+      "status": "todo | doing | done",
+      "assignment": {
+        "workspace_root": "/absolute/path",
+        "workspace_label": "project-label",
+        "agent_name": "optional unique name",
+        "agent_type": "codex",
+        "terminal_id": "term_...",
+        "assigned_at": "ISO"
+      },
+      "execution": {
+        "state": "working | blocked | awaiting_human | completed | unknown",
+        "summary": "optional",
+        "files_changed": "optional",
+        "verification": "optional",
+        "blocker": "optional",
+        "next": "optional",
+        "synced_at": "ISO"
+      },
+      "workflow": {
+        "router": "feature-implement-gnhf",
+        "workflow_path": "docs/ai/workflows/feature-implement-gnhf.json",
+        "spec_path": "docs/ai/specs/feature-name.md",
+        "feature_slug": "feature-name",
+        "run_id": "optional orchestrator run id",
+        "run_state_path": "optional absolute run state path",
+        "status": "starting | running | paused | blocked | awaiting_human",
+        "current_step_id": "optional",
+        "implementation_workspace_path": "optional absolute path",
+        "gnhf_budget_path": "optional absolute path",
+        "last_outcome": "optional orchestrator outcome",
+        "stop_reason": "optional exact stop reason",
+        "epochs_completed": "optional number",
+        "max_epochs": "optional number",
+        "cumulative_tokens": "optional number",
+        "max_total_tokens": "optional number",
+        "tokens_estimated": "optional boolean",
+        "updated_at": "ISO"
+      },
+      "created": "ISO",
+      "updated": "ISO"
+    }
+  ]
+}
+```
+
+The optional metadata belongs to orchestration.
+Standalone `task-manager` actions must preserve it.
+Do not persist a pane ID because pane IDs can change after moves or restores.
+Absence of `workflow` means the task uses the normal direct-send router.
+
+For project resolution, match the normalized absolute root first.
+Use the project name only as a legacy fallback when it resolves to the same root.
+Register a new project when two different roots share the same folder name.
+
+Always read the complete store before mutation.
+Write the complete store atomically through a temporary file and rename.
+If JSON parsing fails, do not overwrite the store.
+Report corruption and suggest `task reset`.
+
+## Live Target Resolution
+
+Read only the live state needed for the requested task:
 
 ```bash
-herdr api snapshot
 herdr workspace list
 herdr agent list
 ```
 
-Use the smallest command set needed. Treat IDs as opaque and parse them from JSON.
+Use agent `cwd` or `foreground_cwd` to match the task project's absolute root.
+Run `herdr pane list` only when no matching agent exists and you must distinguish an empty project workspace from a missing workspace.
+Resolve an existing assignment in this order:
 
-Map concepts as follows:
+1. Unique `agent_name` in the project workspace.
+2. Exact `terminal_id` while that terminal is still live.
+3. Unique `agent_type` in the project workspace.
 
-- project: workspace label first, then workspace cwd or cwd basename
-- chat session: unique agent name first, then a uniquely matching agent type or pane
-- execution target: resolved pane ID
+For a new dispatch, prefer a user-named target.
+If the user did not name a target, auto-select only when exactly one eligible idle agent exists in the task project.
+If multiple targets remain, show only those candidates and ask the user to choose.
 
-Use globally unique agent names such as `payment-api-codex` or `admin-web-reviewer`. If multiple targets match, show the candidates and ask the user to choose. Never guess from sidebar order or focused state.
-
-If the project exists but no agent is running, tell the user to open the coding agent in that workspace and give it a unique name. If the project is absent, tell the user to open it as a workspace inside the current Herdr session.
-
-## Sending Input Reliably
-
-`herdr pane run <pane-id> "<text>"` is meant to send text and Enter together, but PTY behavior varies by OS. On Windows (Git Bash / ConPTY) especially, a prompt containing literal newlines can garble or truncate in the target's input box (lines overwrite each other), and typing very long content through the PTY carries the same risk on any OS. Apply this to every send that uses `herdr pane run` — the checkpoint prompt in Inspect and the rewritten prompt in Dispatch:
-
-1. **Route anything non-trivial through one fixed payload file.** Never type multi-line or long content directly into the pane. Instead:
-   - Resolve a single, OS-neutral path once per machine: `<home>/.herdr/dispatch-payload.txt`, where `<home>` is `$HOME` on Linux/macOS or `$USERPROFILE` on Windows (e.g. resolve with `${HOME:-$USERPROFILE}` in bash). Use this exact same path and filename every time — never invent a new filename or a per-dispatch name.
-   - Overwrite this one file's full content with the Write tool before every send (a full overwrite, not an append) — each dispatch replaces whatever the previous dispatch left there, so no stale content can leak into a later send and no file clutter accumulates.
-   - Send only a short, single-line instruction through `herdr pane run` pointing at that path, e.g.: `Đọc nội dung file <resolved-path> và thực hiện đúng theo yêu cầu trong đó.` This instruction line itself must stay short and newline-free.
-   - A genuinely short one-line follow-up (e.g. a brief reply to a `blocked` target) can skip the file and go directly through `herdr pane run` with the text itself, since there is nothing to garble.
-2. **Verify submission, then fall back if needed.** Immediately after `herdr pane run`, re-check `herdr agent list` (or re-read the pane) for that pane ID. If status is `working` (or the pane shows a processing indicator), the send succeeded. If it is still `idle` and the sent text is visibly sitting unsent in the input box, run `herdr pane send-keys <pane-id> Enter` once to submit it, then re-check status again. This step is independent of message length or the file-based routing above — apply it to every send.
-
-Never report a send as successful (a filled-in checkpoint result, or "Gửi prompt: thành công") until this status check confirms the target actually started processing.
+Treat IDs as opaque and refresh live state immediately before every send.
 
 ## Route The Request
 
-Choose exactly one workflow:
+Choose the smallest workflow that completes the request:
 
-- **Overview**: the user asks what all sessions are doing or which ones need attention.
-- **Inspect**: the user asks for the result, progress, blocker, or latest completed work of one session.
-- **Passive inspect**: the user explicitly asks to inspect without adding a message to the target session.
-- **Dispatch**: the user asks to send, assign, forward, or follow up with a task.
-- **Prompt preview**: the user asks only to rewrite, improve, or prepare a prompt without sending it.
+- **Capture**: create one or more tasks without requiring a separate `task-manager` invocation.
+- **Task board**: show task ownership and progress instead of agent status overview.
+- **Dispatch task**: assign a stored task, or capture and assign a raw request in one operation.
+- **Dispatch workflow task**: explicitly route an approved spec task through `feature-implement-gnhf`.
+- **Resume workflow task**: continue a paused GNHF workflow with an additional bounded budget.
+- **Sync tasks**: reconcile assigned tasks with their agent sessions.
+- **Inspect task**: answer progress, result, or blocker questions by task ID or unique task title.
+- **Follow-up**: send clarification to the session already assigned to a task.
+- **Prompt preview**: prepare a task prompt without sending or mutating the store.
 
-## Overview Workflow
+When one request combines capture and dispatch, perform both in the same workflow.
 
-1. Read the live workspace and agent lists.
-2. Group agents by workspace.
-3. Categorize status:
+## Capture Workflow
 
-| Status | Display category | Meaning |
-| --- | --- | --- |
-| `blocked` | CẦN BẠN | Visible question, approval, or permission UI |
-| `working` | ĐANG CHẠY | Agent is actively processing |
-| `done` | ĐÃ HOÀN THÀNH | Finished while not currently seen |
-| `idle` | SẴN SÀNG | Waiting at the prompt or completed and already seen |
-| `unknown` | KHÔNG XÁC ĐỊNH | Herdr cannot classify the current screen |
+1. Resolve the project from an explicit project, a matching Herdr workspace root, or the current working directory.
+2. Create a concise Vietnamese title that preserves the user's intent.
+3. Store durable requirements, context, constraints, and requested verification in `details` only when they exist.
+4. Generate `t_` plus 6 random lowercase hexadecimal characters.
+5. Create the task as `todo` with ISO timestamps.
+6. Support multiple tasks in one request and write the store once.
 
-4. Read transcript only for `blocked` agents when necessary to extract the exact question. Use at most 80 recent unwrapped lines per blocked agent.
-5. Return a compact dashboard. Do not dump raw JSON or transcripts.
+Do not force the user to call `task-manager` before dispatch.
+If the user already supplied a stored task ID, do not create a duplicate.
+
+## Task Board Workflow
+
+The task board replaces the old agent overview.
+Default to all registered projects because orchestration is cross-project.
+Filter to one project only when the user names it or explicitly asks for the current project.
+
+1. Read tasks for the requested project or all projects.
+2. Read Herdr state once only when at least one task is assigned and active.
+3. Correlate live state only for those active assignments.
+4. Do not read transcripts unless a task is `blocked` and the blocker is missing from stored execution data.
+5. Calculate the complete summary before limiting any displayed task list.
+6. Show at most 10 recently completed task cards unless the user requests more.
+
+Classify every task into exactly one reporting bucket:
+
+- **Chưa giao**: `status: todo`.
+- **Đang chạy**: `status: doing` and the effective execution state is `working` or another active non-terminal state.
+- **Cần xử lý**: `status: doing` and the effective execution state is `blocked` or `unknown`.
+- **Chờ duyệt**: `status: doing` and `execution.state: awaiting_human`.
+- **Đã xong**: `status: done`.
+
+Use fresh live Herdr state as the effective execution state for a resolvable active assignment.
+Fall back to stored `execution.state` when live state is unavailable.
+For workflow-routed tasks, stored workflow `paused`, `blocked`, or `awaiting_human` state takes precedence over live agent `idle` or `done` status.
+Do not double-count blocked or awaiting-human tasks as running.
+When workflow budget data exists, show compact progress such as `Epoch 2/4 · 410000/1000000 tokens` on the task card.
+
+Calculate progress for the whole board and for each project:
+
+```text
+completion_percent = round(done_tasks / total_tasks * 100)
+```
+
+Use `0%` when there are no tasks.
+Render a 10-cell ASCII progress bar where each filled cell represents approximately 10%, for example `[######----] 60%`.
+Label this metric as current backlog progress because it covers only tasks still present in the store.
+Explain that deleting or cleaning completed tasks changes both the total and the percentage.
+
+Render the board in this order:
+
+1. Overall summary.
+2. Progress by project.
+3. Vertical Kanban lanes.
 
 Use this output shape:
 
 ```text
-CẦN BẠN
-- payment-api / payment-api-codex: hỏi liệu có được thay đổi API contract hay không
+TASK BOARD — Tất cả project
+Cập nhật: 21-07-2026 14:30
 
-ĐANG CHẠY
-- admin-web / admin-web-opencode: đang triển khai bộ lọc bảng
+TỔNG QUAN
+Tổng: 12 · Đã xong: 5 · Chờ duyệt: 1 · Đang chạy: 2 · Cần xử lý: 1 · Chưa giao: 3
+Tiến độ backlog hiện tại: [####------] 42%
 
-ĐÃ HOÀN THÀNH
-- payment-api / payment-api-reviewer: đã hoàn tất review
+THEO PROJECT
+Project        Tổng  Chưa giao  Đang chạy  Cần xử lý  Chờ duyệt  Đã xong  Tiến độ
+admin-web          3          1           1           0           0         1  [###-------] 33%
+payment-api        4          1           0           0           1         2  [#####-----] 50%
+salon-app          5          1           1           1           0         2  [####------] 40%
 
-SẴN SÀNG
-- docs / docs-claude: đang chờ nhiệm vụ
+┌ CẦN XỬ LÝ · 1
+│ t_ab12cd [salon-app] "Sửa lỗi đăng nhập"
+│ salon-codex · BLOCKED · Cần quyết định API contract
+└
+
+┌ CHỜ DUYỆT · 1
+│ t_cd34ef [payment-api] "Bổ sung idempotency"
+│ payment-claude · GNHF workflow completed · Chưa merge
+└
+
+┌ ĐANG CHẠY · 2
+│ t_ef56ab [admin-web] "Thêm bộ lọc bảng"
+│ admin-codex · WORKING
+└
+
+┌ CHƯA GIAO · 3
+│ t_98cd76 [admin-web] "Thêm bộ lọc bảng"
+└
+
+┌ ĐÃ XONG GẦN ĐÂY · 5
+│ t_12ab34 [payment-api] "Cập nhật tài liệu API"
+│ VERIFIED
+└
 ```
 
-Explain that `idle` does not prove a task succeeded. Inspect the session when the result matters.
+Sort the project summary alphabetically for stable scanning.
+If two projects share the same name, append a shortened root path that distinguishes them.
+Use counts from all matching tasks even when only recent completed task cards are shown.
+Omit empty Kanban lanes, but never omit the overall summary or project summary.
 
-## Inspect Workflow
+Do not list idle agents that have no assigned task.
+Do not claim that `idle` or `done` proves task success.
 
-1. Resolve the project and agent to one pane.
-2. Read current agent information and status.
-3. Choose the inspection method from live status:
+## Router Selection
 
-| Status | Inspection method |
-| --- | --- |
-| `idle` or `done` | Send a bounded checkpoint prompt, wait for its marker, then read only the checkpoint response |
-| `working` | Do not send input; read at most 80 recent unwrapped lines and report progress only |
-| `blocked` | Do not send input; read at most 80 recent unwrapped lines and preserve the exact question awaiting the user |
-| `unknown` | Do not send input; inspect pane/process state and report that the agent could not be safely queried |
+Normal direct dispatch remains the default.
+Treat absence of task `workflow` metadata as the direct router and follow [Dispatch Task Workflow](#dispatch-task-workflow) without adding workflow behavior.
 
-For `idle` or `done`, generate a fresh 8-character uppercase alphanumeric checkpoint ID such as `A1B2C3D4`. The full expected end marker is `END_HERDR_CHECKPOINT_<checkpoint-id>`, but never place that complete marker contiguously in the submitted prompt.
+Select `feature-implement-gnhf` only when the user explicitly asks for GNHF, the GNHF loop, or that workflow by name.
+Never select it automatically from task size or complexity.
 
-Send this prompt, substituting `<checkpoint-id>` with the generated ID, unless the agent requires the user's language for comprehension:
+For GNHF dispatch, resume, sync, or inspect, read [GNHF Router](references/gnhf-router.md) before acting.
+That reference defines eligibility, orchestrator invocation, resumable budget handling, and task-state mapping.
+
+## Dispatch Task Workflow
+
+1. Confirm the task uses the direct router, then resolve it by exact ID or a unique title match.
+2. If the user supplied a raw request instead, capture it first and continue with the new task ID.
+3. Reject a `done` task unless the user explicitly asks to reopen it.
+4. Reject dispatch when another task is already `doing` in the same project unless the user explicitly confirms parallel work.
+5. Resolve the project workspace and target agent from fresh Herdr state.
+6. Inspect at most 60 recent unwrapped lines only when needed to avoid conflicting with the target's current task.
+7. Preserve the task intent and add only context supported by `details` or the current conversation.
+8. If the target is `working`, do not inject input unless the user explicitly says to send now.
+9. If the target is `blocked`, send only a user-authorized answer or clarification.
+
+Build a direct prompt with this shape, omitting empty sections:
 
 ```text
-Do not modify project files, run implementation work, or start a new task.
+TASK_ID: <task-id>
 
-Ignore this checkpoint request and any earlier checkpoint requests when identifying the task.
-Summarize the most recent substantive user task handled before this checkpoint and its current outcome.
+Mục tiêu
+<task title>
 
-Use the current conversation context first. If it does not contain an earlier substantive task and HERDR_ENV=1, you MUST run exactly this read-only command before returning Status: unknown:
+Bối cảnh
+<stored details or confirmed conversation context>
 
-herdr pane read --current --source recent-unwrapped --lines 300
+Yêu cầu
+<confirmed requirements>
 
-Inspect evidence appearing before the current checkpoint request in that output. Do not run project commands. Return Status: unknown only if both conversation context and the pane transcript contain no earlier substantive task.
+Ràng buộc
+<confirmed constraints>
 
-Respond using exactly this format:
+Xác minh
+<requested checks>
 
-HERDR_CHECKPOINT
-Task:
-Status: completed | in-progress | blocked | unknown
-Actions:
+Báo cáo kết quả
+Khi dừng vì hoàn tất hoặc bị chặn, hãy kết thúc câu trả lời bằng đúng block sau và viết giá trị bằng tiếng Việt:
+
+HERDR_TASK_RESULT
+Task: <task-id>
+Status: completed | blocked
+Summary:
 Files changed:
 Verification:
-Result:
 Blocker:
 Next:
-
-Say "none" or "unknown" instead of guessing. If no earlier substantive task is available, use Status: unknown.
-Keep the entire response within 12 lines.
-After `Next:`, finish with the concatenation of `END_HERDR_CHECKPOINT_` and `<checkpoint-id>` on its own line, without spaces or formatting.
-Write all field values in Vietnamese.
 ```
 
-Write this checkpoint prompt verbatim into the fixed payload file and send the short file-pointer instruction instead, per [Sending Input Reliably](#sending-input-reliably):
+Do not invent requirements, file paths, acceptance criteria, or permission decisions.
+Keep a simple task prompt simple.
+
+Refresh live state, then send the prompt directly:
 
 ```bash
-herdr pane run <pane-id> "Đọc nội dung file <resolved-path> và trả lời đúng theo yêu cầu trong đó."
+herdr pane run <pane-id> "<task-prompt>"
 ```
 
-Confirm the send actually submitted (status check, `send-keys Enter` fallback if needed) before waiting for the end marker.
+Never route the prompt through a file or ask the target to read a path outside its workspace.
 
-Wait for the end marker:
+After sending, wait briefly for `working`.
+If the wait times out, inspect the pane and confirm that the task ID was submitted or processed.
+Only after submission is confirmed, update the task to `doing`, store the assignment, set `execution.state` to `working`, and write the store.
+If submission cannot be confirmed, leave the task unchanged and report the failure.
 
-```bash
-herdr wait output <pane-id> --match "END_HERDR_CHECKPOINT_<checkpoint-id>" --timeout 60000
-```
+Return the task ID, project, resolved agent, and the exact prompt sent.
+Do not wait for completion unless requested.
 
-The complete nonce-bearing end marker must be absent from both prior scrollback and the submitted prompt. It is formed only in the worker response by concatenating the prefix and checkpoint ID. This prevents prompt echo and earlier Inspect responses from satisfying the wait.
+## Sync Tasks Workflow
 
-If the wait times out, inspect current pane state immediately and use bounded transcript fallback.
+Sync one task, one project, or every task with `status: doing`.
 
-Then read at most 80 recent unwrapped lines and extract the block ending with `END_HERDR_CHECKPOINT_<checkpoint-id>` and beginning at the nearest preceding `HERDR_CHECKPOINT`.
+1. Read the store and live Herdr state once.
+2. Resolve each assignment without relying on a stored pane ID.
+3. Handle the live state as follows:
 
-If the response is malformed, reports that no earlier task is available, or does not contain a trustworthy task result, inspect live state and fall back to at most 120 recent unwrapped lines. Do not expand beyond 120 lines automatically. State that the result came from transcript fallback rather than a worker-authored checkpoint.
+| Live state | Action |
+| --- | --- |
+| `working` | Set `execution.state` to `working`; do not read the transcript. |
+| `blocked` | Read at most 80 recent unwrapped lines, extract the exact blocker, and set `execution.state` to `blocked`. |
+| `idle` or `done` | Read at most 120 recent unwrapped lines and find the latest `HERDR_TASK_RESULT` block for the task ID. |
+| `unknown` or missing | Keep the task `doing`, set `execution.state` to `unknown`, and report that the assignment cannot be resolved safely. |
 
-For **passive inspect**, never send the checkpoint prompt. Read at most 120 recent unwrapped lines and label the result as a transcript-based summary.
+For a direct-router result block with `Status: completed`, copy the reported outcome into `execution`, set the task to `done`, and update timestamps.
+For `Status: blocked`, keep the task `doing` and set `execution.state` to `blocked`.
+If no trustworthy result block exists, use bounded transcript evidence but do not mark the task done unless completion is explicit.
 
-Distinguish worker self-report, observed terminal output, and orchestrator inference. A checkpoint is a concise worker report, not independent proof that code or tests are correct.
+Write the store once after processing all selected tasks.
+Return only task changes, blockers, unresolved assignments, and the next useful action.
+Do not return a general agent dashboard.
+
+## Inspect Task Workflow
+
+Resolve the task first, then use its stored assignment.
+Never require the user to remember the workspace or agent session.
+
+If the task is `todo`, report that it has not been assigned.
+If the task is `done`, return the stored outcome without contacting Herdr unless the user asks to refresh evidence.
+If the task is `doing` and has workflow metadata, run the workflow sync rules from [GNHF Router](references/gnhf-router.md).
+If the task is `doing` without workflow metadata, run the direct sync logic for that task.
+
+For an explicit inspect request only, when an assigned agent is `idle` or `done` and no result block exists, send one bounded task-specific report request directly to that agent.
+The request must prohibit new implementation work and ask only for the `HERDR_TASK_RESULT` block for the task ID.
+Do not send this checkpoint during bulk sync.
 
 Return:
 
 ```text
-Project: <workspace>
-Agent: <name and type>
-Trạng thái: <live Herdr status>
-Nhiệm vụ hiện tại: <best supported summary>
-Kết quả gần nhất: <result or "chưa có kết quả">
-Xác minh: <tests/checks reported by the worker>
-Trở ngại: <exact blocker or "không thấy">
-Hành động tiếp theo: <one concise recommendation>
+Task: <id> "<title>"
+Project: <project>
+Agent: <resolved target or "chưa giao">
+Trạng thái: <todo | doing | blocked | awaiting_human | done | unknown>
+Kết quả: <stored or synchronized summary>
+Xác minh: <reported checks>
+Trở ngại: <exact blocker or "không có">
+Tiếp theo: <one concise recommendation>
 ```
 
-When `blocked`, preserve the worker's exact decision question as closely as practical. When `working`, clearly label the output as progress rather than a final result. When a checkpoint was sent, disclose that Inspect added one non-implementation message to the target session.
+Distinguish agent self-report from independent verification.
 
-## Dispatch Workflow
+## Follow-Up Workflow
 
-1. Require a uniquely resolved project and agent.
-2. Inspect the live status and up to 100 recent unwrapped lines for task context.
-3. Preserve the user's intent, constraints, language, and requested scope.
-4. Rewrite the raw request using only the blocks that improve execution:
+1. Resolve the task and its assignment.
+2. If task workflow metadata exists, route resume and paused-decision handling through [GNHF Router](references/gnhf-router.md).
+3. Refresh the target from live Herdr state.
+4. Preserve the user's clarification exactly and prefix it with `TASK_ID: <task-id> FOLLOW-UP`.
+5. If the target is `working`, send only when the user explicitly requests immediate delivery.
+6. Send directly with `herdr pane run` and never through a payload file.
+7. Keep the existing assignment and update only task timestamps after confirmed submission.
 
-```text
-Mục tiêu
-Bối cảnh
-Yêu cầu
-Ràng buộc
-Xác minh
-Tiêu chí hoàn tất
-```
+If the assignment is stale or ambiguous, do not guess.
+Report the missing target and ask the user to choose a live agent for reassignment.
 
-5. Do not invent product rules, file paths, acceptance criteria, or permission decisions. If a missing detail materially changes behavior, ask the user before sending.
-6. Keep simple follow-ups short. Do not turn a one-line clarification into a large specification.
-7. Apply these delivery rules:
+## Manual Task Transitions
 
-- If the user says `rewrite`, `prepare`, or `draft`, return a preview only.
-- If the user says `send`, `dispatch`, `tell`, or `assign`, rewrite and send when the target and intent are clear.
-- If the target is `working`, do not inject input unless the user explicitly says to send now; offer to wait or prepare the prompt instead.
-- If the target is `blocked`, allow a concise answer or clarification after confirming it came from the user.
-- If the task is destructive, security-sensitive, or materially ambiguous, preview it and request confirmation before sending.
-
-Write the rewritten prompt (keeping its natural block structure and line breaks) into the fixed payload file, then send only the short file-pointer instruction per [Sending Input Reliably](#sending-input-reliably):
-
-```bash
-herdr pane run <pane-id> "Đọc nội dung file <resolved-path> và thực hiện đúng theo yêu cầu trong đó."
-```
-
-Use `pane run` because it sends text and Enter together. Do not use `agent send` for prompt submission because it writes literal text without guaranteeing submission. Then confirm the send actually submitted (status check, `send-keys Enter` fallback if still `idle` with unsent text) per [Sending Input Reliably](#sending-input-reliably).
-
-After confirming submission, report:
-
-```text
-Target: <workspace> / <agent> / <pane-id>
-Trạng thái trước khi gửi: <status>
-Gửi prompt: thành công
-Prompt đã gửi:
-<exact rewritten prompt>
-```
-
-Do not wait for completion unless the user requests it. If requested, inspect current state before waiting and accept either `done` or `idle` as a possible completion state depending on visibility.
+When the user explicitly accepts a direct result or workflow handoff as done, set `status` to `done` and `execution.state` to `completed` while preserving assignment and workflow history.
+When the user explicitly requeues a task, set `status` to `todo` and remove `assignment`, `execution`, and `workflow`.
+Never infer a requeue from an unavailable agent.
 
 ## Coordination Safety
 
-- Refresh live state before every send; pane IDs may change after moves or restores.
-- Never use the focused pane as an implicit target.
-- Never broadcast to multiple agents unless the user explicitly names all targets.
-- Warn when multiple agents appear to be editing the same project concurrently without clear role separation or worktrees.
-- Keep overview reads shallow and use bounded checkpoints or capped transcript fallback for inspection to protect the orchestrator context window.
-- Treat Herdr status detection as operational evidence, not proof of code correctness.
-- For Codex and Claude Code, screen detection can miss unusual prompts. Show `unknown` or uncertain states honestly.
+- Refresh live state before every send because pane IDs can change.
+- Never use the focused pane or sidebar order as an implicit target.
+- Never broadcast a task to multiple agents unless the user explicitly requests duplicate execution.
+- Refuse implicit parallel dispatch in one project because agents may edit the same files.
+- Treat Herdr status as operational evidence, not proof of task correctness.
+- Preserve existing task data and unknown fields during every write.
+- Do not mark a task done from `idle` or `done` status alone.
+- Do not expose raw store JSON or full transcripts unless the user asks.
 
-## Setup Response
+## Setup Responses
 
-When orchestration cannot continue because a resource is missing, return only the actionable prerequisite:
+If the project workspace is missing:
 
 ```text
-Không tìm thấy workspace `payment-api` trong Herdr session hiện tại.
-Hãy mở project đó thành workspace trong cùng Herdr session, chạy coding agent mong muốn, đặt tên duy nhất như `payment-api-codex`, rồi yêu cầu tôi thử lại.
+Không tìm thấy workspace cho project của task `<task-id>` trong Herdr session hiện tại.
+Hãy mở project đó trong cùng Herdr session rồi yêu cầu tôi dispatch lại task.
 ```
 
-Do not create the missing resource automatically.
+If no eligible agent is running:
+
+```text
+Project của task `<task-id>` chưa có agent phù hợp đang chạy.
+Hãy mở agent trong workspace đó, nên đặt tên duy nhất, rồi yêu cầu tôi dispatch lại task.
+```
+
+Do not create the missing workspace or agent automatically.
