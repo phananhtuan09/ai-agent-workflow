@@ -1,6 +1,6 @@
 ---
 name: task-manager
-description: Manage the centralized local task backlog before implementation workflows. Use when the user wants to add, list, start, requeue, complete, delete, or clean tasks without dispatching them to Herdr agents. The store is shared with herdr-orchestrate-agents, so task views preserve and display assignment, execution, and workflow-router metadata when present.
+description: Manage the centralized local task backlog before and around implementation workflows. Use when the user wants to add, list, view a stored-state task board, start, requeue, complete, delete, clean, or recover tasks without contacting Herdr agents. The store is shared with herdr-orchestrate-agents, so task views preserve and display assignment, execution, and workflow-router metadata when present. Do not use for live task dispatch, session synchronization, behavioral session audit, or direct Herdr resource control.
 ---
 
 # Task Manager
@@ -8,6 +8,7 @@ description: Manage the centralized local task backlog before implementation wor
 Manage human-intent tasks in `~/.ai-workflow/tasks.json`.
 This skill owns standalone backlog actions.
 Use `herdr-orchestrate-agents` when the user wants to assign tasks to agent sessions or synchronize agent outcomes.
+Use `herdr-audit-session` when the user wants a read-only diagnosis of one exact agent session.
 
 ## Store Contract
 
@@ -94,6 +95,24 @@ Use the stored agent name when present, otherwise the agent type.
 Do not query Herdr from this skill.
 Display stored execution state only.
 Display workflow router and current step when present.
+
+### `task board`
+
+Show a cross-project board from stored task, assignment, execution, and workflow data only.
+Use `task board --current` when the user explicitly wants the current project instead of all registered projects.
+
+Classify each task into exactly one lane:
+
+- **Chưa giao**: `status: todo`.
+- **Đang chạy**: `status: doing` with an explicit active non-terminal stored execution state.
+- **Cần xử lý**: `status: doing` with missing execution state, execution `blocked` or `unknown`, or workflow `paused` or `blocked`.
+- **Chờ duyệt**: `status: doing` with execution or workflow `awaiting_human`.
+- **Đã xong**: `status: done`.
+
+Show overall counts, per-project counts, and task cards grouped by lane.
+Sort projects alphabetically and show at most 10 recently completed task cards unless the user requests more.
+Label the output as stored state and do not imply that it is a live Herdr refresh.
+If the user asks for live reconciliation, route that request to `herdr-orchestrate-agents` first.
 
 ### `task start <id>`
 

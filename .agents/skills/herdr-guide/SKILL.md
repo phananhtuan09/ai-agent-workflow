@@ -1,11 +1,15 @@
 ---
 name: herdr-guide
-description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr or asks to use Herdr to inspect or control panes, tabs, workspaces, terminals, commands, or communication with another agent. Do not use merely because a task could benefit from a background terminal, delegation, or parallel work. Requires HERDR_ENV=1."
+description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly asks to inspect or control panes, tabs, workspaces, terminals, commands, sessions, or communication with another agent. Do not use for task backlog management, assigned-task orchestration, or behavioral root-cause audit of a session; use task-manager, herdr-orchestrate-agents, or herdr-audit-session respectively. Requires HERDR_ENV=1."
 ---
 
 # Herdr
 
 Herdr is a terminal multiplexer and runtime for coding agents. It organizes terminals into workspaces, tabs, and panes, detects agent identity and status, and exposes the running session through the `herdr` CLI.
+
+Use `herdr-orchestrate-agents` when the user wants to dispatch or synchronize a stored task.
+Use `herdr-audit-session` when the user wants to explain unexpected agent behavior without contacting the running agent.
+Use `task-manager` for standalone backlog operations and stored-state task boards.
 
 Before issuing any control command, check that this agent is running inside a Herdr-managed pane:
 

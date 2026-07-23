@@ -1,7 +1,16 @@
 # GNHF Task Router
 
 Read this reference only when the user explicitly selects the `feature-implement-gnhf` router for a task.
+Read [Task Session Routing](task-session-routing.md) first for the shared store and target-resolution rules.
 The normal direct-send router does not use these rules.
+
+## Contents
+
+- [Eligibility](#eligibility)
+- [Initial Dispatch](#initial-dispatch)
+- [Synchronization](#synchronization)
+- [Resume A Paused GNHF Run](#resume-a-paused-gnhf-run)
+- [Follow-Up And Human Handoff](#follow-up-and-human-handoff)
 
 ## Eligibility
 
@@ -23,7 +32,7 @@ If any condition fails, leave the task `todo` and report the exact blocker.
 
 ## Initial Dispatch
 
-Resolve an eligible idle Herdr agent using the main skill's target rules.
+Resolve an eligible idle Herdr agent using the shared target rules in [Task Session Routing](task-session-routing.md).
 Send this prompt directly with `herdr pane run`:
 
 ```text
@@ -146,4 +155,4 @@ When workflow state becomes `awaiting_human`, show:
 - next human action such as review, merge, cherry-pick, or reject
 
 Only an explicit human completion action moves the task to `done`.
-Requeue removes workflow and execution metadata but preserves no implicit worktree cleanup.
+Route requeue through `task-manager`; it removes workflow and execution metadata but performs no implicit worktree cleanup.
