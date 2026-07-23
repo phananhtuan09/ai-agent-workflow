@@ -64,6 +64,9 @@ Never select GNHF automatically from task size or complexity.
 - Refresh live state immediately before every send because pane IDs can change.
 - Never use the focused pane, recency, or sidebar order as an implicit target.
 - Never send input to an ambiguous target.
+- Allow cross-workspace dispatch only when the user explicitly names the target workspace or pane.
+- For cross-workspace dispatch, treat the target workspace as the execution location while preserving the task's original `project_id`.
+- After an explicit cross-workspace dispatch, sync, inspect, and follow-up must resolve the live target from stored assignment metadata first rather than from the task project's root.
 - Never broadcast a task to multiple agents unless the user explicitly requests duplicate execution.
 - Refuse implicit parallel dispatch in one project because agents may edit the same files.
 - If a working agent is targeted, send only when the user explicitly requests immediate delivery.

@@ -41,6 +41,7 @@ Use this compatible shape:
       "assignment": {
         "workspace_root": "/absolute/path",
         "workspace_label": "project-label",
+        "project_root": "/absolute/path of the task's owning project",
         "agent_name": "optional unique name",
         "agent_type": "codex",
         "terminal_id": "term_...",
@@ -67,6 +68,8 @@ Do not persist a pane ID because pane IDs can change after moves or restores.
 Match a project by normalized absolute root first.
 Use a project-name match only as a legacy fallback when it resolves to the same root.
 Register distinct projects when different roots share a folder name.
+Preserve the task's owning project in `project_id`.
+When a task is dispatched to a different workspace by explicit user choice, preserve the original `project_id` and store both the execution workspace in `assignment.workspace_root` and the owning project root in `assignment.project_root`.
 
 Always read the complete store immediately before mutation.
 Write the complete store atomically through a temporary file and rename.
@@ -82,7 +85,9 @@ herdr workspace list
 herdr agent list
 ```
 
-Use agent `cwd` or `foreground_cwd` to match the task project's absolute root.
+By default, use agent `cwd` or `foreground_cwd` to match the task project's absolute root.
+For a task with stored `assignment.workspace_root`, resolve that workspace first.
+For a new dispatch where the user explicitly names a workspace or pane outside the task project, resolve the named target directly and treat it as authoritative for dispatch.
 Run `herdr pane list` only when no matching agent exists and you must distinguish an empty project workspace from a missing workspace.
 
 Resolve an existing assignment in this order:
@@ -90,6 +95,8 @@ Resolve an existing assignment in this order:
 1. Unique `agent_name` in the project workspace.
 2. Exact `terminal_id` while that terminal is live.
 3. Unique `agent_type` in the project workspace.
+
+When `assignment.workspace_root` differs from `assignment.project_root` or the task project's root, use the assignment workspace for these checks instead of the project workspace.
 
 For new dispatch, prefer a user-named target.
 If the user did not name a target, auto-select only when exactly one eligible idle agent exists in the project.
@@ -120,6 +127,7 @@ If submission cannot be confirmed, keep the newly captured task as `todo` withou
 5. Reject a `done` task unless the user reopens it through `task-manager` first.
 6. Reject dispatch when another task is already `doing` in the same project unless the user explicitly confirms parallel work.
 7. Resolve the project workspace and target agent from fresh Herdr state for dispatch only.
+If the user explicitly names a different workspace or pane, allow dispatch to that target instead of the task project's workspace.
 8. Inspect at most 60 recent unwrapped lines only when needed to avoid conflicting with the target's current task.
 9. Preserve task intent and add only context supported by `details` or the confirmed current conversation.
 10. If the target is `blocked`, send only a user-authorized answer or clarification.
@@ -172,7 +180,7 @@ herdr pane run <pane-id> "<task-prompt>"
 Never route the prompt through a file or ask the target to read a path outside its workspace.
 After sending, wait briefly for `working`.
 If the wait times out, inspect the pane and confirm that the task ID was submitted or processed.
-Only after submission is confirmed, update the task to `doing`, store the assignment, set `execution.state` to `working`, and write the store.
+Only after submission is confirmed, update the task to `doing`, store the assignment, set `assignment.project_root` to the task project's root, set `execution.state` to `working`, and write the store.
 If submission cannot be confirmed, leave assignment and execution unchanged.
 
 Return the task ID, project, resolved agent, and exact prompt sent.
@@ -184,6 +192,7 @@ Sync one task, one project, or every task with `status: doing`.
 
 1. Read the store and live Herdr state once.
 2. Resolve each assignment without relying on a stored pane ID.
+Prefer `assignment.workspace_root` when present.
 3. Apply the live-state rules below.
 
 | Live state | Action |
@@ -242,7 +251,7 @@ Report the missing target and ask the user to choose a live agent for reassignme
 
 ## Setup Failures
 
-If the project workspace is missing:
+If the project workspace is missing and there is no explicit cross-workspace target or stored `assignment.workspace_root`:
 
 ```text
 Không tìm thấy workspace cho project của task `<task-id>` trong Herdr session hiện tại.
