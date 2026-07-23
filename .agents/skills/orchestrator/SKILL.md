@@ -36,7 +36,7 @@ Run a predefined workflow config until the next stop condition.
 `feature_slug` rules:
 
 - Prefer explicit `--slug <feature-slug>` on `start`
-- `feature_slug` must be kebab-case because it becomes the shared artifact stem for spec, summary, verification, and checklist files
+- `feature_slug` must be kebab-case because it becomes the shared artifact stem for workflow artifacts
 - If the human omits it, derive a kebab-case slug from the feature description or workflow subject, show the derived slug to the human, and record that derived value in state before running the first step
 
 ## State Files
@@ -59,15 +59,22 @@ Minimum fields:
   "feature_slug": "my-feature",
   "status": "paused",
   "updated_at": "2026-07-12T10-35-00Z",
-  "current_step_id": "execute-spec",
+  "current_step_id": "verify-feature",
   "holds_repo_lock": false,
   "contracts": {
-    "shape_checked": true,
-    "recon_checked": true,
-    "decision_ready": true
+    "design_path": true,
+    "design_decisions_path": true,
+    "spec_path": true,
+    "spec_reviewed": true,
+    "summary_path": true,
+    "checklist_path": true
   },
   "artifact_paths": {
-    "spec_path": "docs/ai/specs/my-feature.md"
+    "design_path": "docs/ai/designs/my-feature.html",
+    "design_decisions_path": "docs/ai/design-decisions/my-feature.json",
+    "spec_path": "docs/ai/specs/my-feature.md",
+    "summary_path": "docs/ai/summaries/my-feature.md",
+    "checklist_path": "docs/ai/checklists/my-feature.md"
   },
   "step_inputs": {
     "execute-spec": {
@@ -76,12 +83,27 @@ Minimum fields:
   },
   "history": [
     {
-      "step_id": "shape",
+      "step_id": "design-spec",
+      "action": "run",
+      "outcome": "continue"
+    },
+    {
+      "step_id": "spec",
       "action": "run",
       "outcome": "continue"
     },
     {
       "step_id": "review-spec",
+      "action": "run",
+      "outcome": "continue"
+    },
+    {
+      "step_id": "execute-spec",
+      "action": "run",
+      "outcome": "continue"
+    },
+    {
+      "step_id": "manual-checklist",
       "action": "run",
       "outcome": "continue"
     }
@@ -109,6 +131,9 @@ Minimum fields:
    - `inline`: perform the documented step directly in chat
    - `skill`: run the named skill in the resolved working directory
    - `subagent`: dispatch to the named subagent with the resolved working directory in its task contract
+   - a skill may contain a foreground human interaction loop; keep the invocation attached until the skill emits an outcome
+   - do not treat an artifact created before interactive approval as a satisfied `provides` contract
+   - if an interactive skill is interrupted before emitting an outcome, leave the step pending and resume it from its deterministic artifact path on the next explicit continuation
 6. Parse the last occurrence of an orchestrator HTML comment when the step is a skill or subagent.
    - Match the last `<!-- orchestrator: ... -->` block in the output
    - Do not require it to be the literal final line if later whitespace or harmless trailing text appears
@@ -155,25 +180,6 @@ Use `blocked` for:
 - declared `provides` contracts missing from a `continue` outcome
 - missing workflow file, run state, or required contracts/artifacts that make the next step impossible to run
 
-## Inline Step Contracts
-
-Inline steps do not depend on external skill comments. Record these outcomes directly:
-
-- `shape` success:
-  `continue` + `shape_checked`
-- `recon` success:
-  `continue` + `recon_checked`
-- `decide` success:
-  `continue` + `decision_ready`
-- `decide` if questions are needed:
-  `stop-ask-human`
-- `decide` if work must be sliced:
-  `stop-split-slices`
-- `decide` if a spike is required:
-  `stop-run-spike`
-- `decide` if there is a codebase or business conflict:
-  `stop-escalate-conflict`
-
 ## Outcome Rules
 
 Accepted outcomes:
@@ -197,14 +203,17 @@ Rules:
 - If a skill/subagent output contains no orchestrator comment, treat outcome as `unknown`
 - Do not infer paths or outcomes heuristically from prose
 - If a step ends with `continue` but does not emit every declared `provides` contract, stop and mark the run blocked
-- `stop-budget`, `stop-total-budget`, and `stop-no-progress` keep the current step pending; `continue` reruns that same step with its stored inputs and any explicit policy overrides
+- Every paused stop outcome keeps the current step pending because it did not satisfy the step's declared `provides`
+- `continue` reruns that same pending step with its stored inputs and any explicit overrides
+- `stop-budget`, `stop-total-budget`, and `stop-no-progress` additionally preserve their implementation workspace and budget state
 - `skip` never satisfies `requires`
 
 ## Workflow Rules
 
-- `manual-checklist` and `review-pr` are always human-triggered, even if the config says otherwise
+- Do not insert or run skills that are absent from the selected workflow config
 - `requires` means contract or artifact presence in state, not "a previous step once ran"
 - `provides` means contracts that must be recorded when the step succeeds with `continue`
+- a human interaction performed inside a skill is complete only when that skill emits `continue`; do not add a second inferred human gate
 - `cwd_from` names an `artifact_paths` key whose absolute directory becomes the working directory for that step
 - `uses_repo_lock` means the step needs the single shared repo lock; if another run already holds it, the current invocation must stop immediately
 - If a step hits `human_gate: true`, stop immediately after writing state
@@ -233,6 +242,7 @@ After each invocation, return:
 - run state path
 - any artifact paths newly recorded this turn
 - any lock owner that blocked progress
+- the recorded `checklist_path` as the primary human validation artifact whenever it exists
 
 For `status --run <run-id>`, return:
 
@@ -243,6 +253,8 @@ For `status --run <run-id>`, return:
 - last stop reason if present
 - recorded contracts
 - recorded artifact paths
+
+If the run completed or stopped during verification and `checklist_path` exists, show that path prominently even when it was recorded by an earlier step.
 
 For `status` without `--run`, return:
 

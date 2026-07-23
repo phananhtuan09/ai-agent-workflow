@@ -1,85 +1,133 @@
 ---
 name: verify-feature
-description: Use when the user asks to verify, check, or validate a feature against its latest synced spec. Generates a verification checklist, then continues with implementation verification instead of stopping at file creation.
+description: Use when the user asks to verify implementation evidence against an approved spec and its spec-derived manual checklist. Writes detailed evidence to the verification artifact and updates checklist testcase status without redefining expected behavior.
 ---
 
 # Verify Feature
 
-Read the latest synced spec file and verify implementation readiness against the current codebase.
+Verify implementation-level evidence for the testcases defined by the approved spec checklist.
 
 ## Input
 
-- Required: path to spec file (e.g. `docs/ai/specs/{feature-name}.md`)
-- Optional: summary path (e.g. `docs/ai/summaries/{feature-name}.md`)
-- Optional: focused file or module scope when the feature touches a narrow area
+- Required: approved spec path, for example `docs/ai/specs/{feature-name}.md`.
+- Required: checklist path, for example `docs/ai/checklists/{feature-name}.md`.
+- Optional: execution summary path, for example `docs/ai/summaries/{feature-name}.md`.
+- Optional: focused file or module scope when the feature touches a narrow area.
 
 ## Output
 
-Write to: `docs/ai/verifications/{feature-name}.md`
+Write detailed evidence to `docs/ai/verifications/{feature-name}.md`.
+Update evidence status in `docs/ai/checklists/{feature-name}.md`.
 
-After opening or creating the verification artifact, continue immediately with implementation verification for the relevant code paths and checks. Do not stop at scaffold creation.
+## Source Of Truth And Ownership
 
-## Verification Format
+- Treat the approved spec as the only source of truth for expected behavior.
+- Treat checklist testcase definitions and spec mappings as a projection of that spec.
+- Read code, tests, and build output only as evidence about whether the implementation satisfies the spec.
+- Do not add, delete, split, merge, or rewrite checklist testcases from code or implementation behavior.
+- Do not change a testcase expected result to match the implementation.
+- If code behavior conflicts with the spec, record drift and mark the affected testcase red.
+- If a required behavior is missing from the checklist because the spec is unclear, record a spec gap instead of inventing a testcase expectation.
+
+## Verification Workflow
+
+1. Read the approved spec and checklist completely.
+2. Read the execution summary when provided, but treat it only as a navigation aid and claimed implementation handoff.
+3. Map every checklist testcase to implementation surfaces and the smallest suitable evidence strategy.
+4. Run only relevant implementation-level checks.
+5. Record detailed commands, inspections, assertions, results, failures, and limitations in the verification artifact.
+6. Update each checklist testcase status using the deterministic evidence rules.
+7. Recalculate checklist counts, percentages, fully covered AC count, and verification evidence path.
+8. Update the checklist before returning any orchestrator outcome, including fail or blocked outcomes.
+
+## Verification Artifact Format
 
 ```markdown
 ## Sources
-- Spec: docs/ai/specs/{feature-name}.md
+- Approved spec: docs/ai/specs/{feature-name}.md
+- Checklist: docs/ai/checklists/{feature-name}.md
 - Summary: [optional]
-- Existing Verification: [optional]
 
 ## Implementation Surfaces
-- AC1 → [file/module/function]
-- AC2 → [file/module/function]
+- TC-001 / AC1 → [file/module/function]
+- TC-002 / AC1 → [file/module/function]
 
 ## Evidence Strategy
-- AC1 → [implementation check | focused automated test | runtime/E2E | manual checklist] → [reason]
+- TC-001 → [focused automated test | implementation check | runtime/E2E | human] → [reason]
 
 ## Executed Checks
-- [check or inspection actually executed] → Pass/Fail/Blocked
+- [command or inspection] → Pass/Fail/Blocked
 
-## Passed
-- [acceptance criteria or implementation checks supported by evidence]
+## Testcase Evidence
+| Testcase | Spec mapping | Detailed evidence | Result | Checklist status |
+|---|---|---|---|---|
+| TC-001 | AC1 | [command, assertion, observed output, and limitation] | Pass | 🟢 |
+| TC-002 | AC1 | [evidence and remaining gap] | Partial | 🟡 |
 
 ## Failed
-- [failed checks or unmet criteria with reason]
+- [failed testcase or check with concrete reason]
 
 ## Coverage Gaps
-- [criteria or behaviors not yet proven at implementation level]
+- [testcase lacking sufficient implementation evidence]
 
 ## Needs Runtime Verification
-- [observable behaviors requiring browser/manual/runtime proof]
+- [testcase requiring direct runtime or E2E evidence]
+
+## Spec Gaps / Drift
+- [implementation conflict or unclear expected behavior]
+
+## Checklist Update
+- Green: {green}/{total}
+- Yellow: {yellow}/{total}
+- Red: {red}/{total}
 
 ## Final Status
 Pass | Fail | Partial | Blocked
 ```
 
-## Rules
+## Checklist Evidence Rules
 
-- All output files must be written in English
-- Treat the provided spec file as the latest durable source of truth
-- If `docs/ai/verifications/{feature-name}.md` already exists, read it first and preserve still-valid sections instead of rewriting blindly
-- Map acceptance criteria to implementation surfaces before judging coverage
-- For each AC, record the smallest suitable evidence strategy before judging coverage:
-  - observable user behavior normally belongs to `/verify-runtime` using bounded runtime/E2E checks when a target is available
-  - UX quality or business judgment normally belongs to human verification surfaced by `/manual-checklist`
-  - lint, typecheck, build, and focused code inspection cover implementation-level correctness when relevant
-  - a focused automated unit or integration test is warranted only when it has clear regression value: non-trivial validation or business rules, permission/authorization, persistence or state transitions, integration boundaries, or a regression bug
-- Do not require unit or integration tests as a fixed workflow phase, and do not treat their absence alone as a failure for UI-first, simple, or test-hostile projects
-- Do not create new test infrastructure or invent test cases in this verification phase; verify tests that implementation chose to add or update, plus existing relevant tests
-- When a risk-sensitive behavior has neither focused automated evidence nor a credible runtime/manual evidence path, record the reason and missing evidence in `## Coverage Gaps`
-- Record only implementation-level evidence in this phase
-- Do not invent test cases beyond what the synced spec and implemented behavior require
-- Do not include runtime-only evidence in this phase; move that into `/verify-runtime`
-- If Open Questions remain unresolved, flag the affected checks as `Blocked`
-- After opening or creating the file, continue with implementation verification and record actual findings or explicit `Blocked` reasons
-- `/verify-feature` may update implementation-level sections, but must not delete valid runtime sections previously added by `/verify-runtime`
-- If current implementation evidence conflicts with older verification content, replace only the conflicting implementation section and note the reason in `## Executed Checks` or `## Failed`
-- Use final status:
-  - `Pass` when all required implementation-level checks passed and no material coverage gaps remain
-  - `Partial` when some checks passed but meaningful coverage gaps remain, especially risk-sensitive behavior without a credible evidence path
-  - `Fail` when at least one required implementation-level check failed
-  - `Blocked` when the phase cannot complete because required inputs, environment, or artifacts are unavailable
-- Deferred runtime or manual proof alone is not a `Partial` result here when it is explicitly assigned to `/verify-runtime` or `/manual-checklist`
+Icons are evidence classifications, not self-reported confidence.
+
+- Set `🟢` only when the exact testcase was executed and passed with direct evidence covering its stated action, expected result, preconditions, and required environment.
+- Set `🟡` when evidence is indirect, incomplete, narrower than the testcase, environment-limited, or still requires human judgment.
+- Set `🔴` when the testcase was not run, failed, was blocked, has contradictory evidence, or depends on an unclear spec rule.
+- Lint, typecheck, build, compilation, code inspection, or apparent implementation correctness alone can never produce green.
+- For observable UI behavior, implementation verification can produce at most yellow unless this phase executed direct runtime or E2E evidence for the exact testcase.
+- A focused unit or integration test may produce green only for a deterministic non-UI rule when it directly exercises the testcase inputs, state transition, and expected output.
+- One passing happy-path check must not change negative, boundary, persistence, responsive, fallback, or error-path testcases to green.
+- Later contradictory evidence must downgrade green to yellow or red.
+- Never change `[ ]` to `[x]` or erase an existing `[x]`.
+- Green testcase items may remove an unchecked `[ ]` task marker.
+- Yellow and red testcase items retain their human task marker.
+- Keep the checklist AI verification note to one short method-and-result phrase.
+- Put all commands, logs, screenshots, assertions, and detailed reasoning in the verification artifact.
+
+## Checklist Integrity Rules
+
+- Preserve testcase IDs, wording, expected results, order, and spec mappings.
+- Preserve the checklist's Vietnamese section headings.
+- Write updated summary labels, short AI verification notes, and spec-gap or drift findings in Vietnamese while preserving technical identifiers.
+- Update only the icon, short AI verification note, human task marker, summary counts, percentages, fully covered AC count, evidence path, and spec-gap/drift section.
+- Derive all percentages from testcase counts.
+- Count an AC as fully covered only when every testcase mapped to it is green.
+- If the verification artifact cannot be completed, update affected checklist items to red with a short blocked reason before stopping.
+
+## Final Status Rules
+
+- `Pass`: all implementation checks required for this phase passed and remaining runtime or human checks are explicitly assigned.
+- `Partial`: implementation checks ran but material implementation evidence gaps remain.
+- `Fail`: at least one required implementation check or testcase failed.
+- `Blocked`: required inputs, environment, or artifacts prevented meaningful implementation verification.
+- Runtime-only or human-only evidence assigned to later phases does not by itself make this phase partial.
+
+## Artifact Boundaries
+
+- Do not modify code, tests, specs, or testcase definitions during verification.
+- Do not create test infrastructure or invent testcases in this phase.
+- Existing relevant tests may be executed.
+- Detailed evidence belongs in the verification artifact.
+- The checklist remains concise and human-scannable.
 
 ## Orchestrator Contract
 
@@ -93,6 +141,8 @@ When this skill is run under `/orchestrator`, append exactly one HTML comment as
   `<!-- orchestrator: outcome=stop-blocked -->`
 
 Rules:
-- Emit the comment only after the main human-readable response is complete
-- `verification_path` must match the artifact actually written or updated
-- If this skill runs standalone, the comment is optional
+
+- Emit the comment only after the verification artifact and checklist have been updated.
+- `verification_path` must match the artifact actually written or updated.
+- Report the checklist path prominently in the human-readable response.
+- If this skill runs standalone, the comment is optional.

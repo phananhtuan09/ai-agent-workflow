@@ -1,0 +1,720 @@
+<!doctype html>
+<html
+  lang="vi"
+  data-feature-slug="REPLACE_FEATURE_SLUG"
+  data-design-revision="REPLACE_DESIGN_REVISION"
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>REPLACE_FEATURE_TITLE · Design review</title>
+    <style>
+      :root {
+        --ink: #19221d;
+        --muted: #68726b;
+        --paper: #f2ede2;
+        --surface: #fffdf7;
+        --line: #d8d1c2;
+        --navy: #17324d;
+        --navy-soft: #e8eff4;
+        --coral: #d95d43;
+        --coral-soft: #fff0ea;
+        --green: #267158;
+        --green-soft: #e8f5ee;
+        --amber: #9b650d;
+        --amber-soft: #fff6dc;
+        --red: #a43a35;
+        --shadow: 0 20px 55px rgba(42, 47, 42, 0.11);
+        --space-1: 0.5rem;
+        --space-2: 1rem;
+        --space-3: 1.5rem;
+        --space-4: 2rem;
+        --space-6: 3rem;
+        --space-8: 4rem;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(
+            circle at 8% 0%,
+            rgba(217, 93, 67, 0.12),
+            transparent 28rem
+          ),
+          linear-gradient(180deg, #ece5d9 0, var(--paper) 34rem);
+        color: var(--ink);
+        font-family: "Aptos", "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.58;
+      }
+
+      h1,
+      h2,
+      h3,
+      legend {
+        margin-top: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.14;
+      }
+
+      h1 {
+        max-width: 14ch;
+        margin-bottom: var(--space-2);
+        font-size: clamp(2.7rem, 8vw, 6.2rem);
+        letter-spacing: -0.05em;
+      }
+
+      h2 {
+        margin-bottom: var(--space-3);
+        font-size: clamp(1.7rem, 4vw, 2.7rem);
+        letter-spacing: -0.025em;
+      }
+
+      h3,
+      legend {
+        margin-bottom: var(--space-1);
+        font-size: 1.22rem;
+      }
+
+      p {
+        max-width: 74ch;
+        margin: 0 0 var(--space-2);
+      }
+
+      code {
+        padding: 0.12rem 0.34rem;
+        border-radius: 3px;
+        background: #ebe7dd;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 0.9em;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      button,
+      input[type="radio"] {
+        cursor: pointer;
+      }
+
+      :focus-visible {
+        outline: 3px solid #1e6a94;
+        outline-offset: 3px;
+      }
+
+      .shell {
+        width: min(1160px, calc(100% - 32px));
+        margin: 24px auto 64px;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        min-height: 470px;
+        padding: clamp(32px, 8vw, 82px);
+        border-radius: 2px 2px 34px 2px;
+        background: var(--navy);
+        color: #fffdf7;
+        box-shadow: var(--shadow);
+      }
+
+      .hero::after {
+        position: absolute;
+        right: -8rem;
+        bottom: -13rem;
+        width: 32rem;
+        height: 32rem;
+        border: 5rem solid rgba(255, 255, 255, 0.065);
+        border-radius: 50%;
+        content: "";
+      }
+
+      .hero-copy {
+        position: relative;
+        z-index: 1;
+        max-width: 850px;
+      }
+
+      .eyebrow {
+        margin-bottom: var(--space-6);
+        color: #ffb4a1;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .goal {
+        max-width: 720px;
+        color: #d9e5ed;
+        font-size: clamp(1.04rem, 2vw, 1.24rem);
+      }
+
+      .meta {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 24px;
+        margin-top: var(--space-6);
+        color: #c5d3dc;
+        font-size: 0.9rem;
+      }
+
+      .meta strong {
+        color: #fff;
+      }
+
+      .panel {
+        margin-top: 20px;
+        padding: clamp(24px, 5vw, 48px);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: 0 8px 28px rgba(42, 47, 42, 0.045);
+      }
+
+      .panel:nth-of-type(odd) {
+        border-radius: 2px 28px 2px 2px;
+      }
+
+      .panel:nth-of-type(even) {
+        border-radius: 28px 2px 2px 2px;
+      }
+
+      .section-intro {
+        color: var(--muted);
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        gap: var(--space-3);
+      }
+
+      .fact-box,
+      .scope-box,
+      .risk-box {
+        min-width: 0;
+        padding: var(--space-3);
+        border: 1px solid var(--line);
+        background: #faf7ef;
+      }
+
+      .fact-box {
+        border-top: 4px solid var(--navy);
+      }
+
+      .scope-box {
+        border-top: 4px solid var(--green);
+      }
+
+      .risk-box {
+        border-top: 4px solid var(--amber);
+      }
+
+      .flow {
+        counter-reset: flow;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .flow li {
+        counter-increment: flow;
+        position: relative;
+        min-width: 0;
+        min-height: 170px;
+        padding: var(--space-3);
+        border-top: 4px solid var(--navy);
+        background: var(--navy-soft);
+      }
+
+      .flow li::before {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        margin-bottom: var(--space-2);
+        place-items: center;
+        border-radius: 50%;
+        background: var(--navy);
+        color: white;
+        font-weight: 800;
+        content: counter(flow);
+      }
+
+      .decision-stack {
+        display: grid;
+        gap: var(--space-3);
+      }
+
+      .decision-card {
+        min-width: 0;
+        margin: 0;
+        padding: var(--space-3);
+        border: 1px solid var(--line);
+        border-left: 6px solid var(--coral);
+        background: #fffaf4;
+      }
+
+      .decision-id {
+        display: inline-block;
+        margin-bottom: var(--space-1);
+        color: var(--red);
+        font-size: 0.78rem;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .option-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: var(--space-2);
+      }
+
+      .option {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        min-height: 132px;
+        padding: var(--space-3);
+        border: 1px solid var(--line);
+        background: white;
+      }
+
+      .option:has(input:checked) {
+        border-color: var(--green);
+        background: var(--green-soft);
+        box-shadow: inset 0 0 0 1px var(--green);
+      }
+
+      .option input {
+        width: 20px;
+        height: 20px;
+        margin-top: 2px;
+      }
+
+      .option strong,
+      .option small {
+        display: block;
+      }
+
+      .option small {
+        margin-top: 6px;
+        color: var(--muted);
+      }
+
+      .recommended {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 3px 7px;
+        border: 1px solid var(--green);
+        color: var(--green);
+        font-family: "Aptos", "Segoe UI", sans-serif;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .rationale,
+      .constraints {
+        width: 100%;
+        min-height: 96px;
+        margin-top: var(--space-2);
+        padding: 13px 14px;
+        border: 1px solid var(--line);
+        border-radius: 0;
+        background: white;
+        color: var(--ink);
+        resize: vertical;
+      }
+
+      .approval {
+        border-top: 6px solid var(--coral);
+        background: var(--coral-soft);
+      }
+
+      .approval-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: var(--space-3);
+        align-items: end;
+      }
+
+      .approve-button {
+        min-width: 220px;
+        min-height: 52px;
+        padding: 13px 18px;
+        border: 0;
+        background: var(--coral);
+        color: white;
+        font-weight: 850;
+        box-shadow: 0 10px 24px rgba(154, 55, 38, 0.2);
+      }
+
+      .approve-button:hover {
+        background: #bf4934;
+      }
+
+      .approve-button:disabled {
+        cursor: wait;
+        opacity: 0.68;
+      }
+
+      .status {
+        min-height: 26px;
+        margin-top: var(--space-2);
+        color: var(--red);
+        font-weight: 700;
+      }
+
+      details {
+        border-top: 1px solid var(--line);
+      }
+
+      summary {
+        min-height: 48px;
+        padding: 14px 0;
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      @media (max-width: 850px) {
+        .split,
+        .approval-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .flow {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 580px) {
+        .shell {
+          width: min(100% - 18px, 1160px);
+          margin-top: 9px;
+        }
+
+        .hero {
+          min-height: auto;
+          border-radius: 2px 2px 20px 2px;
+        }
+
+        .flow,
+        .option-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .approve-button {
+          width: 100%;
+          min-width: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            Design review · Quyết định trước implementation spec
+          </p>
+          <h1>REPLACE_FEATURE_TITLE</h1>
+          <p class="goal">REPLACE_ONE_LINE_GOAL</p>
+        </div>
+        <div class="meta">
+          <span
+            ><strong>Feature:</strong> <code>REPLACE_FEATURE_SLUG</code></span
+          >
+          <span><strong>Revision:</strong> REPLACE_DESIGN_REVISION</span>
+          <span><strong>Trạng thái:</strong> Chờ human approval</span>
+        </div>
+      </header>
+
+      <section class="panel" aria-labelledby="overview-title">
+        <h2 id="overview-title">Bối cảnh cần chốt</h2>
+        <p class="section-intro">REPLACE_REVIEW_INSTRUCTION</p>
+        <div class="split">
+          <article class="fact-box">
+            <h3>Hiện trạng đã xác nhận</h3>
+            <ul>
+              <li>REPLACE_CONFIRMED_FACT</li>
+            </ul>
+          </article>
+          <article class="scope-box">
+            <h3>Outcome mong muốn</h3>
+            <ul>
+              <li>REPLACE_DESIRED_OUTCOME</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="scope-title">
+        <h2 id="scope-title">Scope của slice</h2>
+        <div class="split">
+          <article class="scope-box">
+            <h3>Trong scope</h3>
+            <ul>
+              <li>REPLACE_IN_SCOPE_ITEM</li>
+            </ul>
+          </article>
+          <article class="risk-box">
+            <h3>Ngoài scope</h3>
+            <ul>
+              <li>REPLACE_OUT_OF_SCOPE_ITEM</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="flow-title">
+        <h2 id="flow-title">Primary flow đề xuất</h2>
+        <ol class="flow">
+          <li>
+            <strong>REPLACE_FLOW_STEP_1</strong><br />REPLACE_FLOW_DETAIL_1
+          </li>
+          <li>
+            <strong>REPLACE_FLOW_STEP_2</strong><br />REPLACE_FLOW_DETAIL_2
+          </li>
+          <li>
+            <strong>REPLACE_FLOW_STEP_3</strong><br />REPLACE_FLOW_DETAIL_3
+          </li>
+          <li>
+            <strong>REPLACE_FLOW_STEP_4</strong><br />REPLACE_FLOW_DETAIL_4
+          </li>
+        </ol>
+      </section>
+
+      <section class="panel" aria-labelledby="decisions-title">
+        <h2 id="decisions-title">Quyết định cần human chốt</h2>
+        <p class="section-intro">
+          Mỗi lựa chọn bên dưới thay đổi behavior hoặc phạm vi. Recommendation
+          được đánh dấu trực tiếp cùng tradeoff.
+        </p>
+
+        <form id="design-approval-form">
+          <div class="decision-stack">
+            <fieldset
+              class="decision-card"
+              data-decision-id="D-001"
+              data-question="REPLACE_DECISION_QUESTION"
+              data-required="true"
+            >
+              <legend>
+                <span class="decision-id">D-001</span
+                ><br />REPLACE_DECISION_QUESTION
+              </legend>
+              <p>REPLACE_DECISION_CONTEXT</p>
+              <div class="option-grid">
+                <label class="option">
+                  <input
+                    type="radio"
+                    name="D-001"
+                    value="recommended"
+                    data-answer-label="REPLACE_RECOMMENDED_ANSWER"
+                  />
+                  <span>
+                    <strong
+                      >REPLACE_RECOMMENDED_ANSWER
+                      <span class="recommended">Khuyến nghị</span></strong
+                    >
+                    <small>REPLACE_RECOMMENDED_TRADEOFF</small>
+                  </span>
+                </label>
+                <label class="option">
+                  <input
+                    type="radio"
+                    name="D-001"
+                    value="alternative"
+                    data-answer-label="REPLACE_ALTERNATIVE_ANSWER"
+                  />
+                  <span>
+                    <strong>REPLACE_ALTERNATIVE_ANSWER</strong>
+                    <small>REPLACE_ALTERNATIVE_TRADEOFF</small>
+                  </span>
+                </label>
+              </div>
+              <label>
+                Lý do hoặc constraint bổ sung
+                <textarea
+                  class="rationale"
+                  data-decision-rationale="D-001"
+                  placeholder="Không bắt buộc nếu recommendation và tradeoff đã đủ rõ."
+                ></textarea>
+              </label>
+            </fieldset>
+          </div>
+
+          <details>
+            <summary>Rủi ro và bằng chứng kỹ thuật</summary>
+            <div class="split">
+              <article class="risk-box">
+                <h3>Rủi ro cần biết</h3>
+                <ul>
+                  <li>REPLACE_MATERIAL_RISK</li>
+                </ul>
+              </article>
+              <article class="fact-box">
+                <h3>Codebase evidence</h3>
+                <ul>
+                  <li>
+                    <code>REPLACE_EVIDENCE_PATH</code> —
+                    REPLACE_EVIDENCE_SUMMARY
+                  </li>
+                </ul>
+              </article>
+            </div>
+          </details>
+
+          <section class="panel approval" aria-labelledby="approval-title">
+            <div class="approval-layout">
+              <div>
+                <h2 id="approval-title">Approve design revision này</h2>
+                <p>
+                  Approval xác nhận goal, scope và các lựa chọn ở trên. Detailed
+                  Markdown spec sẽ được AI tạo và review ở step tiếp theo.
+                </p>
+                <label>
+                  Constraint chung cần giữ trong detailed spec
+                  <textarea
+                    id="final-constraints"
+                    class="constraints"
+                    placeholder="Mỗi constraint một dòng. Có thể để trống."
+                  ></textarea>
+                </label>
+                <p id="approval-status" class="status" aria-live="polite"></p>
+              </div>
+              <button id="approve-design" class="approve-button" type="submit">
+                Approve design
+              </button>
+            </div>
+          </section>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const form = document.querySelector("#design-approval-form");
+        const button = document.querySelector("#approve-design");
+        const status = document.querySelector("#approval-status");
+
+        function setStatus(message) {
+          status.textContent = message;
+        }
+
+        function collectDecisions() {
+          const cards = [
+            ...document.querySelectorAll(".decision-card[data-decision-id]"),
+          ];
+          const decisions = [];
+
+          for (const card of cards) {
+            const id = card.dataset.decisionId;
+            const question = card.dataset.question;
+            const required = card.dataset.required === "true";
+            const selected = card.querySelector(`input[name="${id}"]:checked`);
+
+            if (required && !selected) {
+              selected?.focus();
+              return { error: `Hãy chọn một phương án cho ${id}.`, card };
+            }
+
+            if (!selected) continue;
+
+            const rationale =
+              card
+                .querySelector(`[data-decision-rationale="${id}"]`)
+                ?.value.trim() ||
+              "Đã chốt theo tradeoff hiển thị trong design review.";
+            decisions.push({
+              id,
+              question,
+              answer: selected.dataset.answerLabel || selected.value,
+              rationale,
+            });
+          }
+
+          return { decisions };
+        }
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+
+          const collected = collectDecisions();
+          if (collected.error) {
+            setStatus(collected.error);
+            collected.card.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            collected.card.querySelector("input")?.focus();
+            return;
+          }
+
+          if (
+            !window.lavish?.queuePrompt ||
+            !window.lavish?.sendQueuedPrompts
+          ) {
+            setStatus(
+              "Hãy mở artifact bằng Lavish Editor để gửi approval cho agent.",
+            );
+            return;
+          }
+
+          const constraints = document
+            .querySelector("#final-constraints")
+            .value.split("\n")
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+          const payload = {
+            schema_version: 1,
+            event: "design-spec-approval",
+            approved: true,
+            feature_slug: root.dataset.featureSlug,
+            design_revision: root.dataset.designRevision,
+            submitted_at: new Date().toISOString(),
+            decisions: collected.decisions,
+            constraints,
+          };
+
+          button.disabled = true;
+          setStatus("Đã queue approval và đang gửi cho agent…");
+          window.lavish.queuePrompt(
+            `DESIGN_SPEC_APPROVAL\n${JSON.stringify(payload)}`,
+            {
+              tag: "design-approval",
+              text: `Approve ${payload.feature_slug} revision ${payload.design_revision}`,
+              queueKey: "design-spec-approval",
+              element: form,
+            },
+          );
+          window.lavish.sendQueuedPrompts();
+          setStatus(
+            "Approval đã được gửi. Giữ cửa sổ này mở cho đến khi agent phản hồi.",
+          );
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -21,6 +21,7 @@ Version: 2.0.0
 ├── ux-accessibility/               # Keyboard, screen readers, WCAG
 │
 ├── quality-code-check/             # Linting, type checking, builds
+├── design-spec/                    # Interactive design approval before detailed spec
 └── orchestrator/                   # Run workflow configs until next gate
 ```
 
@@ -176,9 +177,10 @@ skill-name/
 | ux-feedback-patterns | Loading, success, error states |
 | ux-accessibility | Keyboard, screen readers, WCAG |
 | quality-code-check | Linting, type checking, builds |
+| design-spec | Interactive high-level design review and approval |
 | orchestrator | Execute documented workflow configs until the next stop condition |
 
-**Total:** 8 skills
+**Total:** 9 core skills listed here
 
 ---
 
@@ -194,6 +196,7 @@ Skills auto-trigger based on keywords in your prompt. Manual invocation:
 /ux-feedback-patterns            # Loading/error states
 /ux-accessibility                # WCAG, keyboard nav
 /quality-code-check              # Linting, type checks
+/design-spec                     # Human HTML review before detailed spec
 /orchestrator                    # Run a workflow config until next gate
 ```
 

@@ -1,125 +1,145 @@
 ---
 name: manual-checklist
-description: "Use when the human is ready to complete manual checks after AI verification and before PR review. Bundles spec, summary, and verification artifacts into a single scannable checklist with immediate status visibility. Trigger phrases: \"manual checklist\", \"review checklist\", \"create checklist\", \"generate checklist\". Do not use for re-running verification, modifying code, or syncing the spec."
+description: "Create a Vietnamese spec-derived testcase checklist after implementation so verification can update evidence status and the human can validate only the remaining cases. Runs automatically under supported orchestrator workflows and may be invoked directly to regenerate the checklist from an approved spec."
 ---
 
 # Manual Checklist
 
-Bundle all workflow artifacts (spec, summary, verification) into a single human-readable checklist before independent PR review.
+Create the human validation checklist from the approved spec.
 
-## When To Run
+## Role In The Workflow
 
-- The human triggers this step explicitly (e.g. `/manual-checklist`)
-- Only after `/verify-runtime` has completed, or the human confirms the feature is implementation-complete enough to review
-- Do NOT auto-run this step as part of `/verify-runtime` or any other step
+- Under `feature-standard`, run automatically after `/execute-spec` and before `/verify-feature`.
+- Under `feature-implement-gnhf`, run automatically after `/execute-gnhf` and before `/verify-feature` in the implementation workspace.
+- When invoked directly, regenerate the checklist from the provided approved spec.
+- This skill creates testcase definitions but does not verify them.
+- `/verify-feature` and `/verify-runtime` update testcase evidence and status later.
+- The checklist is the primary human-facing output of the completed workflow.
 
 ## Input
 
-- Required: spec path (e.g. `docs/ai/specs/{feature}.md`)
-- Read if present: summary path (e.g. `docs/ai/summaries/{feature}.md`)
-- Read if present: verification path (e.g. `docs/ai/verifications/{feature}.md`)
+- Required: approved spec path, for example `docs/ai/specs/{feature}.md`.
+- The orchestrator may require `summary_path` to prove execution completed, but this skill must not read the summary to define expected behavior.
+
+## Source Of Truth Boundary
+
+- The approved spec is the only source of truth for testcase definitions and expected results.
+- Derive testcases only from acceptance criteria, key behavioral rules, edge cases, failure states, validation, persistence, fallback, and reset behavior explicitly present in the spec.
+- Do not read code, implementation summaries, verification artifacts, or runtime behavior to add, remove, or rewrite testcases.
+- Do not convert implemented behavior into an expected result when the spec does not require it.
+- If the spec does not define an expected result clearly enough, record a red spec-gap testcase instead of inventing behavior.
+- Verification evidence may change testcase status but must never change the testcase definition or expected result.
+
+## Testcase Generation Rules
+
+- Each checklist item represents one independently executable testcase, not one acceptance criterion.
+- One acceptance criterion may produce multiple testcases for happy path, negative path, boundary conditions, persistence, fallback, or relevant environments.
+- Map every testcase to one or more explicit spec acceptance criteria such as `AC1` or `AC1, AC3`.
+- Use stable sequential IDs such as `TC-001`, `TC-002`, and `TC-003`.
+- Keep each testcase concise but executable by including action and expected result on one line.
+- Do not generate testcases for behavior that is out of scope.
+- Do not create generic testcases such as "works correctly" or "handle errors properly".
+- If an existing checklist is regenerated from an unchanged testcase, preserve its testcase ID and human checkbox state.
+- If the approved spec changes, refresh affected testcase definitions and mark their evidence status red until verification runs again.
+
+## Evidence Status Rules
+
+Icons represent evidence status determined by rules, never the agent's confidence.
+
+- `🟢`: The exact testcase was executed and passed with direct evidence covering its stated action, expected result, preconditions, and relevant environment.
+- `🟡`: Some evidence exists, but it is indirect, incomplete, narrower than the testcase, environment-limited, or still requires human judgment.
+- `🔴`: The testcase was not run, failed, was blocked, has contradictory evidence, or cannot be evaluated because the spec is unclear.
+
+The checklist generator initializes every testcase as `🔴` with evidence `Chưa chạy`.
+
+AI agents must not assign `🟢` from any of the following alone:
+
+- code inspection or an implementation that appears correct
+- lint, typecheck, build, or compilation success
+- the agent's intention, reasoning, confidence, or expected implementation behavior
+- a test that does not execute the exact testcase behavior
+- one happy-path test used to claim negative, boundary, persistence, responsive, or fallback cases
+- a mocked or narrower environment when the testcase requires a different real environment
+
+For observable UI behavior, `🟢` requires direct runtime or E2E evidence.
+A focused unit or integration test may support `🟢` only for a deterministic non-UI rule when it directly exercises the testcase inputs, state transition, and expected output.
+Later contradictory evidence must downgrade an existing `🟢` to `🟡` or `🔴`.
+
+## Percentage Rules
+
+- Percentages use testcase count as the denominator, not acceptance-criterion count.
+- Green percentage is `green testcases / total testcases`.
+- Yellow percentage is `yellow testcases / total testcases`.
+- Red percentage is `red testcases / total testcases`.
+- Round displayed percentages to the nearest whole percent and always show the exact fraction.
+- An acceptance criterion is fully covered only when every testcase mapped to it is green.
+
+## Language Rules
+
+- Write the complete checklist file in Vietnamese.
+- Write the human-readable command response in Vietnamese.
+- Translate testcase actions, expected results, summaries, legends, status notes, and sign-off instructions into clear Vietnamese even when the approved spec is written in English.
+- Preserve testcase IDs, acceptance-criterion IDs, file paths, commands, code symbols, product names, and technical identifiers in their original form.
+- Avoid mixed English labels when a clear Vietnamese equivalent exists.
+- Keep established evidence icons and orchestrator contract fields unchanged.
 
 ## Output
 
-Write to: `docs/ai/checklists/{feature}.md`
+Write to `docs/ai/checklists/{feature}.md` in Vietnamese.
 
-## Pre-Checklist: Determine Status
-
-Before writing, read all available artifacts and determine the overall status from evidence:
-
-- `Ready for PR Review`: all ACs are either AI-verified or deferred; no `Blocked / Stuck` items; human-verify items remain but are the only thing between now and PR review
-- `Needs Human Verify`: implementation and runtime checks passed, but one or more ACs require human manual testing before PR review
-- `Blocked`: one or more required artifacts (spec, summary, verification) missing, or one or more ACs Blocked / Stuck in implementation/runtime
-- `In Progress`: not all ACs are implemented or verified yet (summary shows Not Done / Blocked)
-- `Drift Detected`: summary's Decisions or runtime results contradict the latest synced spec; human must confirm before PR review
-
-## Checklist Format
+Use this format:
 
 ```markdown
-# Manual Checklist — {feature}
+# Checklist kiểm thử thủ công — {feature}
 
-## Trạng thái
-{status} — {one-sentence reason}
+## Tóm tắt xác minh
+- Tổng số ca kiểm thử: {N}
+- 🟢 Đã xác minh đầy đủ: {green}/{N} ({green_percent}%)
+- 🟡 Có bằng chứng một phần: {yellow}/{N} ({yellow_percent}%)
+- 🔴 Cần người kiểm tra: {red}/{N} ({red_percent}%)
+- Tiêu chí chấp nhận được bao phủ đầy đủ: {covered_ac}/{total_ac}
+- Bằng chứng chi tiết: {verification_path | Chưa có — chưa chạy xác minh}
 
-## Tổng quan
-- Mức: {Lite|Standard|Extended}
-- AC: {total N}
-- Spec: docs/ai/specs/{feature}.md ✓
-- Summary: docs/ai/summaries/{feature}.md {✓|✗ thiếu}
-- Verification: docs/ai/verifications/{feature}.md {✓|✗ thiếu}
-- Trạng thái xác minh: {Pass|Partial|Fail|Blocked|N/A}
+## Chú giải bằng chứng
+- 🟢 Bằng chứng trực tiếp cho thấy ca kiểm thử đã đạt đầy đủ.
+- 🟡 Bằng chứng gián tiếp, chưa đầy đủ, hoặc chưa bao phủ toàn bộ phạm vi.
+- 🔴 Chưa chạy, không đạt, bị chặn, có bằng chứng mâu thuẫn, hoặc đặc tả chưa rõ.
 
-## AI đã xác minh
-- AC1 → {tóm tắt bằng chứng} (src: verification)
-- AC2 → {tóm tắt bằng chứng} (src: verification)
-...
+## Các ca kiểm thử
+- [ ] 🔴 TC-001 [AC1] — {hành động} → {kết quả mong đợi} — AI: Chưa chạy
+- [ ] 🔴 TC-002 [AC1, AC2] — {hành động} → {kết quả mong đợi} — AI: Chưa chạy
 
-## Cần người kiểm tra
-- AC3 → {bước test cụ thể, ví dụ: "mở http://localhost:3000/login, nhập sai password, kiểm tra message đỏ"}
-- AC4 → {bước test cụ thể}
-...
+## Lỗ hổng đặc tả / Sai lệch
+- Không có.
 
-## Bị chặn / Kẹt
-- AC5 → {lý do bị chặn} — gỡ bằng: {cần gì để unblock}
-...
+## Xác nhận của người kiểm tra
+- [ ] Đã hoàn thành các ca kiểm thử còn ô checkbox.
+- [ ] Đã chấp nhận các ca kiểm thử màu xanh và không cần kiểm tra lại.
+- [ ] Tính năng đạt yêu cầu hoặc đã ghi rõ các ca kiểm thử chưa đạt.
 
-## Lệch spec / Câu hỏi mở
-- {quyết định trong summary mâu thuẫn với spec}
-- {câu hỏi mở chưa giải quyết từ spec}
-
-## Next Gate
-- [ ] Tôi đã đọc spec và kiểm tra toàn bộ manual checklist
-- [ ] Tôi đã sửa các chỗ lệch spec (files: ...)
-- [ ] Sẵn sàng cho `/review-pr`
-
-## Artifacts nguồn
-- Spec: docs/ai/specs/{feature}.md
-- Summary: docs/ai/summaries/{feature}.md
-- Verification: docs/ai/verifications/{feature}.md
-- File chính: {paths to primary implementation files}
+## Nguồn
+- Đặc tả đã duyệt: docs/ai/specs/{feature}.md
+- Bằng chứng xác minh: docs/ai/verifications/{feature}.md
 ```
 
-## Rules
+## Checklist Mutation Rules
 
-### Language
-- All checklist output files must be written in Vietnamese
-- Spec, summary, and verification artifacts may be in English; translate terse summaries into Vietnamese when writing the checklist
-- Keep evidence pointers (file paths, commands, test names) in their original English
-
-### Artifact Reading
-- Read the spec, summary, and verification artifact before producing the checklist
-- If verification artifact exists but only has implementation-level sections (no runtime), treat Needs Runtime Verification items as Cần người kiểm tra
-- If summary is missing, treat all ACs as Not Done and set trạng thái to Đang làm dở
-- If verification is missing but summary exists, mark trạng thái Bị chặn with reason "thiếu file verification"
-
-### Status Rules
-- Produce the status from actual evidence in the artifacts, not from inference
-- Put trạng thái first so the human sees it before scrolling
-- Never mark a feature Ready for PR Review when any AC is Blocked / Stuck
-
-### Content Rules
-- Keep each list item terse; the goal is scannability, not re-narrating the spec
-- Map every acceptance criterion to exactly one of: AI đã xác minh, Cần người kiểm tra, Bị chặn / Kẹt
-- If an AC is not listed in any section, it belongs in Bị chặn / Kẹt with reason "chưa triển khai"
-- Preserve evidence pointers (file path, line range, command output) instead of inline-quoting large blocks
-- For Cần người kiểm tra, write concrete test steps the human can execute immediately; do not repeat the AC text verbatim
-
-### Artifact Boundaries
-- Do NOT modify the spec, summary, or verification file from this step
-- Do NOT re-verify anything that was already verified
-- Do NOT claim behavior the AI did not already verify
-
-### Refresh Rules
-- If `docs/ai/checklists/{feature}.md` already exists, refresh all sections from current artifacts
-- Preserve the human's existing Next Gate block, or a legacy Sign-off block — move it to the bottom, do not reset or delete checkmarks
-- If a previously signed-off item now shows as Blocked or Drift Detected, flag it explicitly in Lệch spec / Câu hỏi mở
+- This skill owns testcase definitions, spec mapping, expected results, the legend, and the initial red status.
+- Verification skills own only the status icon, short AI verification note, calculated summary, evidence path, and `Lỗ hổng đặc tả / Sai lệch` findings.
+- Verification skills may remove an unchecked `[ ]` only when the testcase becomes green.
+- Verification skills must never change `[ ]` to `[x]` or erase an existing `[x]`.
+- Yellow and red testcases must retain their human task checkbox.
+- Keep the AI verification note to one short method-and-result phrase.
+- Store commands, assertions, screenshots, logs, detailed reasoning, and full evidence in `docs/ai/verifications/{feature}.md`, not in the checklist.
 
 ## Done When
 
-- All ACs from the spec are mapped to exactly one status section
-- Trạng thái header reflects honest evidence
-- Next Gate block is present and human-ready (no auto-checked boxes)
-- File is written to `docs/ai/checklists/{feature}.md`
+- Every relevant behavior explicitly required by the spec has at least one testcase.
+- Every testcase maps back to an acceptance criterion.
+- Every testcase starts red with no verification claim.
+- The checklist contains no expected behavior derived from code or summaries.
+- The complete human-facing checklist content is written in Vietnamese.
+- The file is written to `docs/ai/checklists/{feature}.md`.
 
 ## Orchestrator Contract
 
@@ -127,11 +147,11 @@ When this skill is run under `/orchestrator`, append exactly one HTML comment as
 
 - Checklist written:
   `<!-- orchestrator: outcome=continue provides=checklist_path checklist_path=docs/ai/checklists/{feature}.md -->`
-- Required artifact missing or checklist bundle cannot be produced honestly:
+- The approved spec is missing or cannot produce honest testcases:
   `<!-- orchestrator: outcome=stop-blocked -->`
 
 Rules:
-- Emit the comment only after the main human-readable response is complete
-- `checklist_path` must match the file actually written
-- `/manual-checklist` remains human-triggered; this contract does not allow auto-chaining into it
-- If this skill runs standalone, the comment is optional
+
+- Emit the comment only after the main human-readable response is complete.
+- `checklist_path` must match the file actually written.
+- If this skill runs standalone, the comment is optional.

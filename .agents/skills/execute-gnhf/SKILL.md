@@ -105,9 +105,11 @@ You are the inner coding worker of an existing GNHF run.
 Never invoke gnhf, execute-gnhf, or the repository orchestrator from inside this worker.
 
 Treat these approved spec sections as immutable business contracts:
+- Execution Contract
 - Problem
 - Scope
-- Key Behavioral Rules
+- Approved Design Decisions
+- Behavioral Requirements
 - Acceptance Criteria
 - Out of Scope
 
@@ -253,7 +255,7 @@ Use this format:
 - [Checks actually executed during GNHF iterations.]
 
 ## Not Verified
-- Independent `verify-feature` and `verify-runtime` are still pending.
+- Downstream `manual-checklist`, independent `verify-feature`, and `verify-runtime` are still pending.
 
 ## GNHF Evidence
 - Workspace: [absolute worktree path]
@@ -327,7 +329,7 @@ Do not write the final implementation summary until the GNHF stop condition is m
 
 Emit only one orchestrator comment.
 Make every emitted path match an existing file or directory.
-Treat `implementation_workspace_path` as the working directory for downstream `sync-spec`, `verify-feature`, and `verify-runtime` steps.
+Treat `implementation_workspace_path` as the working directory for downstream `manual-checklist`, `verify-feature`, and `verify-runtime` steps.
 
 ## Done When
 

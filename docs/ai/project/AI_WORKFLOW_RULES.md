@@ -36,10 +36,18 @@ Each phase should make clear:
 - what output it produces
 - what decision it enables next
 
-Artifacts should stay concise enough to review quickly without extra tooling.
+Human-facing decision artifacts must stay concise enough to review quickly.
+Agent-facing execution artifacts may be detailed when downstream implementation or verification consumes that detail.
+Detailed artifacts must begin with a concise contract or summary and must avoid repetition that adds no execution value.
 
 ### 3. Add only patterns proven by real usage
 Do not promote a command, skill, artifact, or sub-agent into the standard workflow until it has shown practical value in repeated real tasks.
+
+An explicitly approved experiment may enter a workflow temporarily when:
+- it is labeled experimental
+- its hypothesis and success criteria are visible
+- the previous behavior can be reconstructed or compared
+- it is not described as proven before runtime evidence exists
 
 Avoid:
 - speculative abstractions

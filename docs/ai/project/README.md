@@ -41,6 +41,7 @@ Read when:
 - evaluating a rough idea before spec creation
 - deciding whether to build, reuse, integrate, defer, research, or reject an idea
 - choosing the smallest useful scope before `/create-spec`
+- deciding whether a proposed feature should enter the interactive `/design-spec` review before detailed spec creation
 - checking whether an idea should enter the standard coding workflow
 
 This file defines the lightweight pre-spec decision workflow.
@@ -76,6 +77,7 @@ Read:
 Read:
 - `docs/ai/project/README.md`
 - the workflow document that defines the behavior being implemented or changed
+- when touching the standard feature flow, also read the `design-spec`, `create-spec`, and `review-spec` contracts
 - when touching verification or PR-readiness flow, also read the command contracts for `/verify-feature`, `/verify-runtime`, `/manual-checklist`, and `/review-pr`
 - when touching orchestrated execution, also read `docs/ai/workflows/*.json` and the orchestrator skill contract
 

@@ -20,9 +20,12 @@ Keep the spec as the durable source of truth after implementation and feedback-d
 1. Read the current spec completely
 2. Identify:
    - acceptance criteria
-   - key behavioral rules
-   - technical approach
-   - architecture or pattern notes
+   - execution contract and approved design decisions
+   - behavioral requirements
+   - current system evidence
+   - detailed technical design and file-level change map
+   - state, data, interfaces, validation, security, compatibility, and implementation sequence
+   - verification matrix
    - open questions
 3. Inspect the relevant implemented code paths
 4. Compare the codebase against the current spec
@@ -31,9 +34,16 @@ Keep the spec as the durable source of truth after implementation and feedback-d
 ## Auto-Sync Allowed
 
 You may update these sections automatically when the codebase confirms them:
-- `## Technical Approach`
-- `## Architecture / Pattern Notes`
-- `## Agent Constraints Chosen For This Slice`
+- `## Current System Evidence`
+- `## State / Data / Interface Changes`
+- `## Detailed Technical Design`
+- `## File-Level Change Map`
+- `## Validation / Error / Edge Cases`
+- `## Security / Permission Considerations`
+- `## Compatibility / Migration`
+- `## Implementation Sequence`
+- `## Verification Matrix`
+- `### Agent-Chosen Technical Details`
 - `## Decision Log`
 - implementation constraints
 - technical clarifications
@@ -42,10 +52,12 @@ You may update these sections automatically when the codebase confirms them:
 ## Human Confirmation Required
 
 Do NOT silently change these sections:
+- `## Execution Contract`
 - `## Problem`
 - `## Scope`
 - `## Acceptance Criteria`
-- `## Key Behavioral Rules`
+- `## Approved Design Decisions`
+- `## Behavioral Requirements`
 - `## Out of Scope`
 - any user-visible recommendation or ranking rule that changes from transparent logic to hidden scoring, or the reverse
 
@@ -58,7 +70,7 @@ If the implementation no longer matches those sections:
 ## Output Rules
 
 - Update the same spec file in `docs/ai/specs/`
-- Keep the spec concise and human-readable
+- Keep the spec structured, traceable, and free of repetition that adds no execution value
 - Add or update `## Decision Log` when implementation introduced important durable decisions
 - Preserve unresolved product questions instead of guessing
 

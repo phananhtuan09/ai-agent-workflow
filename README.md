@@ -5,7 +5,7 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 ## Features
 
 - **Multi-Platform Support**: Works with Codex, Claude Code, Google Antigravity, and Pi
-- **Structured Workflows**: Shape → Recon → Decide → Spec → Execute → Sync → Verify
+- **Structured Workflows**: Human Design Review → Detailed Spec → AI Review → Execute → Checklist → Verify
 - **Pre-built Commands**: Spec creation, execution, sync, verification, testing, reviews, and more
 - **Reusable Skills**: Verification, quality checks, design fundamentals, theme generation, and more
 - **Project Wiki Bootstrap**: Seed a shared `project-wiki/` knowledge base alongside workflow docs
@@ -155,19 +155,20 @@ npx ai-workflow-init --all
 
 ---
 
-## Core Workflow: Spec → Execute → Sync → Verify
+## Core Workflow: Design Review → Detailed Spec → AI Review → Execute → Checklist → Verify
 
-This workflow system follows a verification-first development cycle:
+This workflow system separates high-level human decisions from the detailed AI execution contract:
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────────┐
-│    SPEC     │ → │   EXECUTE   │ → │  SYNC SPEC   │ → │ VERIFY FEAT. │ → │ VERIFY RUNTIME │
-│             │    │             │    │              │    │              │    │                │
-│/create-spec │    │/execute-spec│    │ /sync-spec   │    │/verify-feature│   │ /verify-runtime│
-└─────────────┘    └─────────────┘    └──────────────┘    └──────────────┘    └────────────────┘
+/design-spec → human HTML approval → /create-spec → review-spec → /execute-spec → /manual-checklist → /verify-feature → /verify-runtime
 ```
 
-Legacy planning and test-generation commands are still available, but the default feature workflow is spec-driven and ends with implementation plus runtime verification.
+`/design-spec` opens a local Lavish HTML review and persists approved high-level decisions.
+`/create-spec` converts those decisions and codebase evidence into a detailed implementation specification.
+`review-spec` is an automatic AI quality gate; the human does not need to review the full detailed spec unless they choose to.
+`/manual-checklist` creates spec-derived testcases after execution, and both verification steps update its evidence icons.
+The completed workflow returns the checklist as the primary human validation artifact.
+`/sync-spec` and `/review-pr` remain human-triggered tools outside the automated feature workflow.
 
 ---
 
@@ -396,32 +397,37 @@ User: /write-dev-docs memoization
 
 ### Standard Workflow (Single-session)
 
-Best for: Small features, quick fixes, solo work.
+Best for: Features and user-visible changes that need durable product decisions and detailed implementation guidance.
+Use `/execute-task` for small bounded updates that do not need a design artifact.
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌────────────────┐
-│    SPEC     │ → │   EXECUTE   │ → │  SYNC SPEC   │ → │ VERIFY FEAT. │ → │ VERIFY RUNTIME │
-│             │    │             │    │              │    │              │    │                │
-│/create-spec │    │/execute-spec│    │ /sync-spec   │    │/verify-feature│   │ /verify-runtime│
-└─────────────┘    └─────────────┘    └──────────────┘    └──────────────┘    └────────────────┘
+/design-spec → human HTML approval → /create-spec → review-spec → /execute-spec → /manual-checklist → /verify-feature → /verify-runtime
 ```
 
 ```bash
-# 1. Create the feature spec
-/create-spec "user profile"
+# 1. Review and approve the high-level design in Lavish
+/design-spec "user profile"
 
-# 2. Implement from the spec
+# 2. Create the detailed implementation spec from approved decisions
+/create-spec @docs/ai/design-decisions/user-profile.json
+
+# 3. Run the AI spec quality gate
+/review-spec @docs/ai/specs/user-profile.md
+
+# 4. Implement from the reviewed spec
 /execute-spec @docs/ai/specs/user-profile.md
 
-# 3. Sync durable spec details to implementation
-/sync-spec @docs/ai/specs/user-profile.md
+# 5. Generate testcases from the approved spec
+/manual-checklist @docs/ai/specs/user-profile.md
 
-# 4. Verify implementation coverage
+# 6. Verify implementation coverage and update checklist evidence
 /verify-feature @docs/ai/specs/user-profile.md
 
-# 5. Verify observable runtime behavior
+# 7. Verify runtime behavior and finalize checklist evidence
 /verify-runtime @docs/ai/specs/user-profile.md --url http://localhost:3000
 ```
+
+Run `/sync-spec` or `/review-pr` separately when human review calls for those steps.
 
 ### Example: Complex Requirements
 

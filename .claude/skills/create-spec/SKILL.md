@@ -1,104 +1,104 @@
 ---
 name: create-spec
-description: Use when the user asks to create a spec, write a specification, or define requirements for a feature. Creates a durable spec file in docs/ai/specs/ with both business intent and technical approach.
+description: Use when the user asks to create a detailed implementation specification or when an approved design decision manifest must be converted into the durable source of truth for implementation and verification. Creates docs/ai/specs/{feature}.md with approved intent, codebase evidence, concrete technical design, implementation mapping, acceptance criteria, and verification strategy.
 ---
 
 # Create Spec
 
-Create a spec file for the described feature.
+Create the detailed AI-facing implementation and verification contract for an approved feature slice.
 
 ## Process
 
-1. Run `Shape`
-   - Capture:
-     - what the human expects to happen
-     - the happy path
-     - what must not happen
-     - whether the request looks small, medium, large, or epic
-   - Keep this lightweight
-   - Do not write the spec yet
-2. Run `Recon`
-   - Inspect only the nearby codebase context needed to answer:
-     - what the codebase currently does
-     - which existing pattern should be followed
-     - what constraints or dependencies matter
-     - whether the request conflicts with the current architecture or product rules
-   - This is a reality check, not a full implementation plan
-3. Run `Decide`
-   - Choose exactly one result:
-     - `write-spec`
-     - `ask-human`
-     - `split-slices`
-     - `run-spike`
-     - `escalate-conflict`
+1. Determine the authority source.
+   - Under `feature-standard`, require the orchestrator-provided `design_decisions_path` and read the matching `design_path` from that manifest.
+   - Validate the decision manifest with the validator bundled in the matching runtime's `design-spec` skill when available.
+   - In standalone use, gather material human decisions directly in chat before writing.
+   - A standalone invocation must not pretend that chat assumptions were approved through `design-spec`.
+2. Inspect the codebase deeply enough to produce an implementation-ready design.
+   - Confirm current behavior, affected files and symbols, existing boundaries, data and state flow, interfaces, dependencies, validation, failure behavior, security constraints, and verification capabilities.
+   - Record concrete evidence paths in the spec.
+   - Do not copy repository-wide context that does not affect this slice.
+3. Check the approved slice before writing.
+   - Classify important assumptions as confirmed, inferred but safe, needs confirmation, or agent-chosen technical detail.
+   - A human-approved decision may be elaborated technically but must not be changed in meaning.
+   - If implementation discovery exposes a conflict with an approved decision, stop and escalate it instead of silently rewriting the behavior.
+4. Choose exactly one result:
+   - `write-spec`
+   - `ask-human`
+   - `split-slices`
+   - `run-spike`
+   - `escalate-conflict`
    - If the result is not `write-spec`, stop without creating a spec file
-   - Before writing the spec, classify important assumptions into:
-     - confirmed
-     - inferred but safe
-     - needs confirmation
-     - chosen to keep scope small
-   - If an assumption changes core business behavior, fairness logic, ranking logic, thresholds, or user-visible decision-making:
-     - do not leave it implicit
-     - either ask the human, or record it explicitly as a slice constraint in the spec
-4. If `Decide = ask-human`:
+5. If the result is `ask-human`:
    - Ask only the missing questions (max 5), batch them into one block, then wait
-   - After answers arrive, rerun `Shape` + `Recon` + `Decide`
-5. If `Decide = split-slices`:
+   - After answers arrive, re-evaluate the request with the new information
+6. If the result is `split-slices`:
    - Do not write an epic spec
    - Propose the smallest valuable slice and stop
-6. If `Decide = run-spike`:
+7. If the result is `run-spike`:
    - Explain what feasibility or architecture question must be answered first
    - Stop without writing the spec
-7. If `Decide = escalate-conflict`:
+8. If the result is `escalate-conflict`:
    - State the specific conflict with the codebase or business rules
    - Stop without writing the spec
-8. If `Decide = write-spec`:
-   - Start with a provisional complexity classification based on the approved slice
+9. If the result is `write-spec`, classify implementation depth.
    - Score +1 for each true condition:
      - More than 1 primary user flow
      - Persistence across session or restart
      - Validation rules or hard limits
      - Fallback or degraded behavior
-     - Empty/error states that must be defined
-     - Reset/default-selection behavior
+     - Empty or error states that must be defined
+     - Reset or default-selection behavior
      - Migration or backward compatibility expectations
      - More than 2 affected surfaces
-     - Quota/permission/gating behavior
+     - Quota, permission, or gating behavior
+     - External integration or asynchronous boundary
+     - Security-sensitive or destructive behavior
      - More than 8 expected acceptance criteria
    - Tier by score:
      - 0-2 = Lite
      - 3-5 = Standard
      - 6+ = Extended
-   - Forced minimum tier rules:
-     - If the feature includes migration, fallback, or quota behavior, it cannot be Lite
-     - If the feature has more than 3 distinct behavior areas, it cannot be Lite
-     - Distinct behavior areas means separate user-facing behavior clusters such as setup/configuration, main action flow, persistence, sharing/export, fallback/recovery, or admin controls
-9. Choose the spec size target by the final tier:
-   - Lite: 25-50 lines
-   - Standard: 40-90 lines
-   - Extended: 91-140 lines
-10. If the feature cannot be specified clearly within the target range:
-    - Lite should usually stay within 7 ACs
-    - Standard should usually stay within 12 ACs
-    - Extended should usually stay within 18 ACs
-    - If an Extended spec would exceed 18 ACs or 140 lines, you must either split it into sub-features or add a short addendum
-    - Do not bloat the main spec file to absorb unrelated or weakly related behavior
-11. Write the spec file to `docs/ai/specs/{feature-name}.md`
-    - `{feature-name}` must be a kebab-case slug derived from the feature name
+   - Migration, fallback, quota, security-sensitive behavior, or more than 3 distinct behavior areas cannot be Lite.
+   - Tier controls required analysis depth, not file length or acceptance-criteria count.
+10. Write `docs/ai/specs/{feature-name}.md`.
+    - `{feature-name}` must be the approved kebab-case feature slug when available.
+    - Include every section that is relevant to execution or verification.
+    - Write `Không áp dụng` with a short reason for a required risk section that is not relevant.
+    - Do not omit detail only to keep the file short.
+    - Split only when the request contains independently valuable outcomes or cannot remain one executable slice.
 
 ## Spec Format
 
-Concise, bullet-first, behavior-complete — no implementation details:
-
 ```markdown
 ## Tier
-[`Lite` | `Standard` | `Extended`]
+[Lite | Standard | Extended]
+
+## Execution Contract
+### Goal
+- ...
+
+### Approved Decision Sources
+- Design decisions: `docs/ai/design-decisions/{feature}.json`
+- D-001: ...
+
+### Must Happen
+- ...
+
+### Must Not Happen
+- ...
 
 ## Problem
-[1-2 sentences: what is broken or missing]
+...
 
 ## Scope
-[2-6 bullets: what the feature does for the user and what is included in this request]
+- ...
+
+## Out of Scope
+- ...
+
+## Approved Design Decisions
+- D-001: [decision and rationale]
 
 ## Assumption Check
 ### Confirmed
@@ -108,80 +108,90 @@ Concise, bullet-first, behavior-complete — no implementation details:
 - ...
 
 ### Needs Confirmation
+- Không có blocking product question.
+
+### Agent-Chosen Technical Details
 - ...
 
-### Chosen To Keep Scope Small
+## Current System Evidence
+- `path/to/file`: [current behavior, symbol, or constraint]
+
+## Behavioral Requirements
+### {Behavior Area}
 - ...
 
-## Key Behavioral Rules
-[Use as needed. For Standard/Extended, usually 3-8 bullets. Include persistence, validation, fallback, reset/default behavior, visible output rules, compatibility expectations, or other constraints that affect acceptance.]
+## State / Data / Interface Changes
+- ...
 
-## Agent Constraints Chosen For This Slice
-[Optional. Use when the agent had to choose a default rule or simplification to keep the slice executable without overbuilding.]
+## Detailed Technical Design
+### {Component or Boundary}
+- Responsibility: ...
+- Inputs and outputs: ...
+- State transition or data flow: ...
+- Error behavior: ...
 
-## Technical Approach
-[Describe the intended implementation direction at the architecture/pattern level. No file-by-file task breakdown.]
+## File-Level Change Map
+| Surface | Planned change | Reason | Decision / AC |
+|---|---|---|---|
+| `path/to/file` | ... | ... | D-001 / AC1 |
 
-## Architecture / Pattern Notes
-[Optional. Use when existing project patterns, boundaries, or architectural constraints materially affect implementation.]
+## Validation / Error / Edge Cases
+- ...
+
+## Security / Permission Considerations
+- ...
+
+## Compatibility / Migration
+- ...
+
+## Implementation Sequence
+1. ...
 
 ## Acceptance Criteria
-[Lite specs may use a flat list. Standard/Extended specs should group ACs by behavior area.]
-
-### {Behavior area 1}
+### {Behavior Area}
 - [ ] AC1: ...
-- [ ] AC2: ...
 
-### {Behavior area 2}
-- [ ] AC3: ...
-
-## Edge Cases / Failure States
-- ...
-- If there are no meaningful edge cases in scope, write: `- Không có edge case đáng kể trong phạm vi này.`
-
-## Out of Scope
-- ...
+## Verification Matrix
+| AC | Evidence strategy | Primary surface |
+|---|---|---|
+| AC1 | Runtime / focused test / inspection | ... |
 
 ## Open Questions
-- ...
-- If there are no open questions, write: `- Không có.`
+- Không có blocking question.
 
 ## Decision Log
 - ...
-- If there are no durable implementation decisions yet, write: `- Chưa có quyết định kỹ thuật bền cần ghi nhận.`
 ```
 
 ## Rules
 
-- All assistant responses, questions, and generated spec files must be written in Vietnamese
-- Before writing the spec, always perform `Shape` + `Recon` + `Decide`
-- The agent may refuse to write a spec yet if `Decide` is not `write-spec`
-- If the request is too large, propose slicing instead of writing one broad spec
-- If feasibility is uncertain, require a spike instead of speculating in the spec
-- If the request conflicts with the codebase or business rules, surface that conflict before spec creation
-- Include technical approach and architecture notes only at the durable design level
-- Do not include implementation details such as file paths, function names, schema/model names, framework choices, storage keys, or code structure
-- You may include behavioral constraints that are required to keep planning bounded: validation limits, persistence scope, fallback behavior, reset/default behavior, compatibility expectations, and visible error/empty states
-- `## Assumption Check` must make unclear business logic visible instead of silently converting it into confirmed intent
-- `## Agent Constraints Chosen For This Slice` is required when the agent chooses a default rule to keep scope small
-- If a core rule is not confirmed but still needed for execution, record it under `Chosen To Keep Scope Small` and `## Agent Constraints Chosen For This Slice`
-- Do not present agent-chosen defaults as if they were directly confirmed by the human
-- Compatibility and migration expectations are allowed only at the user-visible or product-contract level, for example: old saved settings remain usable, upgrade does not force the user to reconfigure, or incompatible old selections reset safely
-- Do not include migration mechanisms such as schema changes, migration scripts, table/collection changes, or refactor steps
-- No project context (already provided by repository instructions such as `AGENTS.md` or `.claude/CLAUDE.md`)
-- Acceptance criteria must be verifiable and user-observable where applicable
-- Group acceptance criteria by behavior area when the feature is Standard or Extended
-- Keep paragraphs short; prefer bullets over prose
-- If something is unclear after answers, list it in Open Questions and do not assume
-- A spec is only valid if an executor can implement from this spec and later sync it without inventing new product behavior
+- Write assistant responses, questions, and generated spec files in Vietnamese.
+- Keep code symbols, file paths, API names, schema names, and JSON keys in English.
+- Treat approved design decisions as human authority and never reinterpret them silently.
+- Under `feature-standard`, fail closed when `design_decisions_path` is missing, invalid, or does not match its HTML checksum.
+- Include concrete file paths, symbols, interfaces, schema changes, migration mechanisms, storage keys, implementation order, and test surfaces when they are grounded in inspected code and useful to the executor.
+- Do not invent low-level detail when codebase evidence is insufficient.
+- Label agent-chosen technical decisions separately from human-approved behavior.
+- Do not add product behavior, exclusions, thresholds, or visible defaults that are absent from the approved decisions or explicit standalone human input.
+- Do not use line count or acceptance-criteria count as a completeness target or failure rule.
+- Prefer information density and traceability over repetition.
+- Keep one executable slice; split by independent outcome or dependency boundary, not document length.
+- Every acceptance criterion must be observable or have a concrete verification strategy.
+- Map every acceptance criterion to implementation and evidence surfaces.
+- Blocking product questions are incompatible with `write-spec`; use `ask-human` instead.
+- A spec is valid only when an executor can implement and a verifier can evaluate it without inventing behavior.
 
 ## Allowed Outcomes
 
+The command does not always produce a spec file.
+
+Valid outcomes are:
 - `Spec written`
 - `Questions needed`
 - `Slice proposed`
 - `Spike required`
 - `Conflict escalated`
+- `Blocked`
 
 ## Orchestrator Contract
 
@@ -197,29 +207,25 @@ When this skill is run under `/orchestrator`, append exactly one HTML comment as
   `<!-- orchestrator: outcome=stop-run-spike -->`
 - Conflict escalated:
   `<!-- orchestrator: outcome=stop-escalate-conflict -->`
+- Missing or invalid required authority artifact:
+  `<!-- orchestrator: outcome=stop-blocked -->`
 
 Rules:
 - Emit the comment only after the main human-readable response is complete
 - `spec_path` must match the file actually written
-- When invoked under `/orchestrator` and the run state already contains `shape_checked`, `recon_checked`, and `decision_ready`, do not rerun Process steps 1-3; continue from the post-`Decide` path that matches the current decision
+- Under `feature-standard`, emit `continue` only after the design decision manifest passes validation and every approved decision is represented in the spec
 - If this skill runs standalone, the comment is optional
 
-## Self-Check Before Writing the File
+## Self-Check Before Writing The File
 
-- Did `Shape` identify the expected behavior, happy path, and must-not-happen behavior?
-- Did `Recon` check current behavior, nearby patterns, and constraints?
-- Was `Decide` made explicitly before writing?
-- If the request was too broad, did you stop and propose slicing instead of forcing one spec?
-- If feasibility was uncertain, did you stop and require a spike?
-- If there was a codebase or business-rule conflict, did you surface it before writing?
-- Is the final tier still appropriate after any user answers?
-- Did you write the final tier explicitly in `## Tier`?
-- Does the spec stay within the target size for that tier?
-- Does the AC count stay within the usual range for that tier? If not, did you split the feature or add a short addendum?
-- Are all acceptance criteria testable?
-- Are key persistence, validation, fallback, reset/default, and empty/error-state rules included when relevant?
-- Does `## Assumption Check` clearly separate confirmed intent from agent-selected defaults?
-- If the agent chose a default rule to keep scope small, is it recorded in `## Agent Constraints Chosen For This Slice` instead of being hidden inside behavioral rules?
-- Does the technical approach stay at a durable architecture/pattern level?
-- Are implementation details excluded?
-- Can an executor implement from this spec and later sync it without inventing new behavior?
+- Is the authority source explicit and valid?
+- Does every approved `D-xxx` decision appear without semantic drift?
+- Are goal, scope, must-happen, and must-not-happen behavior easy to locate?
+- Is every current-system claim backed by a concrete codebase path or direct evidence?
+- Are affected files, symbols, interfaces, state, data, validation, and failure paths detailed when relevant?
+- Are security, permission, compatibility, migration, and rollback concerns addressed or marked not applicable with a reason?
+- Is the implementation sequence feasible and dependency-aware?
+- Does every acceptance criterion map to implementation and verification surfaces?
+- Are agent-chosen technical details clearly separated from human decisions?
+- Are there zero blocking product questions in a spec that will return `continue`?
+- Can a weaker executor implement the slice without rediscovering the design or inventing behavior?

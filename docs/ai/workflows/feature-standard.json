@@ -1,53 +1,36 @@
 {
   "id": "feature-standard",
   "name": "Feature Standard",
-  "description": "Workflow standard cho feature: Shape, Recon, Decide truoc create-spec; sau do execute, sync, verify implementation, roi verify runtime.",
+  "description": "Workflow standard cho feature: human review design HTML; tao detailed spec tu approved decisions; AI review spec; sau do execute, tao manual checklist, va verify tu dong.",
+  "status": "experimental",
+  "experiment": {
+    "hypothesis": "Tach human-facing design review khoi AI-facing detailed spec se giam product ambiguity ma khong buoc human doc implementation detail.",
+    "success_criteria": [
+      "Khong execute khi design decision manifest chua hop le",
+      "Tat ca human decisions trace duoc vao detailed spec",
+      "review-spec khong fail chi vi line count hoac AC count",
+      "Workflow chi co mot human decision loop tai design-spec"
+    ]
+  },
   "steps": [
     {
-      "id": "shape",
-      "title": "Shape",
-      "type": "gate",
-      "value": "shape",
-      "hint": "Lam ro expectation, happy path, must-not-happen, va rough size",
-      "exec": "inline",
-      "value_inline": "shape",
-      "auto": true,
-      "human_gate": false,
-      "provides": ["shape_checked"],
-      "skippable": false
-    },
-    {
-      "id": "recon",
-      "title": "Recon",
-      "type": "gate",
-      "value": "recon",
-      "hint": "Check behavior hien tai, pattern gan nhat, constraint, va conflict",
-      "exec": "inline",
-      "value_inline": "recon",
-      "auto": true,
-      "human_gate": false,
-      "requires": ["shape_checked"],
-      "provides": ["recon_checked"],
-      "skippable": false
-    },
-    {
-      "id": "decide",
-      "title": "Decide",
-      "type": "gate",
-      "value": "decide",
-      "hint": "Chon: write spec / ask / slice / spike / conflict",
-      "exec": "inline",
-      "value_inline": "decide",
+      "id": "design-spec",
+      "title": "Design spec",
+      "type": "command",
+      "value": "/design-spec",
+      "hint": "Tao HTML review, thu thap high-level human decisions qua Lavish, va persist approval manifest",
+      "exec": "skill",
+      "skill": "design-spec",
       "auto": true,
       "human_gate": false,
       "stop_on_outcome": [
         "stop-ask-human",
         "stop-split-slices",
         "stop-run-spike",
-        "stop-escalate-conflict"
+        "stop-escalate-conflict",
+        "stop-blocked"
       ],
-      "requires": ["recon_checked"],
-      "provides": ["decision_ready"],
+      "provides": ["design_path", "design_decisions_path"],
       "skippable": false
     },
     {
@@ -55,7 +38,7 @@
       "title": "Create spec",
       "type": "command",
       "value": "/create-spec",
-      "hint": "Tao spec tu ket qua Shape/Recon/Decide",
+      "hint": "Tao detailed AI-facing spec tu approved design decisions va codebase evidence",
       "exec": "skill",
       "skill": "create-spec",
       "auto": true,
@@ -64,9 +47,10 @@
         "stop-ask-human",
         "stop-split-slices",
         "stop-run-spike",
-        "stop-escalate-conflict"
+        "stop-escalate-conflict",
+        "stop-blocked"
       ],
-      "requires": ["decision_ready"],
+      "requires": ["design_decisions_path"],
       "provides": ["spec_path"],
       "skippable": false
     },
@@ -75,14 +59,14 @@
       "title": "Review spec",
       "type": "subagent",
       "value": "review-spec",
-      "hint": "Review spec mot lan cho clarity, bounded scope, va execution readiness",
+      "hint": "AI review decision traceability, codebase accuracy, implementation completeness, va verification readiness",
       "exec": "subagent",
       "subagent": "review-spec",
       "auto": true,
-      "human_gate": true,
-      "human_gate_reason": "Spec vua duoc tao va review xong. Human can doc ket qua review-spec truoc khi cho phep execute.",
+      "human_gate": false,
       "stop_on_outcome": ["stop-fail"],
-      "requires": ["spec_path"],
+      "requires": ["design_decisions_path", "spec_path"],
+      "provides": ["spec_reviewed"],
       "skippable": false
     },
     {
@@ -94,26 +78,25 @@
       "exec": "skill",
       "skill": "execute-spec",
       "auto": true,
-      "human_gate": true,
-      "human_gate_reason": "Implementation vua chay xong. Human can review code/result truoc khi sync spec va verify tiep.",
+      "human_gate": false,
       "stop_on_outcome": ["stop-blocked", "stop-too-broad"],
       "uses_repo_lock": true,
-      "requires": ["spec_path"],
+      "requires": ["spec_path", "spec_reviewed"],
       "provides": ["summary_path"],
       "skippable": false
     },
     {
-      "id": "sync-spec",
-      "title": "Sync spec",
+      "id": "manual-checklist",
+      "title": "Manual checklist",
       "type": "command",
-      "value": "/sync-spec",
-      "hint": "Reconcile spec voi codebase sau implement",
+      "value": "/manual-checklist",
+      "hint": "Tao testcase tu approved spec de verifier cap nhat va human validate",
       "exec": "skill",
-      "skill": "sync-spec",
+      "skill": "manual-checklist",
       "auto": true,
       "human_gate": false,
       "requires": ["spec_path", "summary_path"],
-      "provides": ["spec_synced"],
+      "provides": ["checklist_path"],
       "skippable": false
     },
     {
@@ -121,67 +104,30 @@
       "title": "Verify feature",
       "type": "skill",
       "value": "verify-feature",
-      "hint": "Verify implementation readiness theo latest synced spec",
+      "hint": "Verify implementation readiness theo approved spec",
       "exec": "skill",
       "skill": "verify-feature",
       "auto": true,
       "human_gate": false,
       "stop_on_outcome": ["stop-fail", "stop-blocked"],
-      "requires": ["spec_synced"],
+      "requires": ["spec_path", "summary_path", "checklist_path"],
       "provides": ["verification_path"],
       "skippable": false
     },
     {
       "id": "verify-runtime",
-      "title": "Verify runtime",
+      "title": "Verify end to end",
       "type": "command",
       "value": "/verify-runtime",
-      "hint": "Verify observable runtime behavior theo latest synced spec",
+      "hint": "Run browser E2E theo approved spec va config cua verify-runtime",
       "exec": "skill",
       "skill": "verify-runtime",
       "auto": true,
       "human_gate": false,
       "stop_on_outcome": ["stop-fail", "stop-blocked"],
-      "requires": ["spec_synced", "verification_path"],
-      "provides": ["runtime_verified"],
-      "skippable": false,
-      "inputs": {
-        "url": "ask-at-step"
-      }
-    },
-    {
-      "id": "manual-checklist",
-      "title": "Manual checklist",
-      "type": "command",
-      "value": "/manual-checklist",
-      "hint": "Bundle artifacts thanh checklist tieng Viet truoc independent PR review",
-      "exec": "skill",
-      "skill": "manual-checklist",
-      "auto": false,
-      "human_gate": true,
-      "human_gate_reason": "Human hoan thanh manual checks va doc checklist truoc khi trigger PR review.",
-      "requires": ["spec_path", "summary_path", "verification_path", "runtime_verified"],
-      "provides": ["checklist_path"],
+      "requires": ["spec_path", "verification_path", "checklist_path"],
+      "provides": ["runtime_verified", "checklist_path"],
       "skippable": false
-    },
-    {
-      "id": "review-pr",
-      "title": "Review PR",
-      "type": "subagent",
-      "value": "review-pr",
-      "hint": "Review diff va evidence; tach Must fix, human decision, va manual verification truoc khi tao PR",
-      "exec": "subagent",
-      "subagent": "review-pr",
-      "auto": false,
-      "human_gate": true,
-      "human_gate_reason": "PR review hoan tat. Human quyet dinh co tao/approve PR hay quay lai sua.",
-      "stop_on_outcome": ["stop-fail", "stop-ask-human", "stop-blocked"],
-      "requires": ["spec_path", "summary_path", "verification_path", "runtime_verified", "checklist_path"],
-      "provides": ["pr_review_path"],
-      "skippable": false,
-      "inputs": {
-        "base_ref": "ask-at-step"
-      }
     }
   ]
 }

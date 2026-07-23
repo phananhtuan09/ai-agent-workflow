@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Đánh giá đơn giản hóa workflow feature-standard</title>
+  <style>
+    :root {
+      --ink: #17211b;
+      --muted: #657069;
+      --paper: #f4f0e7;
+      --surface: #fffdf8;
+      --line: #d9d4c8;
+      --navy: #17324d;
+      --coral: #db5a42;
+      --green: #25745a;
+      --amber: #ad6b08;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 10% 0%, rgba(219, 90, 66, 0.09), transparent 28rem), var(--paper);
+      color: var(--ink);
+      font-family: "Aptos", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; }
+    code { padding: 0.12rem 0.35rem; background: #ece9e1; }
+    .shell { width: min(1080px, calc(100% - 32px)); margin: 24px auto 64px; }
+    .hero { padding: clamp(28px, 7vw, 64px); background: var(--navy); color: white; border-radius: 2px 2px 28px 2px; }
+    .hero p { max-width: 760px; color: #dce6ef; }
+    .meta { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 30px; font-size: 0.9rem; }
+    .panel { margin-top: 18px; padding: clamp(22px, 5vw, 40px); border: 1px solid var(--line); background: var(--surface); }
+    .decision { border-left: 5px solid var(--coral); padding-left: 18px; font-size: 1.15rem; }
+    .flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+    .flow > div { padding: 20px; background: #eef2f4; }
+    .finding { padding: 18px 0; border-top: 1px solid var(--line); }
+    .finding:first-child { border-top: 0; }
+    .badge { display: inline-block; padding: 3px 8px; border: 1px solid currentColor; border-radius: 999px; color: var(--amber); font-size: 0.78rem; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; }
+    .pass { color: var(--green); font-weight: 700; }
+    @media (max-width: 720px) {
+      .flow { grid-template-columns: 1fr; }
+      .arrow { text-align: center; transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p>Workflow evaluation · 23-07-2026</p>
+      <h1>Đơn giản hóa feature-standard</h1>
+      <p>Đánh giá thay đổi loại bỏ các bước ít giá trị và bảo vệ spec khỏi mutation tự động sau human approval.</p>
+      <div class="meta">
+        <span><strong>Chiến lược:</strong> Trace-first, thiếu session corpus</span>
+        <span><strong>Quality:</strong> uncalibrated</span>
+        <span><strong>Runtime/model:</strong> unknown</span>
+      </div>
+    </header>
+
+    <section class="panel" id="decision-summary">
+      <h2>Quyết định</h2>
+      <p class="decision">Áp dụng workflow chỉ giữ human gate tại <code>review-spec</code>, không tự chạy <code>sync-spec</code> hoặc <code>review-pr</code>, và tự tạo <code>manual-checklist</code> sau execution để verification cập nhật làm artifact chính cho human.</p>
+      <p>Chưa có session trace để định lượng mức giảm thời gian, token, rework, hoặc tỷ lệ thành công.</p>
+      <p>Kết quả hiệu quả phải được đo lại trên các run tương đương sau thay đổi.</p>
+    </section>
+
+    <section class="panel" id="session-behavior">
+      <h2>Hành vi session</h2>
+      <p>Session corpus: unavailable.</p>
+      <p>Known denominator: unknown.</p>
+      <p>Human báo cáo ba step <code>Shape</code>, <code>Recon</code>, và <code>Decide</code> không tạo đủ giá trị sau thời gian sử dụng.</p>
+      <p>Không có normalized trace để xác định first divergence, recurrence, hoặc lượng workflow overhead.</p>
+    </section>
+
+    <section class="panel" id="key-findings">
+      <h2>Phát hiện chính</h2>
+      <div class="finding">
+        <h3>F-01 · Pre-spec orchestration overhead</h3>
+        <span class="badge">Human-reported · recurrence unknown</span>
+        <p>Ba step riêng tạo contract trung gian nhưng không được human đánh giá là hữu ích.</p>
+        <p>First divergence: unknown do thiếu trace.</p>
+        <p>Thay đổi nhỏ nhất: bỏ ba step khỏi config và để <code>create-spec</code> tự làm các guardrail nội bộ cần thiết.</p>
+      </div>
+      <div class="finding">
+        <h3>F-02 · Spec mutation làm yếu source of truth</h3>
+        <span class="badge">Direct artifact evidence</span>
+        <p>Baseline tự chạy <code>sync-spec</code> sau implementation và yêu cầu verification dựa trên <code>spec_synced</code>.</p>
+        <p>Điều này cho phép agent thay đổi artifact đã được human duyệt trong cùng automated run.</p>
+        <p>Thay đổi nhỏ nhất: bỏ step và contract <code>spec_synced</code>; verification đọc approved spec.</p>
+      </div>
+      <div class="finding">
+        <h3>F-03 · Checklist cần tách definition khỏi verification evidence</h3>
+        <span class="badge">Direct artifact evidence</span>
+        <p>Checklist có giá trị khi giúp human validate feature mà không đọc code, nhưng baseline tạo nó sau verification và suy luận nội dung từ nhiều artifact.</p>
+        <p>Thay đổi nhỏ nhất: tạo testcase từ approved spec sau execution, rồi chỉ cho verifier cập nhật evidence status.</p>
+      </div>
+      <div class="finding">
+        <h3>F-04 · Nhiều hơn một human gate</h3>
+        <span class="badge">Direct artifact evidence</span>
+        <p>Baseline có human gate tại cả <code>review-spec</code> và <code>execute-spec</code>.</p>
+        <p>Thay đổi nhỏ nhất: giữ gate duy nhất tại <code>review-spec</code> và auto-chain execution với verification.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="cause-attribution">
+      <h2>Quy nguyên nhân</h2>
+      <table>
+        <thead><tr><th>Finding</th><th>Attribution</th><th>Alternative explanation</th><th>Confidence</th></tr></thead>
+        <tbody>
+          <tr><td>F-01</td><td>workflow-caused, theo human report</td><td>Giá trị có thể phụ thuộc task class hoặc model.</td><td>Low do thiếu trace.</td></tr>
+          <tr><td>F-02</td><td>workflow-caused</td><td><code>sync-spec</code> có thể hữu ích khi human chủ động yêu cầu.</td><td>High cho design risk.</td></tr>
+          <tr><td>F-03</td><td>workflow-caused</td><td>Checklist có thể tiếp tục human-triggered, nhưng như vậy workflow không trả artifact validation cuối cùng mà human cần.</td><td>High cho ownership mismatch.</td></tr>
+          <tr><td>F-04</td><td>workflow-caused</td><td>Gate sau implementation có thể phù hợp với workflow rủi ro cao khác.</td><td>High với expected behavior hiện tại.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel" id="improvement-impact">
+      <h2>Tác động thay đổi</h2>
+      <div class="flow">
+        <div><strong>Trước</strong><br>11 step<br>2 human gate<br>Auto-sync spec<br>3 human-owned review step trong config</div>
+        <div class="arrow">→</div>
+        <div><strong>Sau</strong><br>6 step<br>1 human gate<br>Approved spec không bị auto-mutate<br>Checklist spec-derived là artifact cuối cho human</div>
+      </div>
+      <p>Mức cải thiện runtime: Chưa đo.</p>
+      <p>Regression risk chính là implementation divergence không được ghi vào spec tự động.</p>
+      <p>Risk này được làm rõ bằng execution summary, verification artifact, và quyền human gọi <code>sync-spec</code> khi cần.</p>
+    </section>
+
+    <section class="panel" id="action-plan">
+      <h2>Kế hoạch hành động</h2>
+      <p class="pass">Đã cập nhật workflow config, checklist ownership, orchestrator contract, execution/verification skill, và coding standard.</p>
+      <p>Run regression exercise cho một feature nhỏ, một feature có ambiguity, và một feature có runtime verification.</p>
+      <p>Thu normalized traces và so sánh số lần pause, human intervention, rework, cùng outcome quality với baseline tương đương.</p>
+      <p>Chỉ cân nhắc thêm gate hoặc step trở lại khi trace cho thấy failure mechanism lặp lại và thay đổi nhỏ hơn không đủ.</p>
+    </section>
+
+    <section class="panel" id="scope-limitations">
+      <h2>Giới hạn</h2>
+      <p>Không có raw transcript hoặc normalized session trace.</p>
+      <p>Không có denominator, cohort, model, runtime, duration, token usage, hoặc human calibration set.</p>
+      <p><code>evaluation_quality_status</code>: uncalibrated.</p>
+      <p>Evidence support metric: Chưa đo.</p>
+      <p>First-divergence agreement: Chưa đo.</p>
+      <p>Attribution agreement: Chưa đo.</p>
+    </section>
+
+    <section class="panel" id="evidence-appendix">
+      <h2>Phụ lục bằng chứng</h2>
+      <p>Human report ngày 23-07-2026 xác định các bước cần bỏ và gate mong muốn.</p>
+      <p>Baseline artifact: <code>docs/ai/workflows/feature-standard.json</code> trước thay đổi.</p>
+      <p>Contract artifacts: <code>.agents/skills/orchestrator/SKILL.md</code> và <code>.claude/skills/orchestrator/SKILL.md</code>.</p>
+      <p>Expected behavior: workflow dừng duy nhất sau <code>review-spec</code>, sau đó tự chạy execution, tạo checklist từ spec, cập nhật evidence qua verification, và trả checklist cho human mà không tự sửa spec.</p>
+      <p>Prohibited behavior: tự chạy <code>sync-spec</code> hoặc <code>review-pr</code>; định nghĩa testcase từ code; gán evidence xanh từ self-confidence hoặc indirect checks; thêm lại pre-spec orchestrator contracts; tạo human gate thứ hai.</p>
+    </section>
+  </main>
+</body>
+</html>

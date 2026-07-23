@@ -19,20 +19,20 @@ Non-negotiable:
 - Do NOT create durable plan artifacts by default
 - Do NOT invent new product behavior during execution
 - If the spec is missing a required product decision, stop and ask
-- If the spec turns out to be too broad for one safe implementation pass, stop and send the work back to `Decide`
+- If the spec turns out to be too broad for one safe implementation pass, stop and ask the human to rescope the spec
 - Use only lightweight local exploration needed to implement the current change safely
 
 ## Startup
 
 1. Read the spec file completely
-2. Identify the acceptance criteria, behavioral rules, technical approach, and open questions
+2. Identify the execution contract, approved decisions, acceptance criteria, detailed technical design, implementation sequence, verification matrix, and open questions
 3. If critical product behavior is unresolved:
    - Stop and ask instead of guessing
 4. If the spec is executable:
    - Implement directly from the spec
 5. If the spec is executable in principle but too broad, too mixed, or not sliceable in one pass:
    - Stop
-   - Report that execution should return to `Decide`
+   - Report that the spec needs human rescoping before execution continues
    - Point to the relevant ACs or sections causing the problem
 
 ## Execution Process
@@ -47,9 +47,9 @@ Non-negotiable:
    - Add or update a focused automated test only when it has clear regression value: non-trivial validation or business rules, permission/authorization, persistence or state transitions, integration boundaries, or a regression bug being fixed
    - Do not introduce a test suite, test infrastructure, or unit/integration tests merely to satisfy a workflow ritual
 6. Validate changed behavior where practical
-7. Record important implementation decisions for later spec sync
-8. Do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded under `## Agent Constraints Chosen For This Slice`
-9. If execution requires choosing one of those rules to complete the slice safely, record it explicitly for later sync instead of leaving it implicit in code
+7. Record important implementation decisions in the execution summary without modifying the approved spec
+8. Do not invent thresholds, scoring weights, ranking formulas, fairness rules, or tie-breakers in code unless they already exist in the spec or are explicitly recorded under `### Agent-Chosen Technical Details`
+9. If execution requires choosing one of those rules to complete the slice safely, stop and ask the human instead of leaving it implicit in code
 10. If the spec says the logic should be transparent, visible, simple, or non-hidden, do not implement it as an opaque weighted score or hidden heuristic
 11. In those cases, prefer readable rule chains, named tie-breakers, or UI-visible reasons that can be traced back to the spec
 
@@ -58,8 +58,9 @@ Non-negotiable:
 - Human feedback may trigger additional edit turns after the initial implementation
 - Continue refining the code until the requested behavior settles
 - Do not rewrite the spec automatically during these turns unless the user explicitly asks
-- Do not silently absorb extra scope discovered during execution; send it back to `Decide`
-- When the code has stabilized, run `/sync-spec`
+- Do not silently absorb extra scope discovered during execution; stop and ask the human to rescope it
+- When the code has stabilized, finish the execution summary and leave the approved spec unchanged
+- The human may invoke `/sync-spec` separately when they intentionally want to reconcile the spec
 
 ## After Execution
 
@@ -107,7 +108,7 @@ If blocked because the spec is too broad or mixes multiple slices:
 - Stop immediately
 - Report that the spec should be split
 - Point to the affected sections or AC groups
-- Recommend returning to `Decide`
+- Recommend revising or splitting the spec before retrying execution
 
 ## Orchestrator Contract
 
