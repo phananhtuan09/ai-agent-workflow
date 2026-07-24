@@ -18,7 +18,7 @@
       "title": "Design spec",
       "type": "command",
       "value": "/design-spec",
-      "hint": "Tao HTML review, thu thap high-level human decisions qua Lavish, va persist approval manifest",
+      "hint": "Tao/mo HTML review local; dung cho human approve async; resume de doc manifest/feedback va persist contract",
       "exec": "skill",
       "skill": "design-spec",
       "auto": true,

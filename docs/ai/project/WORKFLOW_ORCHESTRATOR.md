@@ -127,7 +127,7 @@ Orchestrator không được suy đoán outcome hoặc artifact path từ prose 
 
 ## Feature Standard Contracts
 
-- `design_path`: HTML review surface do `design-spec` tạo và human duyệt trong Lavish
+- `design_path`: HTML review surface do `design-spec` tạo và human duyệt qua local runner
 - `design_decisions_path`: validated approval manifest do `design-spec` persist sau approval
 - `spec_path`: spec đã được tạo và dùng làm source of truth cho các step sau
 - `spec_reviewed`: `review-spec` đã pass decision traceability và execution readiness

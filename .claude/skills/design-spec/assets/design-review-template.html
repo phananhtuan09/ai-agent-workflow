@@ -1,9 +1,5 @@
 <!doctype html>
-<html
-  lang="vi"
-  data-feature-slug="REPLACE_FEATURE_SLUG"
-  data-design-revision="REPLACE_DESIGN_REVISION"
->
+<html lang="vi" data-feature-slug="REPLACE_FEATURE_SLUG" data-design-revision="REPLACE_DESIGN_REVISION">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -31,7 +27,6 @@
         --space-3: 1.5rem;
         --space-4: 2rem;
         --space-6: 3rem;
-        --space-8: 4rem;
       }
 
       * {
@@ -45,11 +40,7 @@
       body {
         margin: 0;
         background:
-          radial-gradient(
-            circle at 8% 0%,
-            rgba(217, 93, 67, 0.12),
-            transparent 28rem
-          ),
+          radial-gradient(circle at 8% 0%, rgba(217, 93, 67, 0.12), transparent 28rem),
           linear-gradient(180deg, #ece5d9 0, var(--paper) 34rem);
         color: var(--ink);
         font-family: "Aptos", "Segoe UI", sans-serif;
@@ -67,16 +58,14 @@
       }
 
       h1 {
-        max-width: 14ch;
+        max-width: 15ch;
         margin-bottom: var(--space-2);
-        font-size: clamp(2.7rem, 8vw, 6.2rem);
-        letter-spacing: -0.05em;
+        font-size: clamp(2.5rem, 8vw, 5.8rem);
       }
 
       h2 {
         margin-bottom: var(--space-3);
         font-size: clamp(1.7rem, 4vw, 2.7rem);
-        letter-spacing: -0.025em;
       }
 
       h3,
@@ -90,11 +79,15 @@
         margin: 0 0 var(--space-2);
       }
 
+      code,
+      pre {
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+
       code {
         padding: 0.12rem 0.34rem;
         border-radius: 3px;
         background: #ebe7dd;
-        font-family: "SFMono-Regular", Consolas, monospace;
         font-size: 0.9em;
       }
 
@@ -141,9 +134,13 @@
         content: "";
       }
 
-      .hero-copy {
+      .hero-copy,
+      .meta {
         position: relative;
         z-index: 1;
+      }
+
+      .hero-copy {
         max-width: 850px;
       }
 
@@ -163,8 +160,6 @@
       }
 
       .meta {
-        position: relative;
-        z-index: 1;
         display: flex;
         flex-wrap: wrap;
         gap: 10px 24px;
@@ -205,7 +200,8 @@
 
       .fact-box,
       .scope-box,
-      .risk-box {
+      .risk-box,
+      .preview-box {
         min-width: 0;
         padding: var(--space-3);
         border: 1px solid var(--line);
@@ -224,6 +220,10 @@
         border-top: 4px solid var(--amber);
       }
 
+      .preview-box {
+        border-top: 4px solid var(--coral);
+      }
+
       .flow {
         counter-reset: flow;
         display: grid;
@@ -235,7 +235,6 @@
 
       .flow li {
         counter-increment: flow;
-        position: relative;
         min-width: 0;
         min-height: 170px;
         padding: var(--space-3);
@@ -333,7 +332,8 @@
       }
 
       .rationale,
-      .constraints {
+      .constraints,
+      .feedback {
         width: 100%;
         min-height: 96px;
         margin-top: var(--space-2);
@@ -352,27 +352,44 @@
 
       .approval-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
         gap: var(--space-3);
-        align-items: end;
+        align-items: start;
       }
 
-      .approve-button {
-        min-width: 220px;
+      .action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: var(--space-2);
+      }
+
+      .primary-button,
+      .secondary-button {
         min-height: 52px;
         padding: 13px 18px;
         border: 0;
+        font-weight: 850;
+      }
+
+      .primary-button {
         background: var(--coral);
         color: white;
-        font-weight: 850;
         box-shadow: 0 10px 24px rgba(154, 55, 38, 0.2);
       }
 
-      .approve-button:hover {
+      .primary-button:hover {
         background: #bf4934;
       }
 
-      .approve-button:disabled {
+      .secondary-button {
+        border: 1px solid var(--amber);
+        background: white;
+        color: var(--amber);
+      }
+
+      .primary-button:disabled,
+      .secondary-button:disabled {
         cursor: wait;
         opacity: 0.68;
       }
@@ -382,6 +399,22 @@
         margin-top: var(--space-2);
         color: var(--red);
         font-weight: 700;
+      }
+
+      .status[data-tone="success"] {
+        color: var(--green);
+      }
+
+      .preview {
+        overflow: auto;
+        max-height: 420px;
+        margin: 0;
+        padding: var(--space-2);
+        border: 1px solid var(--line);
+        background: #171b1f;
+        color: #eef7f2;
+        font-size: 0.82rem;
+        white-space: pre-wrap;
       }
 
       details {
@@ -422,9 +455,9 @@
           grid-template-columns: 1fr;
         }
 
-        .approve-button {
+        .primary-button,
+        .secondary-button {
           width: 100%;
-          min-width: 0;
         }
       }
     </style>
@@ -433,22 +466,18 @@
     <main class="shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">
-            Design review · Quyết định trước implementation spec
-          </p>
+          <p class="eyebrow">Design review · Quyết định trước implementation spec</p>
           <h1>REPLACE_FEATURE_TITLE</h1>
-          <p class="goal">REPLACE_ONE_LINE_GOAL</p>
+          <p class="goal" data-design-goal>REPLACE_ONE_LINE_GOAL</p>
         </div>
         <div class="meta">
-          <span
-            ><strong>Feature:</strong> <code>REPLACE_FEATURE_SLUG</code></span
-          >
+          <span><strong>Feature:</strong> <code>REPLACE_FEATURE_SLUG</code></span>
           <span><strong>Revision:</strong> REPLACE_DESIGN_REVISION</span>
-          <span><strong>Trạng thái:</strong> Chờ human approval</span>
+          <span><strong>Trạng thái:</strong> Chờ human review</span>
         </div>
       </header>
 
-      <section class="panel" aria-labelledby="overview-title">
+      <section class="panel" aria-labelledby="overview-title" data-review-section="overview">
         <h2 id="overview-title">Bối cảnh cần chốt</h2>
         <p class="section-intro">REPLACE_REVIEW_INSTRUCTION</p>
         <div class="split">
@@ -465,27 +494,35 @@
             </ul>
           </article>
         </div>
+        <label>
+          Ghi chú cho bối cảnh
+          <textarea class="feedback" data-feedback-target="overview" placeholder="Góp ý hoặc câu hỏi cho phần bối cảnh. Có thể để trống."></textarea>
+        </label>
       </section>
 
-      <section class="panel" aria-labelledby="scope-title">
+      <section class="panel" aria-labelledby="scope-title" data-review-section="scope">
         <h2 id="scope-title">Scope của slice</h2>
         <div class="split">
-          <article class="scope-box">
+          <article class="scope-box" data-scope-list="in">
             <h3>Trong scope</h3>
             <ul>
               <li>REPLACE_IN_SCOPE_ITEM</li>
             </ul>
           </article>
-          <article class="risk-box">
+          <article class="risk-box" data-scope-list="out">
             <h3>Ngoài scope</h3>
             <ul>
               <li>REPLACE_OUT_OF_SCOPE_ITEM</li>
             </ul>
           </article>
         </div>
+        <label>
+          Ghi chú cho scope
+          <textarea class="feedback" data-feedback-target="scope" placeholder="Ví dụ: bỏ một mục khỏi scope hoặc thêm constraint cho scope."></textarea>
+        </label>
       </section>
 
-      <section class="panel" aria-labelledby="flow-title">
+      <section class="panel" aria-labelledby="flow-title" data-review-section="flow">
         <h2 id="flow-title">Primary flow đề xuất</h2>
         <ol class="flow">
           <li>
@@ -501,16 +538,20 @@
             <strong>REPLACE_FLOW_STEP_4</strong><br />REPLACE_FLOW_DETAIL_4
           </li>
         </ol>
+        <label>
+          Ghi chú cho primary flow
+          <textarea class="feedback" data-feedback-target="flow" placeholder="Góp ý nếu flow cần đổi thứ tự, thêm bước, hoặc bỏ bước."></textarea>
+        </label>
       </section>
 
       <section class="panel" aria-labelledby="decisions-title">
         <h2 id="decisions-title">Quyết định cần human chốt</h2>
         <p class="section-intro">
-          Mỗi lựa chọn bên dưới thay đổi behavior hoặc phạm vi. Recommendation
-          được đánh dấu trực tiếp cùng tradeoff.
+          Mỗi lựa chọn bên dưới thay đổi behavior hoặc phạm vi.
+          Recommendation được đánh dấu trực tiếp cùng tradeoff.
         </p>
 
-        <form id="design-approval-form">
+        <form id="design-review-form">
           <div class="decision-stack">
             <fieldset
               class="decision-card"
@@ -519,33 +560,19 @@
               data-required="true"
             >
               <legend>
-                <span class="decision-id">D-001</span
-                ><br />REPLACE_DECISION_QUESTION
+                <span class="decision-id">D-001</span><br />REPLACE_DECISION_QUESTION
               </legend>
               <p>REPLACE_DECISION_CONTEXT</p>
               <div class="option-grid">
                 <label class="option">
-                  <input
-                    type="radio"
-                    name="D-001"
-                    value="recommended"
-                    data-answer-label="REPLACE_RECOMMENDED_ANSWER"
-                  />
+                  <input type="radio" name="D-001" value="recommended" data-answer-label="REPLACE_RECOMMENDED_ANSWER" />
                   <span>
-                    <strong
-                      >REPLACE_RECOMMENDED_ANSWER
-                      <span class="recommended">Khuyến nghị</span></strong
-                    >
+                    <strong>REPLACE_RECOMMENDED_ANSWER <span class="recommended">Khuyến nghị</span></strong>
                     <small>REPLACE_RECOMMENDED_TRADEOFF</small>
                   </span>
                 </label>
                 <label class="option">
-                  <input
-                    type="radio"
-                    name="D-001"
-                    value="alternative"
-                    data-answer-label="REPLACE_ALTERNATIVE_ANSWER"
-                  />
+                  <input type="radio" name="D-001" value="alternative" data-answer-label="REPLACE_ALTERNATIVE_ANSWER" />
                   <span>
                     <strong>REPLACE_ALTERNATIVE_ANSWER</strong>
                     <small>REPLACE_ALTERNATIVE_TRADEOFF</small>
@@ -553,12 +580,8 @@
                 </label>
               </div>
               <label>
-                Lý do hoặc constraint bổ sung
-                <textarea
-                  class="rationale"
-                  data-decision-rationale="D-001"
-                  placeholder="Không bắt buộc nếu recommendation và tradeoff đã đủ rõ."
-                ></textarea>
+                Lý do hoặc constraint bổ sung cho D-001
+                <textarea class="rationale" data-decision-rationale="D-001" placeholder="Không bắt buộc nếu recommendation và tradeoff đã đủ rõ."></textarea>
               </label>
             </fieldset>
           </div>
@@ -566,7 +589,7 @@
           <details>
             <summary>Rủi ro và bằng chứng kỹ thuật</summary>
             <div class="split">
-              <article class="risk-box">
+              <article class="risk-box" data-review-section="risks">
                 <h3>Rủi ro cần biết</h3>
                 <ul>
                   <li>REPLACE_MATERIAL_RISK</li>
@@ -575,36 +598,43 @@
               <article class="fact-box">
                 <h3>Codebase evidence</h3>
                 <ul>
-                  <li>
-                    <code>REPLACE_EVIDENCE_PATH</code> —
-                    REPLACE_EVIDENCE_SUMMARY
-                  </li>
+                  <li><code>REPLACE_EVIDENCE_PATH</code> - REPLACE_EVIDENCE_SUMMARY</li>
                 </ul>
               </article>
             </div>
+            <label>
+              Ghi chú cho rủi ro hoặc evidence
+              <textarea class="feedback" data-feedback-target="risks" placeholder="Góp ý nếu risk/evidence chưa đúng hoặc còn thiếu."></textarea>
+            </label>
           </details>
 
           <section class="panel approval" aria-labelledby="approval-title">
             <div class="approval-layout">
               <div>
-                <h2 id="approval-title">Approve design revision này</h2>
+                <h2 id="approval-title">Chốt hoặc yêu cầu chỉnh sửa</h2>
                 <p>
-                  Approval xác nhận goal, scope và các lựa chọn ở trên. Detailed
-                  Markdown spec sẽ được AI tạo và review ở step tiếp theo.
+                  Approve sẽ ghi decision manifest cho step create-spec.
+                  Request changes sẽ lưu feedback để agent sửa HTML và tăng revision.
                 </p>
                 <label>
                   Constraint chung cần giữ trong detailed spec
-                  <textarea
-                    id="final-constraints"
-                    class="constraints"
-                    placeholder="Mỗi constraint một dòng. Có thể để trống."
-                  ></textarea>
+                  <textarea id="final-constraints" class="constraints" placeholder="Mỗi constraint một dòng. Có thể để trống."></textarea>
                 </label>
-                <p id="approval-status" class="status" aria-live="polite"></p>
+                <label>
+                  Feedback tổng quát hoặc câu hỏi cần agent xử lý
+                  <textarea id="general-feedback" class="feedback" data-feedback-target="general" placeholder="Dùng khi cần chỉnh nội dung trước khi approve. Có thể để trống nếu approve ngay."></textarea>
+                </label>
+                <div class="action-row">
+                  <button id="approve-design" class="primary-button" type="submit">Approve design</button>
+                  <button id="request-changes" class="secondary-button" type="button">Request changes</button>
+                  <button id="download-payload" class="secondary-button" type="button">Download JSON</button>
+                </div>
+                <p id="review-status" class="status" aria-live="polite"></p>
               </div>
-              <button id="approve-design" class="approve-button" type="submit">
-                Approve design
-              </button>
+              <article class="preview-box" aria-labelledby="preview-title">
+                <h3 id="preview-title">Preview payload</h3>
+                <pre id="payload-preview" class="preview"></pre>
+              </article>
             </div>
           </section>
         </form>
@@ -614,19 +644,36 @@
     <script>
       (() => {
         const root = document.documentElement;
-        const form = document.querySelector("#design-approval-form");
-        const button = document.querySelector("#approve-design");
-        const status = document.querySelector("#approval-status");
+        const form = document.querySelector("#design-review-form");
+        const approveButton = document.querySelector("#approve-design");
+        const changesButton = document.querySelector("#request-changes");
+        const downloadButton = document.querySelector("#download-payload");
+        const status = document.querySelector("#review-status");
+        const preview = document.querySelector("#payload-preview");
 
-        function setStatus(message) {
+        function linesFromTextarea(selector) {
+          return document
+            .querySelector(selector)
+            .value.split("\n")
+            .map((item) => item.trim())
+            .filter(Boolean);
+        }
+
+        function textList(selector) {
+          return [...document.querySelectorAll(`${selector} li`)]
+            .map((item) => item.textContent.trim())
+            .filter(Boolean);
+        }
+
+        function setStatus(message, tone = "error") {
           status.textContent = message;
+          status.dataset.tone = tone;
         }
 
         function collectDecisions() {
-          const cards = [
-            ...document.querySelectorAll(".decision-card[data-decision-id]"),
-          ];
+          const cards = [...document.querySelectorAll(".decision-card[data-decision-id]")];
           const decisions = [];
+          const seen = new Set();
 
           for (const card of cards) {
             const id = card.dataset.decisionId;
@@ -634,18 +681,21 @@
             const required = card.dataset.required === "true";
             const selected = card.querySelector(`input[name="${id}"]:checked`);
 
+            if (!id || seen.has(id)) {
+              return { error: "Decision id bị thiếu hoặc bị trùng.", card };
+            }
+            seen.add(id);
+
             if (required && !selected) {
-              selected?.focus();
               return { error: `Hãy chọn một phương án cho ${id}.`, card };
             }
 
             if (!selected) continue;
 
             const rationale =
-              card
-                .querySelector(`[data-decision-rationale="${id}"]`)
-                ?.value.trim() ||
+              card.querySelector(`[data-decision-rationale="${id}"]`)?.value.trim() ||
               "Đã chốt theo tradeoff hiển thị trong design review.";
+
             decisions.push({
               id,
               question,
@@ -657,63 +707,136 @@
           return { decisions };
         }
 
-        form.addEventListener("submit", (event) => {
-          event.preventDefault();
+        function collectComments() {
+          return [...document.querySelectorAll("[data-feedback-target]")]
+            .map((field) => ({
+              target: field.dataset.feedbackTarget,
+              text: field.value.trim(),
+            }))
+            .filter((comment) => comment.text);
+        }
 
+        function approvalPayload() {
           const collected = collectDecisions();
-          if (collected.error) {
-            setStatus(collected.error);
-            collected.card.scrollIntoView({
-              behavior: "smooth",
-              block: "center",
-            });
-            collected.card.querySelector("input")?.focus();
-            return;
-          }
-
-          if (
-            !window.lavish?.queuePrompt ||
-            !window.lavish?.sendQueuedPrompts
-          ) {
-            setStatus(
-              "Hãy mở artifact bằng Lavish Editor để gửi approval cho agent.",
-            );
-            return;
-          }
-
-          const constraints = document
-            .querySelector("#final-constraints")
-            .value.split("\n")
-            .map((item) => item.trim())
-            .filter(Boolean);
-
-          const payload = {
+          if (collected.error) return collected;
+          return {
             schema_version: 1,
             event: "design-spec-approval",
             approved: true,
             feature_slug: root.dataset.featureSlug,
             design_revision: root.dataset.designRevision,
             submitted_at: new Date().toISOString(),
-            decisions: collected.decisions,
-            constraints,
-          };
-
-          button.disabled = true;
-          setStatus("Đã queue approval và đang gửi cho agent…");
-          window.lavish.queuePrompt(
-            `DESIGN_SPEC_APPROVAL\n${JSON.stringify(payload)}`,
-            {
-              tag: "design-approval",
-              text: `Approve ${payload.feature_slug} revision ${payload.design_revision}`,
-              queueKey: "design-spec-approval",
-              element: form,
+            goal: document.querySelector("[data-design-goal]").textContent.trim(),
+            scope: {
+              in: textList("[data-scope-list='in']"),
+              out: textList("[data-scope-list='out']"),
             },
-          );
-          window.lavish.sendQueuedPrompts();
-          setStatus(
-            "Approval đã được gửi. Giữ cửa sổ này mở cho đến khi agent phản hồi.",
-          );
+            decisions: collected.decisions,
+            constraints: linesFromTextarea("#final-constraints"),
+          };
+        }
+
+        function feedbackPayload() {
+          const comments = collectComments();
+          return {
+            schema_version: 1,
+            event: "design-change-request",
+            feature_slug: root.dataset.featureSlug,
+            design_revision: root.dataset.designRevision,
+            submitted_at: new Date().toISOString(),
+            comments,
+          };
+        }
+
+        function renderPreview() {
+          const payload = approvalPayload();
+          preview.textContent = JSON.stringify(payload, null, 2);
+        }
+
+        function downloadJson(payload, suffix) {
+          const blob = new Blob([JSON.stringify(payload, null, 2) + "\n"], {
+            type: "application/json",
+          });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `${root.dataset.featureSlug}.${suffix}.json`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(link.href);
+        }
+
+        async function postJson(path, payload) {
+          const response = await fetch(path, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(body.error || `Request failed: ${response.status}`);
+          }
+          return body;
+        }
+
+        async function submitApproval(event) {
+          event.preventDefault();
+          const payload = approvalPayload();
+          if (payload.error) {
+            setStatus(payload.error);
+            payload.card?.scrollIntoView({ behavior: "smooth", block: "center" });
+            payload.card?.querySelector("input")?.focus();
+            renderPreview();
+            return;
+          }
+
+          approveButton.disabled = true;
+          changesButton.disabled = true;
+          setStatus("Đang ghi approval manifest...");
+          try {
+            const result = await postJson("/api/design-approval", payload);
+            setStatus(`Đã lưu approval: ${result.design_decisions_path}`, "success");
+          } catch (error) {
+            downloadJson(payload, "approval-fallback");
+            setStatus(`Không kết nối được local runner. Đã download JSON fallback. ${error.message}`);
+          } finally {
+            approveButton.disabled = false;
+            changesButton.disabled = false;
+          }
+        }
+
+        async function requestChanges() {
+          const payload = feedbackPayload();
+          if (!payload.comments.length) {
+            setStatus("Hãy nhập ít nhất một feedback trước khi request changes.");
+            document.querySelector("#general-feedback").focus();
+            return;
+          }
+
+          approveButton.disabled = true;
+          changesButton.disabled = true;
+          setStatus("Đang lưu feedback...");
+          try {
+            const result = await postJson("/api/design-feedback", payload);
+            setStatus(`Đã lưu feedback: ${result.design_feedback_path}`, "success");
+          } catch (error) {
+            downloadJson(payload, "feedback-fallback");
+            setStatus(`Không kết nối được local runner. Đã download feedback fallback. ${error.message}`);
+          } finally {
+            approveButton.disabled = false;
+            changesButton.disabled = false;
+          }
+        }
+
+        form.addEventListener("submit", submitApproval);
+        changesButton.addEventListener("click", requestChanges);
+        downloadButton.addEventListener("click", () => {
+          const approval = approvalPayload();
+          const feedback = feedbackPayload();
+          downloadJson({ approval, feedback }, "review-payload");
         });
+        form.addEventListener("input", renderPreview);
+        renderPreview();
       })();
     </script>
   </body>

@@ -135,8 +135,8 @@ def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path
         fail(f"design_sha256 mismatch: expected {expected_sha}, actual {actual_sha}")
 
     parse_timestamp(data.get("approved_at"), "approved_at")
-    if data.get("approval_source") != "lavish":
-        fail("approval_source must equal 'lavish'")
+    if data.get("approval_source") not in {"local-runner", "lavish"}:
+        fail("approval_source must equal 'local-runner' or 'lavish'")
 
     require_string(data.get("goal"), "goal")
 

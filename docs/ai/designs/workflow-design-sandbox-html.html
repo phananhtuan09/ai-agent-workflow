@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="vi" data-feature-slug="REPLACE_FEATURE_SLUG" data-design-revision="REPLACE_DESIGN_REVISION">
+<html lang="vi" data-feature-slug="workflow-design-sandbox-html" data-design-revision="2">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>REPLACE_FEATURE_TITLE · Design review</title>
+    <title>Workflow Design Sandbox HTML · Design review</title>
     <style>
       :root {
         --ink: #19221d;
@@ -467,30 +467,30 @@
       <header class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Design review · Quyết định trước implementation spec</p>
-          <h1>REPLACE_FEATURE_TITLE</h1>
-          <p class="goal" data-design-goal>REPLACE_ONE_LINE_GOAL</p>
+          <h1>Workflow Design Sandbox HTML</h1>
+          <p class="goal" data-design-goal>Tạo một file HTML local để reviewer cấu hình, preview và approve một workflow slice trước khi AI sinh detailed spec.</p>
         </div>
         <div class="meta">
-          <span><strong>Feature:</strong> <code>REPLACE_FEATURE_SLUG</code></span>
-          <span><strong>Revision:</strong> REPLACE_DESIGN_REVISION</span>
+          <span><strong>Feature:</strong> <code>workflow-design-sandbox-html</code></span>
+          <span><strong>Revision:</strong> 2</span>
           <span><strong>Trạng thái:</strong> Chờ human review</span>
         </div>
       </header>
 
       <section class="panel" aria-labelledby="overview-title" data-review-section="overview">
         <h2 id="overview-title">Bối cảnh cần chốt</h2>
-        <p class="section-intro">REPLACE_REVIEW_INSTRUCTION</p>
+        <p class="section-intro">Đây là slice thử cho workflow mới, chủ đích đủ nhỏ để implement bằng một file HTML nhưng đủ lớn để kiểm tra design-spec, create-spec, review-spec và execute-spec.</p>
         <div class="split">
           <article class="fact-box">
             <h3>Hiện trạng đã xác nhận</h3>
             <ul>
-              <li>REPLACE_CONFIRMED_FACT</li>
+              <li>docs/ai/workflows/feature-standard.json đã có chuỗi design-spec, create-spec, review-spec và execute-spec.</li>
             </ul>
           </article>
           <article class="scope-box">
             <h3>Outcome mong muốn</h3>
             <ul>
-              <li>REPLACE_DESIRED_OUTCOME</li>
+              <li>Người review mở một file HTML, chọn workflow preset, chỉnh tối thiểu vài input, xem preview JSON và approve/export cấu hình.</li>
             </ul>
           </article>
         </div>
@@ -506,13 +506,13 @@
           <article class="scope-box" data-scope-list="in">
             <h3>Trong scope</h3>
             <ul>
-              <li>REPLACE_IN_SCOPE_ITEM</li>
+              <li>Một trang HTML tự chạy, có form cấu hình feature slug, mục tiêu, workflow range, preview JSON, validation, copy/download và trạng thái lỗi hoặc thành công.</li>
             </ul>
           </article>
           <article class="risk-box" data-scope-list="out">
             <h3>Ngoài scope</h3>
             <ul>
-              <li>REPLACE_OUT_OF_SCOPE_ITEM</li>
+              <li>Không sửa runtime orchestrator, schema workflow thật, backend, database, auth hoặc tích hợp multi-user.</li>
             </ul>
           </article>
         </div>
@@ -526,16 +526,16 @@
         <h2 id="flow-title">Primary flow đề xuất</h2>
         <ol class="flow">
           <li>
-            <strong>REPLACE_FLOW_STEP_1</strong><br />REPLACE_FLOW_DETAIL_1
+            <strong>Chọn preset</strong><br />Reviewer chọn range mặc định là design-spec đến execute-spec hoặc chỉnh sang một slice ngắn hơn.
           </li>
           <li>
-            <strong>REPLACE_FLOW_STEP_2</strong><br />REPLACE_FLOW_DETAIL_2
+            <strong>Nhập intent</strong><br />Trang nhận feature slug, mục tiêu, độ phức tạp mong muốn và constraint ngắn.
           </li>
           <li>
-            <strong>REPLACE_FLOW_STEP_3</strong><br />REPLACE_FLOW_DETAIL_3
+            <strong>Validate và preview</strong><br />UI báo lỗi thiếu slug, slug sai kebab-case hoặc thiếu mục tiêu trước khi cho export.
           </li>
           <li>
-            <strong>REPLACE_FLOW_STEP_4</strong><br />REPLACE_FLOW_DETAIL_4
+            <strong>Export artifact</strong><br />Reviewer copy hoặc download JSON để dùng làm input thử cho các bước workflow tiếp theo.
           </li>
         </ol>
         <label>
@@ -556,32 +556,96 @@
             <fieldset
               class="decision-card"
               data-decision-id="D-001"
-              data-question="REPLACE_DECISION_QUESTION"
+              data-question="HTML sandbox có nên lưu nháp cấu hình trong trình duyệt không?"
               data-required="true"
             >
               <legend>
-                <span class="decision-id">D-001</span><br />REPLACE_DECISION_QUESTION
+                <span class="decision-id">D-001</span><br />HTML sandbox có nên lưu nháp cấu hình trong trình duyệt không?
               </legend>
-              <p>REPLACE_DECISION_CONTEXT</p>
+              <p>Lựa chọn này quyết định hành vi khi reviewer reload trang hoặc mở lại file local trong cùng trình duyệt.</p>
               <div class="option-grid">
                 <label class="option">
-                  <input type="radio" name="D-001" value="recommended" data-answer-label="REPLACE_RECOMMENDED_ANSWER" />
+                  <input type="radio" name="D-001" value="recommended" data-answer-label="Lưu nháp bằng localStorage và có nút reset" />
                   <span>
-                    <strong>REPLACE_RECOMMENDED_ANSWER <span class="recommended">Khuyến nghị</span></strong>
-                    <small>REPLACE_RECOMMENDED_TRADEOFF</small>
+                    <strong>Lưu nháp bằng localStorage và có nút reset <span class="recommended">Khuyến nghị</span></strong>
+                    <small>Giúp test workflow ít mất dữ liệu khi refresh, nhưng cần hiển thị rõ đây chỉ là state local.</small>
                   </span>
                 </label>
                 <label class="option">
-                  <input type="radio" name="D-001" value="alternative" data-answer-label="REPLACE_ALTERNATIVE_ANSWER" />
+                  <input type="radio" name="D-001" value="alternative" data-answer-label="Không lưu nháp, chỉ giữ state trong phiên hiện tại" />
                   <span>
-                    <strong>REPLACE_ALTERNATIVE_ANSWER</strong>
-                    <small>REPLACE_ALTERNATIVE_TRADEOFF</small>
+                    <strong>Không lưu nháp, chỉ giữ state trong phiên hiện tại</strong>
+                    <small>Đơn giản hơn và không để lại state, nhưng reviewer dễ mất cấu hình khi reload.</small>
                   </span>
                 </label>
               </div>
               <label>
                 Lý do hoặc constraint bổ sung cho D-001
                 <textarea class="rationale" data-decision-rationale="D-001" placeholder="Không bắt buộc nếu recommendation và tradeoff đã đủ rõ."></textarea>
+              </label>
+            </fieldset>
+
+            <fieldset
+              class="decision-card"
+              data-decision-id="D-002"
+              data-question="Export chính của sandbox nên ưu tiên hình thức nào?"
+              data-required="true"
+            >
+              <legend>
+                <span class="decision-id">D-002</span><br />Export chính của sandbox nên ưu tiên hình thức nào?
+              </legend>
+              <p>Sandbox chạy offline nên cách xuất dữ liệu phải đủ rõ cho người test mà không cần quyền ghi trực tiếp vào repo.</p>
+              <div class="option-grid">
+                <label class="option">
+                  <input type="radio" name="D-002" value="recommended" data-answer-label="Có cả copy clipboard và download JSON" />
+                  <span>
+                    <strong>Có cả copy clipboard và download JSON <span class="recommended">Khuyến nghị</span></strong>
+                    <small>Bao phủ trình duyệt không cho clipboard hoặc download; UI phức tạp hơn một chút nhưng vẫn trong một file HTML.</small>
+                  </span>
+                </label>
+                <label class="option">
+                  <input type="radio" name="D-002" value="alternative" data-answer-label="Chỉ copy JSON vào clipboard" />
+                  <span>
+                    <strong>Chỉ copy JSON vào clipboard</strong>
+                    <small>Ít control hơn và nhanh implement hơn, nhưng kém tin cậy trong một số context file local.</small>
+                  </span>
+                </label>
+              </div>
+              <label>
+                Lý do hoặc constraint bổ sung cho D-002
+                <textarea class="rationale" data-decision-rationale="D-002" placeholder="Không bắt buộc nếu recommendation và tradeoff đã đủ rõ."></textarea>
+              </label>
+            </fieldset>
+
+            <fieldset
+              class="decision-card"
+              data-decision-id="D-003"
+              data-question="Validation nên chặn export ở mức nào?"
+              data-required="true"
+            >
+              <legend>
+                <span class="decision-id">D-003</span><br />Validation nên chặn export ở mức nào?
+              </legend>
+              <p>Lựa chọn này quyết định trang là một sandbox tự do hay một artifact giúp kiểm thử workflow có kỷ luật.</p>
+              <div class="option-grid">
+                <label class="option">
+                  <input type="radio" name="D-003" value="recommended" data-answer-label="Chặn export khi slug, goal hoặc workflow range chưa hợp lệ" />
+                  <span>
+                    <strong>Chặn export khi slug, goal hoặc workflow range chưa hợp lệ <span class="recommended">Khuyến nghị</span></strong>
+                    <small>Tạo input sạch cho create-spec và review-spec, đổi lại reviewer phải sửa lỗi trước khi xuất.</small>
+                  </span>
+                </label>
+                <label class="option">
+                  <input type="radio" name="D-003" value="alternative" data-answer-label="Cho export với cảnh báo validation" />
+                  <span>
+                    <strong>Cho export với cảnh báo validation</strong>
+                    <small>Linh hoạt hơn cho thử nghiệm xấu, nhưng dễ làm các bước sau fail vì input không hợp lệ.</small>
+                  </span>
+                </label>
+              </div>
+              <label>
+                Lý do hoặc constraint bổ sung cho D-003
+                <textarea class="rationale" data-decision-rationale="D-003" placeholder="Không bắt buộc nếu recommendation và tradeoff đã đủ rõ."></textarea>
               </label>
             </fieldset>
           </div>
@@ -592,13 +656,13 @@
               <article class="risk-box" data-review-section="risks">
                 <h3>Rủi ro cần biết</h3>
                 <ul>
-                  <li>REPLACE_MATERIAL_RISK</li>
+                  <li>HTML sandbox có thể tạo cảm giác như workflow thật đã được tích hợp; UI cần gọi rõ đây là artifact thử nghiệm offline.</li>
                 </ul>
               </article>
               <article class="fact-box">
                 <h3>Codebase evidence</h3>
                 <ul>
-                  <li><code>REPLACE_EVIDENCE_PATH</code> - REPLACE_EVIDENCE_SUMMARY</li>
+                  <li><code>docs/ai/workflows/feature-standard.json</code> - workflow pilot đã định nghĩa các bước cần test từ design-spec đến execute-spec.</li>
                 </ul>
               </article>
             </div>

@@ -1,4 +1,4 @@
 interface:
   display_name: "Design Spec"
-  short_description: "Review feature decisions visually before detailed spec"
-  default_prompt: "Use $design-spec to create an interactive HTML design review and capture approved high-level decisions before writing the implementation spec."
+  short_description: "Review and persist design decisions locally"
+  default_prompt: "Use $design-spec to create or resume a local HTML design review and persist approved high-level decisions before writing the implementation spec."

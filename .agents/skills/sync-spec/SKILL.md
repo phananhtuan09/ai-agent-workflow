@@ -34,17 +34,17 @@ Keep the spec as the durable source of truth after implementation and feedback-d
 ## Auto-Sync Allowed
 
 You may update these sections automatically when the codebase confirms them:
-- `## Current System Evidence`
-- `## State / Data / Interface Changes`
-- `## Detailed Technical Design`
-- `## File-Level Change Map`
-- `## Validation / Error / Edge Cases`
-- `## Security / Permission Considerations`
-- `## Compatibility / Migration`
-- `## Implementation Sequence`
-- `## Verification Matrix`
-- `### Agent-Chosen Technical Details`
-- `## Decision Log`
+- `## Bằng Chứng Hệ Thống Hiện Tại`
+- `## Thay Đổi Trạng Thái / Dữ Liệu / Giao Diện`
+- `## Thiết Kế Kỹ Thuật Chi Tiết`
+- `## Bản Đồ Thay Đổi Theo File`
+- `## Kiểm Tra Hợp Lệ / Lỗi / Trường Hợp Biên`
+- `## Cân Nhắc Bảo Mật / Phân Quyền`
+- `## Tương Thích / Di Chuyển Dữ Liệu`
+- `## Trình Tự Triển Khai`
+- `## Ma Trận Xác Minh`
+- `### Chi Tiết Kỹ Thuật Do Agent Chọn`
+- `## Nhật Ký Quyết Định`
 - implementation constraints
 - technical clarifications
 - status wording tied to implementation shape
@@ -52,13 +52,13 @@ You may update these sections automatically when the codebase confirms them:
 ## Human Confirmation Required
 
 Do NOT silently change these sections:
-- `## Execution Contract`
-- `## Problem`
-- `## Scope`
-- `## Acceptance Criteria`
-- `## Approved Design Decisions`
-- `## Behavioral Requirements`
-- `## Out of Scope`
+- `## Hợp Đồng Thực Thi`
+- `## Vấn Đề`
+- `## Phạm Vi`
+- `## Tiêu Chí Chấp Nhận`
+- `## Quyết Định Thiết Kế Đã Duyệt`
+- `## Yêu Cầu Hành Vi`
+- `## Ngoài Phạm Vi`
 - any user-visible recommendation or ranking rule that changes from transparent logic to hidden scoring, or the reverse
 
 If the implementation no longer matches those sections:
@@ -71,7 +71,7 @@ If the implementation no longer matches those sections:
 
 - Update the same spec file in `docs/ai/specs/`
 - Keep the spec structured, traceable, and free of repetition that adds no execution value
-- Add or update `## Decision Log` when implementation introduced important durable decisions
+- Add or update `## Nhật Ký Quyết Định` when implementation introduced important durable decisions
 - Preserve unresolved product questions instead of guessing
 
 ## Drift Handling

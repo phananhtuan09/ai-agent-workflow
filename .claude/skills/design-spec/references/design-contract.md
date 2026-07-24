@@ -6,6 +6,8 @@
 
 `docs/ai/design-decisions/{feature_slug}.json` is the durable approval provenance consumed by `create-spec` and `review-spec`.
 
+`docs/ai/design-feedback/{feature_slug}.json` is the latest change-request payload from the human review surface.
+
 `docs/ai/specs/{feature_slug}.md` becomes the source of truth for implementation and verification after `review-spec` passes.
 
 The decision manifest must not become a second implementation specification.
@@ -38,7 +40,9 @@ The final HTML must contain:
 - assumptions and risks
 - required decision cards with stable `D-xxx` identifiers
 - a final constraints textarea
-- one approval button that queues the approval payload
+- one approval action that posts the approval payload to the local runner
+- one request-changes action that posts section comments to the local runner
+- a preview of the approval payload that will be saved
 - an `aria-live` submission status
 
 Every required decision card must use:
@@ -57,14 +61,8 @@ Use `data-answer-label` for the human-readable answer captured in the payload.
 
 ## Approval Payload
 
-The approval button must queue one prompt tagged `design-approval`.
-The prompt text must start with this exact marker on its own line:
-
-```text
-DESIGN_SPEC_APPROVAL
-```
-
-The remainder must be valid JSON with this shape:
+The approval action must send JSON to `POST /api/design-approval`.
+The payload must have this shape:
 
 ```json
 {
@@ -74,6 +72,11 @@ The remainder must be valid JSON with this shape:
   "feature_slug": "example-feature",
   "design_revision": "3",
   "submitted_at": "2026-07-23T12:00:00.000Z",
+  "goal": "The approved one-sentence goal",
+  "scope": {
+    "in": ["Included behavior"],
+    "out": ["Excluded behavior"]
+  },
   "decisions": [
     {
       "id": "D-001",
@@ -86,8 +89,32 @@ The remainder must be valid JSON with this shape:
 }
 ```
 
-The approval payload is transport evidence.
-After receiving it, the agent creates the durable decision manifest below.
+The local runner converts the approval payload into the durable decision manifest below.
+The agent must not infer approval from chat, DOM snapshots, downloaded fallback JSON, or screenshots.
+
+## Change Request Payload
+
+The request-changes action must send JSON to `POST /api/design-feedback`.
+The payload must have this shape:
+
+```json
+{
+  "schema_version": 1,
+  "event": "design-change-request",
+  "feature_slug": "example-feature",
+  "design_revision": "3",
+  "submitted_at": "2026-07-23T12:00:00.000Z",
+  "comments": [
+    {
+      "target": "D-001",
+      "text": "Change the recommended option."
+    }
+  ]
+}
+```
+
+The local runner writes this to `docs/ai/design-feedback/{feature_slug}.json`.
+When feedback exists for the current design revision, the agent must revise the HTML, increment `data-design-revision`, reopen the runner, and stop for another human review.
 
 ## Decision Manifest
 
@@ -101,7 +128,7 @@ Write UTF-8 JSON with a trailing newline:
   "design_path": "docs/ai/designs/example-feature.html",
   "design_sha256": "64 lowercase hexadecimal characters",
   "approved_at": "2026-07-23T12:00:00.000Z",
-  "approval_source": "lavish",
+  "approval_source": "local-runner",
   "goal": "The approved one-sentence goal",
   "scope": {
     "in": ["Included behavior"],
@@ -129,16 +156,17 @@ Rules:
 - `decisions` must contain every required `D-xxx` decision exactly once.
 - Each manifest decision question must match the corresponding HTML `data-question` value.
 - `source` must be `human` for approval choices.
+- `approval_source` must be `local-runner`.
 - Blocking product questions are not allowed in an approved manifest.
 - Non-blocking technical uncertainty may be listed in `unresolved_non_blocking`.
 - Do not include secrets, raw transcripts, DOM snapshots, or unrelated annotations.
 
-## Lavish Runtime Rules
+## Local Runner Rules
 
-- Pin `lavish-axi@0.1.43` during the pilot.
+- Start the bundled runner with `scripts/design_review_server.py start <design-path>`.
 - Keep the default loopback binding.
-- Do not use `share` for internal design artifacts.
+- Do not publish internal design artifacts through third-party hosting.
 - Do not add CDN dependencies to the artifact.
-- Poll in the foreground.
-- Repair browser-proven severe layout warnings before human approval.
-- End the session after persisting and validating approval.
+- Do not keep the agent waiting while the human reviews.
+- On resume, check runner status and validate any manifest before continuing.
+- Stop the runner with `scripts/design_review_server.py stop <design-path>` after a valid approval manifest exists.

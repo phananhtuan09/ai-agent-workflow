@@ -70,103 +70,107 @@ Create the detailed AI-facing implementation and verification contract for an ap
 
 ## Spec Format
 
+Generated specs must use the Vietnamese headings below.
+Do not keep the English section names from older examples.
+Keep only code symbols, file paths, API names, schema names, JSON keys, decision IDs, AC IDs, and literal enum values in English.
+
 ```markdown
-## Tier
+## Cấp Độ
 [Lite | Standard | Extended]
 
-## Execution Contract
-### Goal
+## Hợp Đồng Thực Thi
+### Mục Tiêu
 - ...
 
-### Approved Decision Sources
-- Design decisions: `docs/ai/design-decisions/{feature}.json`
+### Nguồn Quyết Định Đã Duyệt
+- Manifest quyết định: `docs/ai/design-decisions/{feature}.json`
 - D-001: ...
 
-### Must Happen
+### Bắt Buộc Xảy Ra
 - ...
 
-### Must Not Happen
+### Không Được Xảy Ra
 - ...
 
-## Problem
+## Vấn Đề
 ...
 
-## Scope
+## Phạm Vi
 - ...
 
-## Out of Scope
+## Ngoài Phạm Vi
 - ...
 
-## Approved Design Decisions
-- D-001: [decision and rationale]
+## Quyết Định Thiết Kế Đã Duyệt
+- D-001: [quyết định và lý do]
 
-## Assumption Check
-### Confirmed
+## Kiểm Tra Giả Định
+### Đã Xác Nhận
 - ...
 
-### Inferred But Safe
+### Suy Luận An Toàn
 - ...
 
-### Needs Confirmation
-- Không có blocking product question.
+### Cần Xác Nhận
+- Không có câu hỏi sản phẩm nào đang blocking.
 
-### Agent-Chosen Technical Details
+### Chi Tiết Kỹ Thuật Do Agent Chọn
 - ...
 
-## Current System Evidence
-- `path/to/file`: [current behavior, symbol, or constraint]
+## Bằng Chứng Hệ Thống Hiện Tại
+- `path/to/file`: [hành vi hiện tại, symbol, hoặc ràng buộc]
 
-## Behavioral Requirements
-### {Behavior Area}
+## Yêu Cầu Hành Vi
+### {Khu Vực Hành Vi}
 - ...
 
-## State / Data / Interface Changes
+## Thay Đổi Trạng Thái / Dữ Liệu / Giao Diện
 - ...
 
-## Detailed Technical Design
-### {Component or Boundary}
-- Responsibility: ...
-- Inputs and outputs: ...
-- State transition or data flow: ...
-- Error behavior: ...
+## Thiết Kế Kỹ Thuật Chi Tiết
+### {Thành Phần hoặc Ranh Giới}
+- Trách nhiệm: ...
+- Đầu vào và đầu ra: ...
+- Chuyển trạng thái hoặc luồng dữ liệu: ...
+- Hành vi lỗi: ...
 
-## File-Level Change Map
-| Surface | Planned change | Reason | Decision / AC |
+## Bản Đồ Thay Đổi Theo File
+| Bề mặt | Thay đổi dự kiến | Lý do | Quyết định / AC |
 |---|---|---|---|
 | `path/to/file` | ... | ... | D-001 / AC1 |
 
-## Validation / Error / Edge Cases
+## Kiểm Tra Hợp Lệ / Lỗi / Trường Hợp Biên
 - ...
 
-## Security / Permission Considerations
+## Cân Nhắc Bảo Mật / Phân Quyền
 - ...
 
-## Compatibility / Migration
+## Tương Thích / Di Chuyển Dữ Liệu
 - ...
 
-## Implementation Sequence
+## Trình Tự Triển Khai
 1. ...
 
-## Acceptance Criteria
-### {Behavior Area}
+## Tiêu Chí Chấp Nhận
+### {Khu Vực Hành Vi}
 - [ ] AC1: ...
 
-## Verification Matrix
-| AC | Evidence strategy | Primary surface |
+## Ma Trận Xác Minh
+| AC | Chiến lược bằng chứng | Bề mặt chính |
 |---|---|---|
-| AC1 | Runtime / focused test / inspection | ... |
+| AC1 | Runtime / test tập trung / kiểm tra thủ công | ... |
 
-## Open Questions
-- Không có blocking question.
+## Câu Hỏi Mở
+- Không có câu hỏi sản phẩm nào đang blocking.
 
-## Decision Log
+## Nhật Ký Quyết Định
 - ...
 ```
 
 ## Rules
 
-- Write assistant responses, questions, and generated spec files in Vietnamese.
-- Keep code symbols, file paths, API names, schema names, and JSON keys in English.
+- Write assistant responses, questions, generated spec prose, Markdown headings, table headers, and recurring labels in Vietnamese.
+- Keep only code symbols, file paths, API names, schema names, JSON keys, decision IDs, AC IDs, literal enum values, and command names in English.
 - Treat approved design decisions as human authority and never reinterpret them silently.
 - Under `feature-standard`, fail closed when `design_decisions_path` is missing, invalid, or does not match its HTML checksum.
 - Include concrete file paths, symbols, interfaces, schema changes, migration mechanisms, storage keys, implementation order, and test surfaces when they are grounded in inspected code and useful to the executor.

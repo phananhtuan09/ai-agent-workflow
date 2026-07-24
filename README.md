@@ -163,7 +163,7 @@ This workflow system separates high-level human decisions from the detailed AI e
 /design-spec → human HTML approval → /create-spec → review-spec → /execute-spec → /manual-checklist → /verify-feature → /verify-runtime
 ```
 
-`/design-spec` opens a local Lavish HTML review and persists approved high-level decisions.
+`/design-spec` opens a local HTML review through the bundled runner and persists approved high-level decisions.
 `/create-spec` converts those decisions and codebase evidence into a detailed implementation specification.
 `review-spec` is an automatic AI quality gate; the human does not need to review the full detailed spec unless they choose to.
 `/manual-checklist` creates spec-derived testcases after execution, and both verification steps update its evidence icons.
@@ -405,7 +405,7 @@ Use `/execute-task` for small bounded updates that do not need a design artifact
 ```
 
 ```bash
-# 1. Review and approve the high-level design in Lavish
+# 1. Review and approve the high-level design in the local HTML runner
 /design-spec "user profile"
 
 # 2. Create the detailed implementation spec from approved decisions

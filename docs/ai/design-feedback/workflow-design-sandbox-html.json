@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "event": "design-change-request",
+  "feature_slug": "workflow-design-sandbox-html",
+  "design_revision": "2",
+  "design_path": "docs/ai/designs/workflow-design-sandbox-html.html",
+  "design_sha256": "2dfd07a4e3bd5a38e4c2c77bf1113ce262592ec739061e973cb0eb31680ebca7",
+  "received_at": "2026-07-24T04:32:06.037Z",
+  "comments": [
+    {
+      "target": "overview",
+      "text": "test"
+    },
+    {
+      "target": "scope",
+      "text": "test"
+    },
+    {
+      "target": "flow",
+      "text": "test"
+    },
+    {
+      "target": "general",
+      "text": "test"
+    }
+  ]
+}

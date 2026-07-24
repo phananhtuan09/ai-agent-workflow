@@ -1,6 +1,6 @@
 ---
 name: design-spec
-description: Create an interactive HTML design review for a feature, collect explicit high-level human decisions through Lavish Editor, and persist an approved decision manifest before detailed spec creation. Use before create-spec for new features or material user-visible changes that need human choices about scope, behavior, business rules, compatibility, or risk. Do not use for small execute-task changes, pure refactors, or already-approved design decisions.
+description: Create or resume a local interactive HTML design review for a feature, collect high-level human decisions through the bundled local runner, and persist an approved decision manifest before detailed spec creation. Use before create-spec for new features or material user-visible changes that need human choices about scope, behavior, business rules, compatibility, or risk. Do not use for small execute-task changes, pure refactors, or already-approved design decisions.
 ---
 
 # Design Spec
@@ -9,13 +9,14 @@ Create the human-facing design approval artifact that precedes the detailed impl
 
 ## Required Resources
 
-Before creating the artifact, read:
+Before creating or resuming the artifact, read:
 
 - `references/design-contract.md`
 
 Use these bundled resources:
 
 - `assets/design-review-template.html` as the starting HTML
+- `scripts/design_review_server.py` to serve the review and persist approval or feedback
 - `scripts/validate_design_decisions.py` to validate the final decision manifest
 
 Resolve all relative paths from the directory containing this `SKILL.md`.
@@ -26,61 +27,62 @@ Resolve all relative paths from the directory containing this `SKILL.md`.
    - Under orchestrator, use the provided `feature_slug` exactly.
    - Write the review to `docs/ai/designs/{feature_slug}.html`.
    - Write approved decisions to `docs/ai/design-decisions/{feature_slug}.json`.
+   - Read human change requests from `docs/ai/design-feedback/{feature_slug}.json`.
 2. Inspect only the codebase context needed to present an accurate high-level design.
    - Confirm current behavior, affected surfaces, existing patterns, constraints, and conflicts.
    - Keep file-level implementation planning out of the human review unless it changes a high-level decision.
-3. Choose exactly one result before opening Lavish:
+3. If a decision manifest already exists, validate it.
+   - Run `scripts/validate_design_decisions.py docs/ai/design-decisions/{feature_slug}.json --repo-root <repo-root>`.
+   - If validation passes, stop the local runner if it is still running and emit `continue`.
+   - If validation fails, report the validator error and emit `stop-blocked`.
+4. If feedback exists for the current design revision, apply it before reopening review.
+   - Treat `docs/ai/design-feedback/{feature_slug}.json` as the latest human change request.
+   - If its `design_revision` matches the HTML `data-design-revision`, update the HTML, increment the revision, and reopen review.
+   - If its `design_revision` is older than the HTML revision, treat it as already handled and continue the normal review-open path.
+   - Do not create a manifest from feedback.
+5. Choose exactly one result before opening review:
    - `review-design`
    - `ask-human`
    - `split-slices`
    - `run-spike`
    - `escalate-conflict`
-4. Stop without creating an approval manifest when the result is not `review-design`.
+6. Stop without creating an approval manifest when the result is not `review-design`.
    - Ask at most five focused questions for `ask-human`.
    - Propose the smallest valuable executable slice for `split-slices`.
    - State the feasibility question for `run-spike`.
    - State the concrete codebase or business conflict for `escalate-conflict`.
-5. For `review-design`, identify only decisions that materially change human-visible outcomes.
+7. For `review-design`, identify only decisions that materially change human-visible outcomes.
    - Include goal, target user, scope, primary flow, must-happen behavior, and must-not-happen behavior.
    - Ask about permissions, quotas, validation limits, ranking or fairness, defaults, fallback, persistence, compatibility, migration, destructive behavior, or rollout only when relevant.
    - Present a direct recommendation when one option is clearly better.
    - Present multiple options only when the correct choice depends on human priorities.
    - If no open choice remains, include one required approval decision for the recommended design.
-6. Copy `assets/design-review-template.html` to the design path and replace all template content.
+8. Copy `assets/design-review-template.html` to the design path and replace all template content.
    - Use Vietnamese for all human-facing content.
    - Keep code symbols, paths, and JSON keys in English.
    - Remove every `REPLACE_` token and every sample-only note before opening the artifact.
    - Keep the artifact self-contained with inline CSS and JavaScript.
    - Do not add CDN scripts, remote fonts, analytics, or external assets.
-7. Open the artifact with the pinned Lavish version:
+   - Keep approve and request-changes controls inside the HTML and wired to the local runner endpoints.
+9. Start or reuse the local runner:
 
    ```bash
-   npx -y lavish-axi@0.1.43 <design-path>
+   python3 .claude/skills/design-spec/scripts/design_review_server.py --repo-root <repo-root> start docs/ai/designs/{feature_slug}.html
    ```
 
-   If `npx` is unavailable, use an already installed `lavish-axi` binary.
-   If neither path works, stop as blocked and keep the HTML artifact.
-8. Poll in the foreground and keep the review loop attached to the current agent turn:
-
-   ```bash
-   npx -y lavish-axi@0.1.43 poll <design-path> --agent-reply "Đã tạo bản design review. Hãy kiểm tra mục tiêu, scope và các quyết định được đánh dấu."
-   ```
-
-   - Never use shell backgrounding, `nohup`, `&`, or `disown` for the poll.
-   - If the poll is interrupted, run it again; queued feedback is preserved.
-   - If `layout_warnings` are returned, repair the HTML and recheck before asking the human to continue.
-   - Apply annotations and feedback to the HTML, increment its revision, then poll again.
-9. Treat only a prompt tagged `design-approval` whose text starts with `DESIGN_SPEC_APPROVAL` as approval.
-   - Parse the JSON payload after the marker.
-   - Require `approved: true`, the expected feature slug, the current design revision, and one answer for every required decision.
-   - Feedback, annotations, ordinary chat messages, or a session end without this payload are not approval.
-10. After valid approval:
-    - do not mutate the approved HTML after receiving the payload
-    - compute the SHA-256 of the exact reviewed HTML revision
-    - write the decision manifest defined in `references/design-contract.md`
-    - validate it with `scripts/validate_design_decisions.py`
-    - end the Lavish session with `npx -y lavish-axi@0.1.43 end <design-path>`
-11. Do not create the detailed Markdown spec from this skill.
+   - The runner binds to `127.0.0.1`, serves the HTML, and exits the command after printing the local URL.
+   - It continues running as a local background process so the human can review asynchronously.
+   - If the runner cannot start, stop as blocked and keep the HTML artifact.
+10. Stop after opening the review and ask the human to review asynchronously.
+    - Report the local runner URL and design path in prose.
+    - Tell the human to use `Approve design` to write the manifest or `Request changes` to write feedback.
+    - Tell the human to ask the agent or orchestrator to continue after they approve or request changes.
+    - Under orchestrator, emit `stop-ask-human` because approval has not been collected yet.
+11. On a later invocation, inspect artifacts instead of waiting on a live poll.
+    - If `docs/ai/design-decisions/{feature_slug}.json` exists and validates, emit `continue`.
+    - If `docs/ai/design-feedback/{feature_slug}.json` exists for the current revision, apply feedback and reopen review.
+    - If neither exists, restart or report the runner URL and emit `stop-ask-human`.
+12. Do not create the detailed Markdown spec from this skill.
     - `create-spec` consumes the approved decision manifest in the next workflow step.
 
 ## Review Surface Rules
@@ -93,19 +95,24 @@ Resolve all relative paths from the directory containing this `SKILL.md`.
 - Use semantic headings, fieldsets, legends, labels, buttons, and an `aria-live` status region.
 - Preserve visible keyboard focus and at least 44px interactive targets.
 - Do not rely on color alone for status or recommendation.
-- Keep one final approval action that queues exactly one structured payload.
+- Provide section-level or decision-level feedback textareas for likely change requests.
+- Provide a final general feedback textarea.
+- Show a live JSON preview so the human can see what approval will persist.
+- Do not rely on sidebar prompts, DOM snapshots, or browser local state as approval provenance.
 
 ## Approval And Source Of Truth
 
 - The HTML is the human review surface.
+- The local runner is the approval and feedback transport.
 - The decision manifest is approval provenance for `create-spec` and `review-spec`.
 - The later reviewed Markdown spec is the source of truth for implementation and verification.
-- Never treat Lavish local state, DOM snapshots, or free-form prompts as the durable source of truth.
+- Never treat chat text, DOM snapshots, screenshots, downloaded fallback JSON, or free-form prompts as the durable source of truth.
 - Never publish or share the artifact through third-party hosting unless the human explicitly asks.
 
 ## Allowed Outcomes
 
 - `Design approved`
+- `Design review opened`
 - `Questions needed`
 - `Slice proposed`
 - `Spike required`
@@ -118,7 +125,7 @@ When run under `/orchestrator`, append exactly one HTML comment as the final out
 
 - Design approved:
   `<!-- orchestrator: outcome=continue provides=design_path,design_decisions_path design_path=docs/ai/designs/{feature_slug}.html design_decisions_path=docs/ai/design-decisions/{feature_slug}.json -->`
-- Questions needed or review ended without approval:
+- Design review opened, questions needed, or review ended without approval:
   `<!-- orchestrator: outcome=stop-ask-human -->`
 - Slice proposed:
   `<!-- orchestrator: outcome=stop-split-slices -->`
@@ -126,7 +133,7 @@ When run under `/orchestrator`, append exactly one HTML comment as the final out
   `<!-- orchestrator: outcome=stop-run-spike -->`
 - Conflict escalated:
   `<!-- orchestrator: outcome=stop-escalate-conflict -->`
-- Lavish unavailable or another hard dependency is missing:
+- Local runner unavailable, invalid manifest, or another hard dependency is missing:
   `<!-- orchestrator: outcome=stop-blocked -->`
 
 Emit `continue` only after both files exist and the decision manifest validator passes.
@@ -138,6 +145,7 @@ Emit `continue` only after both files exist and the decision manifest validator 
 - Does every required decision have a stable `D-xxx` identifier?
 - Are all `REPLACE_` and sample-only tokens removed?
 - Is the artifact local-only and self-contained?
-- Did the human submit the explicit approval payload for the current revision?
+- Did the initial review path stop without polling or writing a manifest?
+- On resume, did the skill inspect manifest and feedback artifacts before reopening review?
 - Does the manifest match the final HTML checksum?
 - Did the validator pass before emitting `continue`?

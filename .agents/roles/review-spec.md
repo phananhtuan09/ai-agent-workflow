@@ -22,28 +22,31 @@ In that case, state that approval provenance was not checked and review only the
 
 ## Expected Spec Shape
 
-Required sections:
+New specs must use Vietnamese section headings.
+Legacy specs with the previous English headings may be reviewed for backward compatibility, but do not require new specs to use English headings.
 
-- `## Tier`
-- `## Execution Contract`
-- `## Problem`
-- `## Scope`
-- `## Out of Scope`
-- `## Approved Design Decisions`
-- `## Assumption Check`
-- `## Current System Evidence`
-- `## Behavioral Requirements`
-- `## State / Data / Interface Changes`
-- `## Detailed Technical Design`
-- `## File-Level Change Map`
-- `## Validation / Error / Edge Cases`
-- `## Security / Permission Considerations`
-- `## Compatibility / Migration`
-- `## Implementation Sequence`
-- `## Acceptance Criteria`
-- `## Verification Matrix`
-- `## Open Questions`
-- `## Decision Log`
+Required sections for new specs:
+
+- `## Cấp Độ`
+- `## Hợp Đồng Thực Thi`
+- `## Vấn Đề`
+- `## Phạm Vi`
+- `## Ngoài Phạm Vi`
+- `## Quyết Định Thiết Kế Đã Duyệt`
+- `## Kiểm Tra Giả Định`
+- `## Bằng Chứng Hệ Thống Hiện Tại`
+- `## Yêu Cầu Hành Vi`
+- `## Thay Đổi Trạng Thái / Dữ Liệu / Giao Diện`
+- `## Thiết Kế Kỹ Thuật Chi Tiết`
+- `## Bản Đồ Thay Đổi Theo File`
+- `## Kiểm Tra Hợp Lệ / Lỗi / Trường Hợp Biên`
+- `## Cân Nhắc Bảo Mật / Phân Quyền`
+- `## Tương Thích / Di Chuyển Dữ Liệu`
+- `## Trình Tự Triển Khai`
+- `## Tiêu Chí Chấp Nhận`
+- `## Ma Trận Xác Minh`
+- `## Câu Hỏi Mở`
+- `## Nhật Ký Quyết Định`
 
 `Không áp dụng` is acceptable only when accompanied by a concrete reason.
 
@@ -55,7 +58,7 @@ Required sections:
    - Fail if manifest validation or the HTML checksum fails.
 
 2. **Decision traceability**
-   - Every manifest decision ID must appear in `Approved Design Decisions` and the relevant behavior, implementation, acceptance, or verification sections.
+   - Every manifest decision ID must appear in `Quyết Định Thiết Kế Đã Duyệt` and the relevant behavior, implementation, acceptance, or verification sections.
    - Fail if a human-approved answer changes meaning, disappears, or is contradicted.
    - Fail if the spec attributes an agent-chosen rule to the human.
 

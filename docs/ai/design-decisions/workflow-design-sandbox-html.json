@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "feature_slug": "workflow-design-sandbox-html",
+  "design_revision": "2",
+  "design_path": "docs/ai/designs/workflow-design-sandbox-html.html",
+  "design_sha256": "2dfd07a4e3bd5a38e4c2c77bf1113ce262592ec739061e973cb0eb31680ebca7",
+  "approved_at": "2026-07-24T04:35:09.416Z",
+  "approval_source": "local-runner",
+  "goal": "Tạo một file HTML local để reviewer cấu hình, preview và approve một workflow slice trước khi AI sinh detailed spec.",
+  "scope": {
+    "in": [
+      "Một trang HTML tự chạy, có form cấu hình feature slug, mục tiêu, workflow range, preview JSON, validation, copy/download và trạng thái lỗi hoặc thành công."
+    ],
+    "out": [
+      "Không sửa runtime orchestrator, schema workflow thật, backend, database, auth hoặc tích hợp multi-user."
+    ]
+  },
+  "decisions": [
+    {
+      "id": "D-001",
+      "question": "HTML sandbox có nên lưu nháp cấu hình trong trình duyệt không?",
+      "answer": "Lưu nháp bằng localStorage và có nút reset",
+      "rationale": "test",
+      "source": "human"
+    },
+    {
+      "id": "D-002",
+      "question": "Export chính của sandbox nên ưu tiên hình thức nào?",
+      "answer": "Có cả copy clipboard và download JSON",
+      "rationale": "test",
+      "source": "human"
+    },
+    {
+      "id": "D-003",
+      "question": "Validation nên chặn export ở mức nào?",
+      "answer": "Chặn export khi slug, goal hoặc workflow range chưa hợp lệ",
+      "rationale": "test",
+      "source": "human"
+    }
+  ],
+  "constraints": [
+    "test"
+  ],
+  "unresolved_non_blocking": []
+}

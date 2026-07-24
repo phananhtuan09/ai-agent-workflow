@@ -111,7 +111,7 @@ It must stop when implementation discovery conflicts with the approved decisions
 Purpose:
 
 - create a concise interactive HTML review for material high-level decisions
-- collect explicit human approval through Lavish Editor
+- collect explicit human approval through the bundled local runner
 - persist approval provenance before detailed spec creation
 
 Rules:
@@ -122,9 +122,9 @@ Rules:
 - use stable `D-xxx` identifiers for required decisions
 - show the recommendation and concrete tradeoffs before alternatives
 - distinguish confirmed facts, assumptions, risks, and human choices
-- keep the Lavish poll attached to the active agent turn
+- start the local runner and stop while the human reviews asynchronously
 - do not emit `continue` until the HTML and validated decision manifest both exist
-- stop without approval when the human ends the review without the structured approval payload
+- stop without approval when no valid decision manifest exists
 
 The HTML is the human review surface.
 The decision manifest is approval provenance for spec creation and review.
@@ -146,6 +146,8 @@ Rules:
 - do not invent low-level detail when codebase evidence is insufficient
 - classify the feature as `Lite`, `Standard`, or `Extended`
 - write the final tier explicitly in the spec
+- write generated spec prose, headings, table headers, and recurring labels in Vietnamese
+- keep only code symbols, file paths, API names, schema names, JSON keys, decision IDs, AC IDs, literal enum values, and command names in English
 - use tier to control analysis depth, not document length or acceptance-criteria count
 - prefer information density and traceability over repetition
 - write to `docs/ai/specs/{feature}.md`
@@ -153,29 +155,29 @@ Rules:
 - do not leave blocking product questions in a spec that is ready for execution
 
 Expected output:
-- `## Tier`
-- `## Execution Contract`
-- `## Problem`
-- `## Scope`
-- `## Out of Scope`
-- `## Approved Design Decisions`
-- `## Assumption Check`
-- `## Current System Evidence`
-- `## Behavioral Requirements`
-- `## State / Data / Interface Changes`
-- `## Detailed Technical Design`
-- `## File-Level Change Map`
-- `## Validation / Error / Edge Cases`
-- `## Security / Permission Considerations`
-- `## Compatibility / Migration`
-- `## Implementation Sequence`
-- `## Acceptance Criteria`
-- `## Verification Matrix`
-- `## Open Questions`
-- `## Decision Log`
+- `## Cấp Độ`
+- `## Hợp Đồng Thực Thi`
+- `## Vấn Đề`
+- `## Phạm Vi`
+- `## Ngoài Phạm Vi`
+- `## Quyết Định Thiết Kế Đã Duyệt`
+- `## Kiểm Tra Giả Định`
+- `## Bằng Chứng Hệ Thống Hiện Tại`
+- `## Yêu Cầu Hành Vi`
+- `## Thay Đổi Trạng Thái / Dữ Liệu / Giao Diện`
+- `## Thiết Kế Kỹ Thuật Chi Tiết`
+- `## Bản Đồ Thay Đổi Theo File`
+- `## Kiểm Tra Hợp Lệ / Lỗi / Trường Hợp Biên`
+- `## Cân Nhắc Bảo Mật / Phân Quyền`
+- `## Tương Thích / Di Chuyển Dữ Liệu`
+- `## Trình Tự Triển Khai`
+- `## Tiêu Chí Chấp Nhận`
+- `## Ma Trận Xác Minh`
+- `## Câu Hỏi Mở`
+- `## Nhật Ký Quyết Định`
 
 Assumption rules:
-- `## Assumption Check` should separate:
+- `## Kiểm Tra Giả Định` should separate:
   - confirmed
   - inferred but safe
   - needs confirmation
@@ -261,26 +263,26 @@ Rules:
 - never auto-chain this skill from `/execute-spec`, orchestrator, or verification
 
 Technical sections the invoked skill may update without extra confirmation:
-- `## Current System Evidence`
-- `## State / Data / Interface Changes`
-- `## Detailed Technical Design`
-- `## File-Level Change Map`
-- `## Validation / Error / Edge Cases`
-- `## Security / Permission Considerations`
-- `## Compatibility / Migration`
-- `## Implementation Sequence`
-- `## Verification Matrix`
-- `## Decision Log`
+- `## Bằng Chứng Hệ Thống Hiện Tại`
+- `## Thay Đổi Trạng Thái / Dữ Liệu / Giao Diện`
+- `## Thiết Kế Kỹ Thuật Chi Tiết`
+- `## Bản Đồ Thay Đổi Theo File`
+- `## Kiểm Tra Hợp Lệ / Lỗi / Trường Hợp Biên`
+- `## Cân Nhắc Bảo Mật / Phân Quyền`
+- `## Tương Thích / Di Chuyển Dữ Liệu`
+- `## Trình Tự Triển Khai`
+- `## Ma Trận Xác Minh`
+- `## Nhật Ký Quyết Định`
 - implementation constraints and technical clarifications
 
 Human confirmation required for:
-- `## Execution Contract`
-- `## Problem`
-- `## Scope`
-- `## Acceptance Criteria`
-- `## Approved Design Decisions`
-- `## Behavioral Requirements`
-- `## Out of Scope`
+- `## Hợp Đồng Thực Thi`
+- `## Vấn Đề`
+- `## Phạm Vi`
+- `## Tiêu Chí Chấp Nhận`
+- `## Quyết Định Thiết Kế Đã Duyệt`
+- `## Yêu Cầu Hành Vi`
+- `## Ngoài Phạm Vi`
 - transparent-vs-hidden recommendation logic or any user-visible decision rule that changed in meaning
 
 Sync rule for transparent logic:
