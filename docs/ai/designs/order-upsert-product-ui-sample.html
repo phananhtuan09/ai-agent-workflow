@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="vi" data-feature-slug="REPLACE_FEATURE_SLUG" data-design-revision="REPLACE_DESIGN_REVISION">
+<html lang="vi" data-feature-slug="order-upsert-product-ui-sample" data-design-revision="2">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>REPLACE_FEATURE_TITLE · Design review</title>
+    <title>Order create/edit với sản phẩm · Design review</title>
     <style>
       :root {
         --ink: #19221d;
@@ -498,31 +498,31 @@
       <header class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Design review · Quyết định trước implementation spec</p>
-          <h1>REPLACE_FEATURE_TITLE</h1>
-          <p class="goal" data-design-goal>REPLACE_ONE_LINE_GOAL</p>
+          <h1>Order create/edit với sản phẩm</h1>
+          <p class="goal" data-design-goal>Chuẩn hoá màn hình tạo/chỉnh order để nhân viên thêm dịch vụ hoặc sản phẩm vào cùng hoá đơn và nhập hoa hồng theo phần trăm.</p>
         </div>
         <div class="meta">
-          <span><strong>Feature:</strong> <code>REPLACE_FEATURE_SLUG</code></span>
-          <span><strong>Revision:</strong> REPLACE_DESIGN_REVISION</span>
+          <span><strong>Feature:</strong> <code>order-upsert-product-ui-sample</code></span>
+          <span><strong>Revision:</strong> 2</span>
           <span><strong>Trạng thái:</strong> Chờ human review</span>
         </div>
       </header>
 
       <section class="panel" aria-labelledby="overview-title" data-review-section="overview">
         <h2 id="overview-title">Tóm tắt cần duyệt</h2>
-        <p class="section-intro">REPLACE_REVIEW_INSTRUCTION</p>
+        <p class="section-intro">Chốt phạm vi hiển thị và behavior ảnh hưởng trực tiếp đến việc thêm item, tính commission và giữ tương thích khi lưu order.</p>
         <div class="split">
           <article class="fact-box">
             <h3>Người dùng mục tiêu</h3>
-            <p data-target-user>REPLACE_TARGET_USER</p>
+            <p data-target-user>Nhân viên salon tạo hoặc chỉnh order trên desktop và mobile.</p>
           </article>
           <article class="fact-box">
             <h3>Vấn đề hiện tại</h3>
-            <p data-current-problem>REPLACE_CURRENT_PROBLEM</p>
+            <p data-current-problem>Tab Sản phẩm đang bị khoá, invoice chỉ xử lý service, sidebar khó quét và commission đang nhập bằng số tiền tuyệt đối.</p>
           </article>
           <article class="scope-box">
             <h3>Kết quả mong muốn</h3>
-            <p>REPLACE_DESIRED_OUTCOME</p>
+            <p>Catalog dịch vụ/sản phẩm rõ ràng, invoice thẳng hàng, commission nhập 0–100% nhưng vẫn lưu amount tương thích backend hiện tại.</p>
           </article>
         </div>
       </section>
@@ -532,79 +532,57 @@
           class="panel output-preview"
           aria-labelledby="output-preview-title"
           data-output-preview
-          data-preview-kind="REPLACE_OUTPUT_KIND"
+          data-preview-kind="ui"
         >
           <h2 id="output-preview-title">
             Bản xem trước đầu ra
-            <span class="preview-kind">REPLACE_OUTPUT_KIND_LABEL</span>
+            <span class="preview-kind">UI</span>
           </h2>
-          <p class="section-intro" data-output-summary>REPLACE_OUTPUT_SUMMARY</p>
+          <p class="section-intro" data-output-summary>Màn create/edit order sẽ dùng cùng một invoice builder, cho phép nhân viên chuyển giữa dịch vụ và sản phẩm rồi hoàn tất order trong một flow liên tục.</p>
           <div class="preview-columns">
             <article data-output-list="deliverables">
               <h3>Sau khi hoàn thành</h3>
-              <ul><li>REPLACE_OUTPUT_DELIVERABLE</li></ul>
+              <ul>
+                <li>Create và edit dùng cùng catalog/invoice layout.</li>
+                <li>Tab Sản phẩm có thể thêm product active vào invoice.</li>
+              </ul>
             </article>
             <article data-output-list="primary_interfaces">
               <h3>Bề mặt chính</h3>
-              <ul><li>REPLACE_OUTPUT_INTERFACE</li></ul>
+              <ul>
+                <li>Catalog Dịch vụ/Sản phẩm, invoice sidebar và dialog gán thợ.</li>
+              </ul>
             </article>
             <article data-output-list="observable_results">
               <h3>Kết quả quan sát được</h3>
-              <ul><li>REPLACE_OUTPUT_RESULT</li></ul>
+              <ul>
+                <li>Quantity và commission % cập nhật lại summary trước khi lưu.</li>
+                <li>Desktop và mobile giữ cùng behavior với layout phù hợp.</li>
+              </ul>
             </article>
           </div>
           <h3>Luồng hoạt động dự kiến</h3>
-          <p class="section-intro">REPLACE_FLOW_CAPTION</p>
-          <div
-            class="flow-graph"
-            data-flow-graph
-            data-flow-kind="REPLACE_OUTPUT_KIND"
-            role="list"
-            aria-label="Luồng hoạt động dự kiến"
-          >
-            <article
-              class="flow-node"
-              data-flow-node
-              data-flow-label="REPLACE_FLOW_NODE_1_LABEL"
-              data-flow-description="REPLACE_FLOW_NODE_1_DETAIL"
-              role="listitem"
-            >
-              <span class="flow-role">REPLACE_FLOW_NODE_1_ROLE</span>
-              <strong>REPLACE_FLOW_NODE_1_LABEL</strong>
-              <small>REPLACE_FLOW_NODE_1_DETAIL</small>
+          <p class="section-intro">Graph mô tả thao tác chính của nhân viên sau khi feature được triển khai.</p>
+          <div class="flow-graph" data-flow-graph data-flow-kind="ui" role="list" aria-label="Luồng thao tác order">
+            <article class="flow-node" data-flow-node data-flow-label="Chọn catalog" data-flow-description="Chuyển giữa Dịch vụ và Sản phẩm, sau đó tìm item active." role="listitem">
+              <span class="flow-role">User action</span>
+              <strong>Chọn catalog</strong>
+              <small>Chuyển tab và tìm item active.</small>
             </article>
-            <article
-              class="flow-node"
-              data-flow-node
-              data-flow-label="REPLACE_FLOW_NODE_2_LABEL"
-              data-flow-description="REPLACE_FLOW_NODE_2_DETAIL"
-              role="listitem"
-            >
-              <span class="flow-role">REPLACE_FLOW_NODE_2_ROLE</span>
-              <strong>REPLACE_FLOW_NODE_2_LABEL</strong>
-              <small>REPLACE_FLOW_NODE_2_DETAIL</small>
+            <article class="flow-node" data-flow-node data-flow-label="Thêm invoice line" data-flow-description="UI thêm service hoặc product với quantity tối thiểu là 1." role="listitem">
+              <span class="flow-role">UI state</span>
+              <strong>Thêm invoice line</strong>
+              <small>Hiển thị item, giá và quantity.</small>
             </article>
-            <article
-              class="flow-node"
-              data-flow-node
-              data-flow-label="REPLACE_FLOW_NODE_3_LABEL"
-              data-flow-description="REPLACE_FLOW_NODE_3_DETAIL"
-              role="listitem"
-            >
-              <span class="flow-role">REPLACE_FLOW_NODE_3_ROLE</span>
-              <strong>REPLACE_FLOW_NODE_3_LABEL</strong>
-              <small>REPLACE_FLOW_NODE_3_DETAIL</small>
+            <article class="flow-node" data-flow-node data-flow-label="Điều chỉnh order" data-flow-description="Nhân viên sửa quantity, gán thợ và nhập commission theo phần trăm." role="listitem">
+              <span class="flow-role">User input</span>
+              <strong>Điều chỉnh order</strong>
+              <small>Sửa quantity, thợ và commission %.</small>
             </article>
-            <article
-              class="flow-node"
-              data-flow-node
-              data-flow-label="REPLACE_FLOW_NODE_4_LABEL"
-              data-flow-description="REPLACE_FLOW_NODE_4_DETAIL"
-              role="listitem"
-            >
-              <span class="flow-role">REPLACE_FLOW_NODE_4_ROLE</span>
-              <strong>REPLACE_FLOW_NODE_4_LABEL</strong>
-              <small>REPLACE_FLOW_NODE_4_DETAIL</small>
+            <article class="flow-node" data-flow-node data-flow-label="Lưu hoặc thanh toán" data-flow-description="App validate, quy đổi commission amount và gửi request order hiện tại." role="listitem">
+              <span class="flow-role">Submit feedback</span>
+              <strong>Lưu hoặc thanh toán</strong>
+              <small>Validate, gửi request và hiển thị kết quả.</small>
             </article>
           </div>
         </section>
@@ -620,26 +598,26 @@
             <fieldset
               class="decision-card"
               data-decision-id="D-001"
-              data-question="REPLACE_DECISION_QUESTION"
+              data-question="Có duyệt slice create/edit order với sản phẩm và commission theo phần trăm không?"
               data-required="true"
             >
               <legend>
-                <span class="decision-id">D-001</span><br />REPLACE_DECISION_QUESTION
+                <span class="decision-id">D-001</span><br />Có duyệt slice create/edit order với sản phẩm và commission theo phần trăm không?
               </legend>
-              <p>REPLACE_DECISION_CONTEXT</p>
+              <p>Recommendation giải quyết workflow chính trong một slice và không mở rộng sang tồn kho thật.</p>
               <div class="option-grid">
                 <label class="option">
-                  <input type="radio" name="D-001" value="recommended" data-answer-label="REPLACE_RECOMMENDED_ANSWER" />
+                  <input type="radio" name="D-001" value="recommended" data-answer-label="Duyệt scope đề xuất: giữ Dịch vụ/Sản phẩm, thêm product vào invoice, sửa sidebar và commission %" checked />
                   <span>
-                    <strong>REPLACE_RECOMMENDED_ANSWER <span class="recommended">Khuyến nghị</span></strong>
-                    <small>REPLACE_RECOMMENDED_TRADEOFF</small>
+                    <strong>Duyệt scope đề xuất <span class="recommended">Khuyến nghị</span></strong>
+                    <small>Đủ giải quyết feedback hiện tại; chưa triển khai trừ kho hoặc migrate dữ liệu cũ.</small>
                   </span>
                 </label>
                 <label class="option">
-                  <input type="radio" name="D-001" value="alternative" data-answer-label="REPLACE_ALTERNATIVE_ANSWER" />
+                  <input type="radio" name="D-001" value="alternative" data-answer-label="Chỉ sửa UI, chưa thêm product và chưa đổi commission" />
                   <span>
-                    <strong>REPLACE_ALTERNATIVE_ANSWER</strong>
-                    <small>REPLACE_ALTERNATIVE_TRADEOFF</small>
+                    <strong>Chỉ sửa UI</strong>
+                    <small>Ít rủi ro hơn nhưng để lại tab Sản phẩm và commission chưa dùng được.</small>
                   </span>
                 </label>
               </div>
@@ -656,11 +634,20 @@
           <div class="split">
             <article class="scope-box" data-scope-list="in">
               <h3>Trong scope</h3>
-              <ul><li>REPLACE_IN_SCOPE_ITEM</li></ul>
+              <ul>
+                <li>Giữ hai tab Dịch vụ/Sản phẩm và cho phép thêm product active vào invoice.</li>
+                <li>Generalize invoice line để phân biệt service/product, giá và số lượng.</li>
+                <li>Chỉnh sidebar responsive và dialog staff với role mặc định “Thực hiện”, commission 0–100%.</li>
+                <li>Áp dụng nhất quán cho create và edit, giữ validation submit hiện tại.</li>
+              </ul>
             </article>
             <article class="risk-box" data-scope-list="out">
               <h3>Ngoài scope</h3>
-              <ul><li>REPLACE_OUT_OF_SCOPE_ITEM</li></ul>
+              <ul>
+                <li>Không triển khai tồn kho thật, trừ kho hoặc migrate order cũ.</li>
+                <li>Không thêm lại tab Gói quyền lợi KH trong slice này.</li>
+                <li>Không thay đổi permission ngoài route order hiện có.</li>
+              </ul>
             </article>
           </div>
         </section>
@@ -670,16 +657,19 @@
           <div class="split">
             <article class="fact-box" data-review-section="assumptions">
               <h3>Assumptions</h3>
-              <ul><li>REPLACE_ASSUMPTION</li></ul>
+              <ul><li>Product active, giá và category đã có trong store hiện tại; backend tiếp tục nhận commission amount.</li></ul>
             </article>
             <article class="risk-box" data-review-section="risks">
               <h3>Rủi ro cần biết</h3>
-              <ul><li>REPLACE_MATERIAL_RISK</li></ul>
+              <ul><li>Generalize line item có thể ảnh hưởng code path service-only; cần giữ tương thích order hiện có.</li></ul>
             </article>
           </div>
           <article class="fact-box">
             <h3>Codebase evidence</h3>
-            <ul><li><code>REPLACE_EVIDENCE_PATH</code> - REPLACE_EVIDENCE_SUMMARY</li></ul>
+            <ul>
+              <li><code>lib/core/models/product.dart</code> - Product metadata đã có, còn invoice item hiện service-only.</li>
+              <li><code>OrderServiceStaffDialog</code> - Commission hiện nhập amount và cần đổi presentation sang %.</li>
+            </ul>
           </article>
         </details>
 

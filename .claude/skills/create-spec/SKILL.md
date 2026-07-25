@@ -20,6 +20,8 @@ Create the detailed AI-facing implementation and verification contract for an ap
    - Do not copy repository-wide context that does not affect this slice.
 3. Check the approved slice before writing.
    - Classify important assumptions as confirmed, inferred but safe, needs confirmation, or agent-chosen technical detail.
+   - When the manifest contains `output_preview`, preserve its deliverables, primary interfaces, observable results, and flow semantics.
+   - Map the approved output preview into the existing execution contract, behavior requirements, interface or state changes, and acceptance criteria; do not create a second product-design section.
    - A human-approved decision may be elaborated technically but must not be changed in meaning.
    - If implementation discovery exposes a conflict with an approved decision, stop and escalate it instead of silently rewriting the behavior.
 4. Choose exactly one result:
@@ -84,6 +86,7 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 
 ### Nguồn Quyết Định Đã Duyệt
 - Manifest quyết định: `docs/ai/design-decisions/{feature}.json`
+- Bản xem trước đầu ra: [kind, summary, deliverables, primary interfaces, observable results, và flow đã duyệt]
 - D-001: ...
 
 ### Bắt Buộc Xảy Ra
@@ -172,6 +175,7 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 - Write assistant responses, questions, generated spec prose, Markdown headings, table headers, and recurring labels in Vietnamese.
 - Keep only code symbols, file paths, API names, schema names, JSON keys, decision IDs, AC IDs, literal enum values, and command names in English.
 - Treat approved design decisions as human authority and never reinterpret them silently.
+- Treat an approved `output_preview` as human authority for the expected deliverables, interfaces, observable results, and high-level operating flow.
 - Under `feature-standard`, fail closed when `design_decisions_path` is missing, invalid, or does not match its HTML checksum.
 - Include concrete file paths, symbols, interfaces, schema changes, migration mechanisms, storage keys, implementation order, and test surfaces when they are grounded in inspected code and useful to the executor.
 - Do not invent low-level detail when codebase evidence is insufficient.
@@ -224,6 +228,7 @@ Rules:
 
 - Is the authority source explicit and valid?
 - Does every approved `D-xxx` decision appear without semantic drift?
+- Does every approved output-preview item appear in the relevant execution, behavior, interface, acceptance, and verification sections without semantic drift?
 - Are goal, scope, must-happen, and must-not-happen behavior easy to locate?
 - Is every current-system claim backed by a concrete codebase path or direct evidence?
 - Are affected files, symbols, interfaces, state, data, validation, and failure paths detailed when relevant?

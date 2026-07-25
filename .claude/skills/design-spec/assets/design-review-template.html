@@ -39,9 +39,7 @@
 
       body {
         margin: 0;
-        background:
-          radial-gradient(circle at 8% 0%, rgba(217, 93, 67, 0.12), transparent 28rem),
-          linear-gradient(180deg, #ece5d9 0, var(--paper) 34rem);
+        background: #f1f3f0;
         color: var(--ink);
         font-family: "Aptos", "Segoe UI", sans-serif;
         font-size: 16px;
@@ -58,9 +56,8 @@
       }
 
       h1 {
-        max-width: 15ch;
-        margin-bottom: var(--space-2);
-        font-size: clamp(2.5rem, 8vw, 5.8rem);
+        margin-bottom: var(--space-1);
+        font-size: clamp(1.75rem, 3vw, 2.4rem);
       }
 
       h2 {
@@ -113,31 +110,16 @@
       }
 
       .hero {
-        position: relative;
-        overflow: hidden;
-        min-height: 470px;
-        padding: clamp(32px, 8vw, 82px);
-        border-radius: 2px 2px 34px 2px;
+        padding: 24px clamp(20px, 4vw, 36px);
+        border-radius: 4px;
         background: var(--navy);
         color: #fffdf7;
-        box-shadow: var(--shadow);
-      }
-
-      .hero::after {
-        position: absolute;
-        right: -8rem;
-        bottom: -13rem;
-        width: 32rem;
-        height: 32rem;
-        border: 5rem solid rgba(255, 255, 255, 0.065);
-        border-radius: 50%;
-        content: "";
+        box-shadow: 0 6px 18px rgba(23, 50, 77, 0.12);
       }
 
       .hero-copy,
       .meta {
-        position: relative;
-        z-index: 1;
+        position: static;
       }
 
       .hero-copy {
@@ -145,7 +127,7 @@
       }
 
       .eyebrow {
-        margin-bottom: var(--space-6);
+        margin-bottom: var(--space-1);
         color: #ffb4a1;
         font-size: 0.78rem;
         font-weight: 800;
@@ -154,16 +136,16 @@
       }
 
       .goal {
-        max-width: 720px;
+        max-width: 74ch;
         color: #d9e5ed;
-        font-size: clamp(1.04rem, 2vw, 1.24rem);
+        font-size: 1rem;
       }
 
       .meta {
         display: flex;
         flex-wrap: wrap;
         gap: 10px 24px;
-        margin-top: var(--space-6);
+        margin-top: var(--space-2);
         color: #c5d3dc;
         font-size: 0.9rem;
       }
@@ -224,35 +206,77 @@
         border-top: 4px solid var(--coral);
       }
 
-      .flow {
-        counter-reset: flow;
+      .preview-columns {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        padding: 0;
-        list-style: none;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-3);
+        margin: var(--space-3) 0;
       }
 
-      .flow li {
-        counter-increment: flow;
+      .preview-columns article {
         min-width: 0;
-        min-height: 170px;
-        padding: var(--space-3);
+        padding-top: var(--space-2);
+        border-top: 3px solid var(--navy);
+      }
+
+      .preview-kind {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 3px 7px;
+        border: 1px solid var(--navy);
+        color: var(--navy);
+        font-family: "Aptos", "Segoe UI", sans-serif;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .flow-graph {
+        display: grid;
+        grid-auto-columns: minmax(150px, 1fr);
+        grid-auto-flow: column;
+        gap: 34px;
+        overflow-x: auto;
+        padding: 4px 2px var(--space-2);
+      }
+
+      .flow-node {
+        position: relative;
+        min-width: 0;
+        min-height: 130px;
+        padding: var(--space-2);
+        border: 1px solid #b9c8d2;
         border-top: 4px solid var(--navy);
         background: var(--navy-soft);
       }
 
-      .flow li::before {
-        display: grid;
-        width: 34px;
-        height: 34px;
-        margin-bottom: var(--space-2);
-        place-items: center;
-        border-radius: 50%;
-        background: var(--navy);
-        color: white;
+      .flow-node:not(:last-child)::after {
+        position: absolute;
+        top: 50%;
+        right: -28px;
+        color: var(--navy);
+        font-size: 1.5rem;
         font-weight: 800;
-        content: counter(flow);
+        content: "→";
+        transform: translateY(-50%);
+      }
+
+      .flow-node small,
+      .flow-node strong {
+        display: block;
+      }
+
+      .flow-node small {
+        margin-top: 8px;
+        color: var(--muted);
+      }
+
+      .flow-role {
+        margin-bottom: 6px;
+        color: var(--red);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
       }
 
       .decision-stack {
@@ -350,13 +374,6 @@
         background: var(--coral-soft);
       }
 
-      .approval-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
-        gap: var(--space-3);
-        align-items: start;
-      }
-
       .action-row {
         display: flex;
         flex-wrap: wrap;
@@ -430,12 +447,8 @@
 
       @media (max-width: 850px) {
         .split,
-        .approval-layout {
+        .preview-columns {
           grid-template-columns: 1fr;
-        }
-
-        .flow {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
 
@@ -450,9 +463,27 @@
           border-radius: 2px 2px 20px 2px;
         }
 
-        .flow,
         .option-grid {
           grid-template-columns: 1fr;
+        }
+
+        .flow-graph {
+          grid-auto-flow: row;
+          grid-auto-rows: auto;
+          grid-template-columns: 1fr;
+          overflow-x: visible;
+        }
+
+        .flow-node {
+          min-height: auto;
+        }
+
+        .flow-node:not(:last-child)::after {
+          top: auto;
+          right: 50%;
+          bottom: -31px;
+          content: "↓";
+          transform: translateX(50%);
         }
 
         .primary-button,
@@ -478,80 +509,113 @@
       </header>
 
       <section class="panel" aria-labelledby="overview-title" data-review-section="overview">
-        <h2 id="overview-title">Bối cảnh cần chốt</h2>
+        <h2 id="overview-title">Tóm tắt cần duyệt</h2>
         <p class="section-intro">REPLACE_REVIEW_INSTRUCTION</p>
         <div class="split">
           <article class="fact-box">
-            <h3>Hiện trạng đã xác nhận</h3>
-            <ul>
-              <li>REPLACE_CONFIRMED_FACT</li>
-            </ul>
+            <h3>Người dùng mục tiêu</h3>
+            <p data-target-user>REPLACE_TARGET_USER</p>
+          </article>
+          <article class="fact-box">
+            <h3>Vấn đề hiện tại</h3>
+            <p data-current-problem>REPLACE_CURRENT_PROBLEM</p>
           </article>
           <article class="scope-box">
-            <h3>Outcome mong muốn</h3>
-            <ul>
-              <li>REPLACE_DESIRED_OUTCOME</li>
-            </ul>
+            <h3>Kết quả mong muốn</h3>
+            <p>REPLACE_DESIRED_OUTCOME</p>
           </article>
         </div>
-        <label>
-          Ghi chú cho bối cảnh
-          <textarea class="feedback" data-feedback-target="overview" placeholder="Góp ý hoặc câu hỏi cho phần bối cảnh. Có thể để trống."></textarea>
-        </label>
       </section>
 
-      <section class="panel" aria-labelledby="scope-title" data-review-section="scope">
-        <h2 id="scope-title">Scope của slice</h2>
-        <div class="split">
-          <article class="scope-box" data-scope-list="in">
-            <h3>Trong scope</h3>
-            <ul>
-              <li>REPLACE_IN_SCOPE_ITEM</li>
-            </ul>
-          </article>
-          <article class="risk-box" data-scope-list="out">
-            <h3>Ngoài scope</h3>
-            <ul>
-              <li>REPLACE_OUT_OF_SCOPE_ITEM</li>
-            </ul>
-          </article>
-        </div>
-        <label>
-          Ghi chú cho scope
-          <textarea class="feedback" data-feedback-target="scope" placeholder="Ví dụ: bỏ một mục khỏi scope hoặc thêm constraint cho scope."></textarea>
-        </label>
-      </section>
+      <form id="design-review-form">
+        <section
+          class="panel output-preview"
+          aria-labelledby="output-preview-title"
+          data-output-preview
+          data-preview-kind="REPLACE_OUTPUT_KIND"
+        >
+          <h2 id="output-preview-title">
+            Bản xem trước đầu ra
+            <span class="preview-kind">REPLACE_OUTPUT_KIND_LABEL</span>
+          </h2>
+          <p class="section-intro" data-output-summary>REPLACE_OUTPUT_SUMMARY</p>
+          <div class="preview-columns">
+            <article data-output-list="deliverables">
+              <h3>Sau khi hoàn thành</h3>
+              <ul><li>REPLACE_OUTPUT_DELIVERABLE</li></ul>
+            </article>
+            <article data-output-list="primary_interfaces">
+              <h3>Bề mặt chính</h3>
+              <ul><li>REPLACE_OUTPUT_INTERFACE</li></ul>
+            </article>
+            <article data-output-list="observable_results">
+              <h3>Kết quả quan sát được</h3>
+              <ul><li>REPLACE_OUTPUT_RESULT</li></ul>
+            </article>
+          </div>
+          <h3>Luồng hoạt động dự kiến</h3>
+          <p class="section-intro">REPLACE_FLOW_CAPTION</p>
+          <div
+            class="flow-graph"
+            data-flow-graph
+            data-flow-kind="REPLACE_OUTPUT_KIND"
+            role="list"
+            aria-label="Luồng hoạt động dự kiến"
+          >
+            <article
+              class="flow-node"
+              data-flow-node
+              data-flow-label="REPLACE_FLOW_NODE_1_LABEL"
+              data-flow-description="REPLACE_FLOW_NODE_1_DETAIL"
+              role="listitem"
+            >
+              <span class="flow-role">REPLACE_FLOW_NODE_1_ROLE</span>
+              <strong>REPLACE_FLOW_NODE_1_LABEL</strong>
+              <small>REPLACE_FLOW_NODE_1_DETAIL</small>
+            </article>
+            <article
+              class="flow-node"
+              data-flow-node
+              data-flow-label="REPLACE_FLOW_NODE_2_LABEL"
+              data-flow-description="REPLACE_FLOW_NODE_2_DETAIL"
+              role="listitem"
+            >
+              <span class="flow-role">REPLACE_FLOW_NODE_2_ROLE</span>
+              <strong>REPLACE_FLOW_NODE_2_LABEL</strong>
+              <small>REPLACE_FLOW_NODE_2_DETAIL</small>
+            </article>
+            <article
+              class="flow-node"
+              data-flow-node
+              data-flow-label="REPLACE_FLOW_NODE_3_LABEL"
+              data-flow-description="REPLACE_FLOW_NODE_3_DETAIL"
+              role="listitem"
+            >
+              <span class="flow-role">REPLACE_FLOW_NODE_3_ROLE</span>
+              <strong>REPLACE_FLOW_NODE_3_LABEL</strong>
+              <small>REPLACE_FLOW_NODE_3_DETAIL</small>
+            </article>
+            <article
+              class="flow-node"
+              data-flow-node
+              data-flow-label="REPLACE_FLOW_NODE_4_LABEL"
+              data-flow-description="REPLACE_FLOW_NODE_4_DETAIL"
+              role="listitem"
+            >
+              <span class="flow-role">REPLACE_FLOW_NODE_4_ROLE</span>
+              <strong>REPLACE_FLOW_NODE_4_LABEL</strong>
+              <small>REPLACE_FLOW_NODE_4_DETAIL</small>
+            </article>
+          </div>
+        </section>
 
-      <section class="panel" aria-labelledby="flow-title" data-review-section="flow">
-        <h2 id="flow-title">Primary flow đề xuất</h2>
-        <ol class="flow">
-          <li>
-            <strong>REPLACE_FLOW_STEP_1</strong><br />REPLACE_FLOW_DETAIL_1
-          </li>
-          <li>
-            <strong>REPLACE_FLOW_STEP_2</strong><br />REPLACE_FLOW_DETAIL_2
-          </li>
-          <li>
-            <strong>REPLACE_FLOW_STEP_3</strong><br />REPLACE_FLOW_DETAIL_3
-          </li>
-          <li>
-            <strong>REPLACE_FLOW_STEP_4</strong><br />REPLACE_FLOW_DETAIL_4
-          </li>
-        </ol>
-        <label>
-          Ghi chú cho primary flow
-          <textarea class="feedback" data-feedback-target="flow" placeholder="Góp ý nếu flow cần đổi thứ tự, thêm bước, hoặc bỏ bước."></textarea>
-        </label>
-      </section>
-
-      <section class="panel" aria-labelledby="decisions-title">
+        <section class="panel" aria-labelledby="decisions-title">
         <h2 id="decisions-title">Quyết định cần human chốt</h2>
         <p class="section-intro">
           Mỗi lựa chọn bên dưới thay đổi behavior hoặc phạm vi.
           Recommendation được đánh dấu trực tiếp cùng tradeoff.
         </p>
 
-        <form id="design-review-form">
           <div class="decision-stack">
             <fieldset
               class="decision-card"
@@ -580,65 +644,71 @@
                 </label>
               </div>
               <label>
-                Lý do hoặc constraint bổ sung cho D-001
-                <textarea class="rationale" data-decision-rationale="D-001" placeholder="Không bắt buộc nếu recommendation và tradeoff đã đủ rõ."></textarea>
+                Lý do, constraint hoặc yêu cầu chỉnh sửa cho D-001
+                <textarea class="rationale feedback" data-decision-rationale="D-001" data-feedback-target="D-001" placeholder="Có thể để trống nếu recommendation đã đủ rõ."></textarea>
               </label>
             </fieldset>
           </div>
+        </section>
 
-          <details>
-            <summary>Rủi ro và bằng chứng kỹ thuật</summary>
-            <div class="split">
-              <article class="risk-box" data-review-section="risks">
-                <h3>Rủi ro cần biết</h3>
-                <ul>
-                  <li>REPLACE_MATERIAL_RISK</li>
-                </ul>
-              </article>
-              <article class="fact-box">
-                <h3>Codebase evidence</h3>
-                <ul>
-                  <li><code>REPLACE_EVIDENCE_PATH</code> - REPLACE_EVIDENCE_SUMMARY</li>
-                </ul>
-              </article>
-            </div>
-            <label>
-              Ghi chú cho rủi ro hoặc evidence
-              <textarea class="feedback" data-feedback-target="risks" placeholder="Góp ý nếu risk/evidence chưa đúng hoặc còn thiếu."></textarea>
-            </label>
+        <section class="panel" aria-labelledby="scope-title" data-review-section="scope">
+          <h2 id="scope-title">Scope của slice</h2>
+          <div class="split">
+            <article class="scope-box" data-scope-list="in">
+              <h3>Trong scope</h3>
+              <ul><li>REPLACE_IN_SCOPE_ITEM</li></ul>
+            </article>
+            <article class="risk-box" data-scope-list="out">
+              <h3>Ngoài scope</h3>
+              <ul><li>REPLACE_OUT_OF_SCOPE_ITEM</li></ul>
+            </article>
+          </div>
+        </section>
+
+        <details>
+          <summary>Assumptions, risks và bằng chứng kỹ thuật</summary>
+          <div class="split">
+            <article class="fact-box" data-review-section="assumptions">
+              <h3>Assumptions</h3>
+              <ul><li>REPLACE_ASSUMPTION</li></ul>
+            </article>
+            <article class="risk-box" data-review-section="risks">
+              <h3>Rủi ro cần biết</h3>
+              <ul><li>REPLACE_MATERIAL_RISK</li></ul>
+            </article>
+          </div>
+          <article class="fact-box">
+            <h3>Codebase evidence</h3>
+            <ul><li><code>REPLACE_EVIDENCE_PATH</code> - REPLACE_EVIDENCE_SUMMARY</li></ul>
+          </article>
+        </details>
+
+        <section class="panel approval" aria-labelledby="approval-title">
+          <h2 id="approval-title">Chốt hoặc yêu cầu chỉnh sửa</h2>
+          <p>
+            Duyệt sẽ ghi decision manifest cho bước create-spec.
+            Yêu cầu chỉnh sửa sẽ lưu feedback để agent cập nhật HTML và tăng revision.
+          </p>
+          <label>
+            Constraint chung cần giữ trong detailed spec
+            <textarea id="final-constraints" class="constraints" placeholder="Mỗi constraint một dòng. Có thể để trống."></textarea>
+          </label>
+          <label>
+            Feedback tổng quát hoặc câu hỏi cần agent xử lý
+            <textarea id="general-feedback" class="feedback" data-feedback-target="general" placeholder="Có thể để trống nếu duyệt ngay."></textarea>
+          </label>
+          <div class="action-row">
+            <button id="approve-design" class="primary-button" type="submit">Duyệt thiết kế</button>
+            <button id="request-changes" class="secondary-button" type="button">Yêu cầu chỉnh sửa</button>
+          </div>
+          <p id="review-status" class="status" aria-live="polite"></p>
+          <details class="payload-details">
+            <summary>Preview payload và export chẩn đoán</summary>
+            <pre id="payload-preview" class="preview"></pre>
+            <button id="download-payload" class="secondary-button" type="button">Xuất JSON chẩn đoán</button>
           </details>
-
-          <section class="panel approval" aria-labelledby="approval-title">
-            <div class="approval-layout">
-              <div>
-                <h2 id="approval-title">Chốt hoặc yêu cầu chỉnh sửa</h2>
-                <p>
-                  Approve sẽ ghi decision manifest cho step create-spec.
-                  Request changes sẽ lưu feedback để agent sửa HTML và tăng revision.
-                </p>
-                <label>
-                  Constraint chung cần giữ trong detailed spec
-                  <textarea id="final-constraints" class="constraints" placeholder="Mỗi constraint một dòng. Có thể để trống."></textarea>
-                </label>
-                <label>
-                  Feedback tổng quát hoặc câu hỏi cần agent xử lý
-                  <textarea id="general-feedback" class="feedback" data-feedback-target="general" placeholder="Dùng khi cần chỉnh nội dung trước khi approve. Có thể để trống nếu approve ngay."></textarea>
-                </label>
-                <div class="action-row">
-                  <button id="approve-design" class="primary-button" type="submit">Approve design</button>
-                  <button id="request-changes" class="secondary-button" type="button">Request changes</button>
-                  <button id="download-payload" class="secondary-button" type="button">Download JSON</button>
-                </div>
-                <p id="review-status" class="status" aria-live="polite"></p>
-              </div>
-              <article class="preview-box" aria-labelledby="preview-title">
-                <h3 id="preview-title">Preview payload</h3>
-                <pre id="payload-preview" class="preview"></pre>
-              </article>
-            </div>
-          </section>
-        </form>
-      </section>
+        </section>
+      </form>
     </main>
 
     <script>
@@ -716,6 +786,21 @@
             .filter((comment) => comment.text);
         }
 
+        function outputPreview() {
+          const section = document.querySelector("[data-output-preview]");
+          return {
+            kind: section.dataset.previewKind,
+            summary: section.querySelector("[data-output-summary]").textContent.trim(),
+            deliverables: textList("[data-output-list='deliverables']"),
+            primary_interfaces: textList("[data-output-list='primary_interfaces']"),
+            observable_results: textList("[data-output-list='observable_results']"),
+            flow: [...section.querySelectorAll("[data-flow-node]")].map((node) => ({
+              label: node.dataset.flowLabel,
+              description: node.dataset.flowDescription,
+            })),
+          };
+        }
+
         function approvalPayload() {
           const collected = collectDecisions();
           if (collected.error) return collected;
@@ -727,6 +812,7 @@
             design_revision: root.dataset.designRevision,
             submitted_at: new Date().toISOString(),
             goal: document.querySelector("[data-design-goal]").textContent.trim(),
+            output_preview: outputPreview(),
             scope: {
               in: textList("[data-scope-list='in']"),
               out: textList("[data-scope-list='out']"),
@@ -797,8 +883,7 @@
             const result = await postJson("/api/design-approval", payload);
             setStatus(`Đã lưu approval: ${result.design_decisions_path}`, "success");
           } catch (error) {
-            downloadJson(payload, "approval-fallback");
-            setStatus(`Không kết nối được local runner. Đã download JSON fallback. ${error.message}`);
+            setStatus(`Chưa ghi được approval vào local runner. Hãy kiểm tra server rồi thử lại. ${error.message}`);
           } finally {
             approveButton.disabled = false;
             changesButton.disabled = false;
@@ -820,8 +905,7 @@
             const result = await postJson("/api/design-feedback", payload);
             setStatus(`Đã lưu feedback: ${result.design_feedback_path}`, "success");
           } catch (error) {
-            downloadJson(payload, "feedback-fallback");
-            setStatus(`Không kết nối được local runner. Đã download feedback fallback. ${error.message}`);
+            setStatus(`Chưa ghi được feedback vào local runner. Hãy kiểm tra server rồi thử lại. ${error.message}`);
           } finally {
             approveButton.disabled = false;
             changesButton.disabled = false;

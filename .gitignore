@@ -24,6 +24,7 @@ build/
 .tmp/
 .temp/
 coverage/
+docs/ai/design-runtime/
 
 # Editor/IDE
 .vscode/

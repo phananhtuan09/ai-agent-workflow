@@ -21,9 +21,12 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import urlopen
 
+from validate_design_review import validate_review
+
 
 KEBAB_CASE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DECISION_ID = re.compile(r"^D-\d{3}$")
+OUTPUT_KINDS = {"ui", "api", "full-stack", "workflow", "data", "generic"}
 
 
 class DesignParser(HTMLParser):
@@ -91,6 +94,11 @@ def read_design_metadata(design_path: Path) -> tuple[str, str, dict[str, str]]:
     return feature_slug, design_revision, parser.required_decisions
 
 
+def load_current_design(design_path: Path) -> tuple[str, str, dict[str, str]]:
+    validate_review(design_path)
+    return read_design_metadata(design_path)
+
+
 def require_string(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must be a non-empty string")
@@ -104,6 +112,25 @@ def require_string_list(value: Any, field: str) -> list[str]:
     for index, item in enumerate(value):
         result.append(require_string(item, f"{field}[{index}]"))
     return result
+
+
+def validate_output_preview(value: Any, field: str = "output_preview") -> None:
+    if not isinstance(value, dict):
+        raise ValueError(f"{field} must be an object")
+    if value.get("kind") not in OUTPUT_KINDS:
+        raise ValueError(f"{field}.kind must be one of {sorted(OUTPUT_KINDS)}")
+    require_string(value.get("summary"), f"{field}.summary")
+    require_string_list(value.get("deliverables"), f"{field}.deliverables")
+    require_string_list(value.get("primary_interfaces"), f"{field}.primary_interfaces")
+    require_string_list(value.get("observable_results"), f"{field}.observable_results")
+    flow = value.get("flow")
+    if not isinstance(flow, list) or not 2 <= len(flow) <= 6:
+        raise ValueError(f"{field}.flow must contain between two and six nodes")
+    for index, node in enumerate(flow):
+        if not isinstance(node, dict):
+            raise ValueError(f"{field}.flow[{index}] must be an object")
+        require_string(node.get("label"), f"{field}.flow[{index}].label")
+        require_string(node.get("description"), f"{field}.flow[{index}].description")
 
 
 def validate_approval_payload(
@@ -124,6 +151,7 @@ def validate_approval_payload(
         raise ValueError("design_revision does not match design HTML")
     require_string(payload.get("submitted_at"), "submitted_at")
     require_string(payload.get("goal"), "goal")
+    validate_output_preview(payload.get("output_preview"))
     scope = payload.get("scope")
     if not isinstance(scope, dict):
         raise ValueError("scope must be an object")
@@ -182,6 +210,7 @@ def make_manifest(repo_root: Path, design_path: Path, payload: dict[str, Any]) -
         "approved_at": payload["submitted_at"],
         "approval_source": "local-runner",
         "goal": payload["goal"],
+        "output_preview": payload["output_preview"],
         "scope": payload["scope"],
         "decisions": [
             {
@@ -214,9 +243,9 @@ class ReviewHandler(BaseHTTPRequestHandler):
     repo_root: Path
     design_path: Path
     design_rel: str
-    feature_slug: str
-    design_revision: str
-    required_decisions: dict[str, str]
+
+    def current_design(self) -> tuple[str, str, dict[str, str]]:
+        return load_current_design(self.design_path)
 
     def log_message(self, format: str, *args: Any) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
@@ -251,12 +280,13 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self.send_html()
             return
         if self.path == "/api/status":
+            feature_slug, design_revision, _ = self.current_design()
             self.send_json(
                 200,
                 {
                     "status": "ok",
-                    "feature_slug": self.feature_slug,
-                    "design_revision": self.design_revision,
+                    "feature_slug": feature_slug,
+                    "design_revision": design_revision,
                     "design_path": self.design_rel,
                 },
             )
@@ -279,8 +309,9 @@ class ReviewHandler(BaseHTTPRequestHandler):
 
     def handle_approval(self) -> None:
         payload = self.read_json_body()
-        validate_approval_payload(payload, self.feature_slug, self.design_revision, self.required_decisions)
-        manifest_path = self.repo_root / "docs" / "ai" / "design-decisions" / f"{self.feature_slug}.json"
+        feature_slug, design_revision, required_decisions = self.current_design()
+        validate_approval_payload(payload, feature_slug, design_revision, required_decisions)
+        manifest_path = self.repo_root / "docs" / "ai" / "design-decisions" / f"{feature_slug}.json"
         manifest = make_manifest(self.repo_root, self.design_path, payload)
         atomic_write_json(manifest_path, manifest)
         try:
@@ -298,13 +329,14 @@ class ReviewHandler(BaseHTTPRequestHandler):
 
     def handle_feedback(self) -> None:
         payload = self.read_json_body()
-        validate_feedback_payload(payload, self.feature_slug, self.design_revision)
-        feedback_path = self.repo_root / "docs" / "ai" / "design-feedback" / f"{self.feature_slug}.json"
+        feature_slug, design_revision, _ = self.current_design()
+        validate_feedback_payload(payload, feature_slug, design_revision)
+        feedback_path = self.repo_root / "docs" / "ai" / "design-feedback" / f"{feature_slug}.json"
         feedback = {
             "schema_version": 1,
             "event": "design-change-request",
-            "feature_slug": self.feature_slug,
-            "design_revision": self.design_revision,
+            "feature_slug": feature_slug,
+            "design_revision": design_revision,
             "design_path": self.design_rel,
             "design_sha256": hashlib.sha256(self.design_path.read_bytes()).hexdigest(),
             "received_at": iso_now(),
@@ -359,15 +391,35 @@ def wait_for_status(url: str, timeout: float = 5.0) -> bool:
     return False
 
 
+def fetch_status(url: str, timeout: float = 1.0) -> dict[str, Any] | None:
+    try:
+        with urlopen(url + "/api/status", timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, URLError, json.JSONDecodeError):
+        return None
+    return payload if response.status == 200 and isinstance(payload, dict) else None
+
+
 def start_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     design_path = resolve_repo_path(repo_root, args.design_path)
-    feature_slug, design_revision, _ = read_design_metadata(design_path)
+    feature_slug, design_revision, _ = load_current_design(design_path)
+    design_rel = repo_relative(repo_root, design_path)
     state = state_path(repo_root, feature_slug)
     existing = read_state(state)
     if existing and pid_running(int(existing.get("pid") or 0)):
-        print(json.dumps({"status": "running", **existing}, ensure_ascii=False))
-        return 0
+        status = fetch_status(str(existing.get("url") or ""))
+        matches = status and all(
+            (
+                status.get("feature_slug") == feature_slug,
+                str(status.get("design_revision") or "") == design_revision,
+                status.get("design_path") == design_rel,
+            )
+        )
+        if matches:
+            print(json.dumps({"status": "running", **existing}, ensure_ascii=False))
+            return 0
+        os.kill(int(existing["pid"]), signal.SIGTERM)
 
     port = args.port or choose_port(args.host)
     state.parent.mkdir(parents=True, exist_ok=True)
@@ -394,7 +446,7 @@ def start_command(args: argparse.Namespace) -> int:
         "port": port,
         "feature_slug": feature_slug,
         "design_revision": design_revision,
-        "design_path": repo_relative(repo_root, design_path),
+        "design_path": design_rel,
         "state_path": repo_relative(repo_root, state),
         "log_path": repo_relative(repo_root, log_path),
         "started_at": iso_now(),
@@ -409,7 +461,7 @@ def start_command(args: argparse.Namespace) -> int:
 def status_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     design_path = resolve_repo_path(repo_root, args.design_path)
-    feature_slug, _, _ = read_design_metadata(design_path)
+    feature_slug, _, _ = load_current_design(design_path)
     state = read_state(state_path(repo_root, feature_slug)) or {}
     running = pid_running(int(state.get("pid") or 0))
     manifest = repo_root / "docs" / "ai" / "design-decisions" / f"{feature_slug}.json"
@@ -431,7 +483,7 @@ def status_command(args: argparse.Namespace) -> int:
 def stop_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     design_path = resolve_repo_path(repo_root, args.design_path)
-    feature_slug, _, _ = read_design_metadata(design_path)
+    feature_slug, _, _ = load_current_design(design_path)
     state = read_state(state_path(repo_root, feature_slug)) or {}
     pid = int(state.get("pid") or 0)
     if pid_running(pid):
@@ -443,7 +495,7 @@ def stop_command(args: argparse.Namespace) -> int:
 def serve_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     design_path = resolve_repo_path(repo_root, args.design_path)
-    feature_slug, design_revision, required_decisions = read_design_metadata(design_path)
+    load_current_design(design_path)
 
     class Handler(ReviewHandler):
         pass
@@ -451,9 +503,6 @@ def serve_command(args: argparse.Namespace) -> int:
     Handler.repo_root = repo_root
     Handler.design_path = design_path
     Handler.design_rel = repo_relative(repo_root, design_path)
-    Handler.feature_slug = feature_slug
-    Handler.design_revision = design_revision
-    Handler.required_decisions = required_decisions
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.serve_forever()
     return 0

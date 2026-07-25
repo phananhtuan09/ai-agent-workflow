@@ -58,6 +58,8 @@ Required sections for new specs:
    - Fail if manifest validation or the HTML checksum fails.
 
 2. **Decision traceability**
+   - When the manifest contains `output_preview`, every approved deliverable, primary interface, observable result, and flow semantic must appear in the relevant execution contract, behavior, interface, acceptance, or verification sections.
+   - Fail if the spec omits or changes the meaning of an approved output-preview item.
    - Every manifest decision ID must appear in `Quyết Định Thiết Kế Đã Duyệt` and the relevant behavior, implementation, acceptance, or verification sections.
    - Fail if a human-approved answer changes meaning, disappears, or is contradicted.
    - Fail if the spec attributes an agent-chosen rule to the human.

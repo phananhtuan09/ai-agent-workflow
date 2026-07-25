@@ -17,6 +17,7 @@ from typing import Any
 DECISION_ID = re.compile(r"^D-\d{3}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 KEBAB_CASE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+OUTPUT_KINDS = {"ui", "api", "full-stack", "workflow", "data", "generic"}
 
 
 class HtmlRootParser(HTMLParser):
@@ -24,11 +25,14 @@ class HtmlRootParser(HTMLParser):
         super().__init__()
         self.attributes: dict[str, str | None] | None = None
         self.required_decisions: list[dict[str, str | None]] = []
+        self.has_output_preview = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
         if tag == "html" and self.attributes is None:
             self.attributes = attributes
+        if "data-output-preview" in attributes:
+            self.has_output_preview = True
         if tag == "fieldset" and "decision-card" in (attributes.get("class") or "").split():
             if attributes.get("data-required") == "true":
                 self.required_decisions.append(attributes)
@@ -86,7 +90,7 @@ def resolve_repo_path(repo_root: Path, value: str, field: str) -> Path:
     return resolved
 
 
-def read_html_metadata(path: Path) -> tuple[str, str, dict[str, str]]:
+def read_html_metadata(path: Path) -> tuple[str, str, dict[str, str], bool]:
     parser = HtmlRootParser()
     parser.feed(path.read_text(encoding="utf-8"))
     if parser.attributes is None:
@@ -105,7 +109,26 @@ def read_html_metadata(path: Path) -> tuple[str, str, dict[str, str]]:
         )
     if not required_decisions:
         fail("design HTML must contain at least one required decision card")
-    return feature_slug, design_revision, required_decisions
+    return feature_slug, design_revision, required_decisions, parser.has_output_preview
+
+
+def validate_output_preview(value: Any, field: str = "output_preview") -> None:
+    if not isinstance(value, dict):
+        fail(f"{field} must be an object")
+    if value.get("kind") not in OUTPUT_KINDS:
+        fail(f"{field}.kind must be one of {sorted(OUTPUT_KINDS)}")
+    require_string(value.get("summary"), f"{field}.summary")
+    require_string_list(value.get("deliverables"), f"{field}.deliverables")
+    require_string_list(value.get("primary_interfaces"), f"{field}.primary_interfaces")
+    require_string_list(value.get("observable_results"), f"{field}.observable_results")
+    flow = value.get("flow")
+    if not isinstance(flow, list) or not 2 <= len(flow) <= 6:
+        fail(f"{field}.flow must contain between two and six nodes")
+    for index, node in enumerate(flow):
+        if not isinstance(node, dict):
+            fail(f"{field}.flow[{index}] must be an object")
+        require_string(node.get("label"), f"{field}.flow[{index}].label")
+        require_string(node.get("description"), f"{field}.flow[{index}].description")
 
 
 def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path | None) -> dict[str, Any]:
@@ -121,7 +144,7 @@ def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path
     design_path = html_override.resolve() if html_override else resolve_repo_path(repo_root, design_path_value, "design_path")
     if not design_path.is_file():
         fail(f"design HTML does not exist: {design_path}")
-    html_feature_slug, html_design_revision, html_required_decisions = read_html_metadata(design_path)
+    html_feature_slug, html_design_revision, html_required_decisions, html_has_output_preview = read_html_metadata(design_path)
     if html_feature_slug != feature_slug:
         fail(f"feature_slug mismatch: manifest {feature_slug}, HTML {html_feature_slug}")
     if html_design_revision != design_revision:
@@ -135,10 +158,12 @@ def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path
         fail(f"design_sha256 mismatch: expected {expected_sha}, actual {actual_sha}")
 
     parse_timestamp(data.get("approved_at"), "approved_at")
-    if data.get("approval_source") not in {"local-runner", "lavish"}:
-        fail("approval_source must equal 'local-runner' or 'lavish'")
+    if data.get("approval_source") != "local-runner":
+        fail("approval_source must equal 'local-runner'")
 
     require_string(data.get("goal"), "goal")
+    if html_has_output_preview or "output_preview" in data:
+        validate_output_preview(data.get("output_preview"))
 
     scope = data.get("scope")
     if not isinstance(scope, dict):

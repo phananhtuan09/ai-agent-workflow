@@ -17,6 +17,7 @@ Use these bundled resources:
 
 - `assets/design-review-template.html` as the starting HTML
 - `scripts/design_review_server.py` to serve the review and persist approval or feedback
+- `scripts/validate_design_review.py` to preflight the human-facing HTML
 - `scripts/validate_design_decisions.py` to validate the final decision manifest
 
 Resolve all relative paths from the directory containing this `SKILL.md`.
@@ -52,19 +53,37 @@ Resolve all relative paths from the directory containing this `SKILL.md`.
    - State the feasibility question for `run-spike`.
    - State the concrete codebase or business conflict for `escalate-conflict`.
 7. For `review-design`, identify only decisions that materially change human-visible outcomes.
-   - Include goal, target user, scope, primary flow, must-happen behavior, and must-not-happen behavior.
+   - Include goal, target user, scope, output preview, primary flow, must-happen behavior, and must-not-happen behavior.
+   - Express must-happen and must-not-happen inside the summary, scope, flow, or constraints; do not create duplicate sections for them by default.
    - Ask about permissions, quotas, validation limits, ranking or fairness, defaults, fallback, persistence, compatibility, migration, destructive behavior, or rollout only when relevant.
    - Present a direct recommendation when one option is clearly better.
    - Present multiple options only when the correct choice depends on human priorities.
    - If no open choice remains, include one required approval decision for the recommended design.
-8. Copy `assets/design-review-template.html` to the design path and replace all template content.
+   - Keep the default review to one to three required decisions, at most five bullets per scope or output-preview list, and two to six flow nodes.
+   - Target no more than 700 words visible on initial load; put technical detail in collapsed evidence sections.
+   - Use exactly one `Bản xem trước đầu ra` section.
+   - Select one preview kind: `ui`, `api`, `full-stack`, `workflow`, `data`, or `generic`.
+   - For `ui`, graph the implemented user interaction from action through UI state, request or local processing, and feedback.
+   - For `api`, graph the consumer, endpoint, authorization and validation, domain or persistence boundary, and response.
+   - For `full-stack`, graph the observable path across user, frontend, backend, persistence or infrastructure, and returned UI state.
+   - For other kinds, graph the smallest meaningful input-to-output lifecycle.
+8. Copy `assets/design-review-template.html` to the design path and preserve its structure and behavior.
    - Use Vietnamese for all human-facing content.
    - Keep code symbols, paths, and JSON keys in English.
    - Remove every `REPLACE_` token and every sample-only note before opening the artifact.
+   - Replace placeholders and decision cards in place; add a new top-level section only when a material decision cannot be represented by the template.
    - Keep the artifact self-contained with inline CSS and JavaScript.
    - Do not add CDN scripts, remote fonts, analytics, or external assets.
    - Keep approve and request-changes controls inside the HTML and wired to the local runner endpoints.
-9. Start or reuse the local runner:
+9. Run the HTML preflight before opening the review:
+
+   ```bash
+   python3 .agents/skills/design-spec/scripts/validate_design_review.py docs/ai/designs/{feature_slug}.html
+   ```
+
+   - Fix validation errors before starting the runner.
+   - Treat density warnings as a prompt to shorten or collapse content.
+10. Start or reuse the local runner:
 
    ```bash
    python3 .agents/skills/design-spec/scripts/design_review_server.py --repo-root <repo-root> start docs/ai/designs/{feature_slug}.html
@@ -73,16 +92,16 @@ Resolve all relative paths from the directory containing this `SKILL.md`.
    - The runner binds to `127.0.0.1`, serves the HTML, and exits the command after printing the local URL.
    - It continues running as a local background process so the human can review asynchronously.
    - If the runner cannot start, stop as blocked and keep the HTML artifact.
-10. Stop after opening the review and ask the human to review asynchronously.
+11. Stop after opening the review and ask the human to review asynchronously.
     - Report the local runner URL and design path in prose.
     - Tell the human to use `Approve design` to write the manifest or `Request changes` to write feedback.
     - Tell the human to ask the agent or orchestrator to continue after they approve or request changes.
     - Under orchestrator, emit `stop-ask-human` because approval has not been collected yet.
-11. On a later invocation, inspect artifacts instead of waiting on a live poll.
+12. On a later invocation, inspect artifacts instead of waiting on a live poll.
     - If `docs/ai/design-decisions/{feature_slug}.json` exists and validates, emit `continue`.
     - If `docs/ai/design-feedback/{feature_slug}.json` exists for the current revision, apply feedback and reopen review.
     - If neither exists, restart or report the runner URL and emit `stop-ask-human`.
-12. Do not create the detailed Markdown spec from this skill.
+13. Do not create the detailed Markdown spec from this skill.
     - `create-spec` consumes the approved decision manifest in the next workflow step.
 
 ## Review Surface Rules
@@ -92,10 +111,14 @@ Resolve all relative paths from the directory containing this `SKILL.md`.
 - Put the recommendation before alternatives.
 - Show concrete tradeoffs beside each option.
 - Keep technical evidence collapsible or secondary.
+- Keep the header compact and subordinate to the review content.
+- Put the single output-preview section immediately after the compact summary, followed by the decision cards.
+- Render the primary flow as a semantic graph with labeled nodes and directional connectors.
+- Stack graph nodes vertically on narrow screens.
+- Keep the JSON preview collapsed by default.
 - Use semantic headings, fieldsets, legends, labels, buttons, and an `aria-live` status region.
 - Preserve visible keyboard focus and at least 44px interactive targets.
 - Do not rely on color alone for status or recommendation.
-- Provide section-level or decision-level feedback textareas for likely change requests.
 - Provide a final general feedback textarea.
 - Show a live JSON preview so the human can see what approval will persist.
 - Do not rely on sidebar prompts, DOM snapshots, or browser local state as approval provenance.
@@ -104,9 +127,9 @@ Resolve all relative paths from the directory containing this `SKILL.md`.
 
 - The HTML is the human review surface.
 - The local runner is the approval and feedback transport.
-- The decision manifest is approval provenance for `create-spec` and `review-spec`.
+- The decision manifest persists the approved output preview, scope, decisions, and constraints for `create-spec` and `review-spec`.
 - The later reviewed Markdown spec is the source of truth for implementation and verification.
-- Never treat chat text, DOM snapshots, screenshots, downloaded fallback JSON, or free-form prompts as the durable source of truth.
+- Never treat chat text, DOM snapshots, screenshots, downloaded diagnostic JSON, or free-form prompts as the durable source of truth.
 - Never publish or share the artifact through third-party hosting unless the human explicitly asks.
 
 ## Allowed Outcomes
@@ -141,6 +164,9 @@ Emit `continue` only after both files exist and the decision manifest validator 
 ## Self-Check
 
 - Does the HTML ask only material high-level questions?
+- Is the initial visible review concise enough to scan in one or two minutes?
+- Does the output preview show what will exist and how it will operate without becoming an implementation spec?
+- Does the graph match the selected preview kind and contain no more than six nodes?
 - Are current facts, recommendations, alternatives, assumptions, and risks distinguishable?
 - Does every required decision have a stable `D-xxx` identifier?
 - Are all `REPLACE_` and sample-only tokens removed?
