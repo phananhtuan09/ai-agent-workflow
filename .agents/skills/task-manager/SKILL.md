@@ -71,6 +71,11 @@ Task titles must be concise Vietnamese text.
 2. Group tasks by `doing`, `todo`, then `done`.
 3. Show assignment, execution, and workflow annotations when present.
 4. Show at most 10 completed tasks unless the user requests more.
+5. Before the groups, show a progress summary for all tasks in the current project: completion percentage, completed count, and remaining count.
+
+Calculate `completion percentage` as `done / total * 100`, rounded to the nearest whole percent.
+Treat `remaining` as every task not in `done`.
+When the project has no tasks, show `0%`, `0 completed`, and `0 remaining`.
 
 ### `task list --all`
 
@@ -78,11 +83,16 @@ Task titles must be concise Vietnamese text.
 2. Omit projects with no tasks.
 3. Sort projects by name, then group tasks by status.
 4. Show assignment, execution, and workflow annotations when present.
+5. Before the project groups, show an overall progress summary for all stored tasks: completion percentage, completed count, and remaining count.
+
+Use the same calculation rules as `task list`.
+For `task list --all`, calculate the summary across every stored task, including tasks in projects omitted from display because their metadata is incomplete.
 
 Use this compact format:
 
 ```text
 [payment-api]
+  Tiến độ: 25% (Hoàn thành: 1, còn lại: 3)
   DOING (1)
     t_ab12cd  "Sửa lỗi hoàn tiền"  -> payment-codex  [GNHF: AWAITING HUMAN]
   TODO (2)
@@ -90,6 +100,9 @@ Use this compact format:
   DONE (1)
     t_98cd76  "Cập nhật tài liệu API"  [verified]
 ```
+
+For `task list --all`, show one leading line such as `Tổng tiến độ: 25% (Hoàn thành: 3, còn lại: 9)`.
+For `task list`, show the progress line immediately beneath the current project heading rather than repeating the heading.
 
 Use the stored agent name when present, otherwise the agent type.
 Do not query Herdr from this skill.
@@ -139,6 +152,21 @@ Use `herdr-orchestrate-agents` instead when starting means dispatching to an age
 4. Set `execution.state` to `completed` while preserving any existing execution evidence.
 5. Preserve assignment history.
 6. Update its timestamp and write the store.
+
+### `task update <id>`
+
+Use when the user asks to revise a task's title or details.
+
+1. Find the task across all projects.
+2. Apply only the fields the user explicitly changes.
+3. Keep task titles concise Vietnamese text.
+4. Preserve `status`, timestamps other than `updated`, and all assignment, execution, workflow, and unknown fields.
+5. Update `updated` and write the store.
+6. Return a full preview of the updated, persisted task, including every stored field and the resolved project name/root.
+   Include ID, title, details (show `Không có` when absent), status, assignment, execution, workflow, created, and updated fields even when their values are empty or unavailable.
+
+Do not return only a success message or a diff after an update.
+Use the values re-read from the stored task for the preview.
 
 ### `task delete <id>`
 

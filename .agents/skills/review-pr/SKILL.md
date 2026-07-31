@@ -1,114 +1,215 @@
 ---
 name: review-pr
-description: Review a completed feature before PR creation. Use when a feature has implementation, verification, runtime evidence, and a manual checklist, and Codex or Claude Code must produce an evidence-bound PR readiness review that separates required fixes from human decisions and manual verification.
+description: Perform a focused, high-confidence review of a pull request, branch, commit range, or working-tree diff. Prioritize merge-blocking defects that AI-generated changes commonly introduce, with or without PR context, and avoid broad speculative review or generic best-practice advice.
 ---
 
 # Review PR
 
-Review a completed feature for PR readiness. Do not create a PR and do not modify feature code, tests, specs, summaries, or verification artifacts.
+Review a proposed code change without modifying it.
 
-## Input
+The goal is not to enumerate every possible risk.
 
-- Required: feature slug and base ref for the PR diff
-- Required: `docs/ai/specs/{feature}.md`
-- Required: `docs/ai/summaries/{feature}.md`
-- Required: `docs/ai/verifications/{feature}.md`
-- Required: `docs/ai/checklists/{feature}.md`
+The goal is to find a small number of concrete defects that are likely to matter before merge and that can be supported by reviewable evidence.
 
-If a required artifact or the base ref is unavailable, write the review with `Blocked` status and explain what is missing.
+## Inputs
+
+A review requires a determinable change set, such as:
+
+- a PR URL or number
+- a head and base ref
+- a commit range
+- the current branch relative to its merge base
+- a staged, unstaged, or working-tree diff
+
+Prefer the target supplied by the user.
+
+If no target is supplied, infer the most reasonable local diff and state the inference.
+
+Ask one focused question only when multiple materially different change sets are plausible.
+
+Return `Blocked` only when no reliable change set can be obtained or inspected.
+
+Use any context the user supplies, including a PR description, issue, requirements, design notes, risk area, or verification evidence.
+
+Context may use any location or format and is never required to perform a diff review.
+
+## Review Modes
+
+Use `Context-Enriched Review` when explicit intent or requirements are available.
+
+Use `Diff-Only Review` otherwise.
+
+In `Diff-Only Review`, infer the apparent purpose only to orient the review.
+
+Do not invent business requirements or claim that unstated behavior is wrong.
+
+State that business-rule completeness could not be verified without additional context.
+
+## Core Review Criteria
+
+Review only these five areas by default.
+
+### 1. Direct Intent Contradictions
+
+Apply this criterion only when explicit PR context or requirements are available.
+
+Look for implementation behavior that directly contradicts the stated behavior, acceptance criterion, compatibility constraint, or safety rule.
+
+Do not report behavior that is merely unspecified.
+
+### 2. Broken Changed Code Paths
+
+Trace the paths changed by the diff and look for concrete failures such as:
+
+- an incorrect condition, return value, state transition, or error outcome
+- a reachable null, undefined, type, or exception failure
+- an error being swallowed or incorrectly converted into success
+- cleanup, transaction, or state restoration missing on a changed failure path
+- a failing build, type check, focused test, or other executable validation caused by the change
+
+Do not enumerate hypothetical edge cases unless the changed code makes the failure path concrete and reachable.
+
+### 3. Incomplete Cross-File Changes
+
+Search for references to changed symbols, contracts, schemas, configuration, and data shapes.
+
+Look for incomplete updates such as:
+
+- a changed signature with stale callers
+- a backend contract that no longer matches its client or consumer
+- a renamed or removed value still referenced elsewhere
+- a schema or model change missing required serialization, migration, validation, or mapping updates
+- a new dependency, environment variable, route, export, or configuration value that is not wired into the project
+
+This criterion should rely on repository search and surrounding code rather than assumption.
+
+### 4. Invalid Technical Assumptions
+
+Check whether the change relies on an API, type, library behavior, return shape, lifecycle, or repository convention that is contradicted by local code, installed types, tests, or authoritative documentation available in the environment.
+
+Common examples include calling a nonexistent method, handling the wrong return type, assuming an async operation is synchronous, or using a framework API in the wrong lifecycle.
+
+Do not report an assumption as invalid until it has been checked against a reliable source.
+
+### 5. Clear Security Or Data-Safety Violations
+
+Apply this criterion only when the diff touches a trust boundary, authorization decision, sensitive data, persistent mutation, or migration.
+
+Report only concrete violations such as:
+
+- a required repository-standard authorization check is bypassed or removed
+- untrusted input reaches a dangerous operation without the validation used by equivalent code paths
+- a secret or sensitive value is committed or exposed
+- an update or delete operation targets broader data than the surrounding contract permits
+- a migration or changed write path demonstrably loses or corrupts existing data
+
+Do not perform a generic security checklist when the diff does not touch these surfaces.
+
+## Conditional Review
+
+Review performance, concurrency, idempotency, retry behavior, timezone handling, accessibility, UX polish, observability, deployment, rollback, or general maintainability only when at least one of these conditions is true:
+
+- the user explicitly asks for that review
+- the supplied requirements identify it as a constraint
+- the diff directly changes that behavior and a concrete defect can be demonstrated
+
+Do not report style preferences, speculative future risks, optional refactors, or generic best-practice advice during the default review.
+
+Do not report missing tests by itself.
+
+Use tests and focused commands to prove or disprove a suspected defect.
+
+Report a test defect only when the test demonstrably fails to exercise its claimed behavior, can pass while the changed behavior is broken, or was weakened by the PR.
+
+## Review Procedure
+
+1. Read applicable repository instructions and determine the target, base, and review mode.
+2. Inspect the exact diff and summarize its apparent purpose in one or two sentences.
+3. Read only the surrounding code needed to trace the changed paths.
+4. Search the repository for changed symbols, callers, contracts, schemas, and configuration.
+5. Run the smallest relevant build, type, lint, or focused test commands that can validate concrete concerns.
+6. Report only findings that meet the finding bar below.
+
+Stop expanding the review once all five core criteria have been evaluated for the changed surfaces.
+
+Do not widen the review into unrelated pre-existing code.
+
+## Finding Bar
+
+Report a defect only when all of the following can be stated:
+
+- the exact changed or affected code location
+- the concrete input, state, or code path that triggers the problem
+- the incorrect observable outcome
+- evidence from code, requirements, repository search, types, documentation, or command output
+- the condition required to resolve the problem
+
+If the trigger or impact cannot be stated concretely, do not report the issue as a finding.
+
+Do not use vague claims such as "might fail", "could be improved", "consider adding", or "may be a problem".
+
+Use `Must fix` only for a defect established by direct evidence or a complete static reasoning chain.
+
+Use `Human decision` only when missing intent prevents determining whether a material changed behavior is correct.
+
+Do not convert uncertainty into a defect.
+
+## Final Status
+
+- `Needs Fix`: one or more `Must fix` findings remain.
+- `Needs Human Decision`: no established defect remains, but missing intent prevents a material merge decision.
+- `Ready for Human PR Approval`: no blocking defect or material unresolved decision was found within the reviewed scope.
+- `Blocked`: the change set cannot be reliably determined or inspected.
+
+`Ready for Human PR Approval` does not prove the absence of defects.
+
+It means the focused review found no issue meeting the reporting bar.
 
 ## Output
 
-Write `docs/ai/reviews/{feature}.md` in Vietnamese. Preserve identifiers, paths, commands, and canonical status labels in English where that improves traceability.
+For a standalone invocation, return the review in the conversation and do not create a file unless requested.
 
-## Review Workflow
+When the user or an orchestrated workflow supplies an output path, write the review there.
 
-1. Read the spec, summary, verification artifact, and manual checklist. Read them as evidence, not as proof that the implementation is correct.
-2. Inspect the PR diff against the supplied base ref. State the exact diff command and reviewed commit range in the report.
-3. Map changed surfaces to acceptance criteria, runtime evidence, and manual checks. Identify changed files outside the declared scope.
-4. Review only these concerns when relevant to the diff:
-   - scope or spec drift
-   - correctness, error paths, and meaningful edge cases
-   - security, authorization, validation, data loss, migration, or configuration risk
-   - evidence strategy: focused automated evidence only where it has clear regression value; runtime/E2E and human checks for their assigned scope
-   - maintainability issues that materially increase future change risk
-   - PR hygiene: debug code, secrets, generated noise, unexplained unrelated changes, and missing release/rollback notes when applicable
-5. Classify every finding by evidence status before assigning an action:
-   - `Verified`: direct, reviewable evidence proves the claim, such as a failing command, a concrete spec contradiction, a committed secret, or a clearly missing required authorization check.
-   - `Observed, limited scope`: behavior was observed for stated inputs/environment only. Do not generalize beyond that scope.
-   - `Inferred risk`: static reasoning suggests a risk but does not prove it. Do not present it as a bug.
-   - `Human decision required`: business intent, acceptable trade-off, rollout, migration, or scope needs a human decision.
-   - `Manual verification required`: a real environment, real data, device, third party, or UX judgment is required.
-6. Classify the required action:
-   - `Must fix`: only for a `Verified` blocker or a direct violation of an approved spec/safety rule.
-   - `Human decision`: do not guess; state the decision, options, and concrete impact.
-   - `Human verify`: provide an executable check and expected result.
-   - `Suggestion`: non-blocking improvement with rationale.
-7. Determine final status:
-   - `Needs Fix`: one or more `Must fix` items remain.
-   - `Needs Human Decision`: no blocker remains, but a human decision is unresolved.
-   - `Ready for Human PR Approval`: no blocker or unresolved decision remains; required manual checks are complete or explicitly accepted as deferred by the human.
-   - `Blocked`: review scope, base ref, or a required artifact is unavailable.
+Use Vietnamese unless the user requests another language.
 
-## Evidence Rules
+Preserve identifiers, paths, commands, and canonical status labels in English when useful for traceability.
 
-- Never claim that an absence of findings proves the absence of defects.
-- Never upgrade `Inferred risk`, `Human decision required`, or `Manual verification required` into `Verified` without direct evidence.
-- Never demand unit or integration tests merely as ceremony. Treat missing focused automated coverage as a gap only when the changed behavior is risk-sensitive and lacks a credible runtime/manual evidence path.
-- Do not trust an implementer summary by itself. Anchor every finding to the diff, a source artifact, a command result, or an observed runtime record.
-- If review findings require code changes, stop after recording them. The feature must return to implementation and the verification sequence must be repeated before another PR review.
+Present findings first and order them by impact.
 
-## Review Artifact Format
+Use this structure:
 
 ```markdown
-# PR Review — {feature}
+# PR Review — {target}
 
-## PR Readiness
-Needs Fix | Needs Human Decision | Ready for Human PR Approval | Blocked
+## Findings
+- [High] PR-01 — `Must fix`
+  - Location: ...
+  - Trigger: ...
+  - Outcome: ...
+  - Evidence: ...
+  - Required condition: ...
+
+## Human Decisions
+- PR-02 — `Human decision`
+  - Missing intent: ...
+  - Why it affects merge readiness: ...
 
 ## Review Scope
-- Base ref and diff command: ...
-- Reviewed commits/files: ...
-- Source artifacts: ...
-
-## Must Fix
-- PR-01 — `Verified` — [severity]
-  - Evidence: ...
-  - Required fix: ...
-
-## Risks / Human Decisions
-- PR-02 — `Inferred risk` | `Human decision required`
-  - Evidence or assumption: ...
-  - Decision / options / impact: ...
-
-## Manual Verification
-- PR-03 — `Manual verification required`
-  - Steps: ...
-  - Expected result: ...
-
-## Non-blocking Suggestions
-- PR-04 — [rationale]
-
-## Evidence Reviewed
-- [commands, tests, runtime observations, checklist items, and their limits]
-
-## Suggested PR Summary
-- [scope, behavior, verification, risk/rollback notes]
+- Status: Needs Fix | Needs Human Decision | Ready for Human PR Approval | Blocked
+- Mode: Context-Enriched Review | Diff-Only Review
+- Target, base, and diff source: ...
+- Commands run: ...
+- Context used: ...
+- Limitations: ...
 ```
 
-Keep empty sections with `- Không có.` so a human can distinguish no findings from omitted review.
+If no findings exist, write `Không phát hiện lỗi nào đạt ngưỡng báo cáo.`
+
+Do not add non-blocking suggestions unless the user explicitly requests them.
 
 ## Orchestrator Contract
 
-When run under `/orchestrator`, append exactly one HTML comment as the final output line:
+When an orchestrator invokes the skill, read and follow [references/orchestrator-contract.md](references/orchestrator-contract.md).
 
-- `Ready for Human PR Approval`:
-  `<!-- orchestrator: outcome=continue provides=pr_review_path pr_review_path=docs/ai/reviews/{feature-name}.md -->`
-- `Needs Fix`:
-  `<!-- orchestrator: outcome=stop-fail -->`
-- `Needs Human Decision`:
-  `<!-- orchestrator: outcome=stop-ask-human -->`
-- `Blocked`:
-  `<!-- orchestrator: outcome=stop-blocked -->`
-
-Emit the comment only after the human-readable review is complete. If run standalone, the comment is optional.
+Do not load or apply that contract during a standalone review.
