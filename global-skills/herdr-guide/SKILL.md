@@ -1,15 +1,15 @@
 ---
 name: herdr-guide
-description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly asks to inspect or control panes, tabs, workspaces, terminals, commands, sessions, or communication with another agent. Do not use for task backlog management, assigned-task orchestration, or behavioral root-cause audit of a session; use task-manager, herdr-orchestrate-agents, or herdr-audit-session respectively. Requires HERDR_ENV=1."
+description: "Control Herdr, a terminal multiplexer for coding agents. Use when the user asks to inspect or control panes, tabs, workspaces, terminals, commands, sessions, or communication with another agent, and whenever an orchestrating skill such as foreman-agent needs the Herdr CLI. This skill owns Herdr CLI mechanics; it does not own task backlog policy. Requires HERDR_ENV=1."
 ---
 
 # Herdr
 
 Herdr is a terminal multiplexer and runtime for coding agents. It organizes terminals into workspaces, tabs, and panes, detects agent identity and status, and exposes the running session through the `herdr` CLI.
 
-Use `herdr-orchestrate-agents` when the user wants to dispatch or synchronize a stored task.
-Use `herdr-audit-session` when the user wants to explain unexpected agent behavior without contacting the running agent.
-Use `task-manager` for standalone backlog operations and stored-state task boards.
+This skill owns Herdr mechanics only: which command to run, which target to address, how to read the response.
+It does not own what work should be dispatched or how a backlog is tracked.
+Use `foreman-agent` for backlog policy, task assignment decisions, and reporting to the human; it loads this skill for the mechanics.
 
 Before issuing any control command, check that this agent is running inside a Herdr-managed pane:
 
@@ -32,16 +32,19 @@ herdr --help
 Then print the relevant command group by running it without a subcommand:
 
 ```bash
+herdr agent
 herdr pane
 herdr workspace
 herdr worktree
 herdr tab
-herdr wait
 herdr terminal
 herdr notification
 herdr integration
 herdr session
 ```
+
+Command groups change between releases.
+Print the group before using it rather than trusting an example in this file.
 
 Do not run bare `herdr` for discovery; it launches or attaches the TUI. Do not probe a mutating nested command by omitting arguments; some commands, including `herdr workspace create`, are valid with defaults and will execute. Use the command-group output above instead.
 
@@ -80,6 +83,21 @@ herdr pane list --workspace "$HERDR_WORKSPACE_ID"
 ## Control agents through panes
 
 An agent runs inside a pane. Use the pane ID as the control target for agents, shells, servers, tests, and logs. This keeps spawning, input, reads, waits, and cleanup on one stable control surface.
+
+The `herdr agent` group addresses agents directly and is the cheaper surface when you care about the agent rather than the terminal:
+
+```bash
+herdr agent list
+herdr agent get <target>
+herdr agent prompt <target> "<text>" [--wait --until working --timeout 30000]
+herdr agent read <target> --source recent-unwrapped --lines 120
+herdr agent wait <target> --until idle --timeout 120000
+herdr agent rename <target> <name>
+```
+
+A target is a unique agent name or a pane ID that currently hosts an agent. `herdr agent list` returns one record per agent with `agent`, `agent_status`, `cwd`, `pane_id`, `tab_id`, `workspace_id`, and `terminal_id`, so a single call answers which agents exist, what they are doing, and where they live.
+
+Pane IDs change when a pane moves; `terminal_id` does not. Name an agent with `herdr agent rename` when something must address it durably across moves and restarts.
 
 Use workspace and tab commands for organization. Use worktree commands only when you intentionally want Herdr to create, open, or remove a Git checkout.
 
@@ -133,7 +151,7 @@ Inspect the pane after launch. If `agent_status` is not yet `idle`, wait for the
 
 ```bash
 herdr pane get <returned-pane-id>
-herdr wait agent-status <returned-pane-id> --status idle --timeout 30000
+herdr agent wait <returned-pane-id> --until idle --timeout 30000
 herdr pane run <returned-pane-id> "Review the current diff and report only actionable findings."
 ```
 
@@ -144,8 +162,8 @@ Status waits match the current status immediately or wait for a future matching 
 For normal background work, wait for the agent to start working. If the pane remains in a background tab or workspace, wait for `done` before reading its transcript:
 
 ```bash
-herdr wait agent-status <returned-pane-id> --status working --timeout 30000
-herdr wait agent-status <returned-pane-id> --status done --timeout 120000
+herdr agent wait <returned-pane-id> --until working --timeout 30000
+herdr agent wait <returned-pane-id> --until done --timeout 120000
 herdr pane read <returned-pane-id> --source recent-unwrapped --lines 120
 ```
 
@@ -171,7 +189,7 @@ Read the new `pane_id` from the JSON response, then run and inspect the command:
 
 ```bash
 herdr pane run <returned-pane-id> "just test"
-herdr wait output <returned-pane-id> --match "test result" --timeout 120000
+herdr pane wait-output <returned-pane-id> --match "test result" --timeout 120000
 herdr pane read <returned-pane-id> --source recent-unwrapped --lines 120
 ```
 
