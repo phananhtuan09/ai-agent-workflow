@@ -17,6 +17,7 @@ Read when relevant:
 
 - `docs/ai/project/AI_WORKFLOW_RULES.md`
 - normalized session traces
+- `.foreman/` when the repo is Foreman-managed: `done.md`, `log.md`, and pre-extracted traces in `.foreman/traces/`
 - observations in `docs/ai/agent-observations/`
 - legacy observations in `docs/ai/workflow-observations/`
 - the workflow artifact under review, but only after the blind behavioral pass for trace-first evaluations
@@ -92,9 +93,36 @@ Optional:
 
 Use `unknown` for missing fields. Never invent evidence or a denominator.
 
+## Foreman Corpus
+
+When the repo is managed by `foreman-agent`, `.foreman/` already supplies corpus, denominator, and outcome labels.
+
+- `.foreman/traces/<id>-<timestamp>/` holds raw worker transcripts that Foreman copied when an item was approved or rejected; normalize each file with `extract_session_trace.py --input` before analysis, since Foreman only pins them and never parses them
+- a worker on a database-backed runtime such as opencode leaves no copied file; locate that session with `--runtime opencode` and the `TASK: <id>` prompt string instead, and note the coverage gap when it cannot be found
+- `.foreman/done.md` is the denominator, with one line per approved item; friction counts convert to rates only against it
+- `↻N` on a `done.md` line is the recorded rework count for that item, and a missing `↻` means zero
+- `.foreman/log.md` lines record orchestration-level events with timestamp, id, `@agent`, type, and detail
+
+A `log.md` line is direct evidence that the event happened, not evidence of its cause.
+Foreman records events without diagnosing them, so cause attribution still needs trace or artifact corroboration.
+
+A `flagged` line is the exception: it is the human's own observation rather than an event Foreman witnessed.
+Treat it as `agent-reported-observation` strength, and corroborate it against the trace directory carrying the same timestamp before promoting it to a finding.
+
+An item that was rejected and later approved has two trace directories.
+Treat the pair as one rework trajectory rather than two independent sessions, and count the item once in the denominator.
+
+`.foreman/` is gitignored and lives in each managed repo, not in the workflow repo.
+Its path must be supplied explicitly in `session_corpus`.
+Never assume it exists, and state `insufficient runtime evidence` when it does not.
+
+Foreman only observes the assignment boundary, so `log.md` alone cannot explain in-session behavior.
+Use the traces for first divergence, retries, repeated reads, and tool failures.
+
 ## Session Trace Preflight
 
 Normalize raw history before analysis when possible.
+Transcripts pinned under `.foreman/traces/` are raw copies, so run the extractor on each one with `--input`.
 
 ```bash
 python3 .agents/skills/workflow-evaluation/extract_session_trace.py --input <raw-transcript-path> --runtime codex
