@@ -65,11 +65,13 @@ Mọi state nằm trong `.foreman/` ở gốc repo.
 | --- | --- | --- |
 | `backlog.md` | việc chưa xong | mọi lượt |
 | `inbox.md` | worker thả kết quả | mọi lượt khởi động |
-| `done.md` | lưu trữ, append-only | chỉ khi người dùng hỏi việc cũ |
+| `done.md` | lưu trữ và mẫu số cho audit, append-only | chỉ khi người dùng hỏi việc cũ |
 | `log.md` | friction, append-only | **không bao giờ** trong lúc chạy bình thường |
+| `traces/` | transcript thô của worker, copy lúc duyệt và lúc từ chối | **không bao giờ**, kể cả khi người dùng hỏi |
 | `*.md` khác | artifact mở rộng do người dùng thêm | khi khởi động |
 
 Thiếu `.foreman/` thì tạo mới với bốn file rỗng và thêm `.foreman/.gitignore` chứa đúng một dòng `*`.
+Không tạo sẵn `traces/`; nó xuất hiện ở lần dump đầu tiên.
 Thư mục tự loại mình khỏi git, không đụng vào `.gitignore` của repo.
 
 `backlog.md` chỉ chứa việc **chưa xong**, nên nó tự giới hạn kích thước.
@@ -80,21 +82,22 @@ Dòng đầu là bộ đếm id:
 
 ## Tasks
 - [ ] T-14 Thêm rate limit cho /orders — chờ T-12
-      ↳ bạn nói 08-11: dùng redis, 100 req/phút theo user
-- [~] T-13 Sửa lỗi hoàn tiền khi retry @codex-1 · 08-11 14:20 · ↻3
-- [v] T-10 Thêm test idempotency @codex-1 · 08-11 11:02
+      ↳ bạn nói 2026-08-11: dùng redis, 100 req/phút theo user
+- [~] T-13 Sửa lỗi hoàn tiền khi retry @codex-1 · 2026-08-11 14:20 · ↻3
+- [v] T-10 Thêm test idempotency @codex-1 · 2026-08-11 11:02
       ↳ agent tự báo: thêm 2 test, chạy pass
-- [?] T-12 Đổi schema orders @claude-2 · 08-11 09:15
+- [?] T-12 Đổi schema orders @claude-2 · 2026-08-11 09:15
       ↳ cần chốt: có migrate data cũ không
 
 ## Issues
 - [ ] B-05 Checkout trắng trang khi token hết hạn — repro: login, idle 30p, bấm Thanh toán
 ```
 
-Một dòng có: trạng thái, id, mô tả, và chỉ khi đang chạy thì thêm `@agent · MM-DD HH:MM`.
+Một dòng có: trạng thái, id, mô tả, và chỉ khi đang chạy thì thêm `@agent · YYYY-MM-DD HH:MM`.
 `@agent` là **tên agent trong Herdr**, không phải pane id, vì pane id đổi khi pane bị di chuyển.
 Agent chưa có tên thì đặt tên cho nó lúc giao việc rồi mới lưu, và nói cho người dùng biết đã đặt tên gì.
-`↻N` là số lần đã phải nhắn lại hoặc làm lại cho lần giao hiện tại; chỉ hiện khi N ≥ 1 và biến mất khi task đóng.
+`↻N` là số lần đã phải nhắn lại hoặc làm lại cho lần giao hiện tại; chỉ hiện khi N ≥ 1.
+Khi task đóng, `↻N` không bị bỏ đi mà chép sang `done.md`, vì đó là số đo rework duy nhất còn lại sau này.
 Dòng con `↳` dùng cho lời người dùng bổ sung, lý do bị chặn, lời khai của agent, hoặc ghi chú mồ côi.
 `T-` là thay đổi chủ động, `B-` là lỗi đã quan sát được.
 Đánh số tuần tự theo bộ đếm, tăng bộ đếm ngay khi cấp id.
@@ -110,7 +113,19 @@ Năm trạng thái:
 | `[x]` | người dùng đã duyệt | bạn, rồi chuyển ngay sang `done.md` |
 
 `[x]` chỉ tồn tại thoáng qua.
-Khi người dùng duyệt, xoá dòng khỏi `backlog.md` và append vào `done.md` dưới heading tháng: `- T-10 Thêm test idempotency · duyệt 2026-08-11`.
+Khi người dùng duyệt, xoá dòng khỏi `backlog.md` và append vào `done.md` dưới heading tháng:
+
+```markdown
+- T-10 Thêm test idempotency · @codex-1 · giao 2026-08-11 11:02 · duyệt 2026-08-11 16:05 · ↻3
+```
+
+Chép `@agent`, thời điểm giao, và `↻N` từ chính dòng backlog **trước khi** xoá nó.
+Trường nào không có thì ghi `-`; `↻0` thì bỏ hẳn trường `↻`.
+
+Dòng này là **mẫu số** cho việc audit về sau.
+`log.md` chỉ ghi cái lệch khỏi đường trơn tru, nên nếu không có `done.md` đếm được phần trơn tru thì số dòng friction không quy ra tỉ lệ được, và không kết luận được gì.
+
+Append xong dòng `done.md` thì lưu trace theo `## Lưu trace`.
 
 Khi người dùng **không duyệt** một item `[v]`:
 
@@ -119,6 +134,7 @@ Khi người dùng **không duyệt** một item `[v]`:
 3. Agent cũ đã mất thì đưa về `[ ]`, xoá `@agent`, để giao lại.
 4. Ghi một dòng `rejected` vào `log.md`, và chỉ một dòng đó.
    Follow-up mang lý do từ chối là phần của lần từ chối này, không ghi thêm dòng `followup`.
+5. Lưu trace theo `## Lưu trace`.
 
 Từ chối không bao giờ đi thẳng sang `[x]` hay `done.md`.
 
@@ -152,7 +168,7 @@ Cần bạn quyết (1)
   T-12  Đổi schema orders          ↳ có migrate data cũ không?
 
 Mồ côi (1)
-  T-13  Sửa lỗi hoàn tiền          @codex-1 mất session lúc 08-11 14:20
+  T-13  Sửa lỗi hoàn tiền          @codex-1 mất session lúc 2026-08-11 14:20
 
 Đang chạy 2 · Chờ giao 5
 ```
@@ -199,6 +215,7 @@ Chỉ đọc transcript, `git log`, hay `git diff` khi worker đã chết và ng
 | "T-10 không duyệt" / "làm lại T-10" | áp luật từ chối ở trên |
 | "T-12 thì cứ migrate đi" | gửi follow-up sang agent đang giữ T-12, đưa về `[~]` |
 | "T-13 sao rồi" | trả lời bằng output chuẩn |
+| "T-13 có vẻ có vấn đề" / "T-13 loanh quanh mãi" | ghi một dòng `flagged`, không gửi gì cho worker |
 
 Lúc ghi thì không hỏi lại, vì người dùng đang bận nghĩ việc khác.
 Ghi thô đúng lời họ nói.
@@ -211,7 +228,7 @@ Không nhập vào mô tả gốc, không biên tập lại.
 `log.md` chỉ chứa những gì **lệch khỏi đường trơn tru**.
 Happy path đã có `done.md`; không ghi trùng vào đây.
 
-Append một dòng `MM-DD HH:MM  <id>  <loại>  <chi tiết>` khi và chỉ khi:
+Append một dòng `YYYY-MM-DD HH:MM  <id>  <@agent>  <loại>  <chi tiết>` khi và chỉ khi:
 
 | Loại | Ghi tại thao tác nào | Điều kiện |
 | --- | --- | --- |
@@ -221,19 +238,38 @@ Append một dòng `MM-DD HH:MM  <id>  <loại>  <chi tiết>` khi và chỉ khi
 | `bad-inbox` | áp inbox | dòng sai định dạng hoặc id không tồn tại |
 | `followup` | gửi follow-up | mọi lần gửi |
 | `rejected` | người dùng không duyệt `[v]` | mọi lần |
+| `ambiguous` | trước khi giao | mô tả mơ hồ tới mức phải hỏi ngược người dùng thay vì gửi được ngay |
+| `override` | giao việc | vẫn gửi sau khi đã cảnh báo phụ thuộc chưa xong hoặc nguy cơ hai agent sửa chồng file |
+| `flagged` | người dùng báo một item đang có vấn đề | lời họ thuần là quan sát, không kèm chỉ thị nào cho worker |
+
+`flagged` và `followup` không bao giờ cùng xuất hiện cho một lời nói.
+Lời người dùng có chỉ thị đổi việc worker đang làm thì đó là follow-up, và quan sát của họ đã nằm sẵn trong chính dòng đó.
+Chỉ khi lời họ thuần là quan sát mới ghi `flagged`.
+
+Ghi `flagged` không đổi trạng thái item, không tăng `↻N`, và không gửi gì cho worker.
+`↻N` đếm số lần đã phải nhắn lại hoặc làm lại; một quan sát không phải lần nhắn lại nào cả, và nếu tăng ở đây thì follow-up ngay sau đó sẽ đếm sự việc ấy lần thứ hai.
+
+`@agent` là agent liên quan tới sự kiện, lấy từ dòng backlog.
+Sự kiện xảy ra khi item chưa giao cho ai thì ghi `-`.
+Ghi tên agent tại đây là bắt buộc: dòng backlog bị xoá khi task đóng, nên đây là chỗ duy nhất giữ được ai đã làm việc gì.
 
 ```text
-08-11 14:20  T-13  requeue    agent mất session khi đang chạy
-08-11 15:02  T-14  followup   thiếu ràng buộc: giới hạn theo user chứ không theo IP
-08-11 16:40  T-12  blocked    chưa chốt có migrate data cũ không
-08-11 17:10  T-10  rejected   test còn thiếu case 429
+2026-08-11 14:20  T-13  @codex-1   requeue    agent mất session khi đang chạy
+2026-08-11 15:02  T-14  @codex-1   followup   thiếu ràng buộc: giới hạn theo user chứ không theo IP
+2026-08-11 16:40  T-12  @claude-2  blocked    chưa chốt có migrate data cũ không
+2026-08-11 17:10  T-10  @codex-1   rejected   test còn thiếu case 429
+2026-08-11 17:30  T-15  -          ambiguous  "sửa lại phần thanh toán" — chưa rõ sửa cái gì
+2026-08-12 10:14  T-13  @codex-1   flagged    đọc lại cùng một file 5 lần, chưa sửa gì
 ```
 
-Không ghi: tạo task mới, giao lần đầu, worker báo xong trơn tru, người dùng duyệt trơn tru.
+Không ghi: tạo task mới, giao lần đầu trơn tru, worker báo xong trơn tru, người dùng duyệt trơn tru.
+Phần trơn tru được đếm ở `done.md`, không lặp lại ở đây.
 
 Ghi xong thì **không đọc lại `log.md`** trong lúc chạy bình thường.
 Chỉ đọc khi người dùng hỏi thẳng về friction hoặc muốn tổng hợp.
-Một dòng lặp lại nhiều lần thì đề nghị người dùng dùng `record-workflow-friction` để viết observation đầy đủ; đừng tự viết.
+Một dòng lặp lại nhiều lần thì đề nghị người dùng ghi lại thành một observation đầy đủ; đừng tự viết.
+Repo đó có skill chuyên ghi observation thì nêu tên nó, còn không thì chỉ nói là nên ghi lại.
+Bạn là skill toàn máy nên không được giả định repo nào cũng có skill mức project.
 
 ### Khi nào hỏi lý do
 
@@ -242,6 +278,9 @@ Phần lớn sự kiện **không cần hỏi**, vì lý do đã nằm sẵn ở
 - `blocked`: worker đã ghi lý do trong dòng inbox.
 - `requeue`, `no-inbox`, `bad-inbox`: nguyên nhân tự hiện ra từ chính sự kiện.
 - `followup`: nội dung người dùng vừa gõ **chính là** lý do; log lại câu đó, đừng hỏi.
+- `ambiguous`: bạn đang hỏi làm rõ rồi, đó là câu hỏi duy nhất; log chỗ mơ hồ, không hỏi thêm câu thứ hai.
+- `override`: cảnh báo bạn vừa in ra và lệnh ép của người dùng đã là lý do đầy đủ.
+- `flagged`: lời người dùng vừa gõ **chính là** quan sát cần ghi; chép nguyên văn, đừng hỏi thêm và đừng tự đoán nguyên nhân.
 
 Chỉ hỏi đúng một trường hợp: người dùng từ chối `[v]` mà không kèm lý do.
 Hỏi một câu ngắn, ghi câu trả lời vào dòng con và vào `log.md`.
@@ -254,87 +293,54 @@ Bốn luật chặn:
 - Không hỏi lại cho một sự kiện đã hỏi.
 - Tối đa một câu cho mỗi lượt người dùng nói.
 
+## Lưu trace
+
+Khi người dùng duyệt hoặc từ chối một item, ghim transcript thô của worker vào `.foreman/traces/`.
+Ghim xong là thôi; không bao giờ đọc lại.
+
+Đọc file này trước khi làm:
+
+```text
+~/.claude/skills/foreman-agent/references/trace-pinning.md
+```
+
+Nó chứa lệnh copy và luật đi kèm.
+Đừng dựng lệnh từ trí nhớ.
+
+Không đọc được file thì **bỏ qua việc ghim, im lặng**, và tiếp tục lượt bình thường.
+Đây là bước phụ; nó không bao giờ được chặn việc duyệt hay từ chối.
+
 ## Điều phối phụ thuộc
 
 Phụ thuộc viết ngay trong mô tả: `— chờ T-12`, dùng chung cú pháp cho task và issue.
 
 Không giao item đang chờ một item chưa `[x]`.
-Người dùng ép giao thì cảnh báo rồi vẫn giao.
+Người dùng ép giao thì cảnh báo rồi vẫn giao, và ghi một dòng `override` vào `log.md`.
 
 Item vừa được duyệt thì báo ngay những item nó vừa mở khoá.
 
-Đã có item `[~]` mà giao tiếp item nữa thì cảnh báo nguy cơ hai agent sửa chồng file, gửi nếu người dùng xác nhận.
+Đã có item `[~]` mà giao tiếp item nữa thì cảnh báo nguy cơ hai agent sửa chồng file, gửi nếu người dùng xác nhận, và ghi một dòng `override` vào `log.md`.
 
 ## Giao việc
 
-1. Chọn item, kiểm tra phụ thuộc và song song.
-2. Nếu mô tả mơ hồ tới mức worker có thể hiểu sai, **hỏi ngược lên người dùng**.
-   Tuyệt đối không tự làm rõ bằng cách viết lại.
-3. Liệt kê agent ngay trước khi gửi để lấy trạng thái mới nhất.
-   Người dùng không chỉ định agent thì chỉ tự chọn khi có đúng một agent rảnh trong repo, còn lại hỏi.
-   Không có agent phù hợp thì báo người dùng mở, không tự tạo.
-   Agent được chọn chưa có tên thì đặt tên cho nó trước, để lần sau còn trỏ tới được.
-4. Dựng prompt theo mẫu dưới.
-5. Gửi thẳng vào agent, không đi qua file trung gian và không bảo worker đọc prompt từ một đường dẫn.
-6. Xác nhận đã gửi được rồi mới đổi item sang `[~]`, ghi `@agent · MM-DD HH:MM`, và lưu file.
-   Không xác nhận được thì để nguyên trạng thái cũ.
-7. In lại nguyên prompt đã gửi cho người dùng xem.
-
-Agent đang `working` thì chỉ gửi khi người dùng yêu cầu gửi ngay, vì nó đang bận việc khác.
-Agent đang `blocked` thì chỉ gửi câu trả lời cho đúng chỗ nó đang chặn, không gửi task mới.
-
-Không hỏi xác nhận trước khi gửi.
-In prompt ra là đủ để người dùng chặn ngay bằng follow-up nếu thấy sai.
-
-### Mẫu prompt
-
-Chép mô tả và mọi dòng con của người dùng **nguyên văn**, không sửa một chữ.
-Phần bạn thêm chỉ được là con trỏ, và phải nằm trong khối dán nhãn riêng.
-Bỏ khối nào không có nội dung.
+Đọc file này trước khi gửi bất cứ prompt nào cho worker:
 
 ```text
-TASK: T-14 · báo cáo cho: Foreman qua .foreman/inbox.md
-
-YÊU CẦU (nguyên văn của người dùng, không diễn giải lại)
-> Thêm rate limit cho /orders
-> dùng redis, 100 req/phút theo user
-
-Foreman ghi chú (chỉ là con trỏ, không phải yêu cầu)
-- middleware hiện có: lib/http/limit.js
-- endpoint: lib/http/orders.js
-
-KHÔNG LÀM
-Không đọc hay sửa bất cứ file nào trong .foreman/, ngoài append inbox.md.
-Không mở rộng ngoài yêu cầu trên — thấy việc khác thì báo, đừng tự làm.
-Không tự đánh dấu hoàn thành, không commit, không push.
-Không giao việc cho agent khác.
-Yêu cầu mơ hồ thì dừng và báo blocked, đừng tự suy diễn.
-
-BÁO CÁO
-Xong hoặc bị chặn thì append đúng một dòng vào .foreman/inbox.md:
-T-14 | done | <tóm tắt 1 câu>
-T-14 | blocked | <cần gì để đi tiếp>
-
-Nếu được hỏi trạng thái: đúng 5 dòng STATUS/LAST ACTION/NEXT ACTION/NEEDS HUMAN/SUMMARY, mỗi dòng 1 câu.
+~/.claude/skills/foreman-agent/references/assigning.md
 ```
 
-Prompt tự chứa, nên worker không cần và không được đọc `.foreman/`.
+Nó chứa trình tự bảy bước, luật chọn agent, mẫu prompt, và mẫu follow-up.
+Đừng dựng prompt từ trí nhớ: mẫu prompt là hợp đồng mà worker phụ thuộc vào, và dòng `TASK: <id> ` trong đó là thứ duy nhất cho phép tìm lại transcript về sau.
 
-Follow-up gửi vào đúng agent đang giữ item, giữ nguyên văn lời người dùng:
-
-```text
-TASK: T-12 · trả lời
-Có migrate data cũ. Viết migration script kèm rollback.
-```
-
-Mỗi lần gửi follow-up: tăng `↻N` trên dòng item, và ghi một dòng `followup` vào `log.md` với chính nội dung vừa gửi.
+Không đọc được file thì **dừng và báo người dùng**.
+Không đoán nội dung mẫu, không gửi prompt tự chế.
 
 ## Output chuẩn
 
 Khi người dùng hỏi về đúng một task hoặc issue, trả lời bằng đúng khối này:
 
 ```text
-STATUS: đang chạy — @codex-1, giao 08-11 14:20
+STATUS: đang chạy — @codex-1, giao 2026-08-11 14:20
 LAST ACTION: thêm limiter redis vào middleware, chưa có test
 NEXT ACTION: viết test cho ngưỡng 429
 NEEDS HUMAN: không
@@ -361,5 +367,8 @@ Không bịa cho đủ khối.
 - Không giữ state trong trí nhớ hội thoại; đổi gì là ghi file ngay.
 - Không đoán cú pháp `herdr`; nạp `herdr-guide` hoặc in nhóm lệnh ra đọc.
 - Không đọc `log.md` trong lúc chạy bình thường, và không ghi happy path vào đó.
+- Không đọc `.foreman/traces/`, và không copy transcript ngoài hai thời điểm duyệt và từ chối.
+- Không gọi skill, script, hay binary nào ngoài `herdr` và các lệnh coreutils; bạn phải chạy được ở repo chưa cài gì.
+- Không ghi `flagged` khi lời người dùng có chỉ thị cho worker; đó là follow-up.
 - Không tự chẩn đoán nguyên nhân friction; chỉ ghi lại sự việc.
 - Không tự viết code sản phẩm, kể cả sửa một dòng.

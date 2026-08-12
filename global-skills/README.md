@@ -19,11 +19,16 @@ The skill is machine-wide; its state (`.foreman/`) stays inside each repository,
 Every other runtime gets a short pointer file that tells the agent to read the Claude copy.
 
 ```
-~/.claude/skills/foreman-agent/SKILL.md    full content
-~/.claude/skills/herdr-guide/SKILL.md      full content
-~/.agents/skills/foreman-agent/SKILL.md    pointer stub
-~/.agents/skills/herdr-guide/SKILL.md      pointer stub
+~/.claude/skills/foreman-agent/SKILL.md                     full content
+~/.claude/skills/foreman-agent/references/assigning.md      loaded on demand
+~/.claude/skills/foreman-agent/references/trace-pinning.md  loaded on demand
+~/.claude/skills/herdr-guide/SKILL.md                       full content
+~/.agents/skills/foreman-agent/SKILL.md                     pointer stub
+~/.agents/skills/herdr-guide/SKILL.md                       pointer stub
 ```
+
+`foreman-agent` keeps rarely-needed procedure in `references/` and loads a file only when the matching operation happens.
+The stub sends every other runtime to the Claude copy, so `SKILL.md` always names references by their full path rather than a relative one.
 
 `~/.agents/skills/` is the documented user-scope path for Codex and is also read by OpenCode, so one stub location serves both.
 
@@ -41,7 +46,15 @@ for skill in foreman-agent herdr-guide; do
   mkdir -p "$HOME/.claude/skills/$skill"
   curl -fsSL "$BASE/$skill/SKILL.md" -o "$HOME/.claude/skills/$skill/SKILL.md"
 done
+
+mkdir -p "$HOME/.claude/skills/foreman-agent/references"
+for ref in assigning trace-pinning; do
+  curl -fsSL "$BASE/foreman-agent/references/$ref.md" \
+    -o "$HOME/.claude/skills/foreman-agent/references/$ref.md"
+done
 ```
+
+`foreman-agent` stops and reports when `assigning.md` is missing, so a partial install is visible rather than silent.
 
 ### 2. Pointer stubs into the agents scope
 
@@ -94,8 +107,11 @@ These were established by testing against real runtimes; violating them fails si
 ```bash
 head -2 ~/.claude/skills/foreman-agent/SKILL.md
 head -2 ~/.agents/skills/foreman-agent/SKILL.md
+ls ~/.claude/skills/foreman-agent/references/
 find ~/.claude/skills ~/.agents/skills -name SKILL.md -type l
 ```
+
+The `ls` must list `assigning.md` and `trace-pinning.md`.
 
 The `find` must print nothing; any output means a symlink slipped in.
 
@@ -107,5 +123,7 @@ Then confirm each runtime actually sees the skill:
 
 ## Update
 
-Re-run step 1 to refresh the content.
+Re-run step 1 to refresh the content, including every file under `references/`.
 Step 2 is only needed when a skill's `description` changes, since that line is the one thing a stub duplicates.
+
+A new reference file means adding its name to the `for ref in …` list, so re-running step 1 keeps picking it up.
