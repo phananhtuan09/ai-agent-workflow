@@ -1,21 +1,30 @@
 #!/usr/bin/env python3
 
 import argparse
-import datetime
 import json
 import os
 import sqlite3
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 
 SCHEMA_VERSION = "ai-workflow/session-trace-v1"
 
+OPENCODE_DB_DEFAULT = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+OPENCODE_FILE_TOOLS = {"edit", "write", "apply_patch"}
+
 
 def project_path_to_claude_key(project_path: str) -> str:
     return project_path.replace("/", "-")
+
+
+def ms_to_iso(value):
+    if not isinstance(value, (int, float)):
+        return None
+    return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def read_jsonl(file_path: Path):
@@ -57,7 +66,7 @@ def detect_runtime(input_path: Optional[Path]):
         return "claude"
     if "/.codex/" in normalized:
         return "codex"
-    if "/.opencode/" in normalized or "/opencode/" in normalized:
+    if "/opencode/" in normalized or normalized.endswith(".db"):
         return "opencode"
     return None
 
@@ -97,157 +106,6 @@ def find_latest_transcript(runtime: str, project_path: Optional[str]):
     raise ValueError(f"Unsupported runtime for --latest: {runtime}")
 
 
-def get_opencode_db_path():
-    default_path = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
-    if default_path.exists():
-        return default_path
-
-    result = subprocess.run(
-        ["opencode", "db", "path"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return Path(result.stdout.strip()).expanduser()
-
-
-def find_latest_opencode_session(project_path: Optional[str]):
-    normalized_project = os.path.abspath(os.path.expanduser(project_path)) if project_path else None
-    db_path = get_opencode_db_path()
-    if not db_path.exists():
-        raise FileNotFoundError(f"Opencode database not found: {db_path}")
-
-    query = """
-        select id, directory, time_updated
-        from session
-        where time_archived is null
-    """
-    params = []
-    if normalized_project:
-        query += " and directory = ?"
-        params.append(normalized_project)
-    query += " order by time_updated desc limit 1"
-
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(query, params).fetchone()
-    if row is None:
-        return None
-    return dict(row)
-
-
-def safe_load_json(value):
-    if value is None:
-        return None
-    if isinstance(value, (dict, list)):
-        return value
-    try:
-        return json.loads(value)
-    except Exception:
-        return value
-
-
-def load_opencode_session(session_id: str):
-    db_path = get_opencode_db_path()
-    if not db_path.exists():
-        raise FileNotFoundError(f"Opencode database not found: {db_path}")
-
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-
-        session_row = conn.execute(
-            "select * from session where id = ?",
-            [session_id],
-        ).fetchone()
-        if session_row is None:
-            raise ValueError(f"Opencode session not found: {session_id}")
-
-        message_rows = conn.execute(
-            """
-            select *
-            from message
-            where session_id = ?
-            order by time_created asc, id asc
-            """,
-            [session_id],
-        ).fetchall()
-
-        part_rows = conn.execute(
-            """
-            select *
-            from part
-            where session_id = ?
-            order by time_created asc, id asc
-            """,
-            [session_id],
-        ).fetchall()
-
-    parts_by_message = {}
-    for row in part_rows:
-        parts_by_message.setdefault(row["message_id"], []).append({
-            "id": row["id"],
-            "messageID": row["message_id"],
-            "sessionID": row["session_id"],
-            **(safe_load_json(row["data"]) or {}),
-        })
-
-    messages = []
-    for row in message_rows:
-        messages.append({
-            "info": {
-                **(safe_load_json(row["data"]) or {}),
-                "id": row["id"],
-                "sessionID": row["session_id"],
-            },
-            "parts": parts_by_message.get(row["id"], []),
-        })
-
-    return {
-        "source": {
-            "db_path": str(db_path),
-            "session_id": session_row["id"],
-        },
-        "info": {
-            "id": session_row["id"],
-            "slug": session_row["slug"],
-            "projectID": session_row["project_id"],
-            "workspaceID": session_row["workspace_id"],
-            "parentID": session_row["parent_id"],
-            "directory": session_row["directory"],
-            "path": session_row["path"],
-            "title": session_row["title"],
-            "agent": session_row["agent"],
-            "model": safe_load_json(session_row["model"]) or {},
-            "version": session_row["version"],
-            "shareURL": session_row["share_url"],
-            "metadata": safe_load_json(session_row["metadata"]) or {},
-            "summary": {
-                "additions": session_row["summary_additions"],
-                "deletions": session_row["summary_deletions"],
-                "files": session_row["summary_files"],
-                "diffs": safe_load_json(session_row["summary_diffs"]) or [],
-            },
-            "cost": session_row["cost"],
-            "tokens": {
-                "input": session_row["tokens_input"],
-                "output": session_row["tokens_output"],
-                "reasoning": session_row["tokens_reasoning"],
-                "cache": {
-                    "read": session_row["tokens_cache_read"],
-                    "write": session_row["tokens_cache_write"],
-                },
-            },
-            "time": {
-                "created": session_row["time_created"],
-                "updated": session_row["time_updated"],
-                "compacting": session_row["time_compacting"],
-                "archived": session_row["time_archived"],
-            },
-        },
-        "messages": messages,
-    }
-
-
 def ensure_dir(dir_path: Path):
     dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -285,14 +143,14 @@ def increment_counter(counter, key):
     counter[safe_key] = counter.get(safe_key, 0) + 1
 
 
-def build_base_artifact(runtime: str, transcript_path, transcript_format: str = "jsonl"):
+def build_base_artifact(runtime: str, transcript_path: Path):
     return {
         "schema_version": SCHEMA_VERSION,
         "runtime": runtime,
         "source": {
             "transcript_path": str(transcript_path),
-            "transcript_format": transcript_format,
-            "extracted_at": datetime.datetime.utcnow().isoformat() + "Z",
+            "transcript_format": "jsonl",
+            "extracted_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
             "extractor": "workflow-evaluation/extract_session_trace.py",
         },
         "session": {
@@ -820,167 +678,306 @@ def parse_codex_transcript(records, transcript_path: Path):
     return artifact
 
 
-def parse_opencode_export(export_data, source_ref: str):
-    session_info = export_data.get("info") or {}
-    artifact = build_base_artifact("opencode", source_ref, transcript_format="sqlite-export")
-    artifact["source"]["db_path"] = ((export_data.get("source") or {}).get("db_path"))
-    artifact["source"]["session_id"] = session_info.get("id")
+def resolve_opencode_db_path(explicit_path: Optional[Path]):
+    if explicit_path is not None:
+        return Path(os.path.expanduser(str(explicit_path))).resolve()
+    if OPENCODE_DB_DEFAULT.exists():
+        return OPENCODE_DB_DEFAULT
+    try:
+        result = subprocess.run(
+            ["opencode", "db", "path"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise FileNotFoundError(
+            f"Opencode database not found at {OPENCODE_DB_DEFAULT} and `opencode db path` failed: {exc}"
+        ) from exc
+    return Path(os.path.expanduser(result.stdout.strip())).resolve()
 
-    model_info = session_info.get("model") or {}
-    artifact["session"]["id"] = session_info.get("id")
-    artifact["session"]["cwd"] = session_info.get("directory")
-    artifact["session"]["started_at"] = (session_info.get("time") or {}).get("created")
-    artifact["session"]["ended_at"] = (session_info.get("time") or {}).get("updated")
-    artifact["session"]["cli_version"] = session_info.get("version")
-    artifact["session"]["model"] = model_info.get("id") or model_info.get("modelID")
-    artifact["session"]["metadata"]["agent"] = session_info.get("agent")
-    artifact["session"]["metadata"]["slug"] = session_info.get("slug")
-    artifact["session"]["metadata"]["project_id"] = session_info.get("projectID")
-    artifact["session"]["metadata"]["workspace_id"] = session_info.get("workspaceID")
-    artifact["session"]["metadata"]["parent_id"] = session_info.get("parentID")
-    artifact["session"]["metadata"]["provider_id"] = model_info.get("providerID")
-    artifact["session"]["metadata"]["path"] = session_info.get("path")
-    artifact["session"]["metadata"]["title"] = session_info.get("title")
-    artifact["session"]["metadata"]["share_url"] = session_info.get("shareURL")
-    artifact["session"]["metadata"]["raw_metadata"] = session_info.get("metadata") or {}
 
-    for index, message in enumerate(export_data.get("messages") or []):
-        message_info = message.get("info") or {}
-        role = message_info.get("role")
-        message_time = message_info.get("time") or {}
-        timestamp = message_time.get("created") or message_time.get("completed")
+def opencode_connect(db_path: Path):
+    if not db_path.exists():
+        raise FileNotFoundError(f"Opencode database not found: {db_path}")
+    connection = sqlite3.connect(f"{db_path.as_uri()}?mode=ro", uri=True)
+    connection.row_factory = sqlite3.Row
+    return connection
 
-        for part in message.get("parts") or []:
-            part_type = part.get("type")
-            if part_type == "text":
-                text = part.get("text") or ""
-                part_time = part.get("time") or {}
-                effective_timestamp = part_time.get("start") or part_time.get("end") or timestamp
-                push_if_text(artifact["session_trace"]["chat_history"], {
-                    "index": index,
-                    "timestamp": effective_timestamp,
-                    "runtime": "opencode",
-                    "role": role,
-                    "text": text,
-                })
+
+def find_latest_opencode_session(connection, project_path: Optional[str]):
+    query = "select id from session where time_archived is null"
+    params = []
+    if project_path:
+        query += " and directory = ?"
+        params.append(os.path.abspath(os.path.expanduser(project_path)))
+    query += " order by time_updated desc limit 1"
+    row = connection.execute(query, params).fetchone()
+    return row["id"] if row else None
+
+
+def read_opencode_session_row(connection, session_id: str):
+    row = connection.execute("select * from session where id = ?", (session_id,)).fetchone()
+    return dict(row) if row is not None else None
+
+
+def read_opencode_parts(connection, session_id: str):
+    return connection.execute(
+        "select p.id as part_id, p.time_created as part_time, p.data as part_data, "
+        "m.data as message_data "
+        "from part p join message m on m.id = p.message_id "
+        "where p.session_id = ? "
+        "order by m.time_created, p.time_created, p.id",
+        (session_id,),
+    ).fetchall()
+
+
+def parse_opencode_session(connection, session_id: str, db_path: Path):
+    session_row = read_opencode_session_row(connection, session_id)
+    if session_row is None:
+        raise ValueError(f"Opencode session not found: {session_id}")
+
+    artifact = build_base_artifact("opencode", db_path)
+    artifact["source"]["transcript_format"] = "sqlite"
+    artifact["source"]["session_id"] = session_id
+
+    artifact["session"]["id"] = session_row.get("id")
+    artifact["session"]["cwd"] = session_row.get("directory")
+    artifact["session"]["started_at"] = ms_to_iso(session_row.get("time_created"))
+    artifact["session"]["cli_version"] = session_row.get("version")
+    artifact["session"]["model"] = safe_json_parse(session_row.get("model")) or None
+    for key in ("title", "slug", "project_id", "workspace_id", "parent_id", "path", "agent", "cost"):
+        if key in session_row:
+            artifact["session"]["metadata"][key] = session_row.get(key)
+    artifact["session"]["metadata"]["archived"] = session_row.get("time_archived") is not None
+    artifact["session"]["metadata"]["session_totals"] = {
+        "tokens_input": session_row.get("tokens_input"),
+        "tokens_output": session_row.get("tokens_output"),
+        "tokens_reasoning": session_row.get("tokens_reasoning"),
+        "tokens_cache_read": session_row.get("tokens_cache_read"),
+        "tokens_cache_write": session_row.get("tokens_cache_write"),
+        "summary_additions": session_row.get("summary_additions"),
+        "summary_deletions": session_row.get("summary_deletions"),
+        "summary_files": session_row.get("summary_files"),
+    }
+
+    totals = {"input": 0, "output": 0, "reasoning": 0, "cost": 0}
+    reasoning_parts = 0
+
+    for index, row in enumerate(read_opencode_parts(connection, session_id)):
+        part = safe_json_parse(row["part_data"]) or {}
+        message = safe_json_parse(row["message_data"]) or {}
+        if not isinstance(part, dict):
+            continue
+        part_type = part.get("type")
+        role = message.get("role") if isinstance(message, dict) else None
+        timestamp = ms_to_iso(row["part_time"])
+
+        increment_counter(artifact["stats"]["raw_event_types"], part_type)
+        if timestamp:
+            artifact["session"]["ended_at"] = timestamp
+        if artifact["session"]["model"] is None and isinstance(message, dict) and message.get("modelID"):
+            artifact["session"]["model"] = message.get("modelID")
+            artifact["session"]["metadata"]["provider"] = message.get("providerID")
+
+        if part_type == "text":
+            text = part.get("text")
+            push_if_text(artifact["session_trace"]["chat_history"], {
+                "index": index,
+                "timestamp": timestamp,
+                "runtime": "opencode",
+                "role": role,
+                "text": text,
+            })
+            if isinstance(text, str) and text.strip():
                 push_normalized_event(artifact, {
                     "index": index,
-                    "timestamp": effective_timestamp,
+                    "timestamp": timestamp,
                     "kind": "chat",
                     "role": role,
                     "text": text,
                 })
-            elif part_type == "tool":
-                state = part.get("state") or {}
-                tool_name = part.get("tool")
-                call_id = part.get("callID")
-                input_value = state.get("input")
-                output_value = state.get("output")
-                status = state.get("status")
-                part_time = state.get("time") or {}
-                start_ts = part_time.get("start") or timestamp
-                end_ts = part_time.get("end") or start_ts
-                is_error = status in {"error", "failed", "cancelled"}
 
-                artifact["session_trace"]["tool_call_trace"].append({
+        elif part_type == "reasoning":
+            reasoning_parts += 1
+
+        elif part_type == "tool":
+            state = part.get("state") or {}
+            call_id = part.get("callID")
+            tool_name = part.get("tool")
+            input_value = state.get("input")
+            status = state.get("status")
+
+            artifact["session_trace"]["tool_call_trace"].append({
+                "index": index,
+                "timestamp": timestamp,
+                "runtime": "opencode",
+                "direction": "call",
+                "call_id": call_id,
+                "tool_name": tool_name,
+                "input": input_value,
+            })
+
+            command_value = None
+            if isinstance(input_value, dict):
+                command_value = input_value.get("command") or input_value.get("cmd")
+            if command_value:
+                artifact["session_trace"]["command_transcript"].append({
                     "index": index,
-                    "timestamp": start_ts,
+                    "timestamp": timestamp,
                     "runtime": "opencode",
-                    "direction": "call",
+                    "source": "tool_call",
                     "call_id": call_id,
                     "tool_name": tool_name,
-                    "input": input_value,
-                    "status": status,
+                    "command": command_value,
                 })
+
+            push_normalized_event(artifact, {
+                "index": index,
+                "timestamp": timestamp,
+                "kind": "tool_call",
+                "role": None,
+                "tool_name": tool_name,
+                "call_id": call_id,
+                "command": command_value,
+            })
+
+            if status in {"completed", "error"}:
                 artifact["session_trace"]["tool_call_trace"].append({
                     "index": index,
-                    "timestamp": end_ts,
+                    "timestamp": timestamp,
                     "runtime": "opencode",
                     "direction": "result",
                     "call_id": call_id,
                     "tool_name": tool_name,
-                    "output": output_value,
                     "status": status,
-                    "is_error": is_error,
+                    "output": state.get("output"),
+                    "error": state.get("error"),
                 })
-
-                command_value = None
-                if isinstance(input_value, dict):
-                    command_value = input_value.get("cmd") or input_value.get("command")
                 artifact["session_trace"]["command_transcript"].append({
                     "index": index,
-                    "timestamp": end_ts,
+                    "timestamp": timestamp,
                     "runtime": "opencode",
-                    "source": "tool",
+                    "source": "tool_result",
                     "call_id": call_id,
                     "tool_name": tool_name,
-                    "command": command_value,
-                    "input": input_value,
-                    "output": output_value,
                     "status": status,
-                    "title": state.get("title"),
+                    "output": state.get("output"),
+                    "error": state.get("error"),
                 })
-
-                if is_error:
+                push_normalized_event(artifact, {
+                    "index": index,
+                    "timestamp": timestamp,
+                    "kind": "tool_result",
+                    "role": None,
+                    "tool_name": tool_name,
+                    "call_id": call_id,
+                    "status": status,
+                })
+                if status == "error":
                     artifact["session_trace"]["failure_retry_log"].append({
                         "index": index,
-                        "timestamp": end_ts,
+                        "timestamp": timestamp,
                         "runtime": "opencode",
-                        "source": "tool",
                         "call_id": call_id,
                         "tool_name": tool_name,
-                        "error": output_value or f"Tool status: {status}",
+                        "error": state.get("error"),
                     })
 
-                push_normalized_event(artifact, {
-                    "index": index,
-                    "timestamp": start_ts,
-                    "kind": "tool_call",
-                    "role": role,
-                    "tool_name": tool_name,
-                    "call_id": call_id,
-                    "command": command_value,
-                })
-                push_normalized_event(artifact, {
-                    "index": index,
-                    "timestamp": end_ts,
-                    "kind": "tool_result",
-                    "role": role,
-                    "tool_name": tool_name,
-                    "call_id": call_id,
-                    "is_error": is_error,
-                })
-            elif part_type in {"step-start", "step-finish"}:
+            file_path = input_value.get("filePath") if isinstance(input_value, dict) else None
+            if file_path and tool_name in OPENCODE_FILE_TOOLS:
                 artifact["session_trace"]["artifact_trail"].append({
                     "index": index,
                     "timestamp": timestamp,
                     "runtime": "opencode",
-                    "type": part_type,
-                    "snapshot": part.get("snapshot"),
-                    "reason": part.get("reason"),
-                    "cost": part.get("cost"),
-                    "tokens": part.get("tokens"),
+                    "type": "file_change",
+                    "tool_name": tool_name,
+                    "path": file_path,
                 })
-                if part_type == "step-finish" and part.get("reason"):
-                    artifact["session_trace"]["handoff_notes"].append({
-                        "index": index,
-                        "timestamp": timestamp,
-                        "runtime": "opencode",
-                        "type": "step-finish",
-                        "reason": part.get("reason"),
-                    })
                 push_normalized_event(artifact, {
                     "index": index,
                     "timestamp": timestamp,
                     "kind": "artifact",
-                    "role": role,
-                    "artifact_type": part_type,
+                    "role": None,
+                    "artifact_type": "file_change",
                 })
 
+        elif part_type == "patch":
+            artifact["session_trace"]["artifact_trail"].append({
+                "index": index,
+                "timestamp": timestamp,
+                "runtime": "opencode",
+                "type": "patch",
+                "hash": part.get("hash"),
+                "files": part.get("files"),
+            })
+            push_normalized_event(artifact, {
+                "index": index,
+                "timestamp": timestamp,
+                "kind": "artifact",
+                "role": None,
+                "artifact_type": "patch",
+            })
+
+        elif part_type == "file":
+            artifact["session_trace"]["artifact_trail"].append({
+                "index": index,
+                "timestamp": timestamp,
+                "runtime": "opencode",
+                "type": "file",
+                "mime": part.get("mime"),
+                "filename": part.get("filename"),
+            })
+            push_normalized_event(artifact, {
+                "index": index,
+                "timestamp": timestamp,
+                "kind": "artifact",
+                "role": None,
+                "artifact_type": "file",
+            })
+
+        elif part_type == "step-finish":
+            tokens = part.get("tokens") or {}
+            for key in ("input", "output", "reasoning"):
+                value = tokens.get(key)
+                if isinstance(value, (int, float)):
+                    totals[key] += value
+            cost = part.get("cost")
+            if isinstance(cost, (int, float)):
+                totals["cost"] += cost
+
+    artifact["session"]["metadata"]["token_totals"] = totals
+    artifact["session"]["metadata"]["reasoning_parts"] = reasoning_parts
+
     artifact["extraction_notes"].append(
-        "Opencode session history is stored in SQLite and was reconstructed from session, message, and part tables."
+        "Opencode history is a SQLite database, not a JSONL transcript; parts are joined to their parent message for role and model."
+    )
+    artifact["extraction_notes"].append(
+        "Reasoning parts are counted in raw_event_types and session.metadata.reasoning_parts, but their text is never emitted."
+    )
+    artifact["extraction_notes"].append(
+        "Binary file parts keep mime and filename only; embedded data URLs are dropped."
+    )
+    artifact["extraction_notes"].append(
+        "A tool part carries both call and result, so each completed or failed tool produces one call entry and one result entry at the same index."
     )
     return artifact
+
+
+def extract_opencode(args, input_path: Optional[Path]):
+    db_path = resolve_opencode_db_path(input_path)
+    connection = opencode_connect(db_path)
+    try:
+        session_id = args.session_id
+        if not session_id:
+            if not args.latest:
+                raise ValueError("Provide --session-id or --latest for the opencode runtime.")
+            session_id = find_latest_opencode_session(connection, args.project)
+            if not session_id:
+                raise ValueError("No opencode session found for the requested project.")
+        return parse_opencode_session(connection, session_id, db_path), db_path
+    finally:
+        connection.close()
 
 
 def write_artifact_set(artifact, output_dir: Path):
@@ -1005,11 +1002,11 @@ def write_artifact_set(artifact, output_dir: Path):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Normalize Claude Code, Codex, or Opencode session history for workflow evaluation.")
-    parser.add_argument("--input", help="Raw local transcript path.")
+    parser.add_argument("--input", help="Raw local transcript path, or the opencode database path.")
     parser.add_argument("--runtime", choices=["claude", "codex", "opencode"], help="Runtime name.")
-    parser.add_argument("--session-id", help="Session id for runtimes that store history in a local database, such as Opencode.")
-    parser.add_argument("--latest", action="store_true", help="Pick the latest transcript for the runtime.")
-    parser.add_argument("--project", help="Filter latest transcript by project/cwd path.")
+    parser.add_argument("--session-id", help="Opencode session id. Required for the opencode runtime unless --latest is used.")
+    parser.add_argument("--latest", action="store_true", help="Pick the latest transcript or session for the runtime.")
+    parser.add_argument("--project", help="Filter latest transcript or session by project/cwd path.")
     parser.add_argument("--output-dir", help="Target output directory.")
     parser.add_argument("--stdout", action="store_true", help="Print session-trace.json to stdout.")
     return parser.parse_args()
@@ -1019,49 +1016,32 @@ def main():
     args = parse_args()
     input_path = Path(os.path.expanduser(args.input)).resolve() if args.input else None
     runtime = args.runtime or detect_runtime(input_path)
-    opencode_session_id = args.session_id
+    if runtime is None and args.session_id:
+        runtime = "opencode"
 
-    if runtime == "opencode" and args.latest and opencode_session_id is None:
-        latest_session = find_latest_opencode_session(args.project)
-        if latest_session is None:
-            raise ValueError("No Opencode session found for the requested filter.")
-        opencode_session_id = latest_session["id"]
-
-    if runtime != "opencode" and input_path is None and args.latest:
-        if runtime is None:
-            raise ValueError("--runtime is required when using --latest.")
-        input_path = find_latest_transcript(runtime, args.project)
-
-    if runtime == "opencode" and input_path is None and opencode_session_id is None:
-        raise ValueError("Provide --session-id, --input, or use --latest for runtime opencode.")
-    if runtime != "opencode" and input_path is None:
-        raise ValueError("Provide --input or use --latest.")
-    if runtime is None:
-        runtime = detect_runtime(input_path)
-    if runtime not in {"claude", "codex", "opencode"}:
-        raise ValueError(f"Unsupported runtime: {runtime}")
-    if input_path is not None and not input_path.exists():
-        raise FileNotFoundError(f"Transcript not found: {input_path}")
-
-    if runtime == "claude":
-        records = read_jsonl(input_path)
-        artifact = parse_claude_transcript(records, input_path)
-    elif runtime == "codex":
-        records = read_jsonl(input_path)
-        artifact = parse_codex_transcript(records, input_path)
+    if runtime == "opencode":
+        artifact, input_path = extract_opencode(args, input_path)
     else:
-        if input_path is not None:
-            with input_path.open("r", encoding="utf-8") as handle:
-                export_data = json.load(handle)
-            source_ref = str(input_path)
-        else:
-            export_data = load_opencode_session(opencode_session_id)
-            source_ref = f"opencode://session/{opencode_session_id}"
-        artifact = parse_opencode_export(export_data, source_ref)
+        if input_path is None and args.latest:
+            if runtime is None:
+                raise ValueError("--runtime is required when using --latest.")
+            input_path = find_latest_transcript(runtime, args.project)
+
+        if input_path is None:
+            raise ValueError("Provide --input or use --latest.")
+        if runtime is None:
+            runtime = detect_runtime(input_path)
+        if runtime not in {"claude", "codex"}:
+            raise ValueError(f"Unsupported runtime: {runtime}")
+        if not input_path.exists():
+            raise FileNotFoundError(f"Transcript not found: {input_path}")
+
+        records = read_jsonl(input_path)
+        artifact = parse_claude_transcript(records, input_path) if runtime == "claude" else parse_codex_transcript(records, input_path)
 
     if artifact["session"]["id"] is None:
-        artifact["session"]["id"] = opencode_session_id or input_path.stem
-        artifact["extraction_notes"].append("Session id was inferred from the available source reference.")
+        artifact["session"]["id"] = input_path.stem
+        artifact["extraction_notes"].append("Session id was inferred from the transcript file name.")
 
     default_output = Path.cwd() / "docs" / "ai" / "session-traces" / runtime / sanitize_file_name(artifact["session"]["id"])
     output_dir = Path(os.path.expanduser(args.output_dir)).resolve() if args.output_dir else default_output
@@ -1070,7 +1050,7 @@ def main():
 
     summary = {
         "runtime": artifact["runtime"],
-        "transcript_path": artifact["source"]["transcript_path"],
+        "transcript_path": str(input_path),
         "output_dir": str(output_dir),
         "session_id": artifact["session"]["id"],
         "cwd": artifact["session"]["cwd"],
