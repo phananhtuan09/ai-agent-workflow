@@ -17,6 +17,9 @@ Create the detailed AI-facing implementation and verification contract for an ap
 2. Inspect the codebase deeply enough to produce an implementation-ready design.
    - Confirm current behavior, affected files and symbols, existing boundaries, data and state flow, interfaces, dependencies, validation, failure behavior, security constraints, and verification capabilities.
    - Record concrete evidence paths in the spec.
+   - Find the nearest existing precedent: one or two features, files, or modules closest in shape to what will be built.
+   - Record what the implementation must mirror from that precedent, and any deliberate deviation with its reason.
+   - When no precedent exists, say so explicitly and state why this is a new kind of work; do not leave the question unanswered.
    - Do not copy repository-wide context that does not affect this slice.
 3. Check the approved slice before writing.
    - Classify important assumptions as confirmed, inferred but safe, needs confirmation, or agent-chosen technical detail.
@@ -123,6 +126,11 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 ## Bằng Chứng Hệ Thống Hiện Tại
 - `path/to/file`: [hành vi hiện tại, symbol, hoặc ràng buộc]
 
+## Tiền Lệ Trong Codebase
+- Theo mẫu: `path/to/feature` — [vì sao đây là cái gần nhất về hình dạng]
+- Phải giống: [cấu trúc file, hình dạng output, quy ước đặt tên, cách xử lý lỗi]
+- Cố ý khác: [điểm khác và lý do]
+
 ## Yêu Cầu Hành Vi
 ### {Khu Vực Hành Vi}
 - ...
@@ -177,6 +185,9 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 - Treat approved design decisions as human authority and never reinterpret them silently.
 - Treat an approved `output_preview` as human authority for the expected deliverables, interfaces, observable results, and high-level operating flow.
 - Under `feature-standard`, fail closed when `design_decisions_path` is missing, invalid, or does not match its HTML checksum.
+- Cite the nearest codebase precedent and name what the implementation must mirror from it; when none exists, state that explicitly with a reason instead of leaving the section empty.
+- Prefer mirroring an existing precedent over introducing a new structure, output shape, naming scheme, or error-handling style; record every deliberate deviation with its reason.
+- Do not treat a precedent marked as intentional debt in `docs/ai/architecture/decisions.md` as a pattern to mirror.
 - Include concrete file paths, symbols, interfaces, schema changes, migration mechanisms, storage keys, implementation order, and test surfaces when they are grounded in inspected code and useful to the executor.
 - Do not invent low-level detail when codebase evidence is insufficient.
 - Label agent-chosen technical decisions separately from human-approved behavior.
@@ -231,6 +242,7 @@ Rules:
 - Does every approved output-preview item appear in the relevant execution, behavior, interface, acceptance, and verification sections without semantic drift?
 - Are goal, scope, must-happen, and must-not-happen behavior easy to locate?
 - Is every current-system claim backed by a concrete codebase path or direct evidence?
+- Does the spec name a concrete precedent to mirror, or state explicitly that none exists and why?
 - Are affected files, symbols, interfaces, state, data, validation, and failure paths detailed when relevant?
 - Are security, permission, compatibility, migration, and rollback concerns addressed or marked not applicable with a reason?
 - Is the implementation sequence feasible and dependency-aware?

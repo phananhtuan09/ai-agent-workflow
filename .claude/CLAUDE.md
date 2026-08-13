@@ -14,6 +14,9 @@
 - Provide concise status updates before and after key actions.
 
 ## Engineering Quality
+- Match the surrounding codebase before applying general best practice; when they conflict, follow the codebase and say which convention you followed.
+- Before creating a new component, service, hook, helper, or utility, search for an existing equivalent and reuse it instead of adding a near-duplicate.
+- When building something that resembles an existing feature, mirror its file layout, output shape, naming, and error handling; state any deliberate deviation and why.
 - When substantially editing Markdown, put each complete sentence on its own line while preserving normal Markdown structure.
 - Before changing code for a bug, reproduce the failure.
 - Prefer an existing E2E path whenever it can reproduce the observed behavior and the required environment is available.

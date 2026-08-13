@@ -35,6 +35,7 @@ Required sections for new specs:
 - `## Quyết Định Thiết Kế Đã Duyệt`
 - `## Kiểm Tra Giả Định`
 - `## Bằng Chứng Hệ Thống Hiện Tại`
+- `## Tiền Lệ Trong Codebase`
 - `## Yêu Cầu Hành Vi`
 - `## Thay Đổi Trạng Thái / Dữ Liệu / Giao Diện`
 - `## Thiết Kế Kỹ Thuật Chi Tiết`
@@ -130,6 +131,13 @@ Required sections for new specs:
 17. **Information quality**
     - Warn for repetition, contradictory sections, copied repository context, or implementation detail with no downstream reader.
     - Prefer precise detail over document brevity.
+
+18. **Codebase precedent**
+    - The spec must either cite a concrete existing precedent to mirror or state explicitly that none exists, with a reason.
+    - Verify the cited precedent path exists and is plausibly the closest match in shape to the planned work.
+    - Fail when the spec introduces a new structure, output shape, naming scheme, or error-handling style while a close precedent exists and is not addressed.
+    - Fail when the cited precedent is marked as intentional debt in `docs/ai/architecture/decisions.md`.
+    - Warn when a deliberate deviation from the precedent has no stated reason.
 
 ## Output
 
