@@ -223,3 +223,20 @@ Kèm một luật từ chối mới: không nhận ghi bản đồ hệ thống 
 
 Đối chiếu chín câu hỏi: không trượt câu nào.
 Người dùng vẫn là người phát biểu và duyệt (1, 6); không sinh câu trả lời thiếu trích dẫn (2); chủ động chặn việc nhét sai loại tri thức vào sổ (3, 4); không đụng lịch sử (5); mục mới chỉ chạy on-demand nên khởi động không đắt thêm (7); không giả định bố cục repo (8); chỉ **chỉ sang** Foreman chứ không giao việc (9).
+
+### 2026-08-14 — Giảm ma sát: tự định tuyến, và nhận cả lô
+
+Người dùng phản hồi sau khi dùng thật: "hơi khó xài".
+Tách ra thì phần khó chia làm hai loại, và chỉ một loại được đụng tới.
+
+**Khó không bỏ được, giữ nguyên:** chỉ người dùng nói được hệ thống *nên* làm gì, và trường `Vì sao` là công việc suy nghĩ chứ không phải gõ phím.
+Rẻ hoá hai chỗ này là phá đúng thứ khiến cuốn sổ đáng dùng, nên không đụng.
+
+**Khó bỏ được, đã sửa hai chỗ:**
+
+- **Phân loại là việc của Registrar, không phải của người dùng.** Bản sửa buổi sáng cùng ngày vẫn *hỏi* người dùng thuộc loại nào, tức là vẫn bắt họ học bảng phân loại trước khi dùng được. Giờ Registrar tự suy ra, ghi `draft`, rồi **báo đã xếp vào đâu**; chỉ hỏi khi thật sự lưỡng lự giữa hai cuốn sổ. Đoán sai thì rẻ vì `draft` sửa thoải mái.
+- **Nhận cả lô.** Dán 15 luật mà phải nói 15 lượt thì người dùng bỏ dở ở luật thứ tư. Giờ ghi hết trong một lượt, in một dòng một mục, không hỏi giữa chừng, thiếu `Vì sao` thì ghi `-` và gom vào phần liệt kê cuối lô.
+
+Cả hai thuần giảm ma sát: không nới bất biến nào, không thêm chuyển trạng thái tự động nào, và người dùng vẫn là cổng duy nhất của `draft → approved`.
+
+Điểm cần giữ khi sửa về sau: lô `draft` và lô dòng inbox là hai chuyển trạng thái khác nhau (`draft → approved` và `approved → implemented`), nên "duyệt hết" là câu tối nghĩa khi cả hai đang chờ.

@@ -95,6 +95,9 @@ Ghi thô đúng lời người dùng; họ sửa ở lượt duyệt.
 Trước khi ghi, tra index xem đã có luật nào nói cùng chuyện chưa.
 Trùng thì báo id cũ và hỏi người dùng muốn sửa cái cũ hay đăng ký cái mới.
 
+Người dùng dán cả một danh sách thì đi theo mục `Nhận cả lô` của `SKILL.md`.
+Ở đó bước 4 thay bằng in **một dòng một mục**, và chỗ trùng chỉ báo id cũ chứ không hỏi, vì giữa lô thì không hỏi.
+
 ## Sửa
 
 `draft` sửa thoải mái.

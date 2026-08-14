@@ -48,15 +48,24 @@ Gặp file như vậy thì dừng và báo người dùng.
 
 Xác định đang thao tác trên cuốn nào **trước khi làm bất cứ gì khác**.
 
-Không xác định được từ lời người dùng thì **hỏi đúng một câu để phân loại**, trước khi nói bất cứ giới hạn nào:
+Phân loại là **việc của bạn**, không phải việc của người dùng.
+Suy ra chỗ đúng từ chính lời họ nói:
 
-| Người dùng muốn ghi | Chỗ đúng |
+| Lời người dùng nghe như | Chỗ đúng |
 | --- | --- |
 | hệ thống làm gì, ai được làm gì | BR |
 | vì sao xây như hiện tại, đã loại phương án nào | quyết định |
 | chỗ xấu có chủ ý | nợ |
 | ràng buộc phải tuân khi viết code | `CLAUDE.md`, không thuộc sổ nào |
 | thứ đọc code là biết: bản đồ module, quan hệ giữa các app, thư viện, cấu trúc thư mục | không thuộc sổ nào |
+
+Đích là một trong hai cuốn sổ thì **ghi luôn thành `draft`, rồi báo đã xếp vào đâu** để người dùng cãi nếu sai.
+Đích không phải sổ nào thì không ghi gì, chỉ nói rõ chỗ đúng của nó.
+
+Chỉ hỏi khi thật sự lưỡng lự giữa hai cuốn sổ, và hỏi đúng một câu.
+
+Đoán sai mà đã báo thì rẻ: `draft` sửa thoải mái, người dùng chỉnh một câu là xong.
+Bắt họ phân loại trước khi được nói mới đắt, vì đó là bắt họ học thuộc bảng này trước khi dùng được bạn.
 
 Đọc lệnh cấm ra trước khi biết người dùng định ghi gì là lỗi.
 Phần lớn lệnh cấm sẽ hoá ra không liên quan, và người dùng mất một lượt để nghe thứ không áp cho họ.
@@ -235,12 +244,45 @@ Nói rõ bước 1 là việc người dùng tự làm; bạn không giao đư�
 Bản đồ module, quan hệ giữa các app, thư viện đang dùng — đọc code là biết, nên không thuộc cuốn sổ nào.
 Người dùng vẫn muốn có thì nói chỗ đúng của nó là tài liệu thường của repo, không phải `docs/ai/`.
 
+## Nhận cả lô
+
+Người dùng dán một danh sách nhiều luật thì ghi hết trong **một lượt**, không bắt họ nói từng cái.
+Bắt nói từng cái là biến 15 luật thành 15 lượt hội thoại, và họ sẽ bỏ dở ở luật thứ tư.
+
+1. Phân loại từng dòng theo bảng ở mục `Hai cuốn sổ`.
+2. Lô lẫn cả hai cuốn sổ thì **tách ra, làm xong cuốn này rồi mới sang cuốn kia**.
+   Nạp đúng một reference cho mỗi cuốn; không bao giờ nạp cả hai cùng lúc, kể cả khi đang làm cùng một lô.
+3. Cấp id lần lượt, ghi hết thành `draft`, cập nhật index và bộ đếm trong cùng lượt.
+4. In lại toàn bộ những gì vừa ghi, **một dòng một mục**, không dùng output chuẩn.
+
+Không hỏi lại giữa lô, kể cả khi thiếu `Vì sao`.
+Thiếu thì ghi `-` rồi liệt kê ở cuối là dòng nào còn thiếu; người dùng bổ sung lúc duyệt.
+
+```text
+Đã ghi 2 draft vào order:
+  BR-023  Đơn treo quá 72h tự huỷ                 vì sao: -
+  BR-024  Không cho đổi địa chỉ sau khi ship      vì sao: tránh giao nhầm
+
+Không ghi (2):
+  "gộp 3 app thành một service"   → quyết định kiến trúc, còn thiếu vế Đã loại
+  "luôn validate input ở BE"      → ràng buộc, chỗ đúng là CLAUDE.md
+
+Thiếu vì sao: BR-023
+```
+
+Dòng trùng với luật đã có thì không ghi, và báo id cũ.
+
+Người dùng duyệt cả lô thì flip mọi `draft` trong lô sang `approved`.
+Lô `draft` vừa ghi và lô dòng inbox là **hai thứ khác nhau**: lô này là `draft → approved`, inbox là `approved → implemented`.
+Cả hai đang chờ mà họ chỉ nói "duyệt hết" thì nói rõ bạn đang duyệt cái nào trước khi làm.
+
 ## Bảng ý định
 
 | Người dùng nói | Bạn làm |
 | --- | --- |
 | "có gì cần tôi không" | báo cáo khởi động |
-| "tôi muốn tạo docs nghiệp vụ" / "chưa có docs gì, bắt đầu từ đâu" | hỏi một câu phân loại trước, rồi đi theo `Khởi tạo sổ ở repo brownfield` |
+| "tôi muốn tạo docs nghiệp vụ" / "chưa có docs gì, bắt đầu từ đâu" | mục `Khởi tạo sổ ở repo brownfield` |
+| dán một danh sách nhiều luật cùng lúc | mục `Nhận cả lô` |
 | "quan hệ giữa các app thế nào" / "vẽ lại kiến trúc hiện tại" | đọc code là biết nên không thuộc sổ nào; hỏi họ thật ra muốn ghi luật gì |
 | "feature X logic thế nào" | tra index → mở đúng file liên quan → trả lời theo output chuẩn |
 | "vì sao mình không chọn Y" | tra mục `Đã loại` của luật liên quan |
@@ -336,7 +378,7 @@ Chỉ hỏi **lý do** đúng một trường hợp: người dùng không duy�
 Hỏi một câu ngắn, ghi câu trả lời vào `log.md`.
 Họ không trả lời thì vẫn ghi dòng `rejected` với chi tiết để trống.
 
-Câu hỏi phân loại, câu hỏi phạm vi audit, và câu hỏi `Vì sao` lúc đăng ký là loại khác.
+Câu hỏi phân loại lúc lưỡng lự, câu hỏi phạm vi audit, và câu hỏi `Vì sao` lúc đăng ký là loại khác.
 Chúng có mặt để làm được việc, không phải để ghi log, nên chúng không bị luật trên chặn.
 
 Ba luật chặn:
@@ -344,6 +386,7 @@ Ba luật chặn:
 - Không hỏi trong lượt khởi động.
 - Không hỏi lại cho một sự kiện đã hỏi.
 - Tối đa một câu cho mỗi lượt người dùng nói, tính cả câu hỏi phân loại; nhiều chỗ cần hỏi thì gộp làm một.
+  Đang ghi cả lô thì không hỏi giữa chừng; gom hết vào phần liệt kê ở cuối lô.
 
 ## Cấm
 
@@ -353,7 +396,9 @@ Ba luật chặn:
 - Không tự đặt `approved`; chỉ người dùng duyệt.
 - Không tự flip sang `implemented` khi người dùng chưa xác nhận dòng inbox.
 - Không đọc code rồi tự viết thành luật BR.
-- Không đọc lệnh cấm ra trước khi biết người dùng định ghi gì; hỏi một câu phân loại trước.
+- Không đọc lệnh cấm ra trước khi biết người dùng định ghi gì; tự phân loại rồi báo đã xếp vào đâu.
+- Không bắt người dùng phân loại thay bạn; phân loại là việc của bạn.
+- Không bắt người dùng nói từng luật một khi họ đã dán cả danh sách.
 - Không đưa ra lựa chọn mà chính bạn không thực thi được.
 - Không nhận ghi một bản đồ hệ thống chỉ vì repo chưa có tài liệu nào.
 - Không nhắc tên file, hàm, hay bảng trong nội dung một luật BR.
