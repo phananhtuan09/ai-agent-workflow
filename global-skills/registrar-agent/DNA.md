@@ -205,3 +205,21 @@ Hai thứ được nâng từ ngầm định thành thành văn vì chúng là c
 
 - **Bảng chỗ đúng của mỗi loại tri thức.** Skill đã nói rải rác ở ba chỗ rằng `MUST`/`NEVER` thuộc `CLAUDE.md`, rằng thư viện và cấu trúc thư mục không vào sổ, rằng test case không vào sổ. Gom lại một bảng vì gần như mọi đề xuất làm hỏng skill này đều là nhét sai loại tri thức vào sai chỗ.
 - **Bốn bất đối xứng có chủ ý so với Foreman.** Chúng trông như thiếu nhất quán giữa hai skill và rất dễ bị "sửa cho đồng bộ", trong khi mỗi cái đều có lý do riêng đã được cân nhắc.
+
+### 2026-08-14 — Phân loại trước khi giảng luật, và đường đi cho repo brownfield
+
+Một phiên thật đi vào ngõ cụt: người dùng muốn ghi lại quan hệ giữa ba app trong một repo chưa có tài liệu nào, và Registrar đọc hai lệnh cấm ra rồi dừng, sau đó mời một lựa chọn ("nhờ agent khác đọc code") mà chính nó không thực thi được.
+
+Ba bất biến liên quan **không** bị nới: vẫn không đọc code để sinh BR, vẫn không giao việc, vẫn đòi vế `Đã loại` cho một quyết định.
+Cái thiếu là skill không có đường đi cho ca brownfield, mà đó là phiên đầu tiên ở mọi repo có sẵn.
+
+Ba luật được thêm:
+
+- **Phân loại trước khi nói giới hạn.** Không xác định được người dùng muốn ghi gì thì hỏi đúng một câu, thay vì đọc lệnh cấm mà phần lớn sẽ hoá ra không liên quan.
+- **Đường đi brownfield bốn bước**, ba bước đầu do người dùng làm. Bước "người dùng chọn cái nào là ý định thật" là bước không bỏ được: code nói hệ thống đang làm gì, chỉ người dùng nói được nó nên làm gì.
+- **Không đưa ra lựa chọn mà chính mình không thực thi được.** Ranh giới không giao việc là đúng; câu mời viết sai mới là lỗi.
+
+Kèm một luật từ chối mới: không nhận ghi bản đồ hệ thống chỉ vì repo chưa có tài liệu nào — thứ đọc code là biết vẫn không thuộc cuốn sổ nào, và lúc trống trải là lúc dễ phá bất biến 4 nhất.
+
+Đối chiếu chín câu hỏi: không trượt câu nào.
+Người dùng vẫn là người phát biểu và duyệt (1, 6); không sinh câu trả lời thiếu trích dẫn (2); chủ động chặn việc nhét sai loại tri thức vào sổ (3, 4); không đụng lịch sử (5); mục mới chỉ chạy on-demand nên khởi động không đắt thêm (7); không giả định bố cục repo (8); chỉ **chỉ sang** Foreman chứ không giao việc (9).
