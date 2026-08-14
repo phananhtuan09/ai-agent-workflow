@@ -18,23 +18,31 @@ Read these files when the task is about workflow logic, routing, commands, artif
 Use this order when the task is about building or changing the workflow system:
 
 1. `docs/ai/project/README.md`
-2. `docs/ai/project/AI_WORKFLOW_RULES.md`
+2. `docs/ai/project/WORKFLOW_CONSTITUTION.md`
 3. `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 4. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 5. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
 
 If documents conflict, follow the more specific file for the current workflow task.
 
+`WORKFLOW_CONSTITUTION.md` is the exception.
+A more specific file decides how work is executed, but it cannot override the constitution's principles.
+When a document conflicts with the constitution, surface the conflict instead of merging the two directions or inferring a resolution.
+
 ## When To Read Which File
 
-### `docs/ai/project/AI_WORKFLOW_RULES.md`
+### `docs/ai/project/WORKFLOW_CONSTITUTION.md`
 Read when:
 - designing or changing the AI agent workflow
+- deciding whether a workflow proposal matches the long-term direction
 - adding commands, skills, phases, or artifacts
+- resolving trade-offs between AI autonomy, human control, evidence, and simplicity
+- checking whether a new abstraction, gate, artifact, or runtime mechanism is over-engineered
 - deciding whether a workflow pattern is worth keeping
-- reviewing if a proposal is too complex or unnecessary
+- changing the three-phase `Plan → Implement → Validate` architecture or authority boundaries
 
-This file defines the mandatory principles that every workflow change must follow.
+This file is the single source of principles for building the workflow.
+It defines the highest-level intent and the mandatory constraints that every workflow change must follow.
 
 ### `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 Read when:
@@ -69,7 +77,7 @@ This file defines the standard workflow for evaluating workflows themselves.
 ### Workflow design task
 Read:
 - `docs/ai/project/README.md`
-- `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/WORKFLOW_CONSTITUTION.md`
 - `docs/ai/project/WORKFLOW_IDEA_REVIEW.md` when changing pre-spec idea evaluation
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 
@@ -102,7 +110,7 @@ Read:
 - Escalate when the repository documents do not cover an ambiguous decision.
 
 ## Related Files
-- `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/WORKFLOW_CONSTITUTION.md`
 - `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 - `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`

@@ -47,7 +47,7 @@ Examples:
   npx ai-workflow-init --all
 
 The workflow-eval kit installs:
-  - docs/ai/project/AI_WORKFLOW_RULES.md
+  - docs/ai/project/WORKFLOW_CONSTITUTION.md
   - docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md
   - docs/ai/project/templates/workflow-evaluation-report.html
   - docs/ai/agent-observations/

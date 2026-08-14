@@ -15,7 +15,7 @@ Always read:
 
 Read when relevant:
 
-- `docs/ai/project/AI_WORKFLOW_RULES.md`
+- `docs/ai/project/WORKFLOW_CONSTITUTION.md`
 - normalized session traces
 - `.foreman/` when the repo is Foreman-managed: `done.md`, `log.md`, and pre-extracted traces in `.foreman/traces/`
 - observations in `docs/ai/agent-observations/`
