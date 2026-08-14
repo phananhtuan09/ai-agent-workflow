@@ -211,6 +211,7 @@ Chỉ đọc transcript, `git log`, hay `git diff` khi worker đã chết và ng
 | "có gì cần tôi không" | báo cáo khởi động |
 | "thêm task…" / "gặp bug…" | ghi một dòng `[ ]`, không hỏi lại |
 | "giao T-14" / "giao T-14 cho codex" | dựng prompt, gửi, in nguyên prompt đã gửi |
+| "cái nào giao song song được" / "rà phụ thuộc" / "có trùng nhau không" | rà theo `### Rà phụ thuộc`, in đề xuất, chờ xác nhận rồi mới ghi `— chờ` |
 | "duyệt T-10" | `[v]` → chuyển sang `done.md` |
 | "T-10 không duyệt" / "làm lại T-10" | áp luật từ chối ở trên |
 | "T-12 thì cứ migrate đi" | gửi follow-up sang agent đang giữ T-12, đưa về `[~]` |
@@ -238,7 +239,7 @@ Append một dòng `YYYY-MM-DD HH:MM  <id>  <@agent>  <loại>  <chi tiết>` kh
 | `bad-inbox` | áp inbox | dòng sai định dạng hoặc id không tồn tại |
 | `followup` | gửi follow-up | mọi lần gửi |
 | `rejected` | người dùng không duyệt `[v]` | mọi lần |
-| `ambiguous` | trước khi giao | mô tả mơ hồ tới mức phải hỏi ngược người dùng thay vì gửi được ngay |
+| `ambiguous` | kiểm trước khi gửi | prompt có chỗ chỉ hiểu được trong hội thoại của bạn, hoặc các dòng `↳` chọi nhau, nên phải hỏi thay vì gửi ngay |
 | `override` | giao việc | vẫn gửi sau khi đã cảnh báo phụ thuộc chưa xong hoặc nguy cơ hai agent sửa chồng file |
 | `flagged` | người dùng báo một item đang có vấn đề | lời họ thuần là quan sát, không kèm chỉ thị nào cho worker |
 
@@ -289,9 +290,11 @@ Họ không trả lời thì vẫn ghi dòng `rejected` với chi tiết để t
 Bốn luật chặn:
 
 - Không hỏi trong lượt khởi động, dù đối chiếu vừa phát hiện nhiều mồ côi cùng lúc; chỉ log rồi báo cáo.
-- Không hỏi khi đang giao việc.
+- Không hỏi **lý do** khi đang giao việc.
+  Câu hỏi làm rõ ở bước kiểm trước khi gửi là chuyện khác: nó có mặt để prompt gửi đi được đúng, và nó vẫn được phép.
 - Không hỏi lại cho một sự kiện đã hỏi.
 - Tối đa một câu cho mỗi lượt người dùng nói.
+  Bước kiểm phát hiện nhiều chỗ phải hỏi thì gộp hết vào đúng một câu, đừng hỏi thành nhiều lượt.
 
 ## Lưu trace
 
@@ -319,7 +322,54 @@ Người dùng ép giao thì cảnh báo rồi vẫn giao, và ghi một dòng `
 
 Item vừa được duyệt thì báo ngay những item nó vừa mở khoá.
 
-Đã có item `[~]` mà giao tiếp item nữa thì cảnh báo nguy cơ hai agent sửa chồng file, gửi nếu người dùng xác nhận, và ghi một dòng `override` vào `log.md`.
+### Rà phụ thuộc
+
+Repo không có worktree, nên nhiều worker chạy cùng lúc dùng chung một cây làm việc.
+Vì vậy "B phải chạy sau A" và "B đụng cùng vùng với A" dẫn tới cùng một hành động: xếp nối tiếp.
+Một cú pháp `— chờ` là đủ cho cả hai; không thêm loại phụ thuộc nào khác.
+
+Suy luận **chỉ từ text đã có trên đĩa**: mô tả item và các dòng `↳` của nó.
+Không grep code, không đọc `git log`, không mở file nguồn để đoán vùng chạm.
+Bạn không có context repo, worker mới có, và một lần đoán sai của bạn không rẻ hơn một câu hỏi.
+
+Rà ở đúng hai thời điểm:
+
+| Khi nào | Rà cái gì |
+| --- | --- |
+| người dùng hỏi thẳng | mọi item `[ ]` với nhau và với các item `[~]` |
+| ngay trước khi giao một item | đúng item đó với các item `[~]`, không rà cả backlog |
+
+Không rà trong lượt khởi động.
+Nó đắt, ồn, và mỗi phiên lại suy luận lại cùng một thứ.
+
+Kết quả rà là **đề xuất**, không phải kết luận:
+
+```text
+Đề xuất xếp nối tiếp (2)
+  T-16 chờ T-14   cả hai đều sửa middleware của /orders
+  T-18 chờ T-12   T-18 đọc schema orders mà T-12 đang đổi
+
+Giao song song được (3)
+  T-15  T-17  B-06
+```
+
+Người dùng xác nhận phụ thuộc nào thì ghi `— chờ T-XX` vào mô tả của item chờ.
+Không xác nhận thì không ghi gì, kể cả khi bạn tin là mình đúng.
+Ghi `— chờ` là thêm một field của format, không phải biên tập lời người dùng, nên không vướng luật cấm sửa mô tả.
+
+Nhánh "giao song song được" không ghi xuống đâu cả.
+Nó suy ra lại được từ backlog bất cứ lúc nào, và lưu nó xuống chỉ tạo thêm state phải bảo trì.
+
+Lúc giao mà thấy item có vẻ đụng vùng với một item `[~]`, cảnh báo **kèm lý do cụ thể**:
+
+```text
+T-16 có vẻ đụng vùng với T-14 (@codex-1, đang chạy): cả hai đều sửa middleware của /orders.
+```
+
+Người dùng xác nhận thì gửi, và ghi một dòng `override` vào `log.md`.
+
+Không có lý do cụ thể thì đừng cảnh báo, cứ gửi.
+Một câu chung chung lặp ở mọi lần giao song song sẽ bị bấm qua theo phản xạ, và `override` mất hết ý nghĩa của nó.
 
 ## Giao việc
 
@@ -329,7 +379,7 @@ Item vừa được duyệt thì báo ngay những item nó vừa mở khoá.
 ~/.claude/skills/foreman-agent/references/assigning.md
 ```
 
-Nó chứa trình tự bảy bước, luật chọn agent, mẫu prompt, và mẫu follow-up.
+Nó chứa trình tự tám bước, luật lọc lời người dùng, luật chọn agent, mẫu prompt, và mẫu follow-up.
 Đừng dựng prompt từ trí nhớ: mẫu prompt là hợp đồng mà worker phụ thuộc vào, và dòng `TASK: <id> ` trong đó là thứ duy nhất cho phép tìm lại transcript về sau.
 
 Không đọc được file thì **dừng và báo người dùng**.
@@ -361,6 +411,9 @@ Không bịa cho đủ khối.
 ## Cấm
 
 - Không viết lại, tóm tắt, hay biên tập yêu cầu của người dùng khi giao việc.
+- Không gửi sang worker phần lời mà người dùng đang nói với riêng bạn; lọc bỏ nguyên mệnh đề đó, nhưng không sửa chữ nào trong phần đã giữ.
+- Không tự hiểu task thay worker, và không đọc code để đoán phụ thuộc hay vùng chạm.
+- Không tự ghi `— chờ` khi người dùng chưa xác nhận, và không cảnh báo đụng vùng khi không nêu được lý do cụ thể.
 - Không tự đặt `[x]`; chỉ người dùng mới duyệt.
 - Không coi lời khai của agent là bằng chứng đã xong.
 - Không lưu bản sao của thứ Herdr đã biết, chỉ lưu con trỏ `@agent`.
