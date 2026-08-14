@@ -26,6 +26,9 @@ build/
 coverage/
 docs/ai/design-runtime/
 
+# Python
+__pycache__/
+
 # Editor/IDE
 .vscode/
 .idea/

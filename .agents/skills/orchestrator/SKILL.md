@@ -70,7 +70,7 @@ Minimum fields:
     "checklist_path": true
   },
   "artifact_paths": {
-    "design_path": "docs/ai/designs/my-feature.html",
+    "design_path": "docs/ai/designs/my-feature.json",
     "design_decisions_path": "docs/ai/design-decisions/my-feature.json",
     "spec_path": "docs/ai/specs/my-feature.md",
     "summary_path": "docs/ai/summaries/my-feature.md",

@@ -15,7 +15,7 @@ Under `feature-standard`, require:
 
 - `spec_path`
 - `design_decisions_path`
-- the HTML `design_path` referenced by the decision manifest
+- the design plan `design_path` referenced by the decision manifest
 
 For standalone review, the spec may lack a design manifest.
 In that case, state that approval provenance was not checked and review only the authority sources explicitly named by the spec.
@@ -54,16 +54,19 @@ Required sections for new specs:
 ## Review Checks
 
 1. **Approval provenance**
-   - Under `feature-standard`, fail if the decision manifest or referenced HTML is missing.
+   - Under `feature-standard`, fail if the decision manifest or referenced design plan is missing.
    - Run the matching runtime's `design-spec/scripts/validate_design_decisions.py` when available.
-   - Fail if manifest validation or the HTML checksum fails.
+   - Fail if manifest validation or the design plan checksum fails.
 
 2. **Decision traceability**
-   - When the manifest contains `output_preview`, every approved deliverable, primary interface, observable result, and flow semantic must appear in the relevant execution contract, behavior, interface, acceptance, or verification sections.
+   - Every approved `output_preview` surface, observable state, and flow branch, and every `business_rules` statement, must appear in the relevant execution contract, behavior, interface, acceptance, or verification sections.
    - Fail if the spec omits or changes the meaning of an approved output-preview item.
    - Every manifest decision ID must appear in `Quyết Định Thiết Kế Đã Duyệt` and the relevant behavior, implementation, acceptance, or verification sections.
+   - Every `BR-xxx` id must appear as behavior or acceptance criteria, and every `IC-xxx` id must appear where the executor will see it.
    - Fail if a human-approved answer changes meaning, disappears, or is contradicted.
    - Fail if the spec attributes an agent-chosen rule to the human.
+   - Fail if the spec turns an `ai_discretion` item into a human commitment, or reopens it as a question.
+   - Treat `approval_meaning: direction-approved` as the human choosing the decisions and accepting the rest as shown, not as line-by-line ratification.
 
 3. **No invented product behavior**
    - Fail when the spec adds visible defaults, exclusions, limits, permission behavior, ranking, fallback, persistence, compatibility, or must-not-happen rules without an approved source.
@@ -155,7 +158,7 @@ Include:
 - warnings
 - final result
 
-Do not edit the spec, manifest, HTML, code, or workflow state.
+Do not edit the spec, manifest, design plan, code, or workflow state.
 
 ## Orchestrator Contract
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serve a design review HTML file and persist local approval artifacts."""
+"""Serve a design plan through the fixed review viewer and persist local approval artifacts."""
 
 from __future__ import annotations
 
@@ -12,39 +12,21 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
-from html.parser import HTMLParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from validate_design_review import validate_review
+from validate_design_plan import PlanError, validate_plan
 
 
 KEBAB_CASE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-DECISION_ID = re.compile(r"^D-\d{3}$")
-OUTPUT_KINDS = {"ui", "api", "full-stack", "workflow", "data", "generic"}
-
-
-class DesignParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.root: dict[str, str | None] | None = None
-        self.required_decisions: dict[str, str] = {}
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        attributes = dict(attrs)
-        if tag == "html" and self.root is None:
-            self.root = attributes
-        if tag == "fieldset" and "decision-card" in (attributes.get("class") or "").split():
-            if attributes.get("data-required") == "true":
-                decision_id = (attributes.get("data-decision-id") or "").strip()
-                question = (attributes.get("data-question") or "").strip()
-                if decision_id:
-                    self.required_decisions[decision_id] = question
+VIEWER_PATH = Path(__file__).resolve().parent.parent / "assets" / "review-viewer.html"
+IDLE_TIMEOUT_SECONDS = 1800
 
 
 def iso_now() -> str:
@@ -73,30 +55,26 @@ def repo_relative(repo_root: Path, path: Path) -> str:
     return path.resolve().relative_to(repo_root.resolve()).as_posix()
 
 
-def read_design_metadata(design_path: Path) -> tuple[str, str, dict[str, str]]:
-    parser = DesignParser()
-    parser.feed(design_path.read_text(encoding="utf-8"))
-    if parser.root is None:
-        raise ValueError("design HTML must contain an html root element")
-    feature_slug = (parser.root.get("data-feature-slug") or "").strip()
-    design_revision = (parser.root.get("data-design-revision") or "").strip()
-    if not KEBAB_CASE.fullmatch(feature_slug):
-        raise ValueError("HTML data-feature-slug must be kebab-case")
-    if not design_revision:
-        raise ValueError("HTML data-design-revision is required")
-    if not parser.required_decisions:
-        raise ValueError("design HTML must contain at least one required decision")
-    for decision_id, question in parser.required_decisions.items():
-        if not DECISION_ID.fullmatch(decision_id):
-            raise ValueError(f"invalid required decision id: {decision_id}")
-        if not question:
-            raise ValueError(f"required decision {decision_id} question is empty")
-    return feature_slug, design_revision, parser.required_decisions
+def load_plan(plan_path: Path, repo_root: Path) -> dict[str, Any]:
+    validate_plan(plan_path, repo_root)
+    return json.loads(plan_path.read_text(encoding="utf-8"))
 
 
-def load_current_design(design_path: Path) -> tuple[str, str, dict[str, str]]:
-    validate_review(design_path)
-    return read_design_metadata(design_path)
+def feature_slug_for(plan_path: Path) -> str:
+    """Resolve the slug for lifecycle commands without requiring a readable plan.
+
+    Stopping a runner must keep working after the plan is deleted or broken,
+    otherwise an orphan process can only be killed by hand.
+    """
+    try:
+        slug = json.loads(plan_path.read_text(encoding="utf-8")).get("feature_slug")
+        if isinstance(slug, str) and KEBAB_CASE.fullmatch(slug):
+            return slug
+    except (OSError, json.JSONDecodeError, AttributeError):
+        pass
+    if not KEBAB_CASE.fullmatch(plan_path.stem):
+        raise ValueError(f"cannot resolve a feature slug from {plan_path}")
+    return plan_path.stem
 
 
 def require_string(value: Any, field: str) -> str:
@@ -108,121 +86,127 @@ def require_string(value: Any, field: str) -> str:
 def require_string_list(value: Any, field: str) -> list[str]:
     if not isinstance(value, list):
         raise ValueError(f"{field} must be an array")
-    result: list[str] = []
-    for index, item in enumerate(value):
-        result.append(require_string(item, f"{field}[{index}]"))
-    return result
+    return [require_string(item, f"{field}[{index}]") for index, item in enumerate(value)]
 
 
-def validate_output_preview(value: Any, field: str = "output_preview") -> None:
-    if not isinstance(value, dict):
-        raise ValueError(f"{field} must be an object")
-    if value.get("kind") not in OUTPUT_KINDS:
-        raise ValueError(f"{field}.kind must be one of {sorted(OUTPUT_KINDS)}")
-    require_string(value.get("summary"), f"{field}.summary")
-    require_string_list(value.get("deliverables"), f"{field}.deliverables")
-    require_string_list(value.get("primary_interfaces"), f"{field}.primary_interfaces")
-    require_string_list(value.get("observable_results"), f"{field}.observable_results")
-    flow = value.get("flow")
-    if not isinstance(flow, list) or not 2 <= len(flow) <= 6:
-        raise ValueError(f"{field}.flow must contain between two and six nodes")
-    for index, node in enumerate(flow):
-        if not isinstance(node, dict):
-            raise ValueError(f"{field}.flow[{index}] must be an object")
-        require_string(node.get("label"), f"{field}.flow[{index}].label")
-        require_string(node.get("description"), f"{field}.flow[{index}].description")
+def plan_targets(plan: dict[str, Any]) -> set[str]:
+    targets = {"general"}
+    for field in ("decisions", "business_rules", "implementation_constraints", "assumptions", "risks"):
+        for item in plan.get(field) or []:
+            targets.add(item["id"])
+    return targets
 
 
-def validate_approval_payload(
-    payload: dict[str, Any],
-    feature_slug: str,
-    design_revision: str,
-    required_decisions: dict[str, str],
-) -> None:
-    if payload.get("schema_version") != 1:
-        raise ValueError("schema_version must equal 1")
+def validate_approval_payload(payload: dict[str, Any], plan: dict[str, Any]) -> dict[str, str]:
+    if payload.get("schema_version") != 3:
+        raise ValueError("schema_version must equal 3")
     if payload.get("event") != "design-spec-approval":
         raise ValueError("event must equal design-spec-approval")
     if payload.get("approved") is not True:
         raise ValueError("approved must equal true")
-    if payload.get("feature_slug") != feature_slug:
-        raise ValueError("feature_slug does not match design HTML")
-    if str(payload.get("design_revision") or "") != design_revision:
-        raise ValueError("design_revision does not match design HTML")
+    if payload.get("approval_meaning") != "direction-approved":
+        raise ValueError("approval_meaning must equal direction-approved")
+    if payload.get("feature_slug") != plan["feature_slug"]:
+        raise ValueError("feature_slug does not match the design plan")
+    if str(payload.get("design_revision") or "") != str(plan["design_revision"]):
+        raise ValueError("design_revision does not match the design plan")
     require_string(payload.get("submitted_at"), "submitted_at")
-    require_string(payload.get("goal"), "goal")
-    validate_output_preview(payload.get("output_preview"))
-    scope = payload.get("scope")
-    if not isinstance(scope, dict):
-        raise ValueError("scope must be an object")
-    require_string_list(scope.get("in"), "scope.in")
-    require_string_list(scope.get("out"), "scope.out")
+    require_string_list(payload.get("extra_constraints") or [], "extra_constraints")
 
-    decisions = payload.get("decisions")
-    if not isinstance(decisions, list):
-        raise ValueError("decisions must be an array")
-    seen: dict[str, str] = {}
-    for index, decision in enumerate(decisions):
-        if not isinstance(decision, dict):
-            raise ValueError(f"decisions[{index}] must be an object")
-        decision_id = require_string(decision.get("id"), f"decisions[{index}].id")
-        if not DECISION_ID.fullmatch(decision_id):
-            raise ValueError(f"decisions[{index}].id must match D-xxx")
-        seen[decision_id] = require_string(decision.get("question"), f"decisions[{index}].question")
-        require_string(decision.get("answer"), f"decisions[{index}].answer")
-        require_string(decision.get("rationale"), f"decisions[{index}].rationale")
-    if seen.keys() != required_decisions.keys():
-        missing = sorted(required_decisions.keys() - seen.keys())
-        extra = sorted(seen.keys() - required_decisions.keys())
-        raise ValueError(f"required decision ids mismatch: missing {missing}, extra {extra}")
-    for decision_id, question in required_decisions.items():
-        if seen[decision_id] != question:
-            raise ValueError(f"question mismatch for {decision_id}")
-    require_string_list(payload.get("constraints"), "constraints")
+    answers = payload.get("answers")
+    if not isinstance(answers, dict):
+        raise ValueError("answers must be an object")
+
+    expected = {decision["id"]: decision for decision in plan.get("decisions") or []}
+    if set(answers) != set(expected):
+        missing = sorted(set(expected) - set(answers))
+        extra = sorted(set(answers) - set(expected))
+        raise ValueError(f"answers must cover every decision exactly once: missing {missing}, unknown {extra}")
+
+    resolved: dict[str, str] = {}
+    for decision_id, answer in answers.items():
+        answer_text = require_string(answer, f"answers['{decision_id}']")
+        allowed = {option["answer"] for option in expected[decision_id]["options"]}
+        if answer_text not in allowed:
+            raise ValueError(f"answers['{decision_id}'] is not one of the options offered in the design plan")
+        resolved[decision_id] = answer_text
+    return resolved
 
 
-def validate_feedback_payload(payload: dict[str, Any], feature_slug: str, design_revision: str) -> None:
-    if payload.get("schema_version") != 1:
-        raise ValueError("schema_version must equal 1")
+def validate_feedback_payload(payload: dict[str, Any], plan: dict[str, Any]) -> list[dict[str, str]]:
+    if payload.get("schema_version") != 3:
+        raise ValueError("schema_version must equal 3")
     if payload.get("event") != "design-change-request":
         raise ValueError("event must equal design-change-request")
-    if payload.get("feature_slug") != feature_slug:
-        raise ValueError("feature_slug does not match design HTML")
-    if str(payload.get("design_revision") or "") != design_revision:
-        raise ValueError("design_revision does not match design HTML")
+    if payload.get("feature_slug") != plan["feature_slug"]:
+        raise ValueError("feature_slug does not match the design plan")
+    if str(payload.get("design_revision") or "") != str(plan["design_revision"]):
+        raise ValueError("design_revision does not match the design plan")
+
     comments = payload.get("comments")
     if not isinstance(comments, list) or not comments:
         raise ValueError("comments must be a non-empty array")
+
+    known = plan_targets(plan)
+    result: list[dict[str, str]] = []
     for index, comment in enumerate(comments):
         if not isinstance(comment, dict):
             raise ValueError(f"comments[{index}] must be an object")
-        require_string(comment.get("target"), f"comments[{index}].target")
-        require_string(comment.get("text"), f"comments[{index}].text")
+        target = require_string(comment.get("target"), f"comments[{index}].target")
+        if target not in known:
+            raise ValueError(f"comments[{index}].target '{target}' is not an id present in the design plan")
+        result.append({"target": target, "text": require_string(comment.get("text"), f"comments[{index}].text")})
+    return result
 
 
-def make_manifest(repo_root: Path, design_path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+def make_manifest(
+    repo_root: Path,
+    plan_path: Path,
+    plan: dict[str, Any],
+    payload: dict[str, Any],
+    answers: dict[str, str],
+) -> dict[str, Any]:
+    questions = {decision["id"]: decision["question"] for decision in plan.get("decisions") or []}
     return {
-        "schema_version": 1,
-        "feature_slug": payload["feature_slug"],
-        "design_revision": str(payload["design_revision"]),
-        "design_path": repo_relative(repo_root, design_path),
-        "design_sha256": hashlib.sha256(design_path.read_bytes()).hexdigest(),
+        "schema_version": 3,
+        "feature_slug": plan["feature_slug"],
+        "design_revision": str(plan["design_revision"]),
+        "design_path": repo_relative(repo_root, plan_path),
+        "design_sha256": hashlib.sha256(plan_path.read_bytes()).hexdigest(),
         "approved_at": payload["submitted_at"],
         "approval_source": "local-runner",
-        "goal": payload["goal"],
-        "output_preview": payload["output_preview"],
-        "scope": payload["scope"],
+        "approval_meaning": "direction-approved",
+        "goal": plan["goal"],
+        "output_preview": plan["preview"],
+        "scope": plan["scope"],
         "decisions": [
             {
-                "id": decision["id"],
-                "question": decision["question"],
-                "answer": decision["answer"],
-                "rationale": decision["rationale"],
+                "id": decision_id,
+                "question": questions[decision_id],
+                "answer": answers[decision_id],
                 "source": "human",
             }
-            for decision in payload["decisions"]
+            for decision_id in sorted(answers)
         ],
-        "constraints": payload.get("constraints", []),
+        "business_rules": [
+            {"id": rule["id"], "statement": rule["statement"], "source": "agent-proposed-not-objected"}
+            for rule in plan.get("business_rules") or []
+        ],
+        "implementation_constraints": [
+            {
+                "id": constraint["id"],
+                "statement": constraint["statement"],
+                "source": constraint.get("source", "agent")
+                if constraint.get("source", "agent") != "agent"
+                else "agent-proposed-not-objected",
+            }
+            for constraint in plan.get("implementation_constraints") or []
+        ],
+        "ai_discretion": list(plan.get("ai_discretion") or []),
+        "assumptions": list(plan.get("assumptions") or []),
+        "risks": list(plan.get("risks") or []),
+        "evidence": list(plan.get("evidence") or []),
+        "constraints": list(payload.get("extra_constraints") or []),
         "unresolved_non_blocking": [],
     }
 
@@ -241,30 +225,29 @@ def run_manifest_validator(repo_root: Path, manifest_path: Path) -> None:
 
 class ReviewHandler(BaseHTTPRequestHandler):
     repo_root: Path
-    design_path: Path
-    design_rel: str
+    plan_path: Path
+    plan_rel: str
+    last_activity: float = 0.0
 
-    def current_design(self) -> tuple[str, str, dict[str, str]]:
-        return load_current_design(self.design_path)
+    def handle_one_request(self) -> None:
+        type(self).last_activity = time.monotonic()
+        super().handle_one_request()
+
+    def current_plan(self) -> dict[str, Any]:
+        return load_plan(self.plan_path, self.repo_root)
 
     def log_message(self, format: str, *args: Any) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
 
-    def send_json(self, status: int, payload: dict[str, Any]) -> None:
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    def send_bytes(self, status: int, content_type: str, body: bytes) -> None:
         self.send_response(status)
-        self.send_header("content-type", "application/json; charset=utf-8")
+        self.send_header("content-type", content_type)
         self.send_header("content-length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
-    def send_html(self) -> None:
-        body = self.design_path.read_bytes()
-        self.send_response(200)
-        self.send_header("content-type", "text/html; charset=utf-8")
-        self.send_header("content-length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+    def send_json(self, status: int, payload: dict[str, Any]) -> None:
+        self.send_bytes(status, "application/json; charset=utf-8", json.dumps(payload, ensure_ascii=False).encode("utf-8"))
 
     def read_json_body(self) -> dict[str, Any]:
         length = int(self.headers.get("content-length") or "0")
@@ -276,22 +259,29 @@ class ReviewHandler(BaseHTTPRequestHandler):
         return payload
 
     def do_GET(self) -> None:
-        if self.path in {"/", "/design", "/index.html"}:
-            self.send_html()
-            return
-        if self.path == "/api/status":
-            feature_slug, design_revision, _ = self.current_design()
-            self.send_json(
-                200,
-                {
-                    "status": "ok",
-                    "feature_slug": feature_slug,
-                    "design_revision": design_revision,
-                    "design_path": self.design_rel,
-                },
-            )
-            return
-        self.send_json(404, {"error": "not found"})
+        try:
+            if self.path in {"/", "/design", "/index.html"}:
+                self.send_bytes(200, "text/html; charset=utf-8", VIEWER_PATH.read_bytes())
+                return
+            if self.path == "/api/plan":
+                self.current_plan()
+                self.send_bytes(200, "application/json; charset=utf-8", self.plan_path.read_bytes())
+                return
+            if self.path == "/api/status":
+                plan = self.current_plan()
+                self.send_json(
+                    200,
+                    {
+                        "status": "ok",
+                        "feature_slug": plan["feature_slug"],
+                        "design_revision": str(plan["design_revision"]),
+                        "design_path": self.plan_rel,
+                    },
+                )
+                return
+            self.send_json(404, {"error": "not found"})
+        except (PlanError, ValueError) as error:
+            self.send_json(400, {"error": str(error)})
 
     def do_POST(self) -> None:
         try:
@@ -302,17 +292,17 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 self.handle_feedback()
                 return
             self.send_json(404, {"error": "not found"})
-        except (json.JSONDecodeError, ValueError) as error:
+        except (json.JSONDecodeError, PlanError, ValueError) as error:
             self.send_json(400, {"error": str(error)})
         except Exception as error:
             self.send_json(500, {"error": str(error)})
 
     def handle_approval(self) -> None:
         payload = self.read_json_body()
-        feature_slug, design_revision, required_decisions = self.current_design()
-        validate_approval_payload(payload, feature_slug, design_revision, required_decisions)
-        manifest_path = self.repo_root / "docs" / "ai" / "design-decisions" / f"{feature_slug}.json"
-        manifest = make_manifest(self.repo_root, self.design_path, payload)
+        plan = self.current_plan()
+        answers = validate_approval_payload(payload, plan)
+        manifest_path = self.repo_root / "docs" / "ai" / "design-decisions" / f"{plan['feature_slug']}.json"
+        manifest = make_manifest(self.repo_root, self.plan_path, plan, payload, answers)
         atomic_write_json(manifest_path, manifest)
         try:
             run_manifest_validator(self.repo_root, manifest_path)
@@ -321,39 +311,62 @@ class ReviewHandler(BaseHTTPRequestHandler):
             raise
         self.send_json(
             200,
-            {
-                "status": "approved",
-                "design_decisions_path": repo_relative(self.repo_root, manifest_path),
-            },
+            {"status": "approved", "design_decisions_path": repo_relative(self.repo_root, manifest_path)},
         )
 
     def handle_feedback(self) -> None:
         payload = self.read_json_body()
-        feature_slug, design_revision, _ = self.current_design()
-        validate_feedback_payload(payload, feature_slug, design_revision)
-        feedback_path = self.repo_root / "docs" / "ai" / "design-feedback" / f"{feature_slug}.json"
-        feedback = {
-            "schema_version": 1,
-            "event": "design-change-request",
-            "feature_slug": feature_slug,
-            "design_revision": design_revision,
-            "design_path": self.design_rel,
-            "design_sha256": hashlib.sha256(self.design_path.read_bytes()).hexdigest(),
-            "received_at": iso_now(),
-            "comments": payload["comments"],
-        }
-        atomic_write_json(feedback_path, feedback)
+        plan = self.current_plan()
+        comments = validate_feedback_payload(payload, plan)
+        feedback_path = self.repo_root / "docs" / "ai" / "design-feedback" / f"{plan['feature_slug']}.json"
+        atomic_write_json(
+            feedback_path,
+            {
+                "schema_version": 3,
+                "event": "design-change-request",
+                "feature_slug": plan["feature_slug"],
+                "design_revision": str(plan["design_revision"]),
+                "design_path": self.plan_rel,
+                "design_sha256": hashlib.sha256(self.plan_path.read_bytes()).hexdigest(),
+                "received_at": iso_now(),
+                "comments": comments,
+            },
+        )
         self.send_json(
             200,
-            {
-                "status": "changes-requested",
-                "design_feedback_path": repo_relative(self.repo_root, feedback_path),
-            },
+            {"status": "changes-requested", "design_feedback_path": repo_relative(self.repo_root, feedback_path)},
         )
 
 
 def state_path(repo_root: Path, feature_slug: str) -> Path:
     return repo_root / "docs" / "ai" / "design-runtime" / f"{feature_slug}.server.json"
+
+
+def clear_state(repo_root: Path, feature_slug: str, pid: int) -> None:
+    """Drop the state file once this runner exits, so status never reports a dead server."""
+    path = state_path(repo_root, feature_slug)
+    state = read_state(path)
+    if state and int(state.get("pid") or 0) == pid:
+        path.unlink(missing_ok=True)
+
+
+def start_idle_watchdog(server: ThreadingHTTPServer, handler: type[ReviewHandler], timeout: float) -> None:
+    """Shut the runner down after `timeout` seconds without a single request.
+
+    The viewer sends a heartbeat while the review page is open, so an open tab
+    keeps the runner alive and a closed one lets it exit on its own.
+    """
+
+    def watch() -> None:
+        interval = min(30.0, max(1.0, timeout / 10))
+        while True:
+            time.sleep(interval)
+            if time.monotonic() - handler.last_activity >= timeout:
+                sys.stderr.write(f"idle for {timeout:.0f}s with no request; shutting down\n")
+                server.shutdown()
+                return
+
+    threading.Thread(target=watch, daemon=True).start()
 
 
 def read_state(path: Path) -> dict[str, Any] | None:
@@ -397,14 +410,16 @@ def fetch_status(url: str, timeout: float = 1.0) -> dict[str, Any] | None:
             payload = json.loads(response.read().decode("utf-8"))
     except (OSError, URLError, json.JSONDecodeError):
         return None
-    return payload if response.status == 200 and isinstance(payload, dict) else None
+    return payload if isinstance(payload, dict) else None
 
 
 def start_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
-    design_path = resolve_repo_path(repo_root, args.design_path)
-    feature_slug, design_revision, _ = load_current_design(design_path)
-    design_rel = repo_relative(repo_root, design_path)
+    plan_path = resolve_repo_path(repo_root, args.design_path)
+    plan = load_plan(plan_path, repo_root)
+    feature_slug = plan["feature_slug"]
+    design_revision = str(plan["design_revision"])
+    plan_rel = repo_relative(repo_root, plan_path)
     state = state_path(repo_root, feature_slug)
     existing = read_state(state)
     if existing and pid_running(int(existing.get("pid") or 0)):
@@ -413,7 +428,7 @@ def start_command(args: argparse.Namespace) -> int:
             (
                 status.get("feature_slug") == feature_slug,
                 str(status.get("design_revision") or "") == design_revision,
-                status.get("design_path") == design_rel,
+                status.get("design_path") == plan_rel,
             )
         )
         if matches:
@@ -430,11 +445,13 @@ def start_command(args: argparse.Namespace) -> int:
         "--repo-root",
         str(repo_root),
         "serve",
-        repo_relative(repo_root, design_path),
+        plan_rel,
         "--host",
         args.host,
         "--port",
         str(port),
+        "--idle-timeout",
+        str(args.idle_timeout),
     ]
     with log_path.open("ab") as log:
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
@@ -446,9 +463,10 @@ def start_command(args: argparse.Namespace) -> int:
         "port": port,
         "feature_slug": feature_slug,
         "design_revision": design_revision,
-        "design_path": design_rel,
+        "design_path": plan_rel,
         "state_path": repo_relative(repo_root, state),
         "log_path": repo_relative(repo_root, log_path),
+        "idle_timeout_seconds": args.idle_timeout,
         "started_at": iso_now(),
     }
     atomic_write_json(state, payload)
@@ -460,8 +478,8 @@ def start_command(args: argparse.Namespace) -> int:
 
 def status_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
-    design_path = resolve_repo_path(repo_root, args.design_path)
-    feature_slug, _, _ = load_current_design(design_path)
+    plan_path = resolve_repo_path(repo_root, args.design_path)
+    feature_slug = feature_slug_for(plan_path)
     state = read_state(state_path(repo_root, feature_slug)) or {}
     running = pid_running(int(state.get("pid") or 0))
     manifest = repo_root / "docs" / "ai" / "design-decisions" / f"{feature_slug}.json"
@@ -482,29 +500,39 @@ def status_command(args: argparse.Namespace) -> int:
 
 def stop_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
-    design_path = resolve_repo_path(repo_root, args.design_path)
-    feature_slug, _, _ = load_current_design(design_path)
+    plan_path = resolve_repo_path(repo_root, args.design_path)
+    feature_slug = feature_slug_for(plan_path)
     state = read_state(state_path(repo_root, feature_slug)) or {}
     pid = int(state.get("pid") or 0)
     if pid_running(pid):
         os.kill(pid, signal.SIGTERM)
-    print(json.dumps({"status": "stopped", "pid": pid}, ensure_ascii=False))
+    print(json.dumps({"status": "stopped", "feature_slug": feature_slug, "pid": pid}, ensure_ascii=False))
     return 0
 
 
 def serve_command(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
-    design_path = resolve_repo_path(repo_root, args.design_path)
-    load_current_design(design_path)
+    plan_path = resolve_repo_path(repo_root, args.design_path)
+    load_plan(plan_path, repo_root)
+    if not VIEWER_PATH.is_file():
+        raise SystemExit(f"review viewer asset is missing: {VIEWER_PATH}")
 
     class Handler(ReviewHandler):
         pass
 
     Handler.repo_root = repo_root
-    Handler.design_path = design_path
-    Handler.design_rel = repo_relative(repo_root, design_path)
+    Handler.plan_path = plan_path
+    Handler.plan_rel = repo_relative(repo_root, plan_path)
+    Handler.last_activity = time.monotonic()
+
     server = ThreadingHTTPServer((args.host, args.port), Handler)
-    server.serve_forever()
+    if args.idle_timeout > 0:
+        start_idle_watchdog(server, Handler, float(args.idle_timeout))
+    signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=server.shutdown, daemon=True).start())
+    try:
+        server.serve_forever()
+    finally:
+        clear_state(repo_root, feature_slug_for(plan_path), os.getpid())
     return 0
 
 
@@ -514,16 +542,21 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     for name in ("start", "status", "stop", "serve"):
         command = subparsers.add_parser(name)
-        command.add_argument("design_path")
+        command.add_argument("design_path", help="Repository-relative path to docs/ai/designs/{slug}.json")
         command.add_argument("--host", default="127.0.0.1")
         command.add_argument("--port", type=int, default=0)
+        command.add_argument(
+            "--idle-timeout",
+            type=int,
+            default=IDLE_TIMEOUT_SECONDS,
+            help="Seconds without any request before the runner exits; 0 disables the timeout",
+        )
         command.set_defaults(func=globals()[f"{name}_command"])
     return parser
 
 
 def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
+    args = build_parser().parse_args()
     return int(args.func(args))
 
 
