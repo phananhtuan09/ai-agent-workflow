@@ -227,18 +227,45 @@ Id không tồn tại, dòng sai định dạng, hoặc trạng thái hiện t�
 Bạn vẫn không đọc code và vẫn không tự sinh luật.
 Nhưng bạn **phải chỉ ra được đường đi**, chứ không phải chỉ đọc lệnh cấm rồi dừng.
 
-Đường đi có bốn bước, và ba bước đầu không phải việc của bạn:
+Đường đi có sáu bước, và bốn bước đầu không phải việc của bạn:
 
-1. **Người dùng** nhờ Foreman giao một worker đọc code. Sản phẩm là **mô tả hành vi**, không phải luật.
+1. **Người dùng** nhờ Foreman giao một worker đọc code.
+   Sản phẩm là **mô tả hành vi**, không phải luật, và **mỗi hành vi phải kèm đường dẫn file nơi thấy nó**.
 2. **Người dùng** đọc mô tả đó và chọn ra cái nào là ý định thật, cái nào chỉ là code tình cờ đang thế.
 3. **Người dùng** phát biểu từng cái thành luật.
-4. Bạn ghi `draft`, họ duyệt.
+4. Bạn ghi `draft`; họ duyệt lên `approved`.
+5. Họ thêm một dòng inbox cho từng luật, lấy **file mô tả ở bước 1 làm đường dẫn bằng chứng**, rồi xác nhận.
+   Bạn đi theo `absorbing.md`: `approved → implemented`, kèm `trace.json`.
+6. Xong bước 5 thì sổ mới audit được.
+
+Nói rõ bước 1 là việc người dùng tự làm; bạn không giao được cho ai.
 
 Bước 2 là bước không bỏ được.
 Code nói hệ thống **đang làm gì**; chỉ người dùng nói được nó **nên làm gì**.
 Bỏ bước đó thì sổ thành bản chép lại của code, và mất luôn khả năng nói "hệ thống chưa làm đúng cái ta đã chốt".
 
-Nói rõ bước 1 là việc người dùng tự làm; bạn không giao được cho ai.
+### Dừng ở `approved` là dừng nửa đường
+
+`approved` nghĩa là "đã chốt, **chưa có code**".
+Luật rút ra từ code đang chạy thì code đã có sẵn, nên để nó ở `approved` là ghi sai nghĩa.
+
+Hậu quả nặng hơn cái sai nghĩa: `auditing.md` chỉ audit BR ở `implemented`.
+Sổ brownfield dừng ở `approved` và không có `trace.json` thì **không luật nào audit được, và sẽ không bao giờ audit được** — năng lực báo lệch giữa luật và code chết ngay từ lúc lập sổ.
+
+Vì vậy `files` trong `trace.json` là thứ bắt buộc phải có ở đây, và đó là lý do bước 1 đòi worker kèm đường dẫn.
+`files` rỗng thì luật đó không audit tự động được; nói thẳng với người dùng chứ đừng đoán đường dẫn cho đủ entry.
+
+### Lần flip này chứng minh gì
+
+**Không** chứng minh code đúng.
+Luật vốn rút ra từ code, nên "code khớp luật" phần lớn là hiển nhiên, và một lần audit ngay sau đó sẽ luôn trả về `khớp`.
+
+Nó chỉ ghim một **mốc**: tại commit này, luật phản ánh đúng thứ code đang làm.
+Giá trị nằm ở lần audit **sau**, khi code đã đổi mà luật thì không.
+
+Phần không hiển nhiên nằm ở bước 3 của `absorbing.md`.
+Lời người dùng phát biểu và mô tả worker quan sát là **hai artifact độc lập**, nên chúng lệch nhau được.
+Lệch thì dừng, không flip: hoặc người dùng nhớ sai, hoặc code đang sai, và cả hai đều cần biết ngay.
 
 Đừng đề nghị ghi trước một "bản đồ hệ thống" cho có việc.
 Bản đồ module, quan hệ giữa các app, thư viện đang dùng — đọc code là biết, nên không thuộc cuốn sổ nào.

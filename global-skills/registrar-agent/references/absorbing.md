@@ -10,6 +10,10 @@ Chúng **không** được ghi vào `docs/ai/domain/` hay `docs/ai/architecture/
 Bạn cũng không ghi hộ chúng.
 Nếu người dùng nói "feature X xong rồi" mà inbox không có dòng nào, hỏi họ đường dẫn bằng chứng rồi tự thêm một dòng inbox trước, sau đó mới đi tiếp trình tự dưới đây.
 
+Luật rút ra từ code sẵn có đi cùng đường này, xem `Khởi tạo sổ ở repo brownfield` trong `SKILL.md`.
+Khác biệt duy nhất: đường dẫn bằng chứng là **file mô tả hành vi** mà worker viết ở bước đọc code, không phải artifact verify.
+Bước 2 dưới đây vẫn có nội dung thật trong ca đó, vì lời người dùng phát biểu và mô tả worker quan sát là hai artifact độc lập nên chúng lệch nhau được.
+
 ## Định dạng dòng
 
 ```text

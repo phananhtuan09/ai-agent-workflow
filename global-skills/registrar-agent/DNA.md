@@ -240,3 +240,23 @@ Rẻ hoá hai chỗ này là phá đúng thứ khiến cuốn sổ đáng dùng,
 Cả hai thuần giảm ma sát: không nới bất biến nào, không thêm chuyển trạng thái tự động nào, và người dùng vẫn là cổng duy nhất của `draft → approved`.
 
 Điểm cần giữ khi sửa về sau: lô `draft` và lô dòng inbox là hai chuyển trạng thái khác nhau (`draft → approved` và `approved → implemented`), nên "duyệt hết" là câu tối nghĩa khi cả hai đang chờ.
+
+### 2026-08-14 — Đường brownfield phải đi tới `implemented`, không dừng ở `approved`
+
+Phát hiện từ lần dùng thật đầu tiên: một repo rút được 35 BR, tất cả nằm ở `approved` hoặc `draft`, không có `trace.json`.
+
+Đó là lỗi của mục brownfield viết cùng ngày: nó kết thúc ở "ghi `draft`, họ duyệt" rồi dừng.
+Hai hậu quả, và hậu quả thứ hai mới nặng:
+
+- `approved` nghĩa là "đã chốt, **chưa có code**", nên nó ghi sai nghĩa cho luật rút từ code đang chạy.
+- `auditing.md` chỉ audit BR ở `implemented`. Sổ dừng ở `approved` và không có `trace.json` thì không luật nào audit được, và **sẽ không bao giờ** audit được — năng lực báo lệch chết ngay từ lúc lập sổ, tức là bất biến 1 mất hiệu lực trong im lặng.
+
+Đường brownfield giờ có sáu bước, thêm bước đưa qua `absorbing.md` để tới `implemented` kèm `trace.json`.
+Kéo theo một ràng buộc ngược lên bước 1: mô tả hành vi của worker **phải kèm đường dẫn file**, vì đó là nguồn duy nhất của `files` trong `trace.json`, và `files` rỗng nghĩa là luật đó không audit tự động được.
+
+Đã cân nhắc và **không** làm: thêm một verb inbox riêng (`baseline`) để phân biệt luật rút từ code với luật đã verify thật.
+Bỏ vì hoá ra không cần — lời người dùng phát biểu và mô tả worker quan sát là hai artifact độc lập, nên bước so khớp của `absorbing.md` vẫn có nội dung thật: lệch nhau nghĩa là hoặc người dùng nhớ sai, hoặc code đang sai.
+Thêm verb và thêm field vào `trace.json` sẽ trượt câu hỏi 4 mà không mua được gì.
+
+Ghi rõ trong skill rằng lần flip này **không** chứng minh code đúng; nó chỉ ghim một mốc tại commit hiện tại, và giá trị nằm ở lần audit sau.
+Không viết câu đó ra thì 35 dòng `implemented` sẽ bị đọc như 35 luật đã được kiểm chứng.
