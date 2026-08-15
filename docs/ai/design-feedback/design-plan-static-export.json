@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "event": "design-change-request",
+  "feature_slug": "design-plan-static-export",
+  "design_revision": "1",
+  "design_path": "docs/ai/designs/design-plan-static-export.json",
+  "design_sha256": "851eef2ca9b55d6013a036cd9ce581fe93dcb1013b8f901e4fb4793453df1226",
+  "received_at": "2026-08-14T02:19:55.896Z",
+  "comments": [
+    {
+      "target": "BR-001",
+      "text": "test"
+    },
+    {
+      "target": "BR-002",
+      "text": "test"
+    },
+    {
+      "target": "general",
+      "text": "test"
+    }
+  ]
+}

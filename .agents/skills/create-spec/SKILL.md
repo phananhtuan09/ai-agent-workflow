@@ -16,6 +16,7 @@ Create the detailed AI-facing implementation and verification contract for an ap
    - A standalone invocation must not pretend that chat assumptions were approved through `design-spec`.
 2. Inspect the codebase deeply enough to produce an implementation-ready design.
    - Confirm current behavior, affected files and symbols, existing boundaries, data and state flow, interfaces, dependencies, validation, failure behavior, security constraints, and verification capabilities.
+   - Start from the manifest `evidence` entries, which were already verified during design, and deepen them instead of rediscovering the same ground.
    - Record concrete evidence paths in the spec.
    - Find the nearest existing precedent: one or two features, files, or modules closest in shape to what will be built.
    - Record what the implementation must mirror from that precedent, and any deliberate deviation with its reason.
@@ -23,7 +24,10 @@ Create the detailed AI-facing implementation and verification contract for an ap
    - Do not copy repository-wide context that does not affect this slice.
 3. Check the approved slice before writing.
    - Classify important assumptions as confirmed, inferred but safe, needs confirmation, or agent-chosen technical detail.
-   - When the manifest contains `output_preview`, preserve its deliverables, primary interfaces, observable results, and flow semantics.
+   - Preserve the semantics of `output_preview`: its summary, the screen, exchange, or shape block, the observable states, and the flow branches.
+   - Translate every answered decision and every `business_rules` statement into behavior requirements and acceptance criteria without changing their meaning.
+   - Treat `implementation_constraints` as binding and record them where the executor will see them.
+   - Treat `ai_discretion` as the agent's own latitude; never restate it as a human commitment.
    - Map the approved output preview into the existing execution contract, behavior requirements, interface or state changes, and acceptance criteria; do not create a second product-design section.
    - A human-approved decision may be elaborated technically but must not be changed in meaning.
    - If implementation discovery exposes a conflict with an approved decision, stop and escalate it instead of silently rewriting the behavior.
@@ -88,9 +92,12 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 - ...
 
 ### Nguồn Quyết Định Đã Duyệt
-- Manifest quyết định: `docs/ai/design-decisions/{feature}.json`
-- Bản xem trước đầu ra: [kind, summary, deliverables, primary interfaces, observable results, và flow đã duyệt]
-- D-001: ...
+- Manifest quyết định: `docs/ai/design-decisions/{feature}.json` — revision [n], `approval_meaning: direction-approved`
+- Bản xem trước đầu ra: [kind, summary, trạng thái quan sát được, và các nhánh của flow đã duyệt]
+- D-001: [câu hỏi] → [phương án human đã chọn]
+- BR-001: [quy tắc nghiệp vụ đã duyệt]
+- IC-001: [ràng buộc bắt buộc tuân thủ]
+- Ràng buộc human thêm khi duyệt: [từ `constraints`, hoặc `Không có`]
 
 ### Bắt Buộc Xảy Ra
 - ...
@@ -111,6 +118,10 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 - D-001: [quyết định và lý do]
 
 ## Kiểm Tra Giả Định
+### Từ Design Đã Duyệt
+- A-001: [giả định] — nếu sai: [tác động]
+- R-001: [rủi ro] — hệ quả: [hệ quả]
+
 ### Đã Xác Nhận
 - ...
 
@@ -121,6 +132,7 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 - Không có câu hỏi sản phẩm nào đang blocking.
 
 ### Chi Tiết Kỹ Thuật Do Agent Chọn
+- [gồm cả các mục `ai_discretion` đã được duyệt là agent tự quyết]
 - ...
 
 ## Bằng Chứng Hệ Thống Hiện Tại
@@ -183,8 +195,13 @@ Keep only code symbols, file paths, API names, schema names, JSON keys, decision
 - Write assistant responses, questions, generated spec prose, Markdown headings, table headers, and recurring labels in Vietnamese.
 - Keep only code symbols, file paths, API names, schema names, JSON keys, decision IDs, AC IDs, literal enum values, and command names in English.
 - Treat approved design decisions as human authority and never reinterpret them silently.
-- Treat an approved `output_preview` as human authority for the expected deliverables, interfaces, observable results, and high-level operating flow.
-- Under `feature-standard`, fail closed when `design_decisions_path` is missing, invalid, or does not match its HTML checksum.
+- Treat an approved `output_preview` as human authority for the expected surfaces, observable states, and high-level operating flow.
+- Treat `business_rules` as approved product behavior even though the manifest records their source as `agent-proposed-not-objected`.
+- Carry every `D-xxx`, `BR-xxx`, and `IC-xxx` id into the spec so verification can trace each one back to what the human saw.
+- Do not reopen, re-ask, or turn into a requirement anything the manifest lists under `ai_discretion`; it is settled latitude, not an open question.
+- Carry `assumptions` and `risks` across with their ids and their stated impact, because they are what an executor must watch while implementing.
+- `approval_meaning: direction-approved` means the human chose the decisions and accepted the rest as shown; it does not license changing a statement they never objected to.
+- Under `feature-standard`, fail closed when `design_decisions_path` is missing, invalid, or does not match the design plan checksum.
 - Cite the nearest codebase precedent and name what the implementation must mirror from it; when none exists, state that explicitly with a reason instead of leaving the section empty.
 - Prefer mirroring an existing precedent over introducing a new structure, output shape, naming scheme, or error-handling style; record every deliberate deviation with its reason.
 - Do not treat a precedent marked as intentional debt in `docs/ai/architecture/decisions.md` as a pattern to mirror.
@@ -240,6 +257,8 @@ Rules:
 - Is the authority source explicit and valid?
 - Does every approved `D-xxx` decision appear without semantic drift?
 - Does every approved output-preview item appear in the relevant execution, behavior, interface, acceptance, and verification sections without semantic drift?
+- Does every `BR-xxx` appear as behavior or acceptance criteria, and every `IC-xxx` where the executor will actually see it?
+- Is every `ai_discretion` item left as agent latitude rather than restated as a human commitment?
 - Are goal, scope, must-happen, and must-not-happen behavior easy to locate?
 - Is every current-system claim backed by a concrete codebase path or direct evidence?
 - Does the spec name a concrete precedent to mirror, or state explicitly that none exists and why?

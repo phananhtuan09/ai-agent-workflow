@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a design decision manifest and its approved HTML checksum."""
+"""Validate a design decision manifest against the design plan it was approved from."""
 
 from __future__ import annotations
 
@@ -9,33 +9,15 @@ import json
 import re
 import sys
 from datetime import datetime
-from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
 
-DECISION_ID = re.compile(r"^D-\d{3}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 KEBAB_CASE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-OUTPUT_KINDS = {"ui", "api", "full-stack", "workflow", "data", "generic"}
-
-
-class HtmlRootParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.attributes: dict[str, str | None] | None = None
-        self.required_decisions: list[dict[str, str | None]] = []
-        self.has_output_preview = False
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        attributes = dict(attrs)
-        if tag == "html" and self.attributes is None:
-            self.attributes = attributes
-        if "data-output-preview" in attributes:
-            self.has_output_preview = True
-        if tag == "fieldset" and "decision-card" in (attributes.get("class") or "").split():
-            if attributes.get("data-required") == "true":
-                self.required_decisions.append(attributes)
+PREVIEW_KINDS = {"ui", "api", "full-stack", "workflow", "data", "generic"}
+RULE_SOURCES = {"agent-proposed-not-objected"}
+CONSTRAINT_SOURCES = {"agent-proposed-not-objected", "human-request", "approved-upstream"}
 
 
 def fail(message: str) -> None:
@@ -51,10 +33,16 @@ def require_string(value: Any, field: str) -> str:
 def require_string_list(value: Any, field: str) -> list[str]:
     if not isinstance(value, list):
         fail(f"{field} must be an array")
-    result: list[str] = []
+    return [require_string(item, f"{field}[{index}]") for index, item in enumerate(value)]
+
+
+def require_object_list(value: Any, field: str) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        fail(f"{field} must be an array")
     for index, item in enumerate(value):
-        result.append(require_string(item, f"{field}[{index}]"))
-    return result
+        if not isinstance(item, dict):
+            fail(f"{field}[{index}] must be an object")
+    return value
 
 
 def parse_timestamp(value: Any, field: str) -> str:
@@ -67,15 +55,15 @@ def parse_timestamp(value: Any, field: str) -> str:
     return timestamp
 
 
-def load_manifest(path: Path) -> dict[str, Any]:
+def load_json(path: Path, label: str) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        fail(f"manifest does not exist: {path}")
+        fail(f"{label} does not exist: {path}")
     except json.JSONDecodeError as error:
-        fail(f"manifest is not valid JSON: {error}")
+        fail(f"{label} is not valid JSON: {error}")
     if not isinstance(data, dict):
-        fail("manifest root must be an object")
+        fail(f"{label} root must be an object")
     return data
 
 
@@ -90,65 +78,49 @@ def resolve_repo_path(repo_root: Path, value: str, field: str) -> Path:
     return resolved
 
 
-def read_html_metadata(path: Path) -> tuple[str, str, dict[str, str], bool]:
-    parser = HtmlRootParser()
-    parser.feed(path.read_text(encoding="utf-8"))
-    if parser.attributes is None:
-        fail("design HTML must contain an html root element")
-    feature_slug = require_string(parser.attributes.get("data-feature-slug"), "HTML data-feature-slug")
-    design_revision = require_string(parser.attributes.get("data-design-revision"), "HTML data-design-revision")
-    required_decisions: dict[str, str] = {}
-    for index, decision in enumerate(parser.required_decisions):
-        decision_id = require_string(decision.get("data-decision-id"), f"HTML required decision[{index}] id")
-        if not DECISION_ID.fullmatch(decision_id):
-            fail(f"HTML required decision[{index}] id must match D-xxx")
-        if decision_id in required_decisions:
-            fail(f"duplicate required decision id in HTML: {decision_id}")
-        required_decisions[decision_id] = require_string(
-            decision.get("data-question"), f"HTML required decision[{index}] question"
-        )
-    if not required_decisions:
-        fail("design HTML must contain at least one required decision card")
-    return feature_slug, design_revision, required_decisions, parser.has_output_preview
+def compare_identified(
+    manifest_items: list[dict[str, Any]],
+    plan_items: list[dict[str, Any]],
+    field: str,
+    text_key: str,
+) -> None:
+    plan_map = {item["id"]: item[text_key] for item in plan_items}
+    manifest_map: dict[str, str] = {}
+    for index, item in enumerate(manifest_items):
+        item_id = require_string(item.get("id"), f"{field}[{index}].id")
+        if item_id in manifest_map:
+            fail(f"duplicate id in {field}: {item_id}")
+        manifest_map[item_id] = require_string(item.get(text_key), f"{field}[{index}].{text_key}")
+    if manifest_map.keys() != plan_map.keys():
+        missing = sorted(plan_map.keys() - manifest_map.keys())
+        extra = sorted(manifest_map.keys() - plan_map.keys())
+        fail(f"{field} ids do not match the design plan: missing {missing}, unknown {extra}")
+    for item_id, text in manifest_map.items():
+        if text != plan_map[item_id]:
+            fail(f"{field} {item_id} {text_key} does not match the design plan")
 
 
-def validate_output_preview(value: Any, field: str = "output_preview") -> None:
-    if not isinstance(value, dict):
-        fail(f"{field} must be an object")
-    if value.get("kind") not in OUTPUT_KINDS:
-        fail(f"{field}.kind must be one of {sorted(OUTPUT_KINDS)}")
-    require_string(value.get("summary"), f"{field}.summary")
-    require_string_list(value.get("deliverables"), f"{field}.deliverables")
-    require_string_list(value.get("primary_interfaces"), f"{field}.primary_interfaces")
-    require_string_list(value.get("observable_results"), f"{field}.observable_results")
-    flow = value.get("flow")
-    if not isinstance(flow, list) or not 2 <= len(flow) <= 6:
-        fail(f"{field}.flow must contain between two and six nodes")
-    for index, node in enumerate(flow):
-        if not isinstance(node, dict):
-            fail(f"{field}.flow[{index}] must be an object")
-        require_string(node.get("label"), f"{field}.flow[{index}].label")
-        require_string(node.get("description"), f"{field}.flow[{index}].description")
-
-
-def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path | None) -> dict[str, Any]:
-    if data.get("schema_version") != 1:
-        fail("schema_version must equal 1")
+def validate_manifest(data: dict[str, Any], repo_root: Path, plan_override: Path | None) -> dict[str, Any]:
+    if data.get("schema_version") != 3:
+        fail("schema_version must equal 3")
 
     feature_slug = require_string(data.get("feature_slug"), "feature_slug")
     if not KEBAB_CASE.fullmatch(feature_slug):
         fail("feature_slug must be kebab-case")
-    design_revision = require_string(data.get("design_revision"), "design_revision")
+    design_revision = require_string(str(data.get("design_revision") or ""), "design_revision")
 
     design_path_value = require_string(data.get("design_path"), "design_path")
-    design_path = html_override.resolve() if html_override else resolve_repo_path(repo_root, design_path_value, "design_path")
+    if not design_path_value.endswith(".json"):
+        fail("design_path must point to the design plan JSON")
+    design_path = plan_override.resolve() if plan_override else resolve_repo_path(repo_root, design_path_value, "design_path")
     if not design_path.is_file():
-        fail(f"design HTML does not exist: {design_path}")
-    html_feature_slug, html_design_revision, html_required_decisions, html_has_output_preview = read_html_metadata(design_path)
-    if html_feature_slug != feature_slug:
-        fail(f"feature_slug mismatch: manifest {feature_slug}, HTML {html_feature_slug}")
-    if html_design_revision != design_revision:
-        fail(f"design_revision mismatch: manifest {design_revision}, HTML {html_design_revision}")
+        fail(f"design plan does not exist: {design_path}")
+
+    plan = load_json(design_path, "design plan")
+    if plan.get("feature_slug") != feature_slug:
+        fail(f"feature_slug mismatch: manifest {feature_slug}, plan {plan.get('feature_slug')}")
+    if str(plan.get("design_revision") or "") != design_revision:
+        fail(f"design_revision mismatch: manifest {design_revision}, plan {plan.get('design_revision')}")
 
     expected_sha = require_string(data.get("design_sha256"), "design_sha256")
     if not SHA256.fullmatch(expected_sha):
@@ -160,10 +132,18 @@ def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path
     parse_timestamp(data.get("approved_at"), "approved_at")
     if data.get("approval_source") != "local-runner":
         fail("approval_source must equal 'local-runner'")
+    if data.get("approval_meaning") != "direction-approved":
+        fail("approval_meaning must equal 'direction-approved'")
 
-    require_string(data.get("goal"), "goal")
-    if html_has_output_preview or "output_preview" in data:
-        validate_output_preview(data.get("output_preview"))
+    if require_string(data.get("goal"), "goal") != require_string(plan.get("goal"), "plan goal"):
+        fail("goal does not match the design plan")
+
+    preview = data.get("output_preview")
+    if not isinstance(preview, dict):
+        fail("output_preview must be an object")
+    if preview.get("kind") not in PREVIEW_KINDS:
+        fail(f"output_preview.kind must be one of {sorted(PREVIEW_KINDS)}")
+    require_string(preview.get("summary"), "output_preview.summary")
 
     scope = data.get("scope")
     if not isinstance(scope, dict):
@@ -171,32 +151,47 @@ def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path
     require_string_list(scope.get("in"), "scope.in")
     require_string_list(scope.get("out"), "scope.out")
 
-    decisions = data.get("decisions")
-    if not isinstance(decisions, list) or not decisions:
+    decisions = require_object_list(data.get("decisions"), "decisions")
+    if not decisions:
         fail("decisions must be a non-empty array")
-    seen_ids: set[str] = set()
-    manifest_decisions: dict[str, str] = {}
+    plan_decisions = plan.get("decisions") or []
+    compare_identified(decisions, plan_decisions, "decisions", "question")
+    options = {
+        decision["id"]: {option["answer"] for option in decision.get("options") or []}
+        for decision in plan_decisions
+    }
     for index, decision in enumerate(decisions):
-        if not isinstance(decision, dict):
-            fail(f"decisions[{index}] must be an object")
-        decision_id = require_string(decision.get("id"), f"decisions[{index}].id")
-        if not DECISION_ID.fullmatch(decision_id):
-            fail(f"decisions[{index}].id must match D-xxx")
-        if decision_id in seen_ids:
-            fail(f"duplicate decision id: {decision_id}")
-        seen_ids.add(decision_id)
-        manifest_decisions[decision_id] = require_string(decision.get("question"), f"decisions[{index}].question")
-        require_string(decision.get("answer"), f"decisions[{index}].answer")
-        require_string(decision.get("rationale"), f"decisions[{index}].rationale")
+        decision_id = decision["id"]
+        answer = require_string(decision.get("answer"), f"decisions[{index}].answer")
+        if answer not in options[decision_id]:
+            fail(f"decisions[{index}].answer is not an option offered by the design plan for {decision_id}")
         if decision.get("source") != "human":
             fail(f"decisions[{index}].source must equal 'human'")
-    if manifest_decisions.keys() != html_required_decisions.keys():
-        missing = sorted(html_required_decisions.keys() - manifest_decisions.keys())
-        extra = sorted(manifest_decisions.keys() - html_required_decisions.keys())
-        fail(f"required decision ids mismatch: missing {missing}, extra {extra}")
-    for decision_id, html_question in html_required_decisions.items():
-        if manifest_decisions[decision_id] != html_question:
-            fail(f"question mismatch for {decision_id}")
+
+    rules = require_object_list(data.get("business_rules") or [], "business_rules")
+    compare_identified(rules, plan.get("business_rules") or [], "business_rules", "statement")
+    for index, rule in enumerate(rules):
+        if rule.get("source") not in RULE_SOURCES:
+            fail(f"business_rules[{index}].source must be one of {sorted(RULE_SOURCES)}")
+
+    constraints = require_object_list(data.get("implementation_constraints") or [], "implementation_constraints")
+    compare_identified(
+        constraints, plan.get("implementation_constraints") or [], "implementation_constraints", "statement"
+    )
+    for index, constraint in enumerate(constraints):
+        if constraint.get("source") not in CONSTRAINT_SOURCES:
+            fail(f"implementation_constraints[{index}].source must be one of {sorted(CONSTRAINT_SOURCES)}")
+
+    require_string_list(data.get("ai_discretion") or [], "ai_discretion")
+    for index, assumption in enumerate(require_object_list(data.get("assumptions") or [], "assumptions")):
+        require_string(assumption.get("id"), f"assumptions[{index}].id")
+        require_string(assumption.get("statement"), f"assumptions[{index}].statement")
+    for index, risk in enumerate(require_object_list(data.get("risks") or [], "risks")):
+        require_string(risk.get("id"), f"risks[{index}].id")
+        require_string(risk.get("statement"), f"risks[{index}].statement")
+    for index, item in enumerate(require_object_list(data.get("evidence") or [], "evidence")):
+        require_string(item.get("path"), f"evidence[{index}].path")
+        require_string(item.get("observation"), f"evidence[{index}].observation")
 
     require_string_list(data.get("constraints"), "constraints")
     require_string_list(data.get("unresolved_non_blocking"), "unresolved_non_blocking")
@@ -206,6 +201,8 @@ def validate_manifest(data: dict[str, Any], repo_root: Path, html_override: Path
         "design_revision": design_revision,
         "design_path": design_path_value,
         "decision_count": len(decisions),
+        "business_rule_count": len(rules),
+        "constraint_count": len(constraints),
         "design_sha256": actual_sha,
     }
 
@@ -214,11 +211,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path, help="Path to the decision manifest JSON")
     parser.add_argument("--repo-root", type=Path, default=Path.cwd(), help="Repository root used for relative paths")
-    parser.add_argument("--html", type=Path, help="Optional explicit HTML path for checksum validation")
+    parser.add_argument("--plan", type=Path, help="Optional explicit design plan path for checksum validation")
     args = parser.parse_args()
 
     try:
-        result = validate_manifest(load_manifest(args.manifest), args.repo_root, args.html)
+        result = validate_manifest(load_json(args.manifest, "manifest"), args.repo_root, args.plan)
     except ValueError as error:
         print(f"invalid: {error}", file=sys.stderr)
         return 1
