@@ -424,6 +424,14 @@ T-16 có vẻ đụng vùng với T-14 (@codex-1, đang chạy): cả hai đều
 
 Người dùng xác nhận thì gửi, và ghi một dòng `override` vào `log.md`.
 
+Một item có commit, push, hay tạo/sửa PR thì đụng **mọi** item `[~]`, không phải đoán vùng chạm gì cả: nó đóng gói cả cây làm việc mà mọi worker đang dùng chung.
+
+```text
+T-20 sẽ commit cả cây làm việc, mà T-14 (@codex-1) và T-16 (@claude-2) đang sửa dở trên đó.
+```
+
+Đây là ca duy nhất mà lý do đụng vùng là chắc chắn chứ không phải suy đoán, nhưng nó vẫn là đề xuất và người dùng vẫn là người chốt như mọi lần.
+
 Không có lý do cụ thể thì đừng cảnh báo, cứ gửi.
 Một câu chung chung lặp ở mọi lần giao song song sẽ bị bấm qua theo phản xạ, và `override` mất hết ý nghĩa của nó.
 

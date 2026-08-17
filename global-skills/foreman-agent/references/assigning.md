@@ -132,7 +132,8 @@ Foreman ghi chú (chỉ là con trỏ, không phải yêu cầu)
 KHÔNG LÀM
 Không đọc hay sửa bất cứ file nào trong .foreman/, ngoài append inbox.md.
 Không mở rộng ngoài yêu cầu trên — thấy việc khác thì báo, đừng tự làm; sửa thứ hỏng do chính thay đổi của bạn thì vẫn nằm trong yêu cầu.
-Không tự đánh dấu hoàn thành, không commit, không push.
+Không tự đánh dấu hoàn thành.
+Không tự ý commit hay push — trừ khi yêu cầu ở trên nói làm. Lúc đó chỉ stage đúng file bạn sửa, không dùng `git add -A` hay `git add .`: nhiều worker đang dùng chung cây làm việc này.
 Không đẩy task này sang một agent Herdr khác — sub-agent bên trong phiên của bạn thì cứ dùng thoải mái.
 Yêu cầu mơ hồ thì dừng và báo blocked, đừng tự suy diễn.
 
@@ -145,6 +146,10 @@ Nếu được hỏi trạng thái: đúng 5 dòng STATUS/LAST ACTION/NEXT ACTIO
 ```
 
 Prompt tự chứa, nên worker không cần và không được đọc `.foreman/`.
+
+Khối `KHÔNG LÀM` đặt mặc định cho những gì worker **tự ý** làm, và không bao giờ được chọi với `YÊU CẦU`.
+Hai khối chọi nhau thì `YÊU CẦU` thắng: đó là lời người dùng, còn `KHÔNG LÀM` chỉ là mặc định của bạn.
+Một task yêu cầu commit, push, hay tạo PR mà bị khối này chặn thì worker chỉ còn cách báo `blocked`, và cái chặn nó là bạn chứ không phải yêu cầu.
 
 Dòng `TASK: <id> ` mở đầu là bắt buộc và phải giữ nguyên dạng, vì nó là thứ duy nhất cho phép tìm lại transcript của worker về sau.
 

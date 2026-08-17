@@ -192,6 +192,26 @@ Lấy mention làm tín hiệu thì `giao T-01 cho worker codex` lại được 
 Qua được bảy câu vì: `↳ bạn nói` là field đã có nên không thêm state (câu 4); không đụng khởi động (câu 5); giảm số ca `ambiguous` phải hỏi (câu 6).
 Siết chặt thêm bất biến 1 và 3 chứ không nới.
 
+### 2026-08-17 — `KHÔNG LÀM` không được chọi với `YÊU CẦU`
+
+"Không commit, không push" chặn chết mọi task mà nội dung của nó *là* tạo hoặc sửa PR.
+Worker chỉ còn cách báo `blocked`, và thứ chặn nó là mặc định của foreman chứ không phải yêu cầu của người dùng.
+
+Luật chung rút ra, quan trọng hơn chính ca này: khối `KHÔNG LÀM` đặt mặc định cho những gì worker **tự ý** làm.
+Chọi với `YÊU CẦU` thì `YÊU CẦU` thắng, vì đó là lời người dùng.
+Đây là hệ quả trực tiếp của bất biến 3 — foreman chèn mặc định của mình lên trên lời người dùng cũng là một dạng diễn giải.
+
+Cách sửa **không** phải là để foreman nhận diện task loại PR rồi đổi khối `KHÔNG LÀM` cho hợp.
+Làm vậy là bắt foreman hiểu task, đã bị từ chối ngày 2026-08-14.
+Worker tự đọc yêu cầu của chính nó và tự biết, foreman không cần phân loại gì.
+
+Nhưng nới suông thì không an toàn: repo không có worktree, nhiều worker chung một cây, nên một worker commit là cuốn luôn thay đổi dở dang của worker khác.
+Hai guard đi kèm:
+
+1. Trong prompt: được commit thì chỉ stage đúng file mình sửa, cấm `git add -A` và `git add .`.
+2. Trong rà phụ thuộc: item có commit/push/PR đụng **mọi** item `[~]`.
+   Đây là ca duy nhất lý do đụng vùng chắc chắn chứ không phải suy đoán, nên nó thoả điều kiện "cảnh báo phải có lý do cụ thể" của bất biến 5 mà không cần ngoại lệ nào.
+
 ### 2026-08-17 — Soát lời người dùng: **nhận**
 
 Người dùng muốn foreman soát giúp chính lời họ vừa gõ: sai chính tả, mâu thuẫn, trùng item, trỏ tới id không tồn tại.
