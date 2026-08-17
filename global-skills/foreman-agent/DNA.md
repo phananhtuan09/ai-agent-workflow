@@ -46,6 +46,9 @@ Foreman chen bản hiểu của mình vào giữa thì hai nguyên nhân đó tr
 Ranh giới duy nhất được phép: **lọc chứ không sửa**.
 Bỏ nguyên mệnh đề đang nói với foreman thì được; đổi một chữ trong mệnh đề nói về công việc thì không.
 
+Việc lọc diễn ra lúc **ghi xuống đĩa**, không lúc gửi đi.
+Prompt gửi worker dựng từ dòng backlog, nên nguyên văn là thứ kiểm chứng được bằng `diff` chứ không phải thứ phải tin.
+
 ### 4. Chỉ người dùng mới duyệt
 
 `[x]` chỉ do người dùng đặt.
@@ -166,6 +169,65 @@ Worker bị nhiễu vì nhận nguyên câu người dùng nói với foreman ("
 Ranh giới: bỏ được nguyên mệnh đề, cấm đổi chữ trong mệnh đề đã giữ, phân vân thì giữ.
 
 Lý do nghiêng về giữ: bỏ nhầm câu công việc thì worker thiếu yêu cầu mà không ai biết; giữ thừa câu điều phối thì worker chỉ thấy hơi thừa.
+
+### 2026-08-17 — Nguồn của prompt là đĩa, và ngoặc kép là dạng tường minh: **nhận**
+
+Luật lọc ngày 2026-08-14 không đủ.
+Câu "hãy giao T-01 cho worker …" có mệnh đề địa chỉ dính liền mệnh đề công việc, nên "phân vân thì giữ" luôn thắng và nguyên câu chảy sang worker.
+Siết luật lọc chỉ đổi bug này thành bug ngược lại là bỏ nhầm yêu cầu, nên chỗ phải sửa là **nguồn**, không phải độ chặt của bộ lọc.
+
+Hai thay đổi đi cùng nhau:
+
+1. Khối `YÊU CẦU` dựng từ **dòng backlog**, không từ câu vừa gõ.
+   Nội dung mới phải xuống `↳` và lưu file trước khi gửi.
+2. **Cặp ngoặc kép** là dạng tường minh: trong ngoặc là nội dung gửi nguyên văn, ngoài ngoặc không gửi.
+
+Điều này biến một phán đoán bất khả kháng thành một bước máy móc, và dời chỗ sai từ nơi không cứu được (prompt đã gửi) sang nơi thấy ngay và sửa được (dòng `↳` trên backlog).
+Nó cũng vá một lỗ hổng của bất biến 1: nội dung người dùng nói lúc giao việc trước đây chỉ sống trong hội thoại và bay mất khi clear session.
+
+Bác nửa còn lại của đề xuất — "có mention `worker` thì gửi nguyên văn cả câu".
+Mention là **địa chỉ**: nó nói cho foreman biết gửi đi đâu, không nói cho worker biết làm gì.
+Lấy mention làm tín hiệu thì `giao T-01 cho worker codex` lại được gửi nguyên văn, tức tái tạo đúng bug đang sửa.
+
+Qua được bảy câu vì: `↳ bạn nói` là field đã có nên không thêm state (câu 4); không đụng khởi động (câu 5); giảm số ca `ambiguous` phải hỏi (câu 6).
+Siết chặt thêm bất biến 1 và 3 chứ không nới.
+
+### 2026-08-17 — Soát lời người dùng: **nhận**
+
+Người dùng muốn foreman soát giúp chính lời họ vừa gõ: sai chính tả, mâu thuẫn, trùng item, trỏ tới id không tồn tại.
+
+Nghe như phá bất biến 3 và 5, nhưng không, nhờ ba ranh giới:
+
+1. **Nêu chứ không sửa.** Nguyên văn còn nguyên; foreman chỉ trỏ vào chỗ nghi ngờ.
+2. **Nêu chứ không hỏi.** Số câu hỏi không tăng một câu nào: lúc ghi backlog thì tuyệt đối không hỏi, lúc gửi thì tái dùng đúng ca `ambiguous` đã có sẵn.
+3. **Trích được đúng đoạn chữ thì mới nêu.** Đây là điều kiện kích hoạt cứng, không phải lời khuyên.
+
+Điểm 3 chính là luật cảnh báo của bất biến 5 áp cho tính năng này: cảnh báo nào cũng bắt buộc có lý do cụ thể, nên không thể đẻ ra loại cảnh báo mù bị bấm qua theo phản xạ.
+Kèm theo, cấm hẳn câu "đã soát, không có vấn đề" — im lặng là mặc định.
+
+Ranh giới nội dung: soát **lời viết**, không soát **việc muốn**.
+Đúng kỹ thuật hay không thì foreman không biết và không được đoán, vì nó không có context repo (bất biến 2).
+Nguồn soát chỉ gồm câu vừa gõ, dòng backlog, và các dòng `↳`.
+
+Bất đối xứng chặn/không chặn theo giá của lỗi: dòng backlog sai thì người dùng thấy ngay và sửa được, còn prompt sai đã tốn một vòng worker và một nấc `↻N`.
+Nên ghi thì không bao giờ chặn, gửi thì chỉ chặn ở mâu thuẫn và trỏ sai.
+
+Không thêm loại friction nào cho việc soát (câu 4): `ambiguous` đã đủ.
+
+### 2026-08-17 — Khối `KHÔNG LÀM`: nới hai dòng, giữ nguyên phần chịu lực
+
+"Không giao việc cho agent khác" gộp hai thứ khác hẳn nhau vào một câu, và chặn nhầm cái vô hại.
+Sub-agent bên trong phiên của worker là chuyện nội bộ của nó, không ai cần biết.
+Đẩy task sang một **agent Herdr** khác mới là vấn đề: backlog chỉ giữ đúng một con trỏ `@agent` cho mỗi item, nên việc chạy ở agent thứ hai làm dòng `[~]` sai và bảng đối chiếu lúc khởi động mất hết ý nghĩa.
+
+Nên tách: cấm đẩy sang agent Herdr khác, cho phép rõ ràng sub-agent nội bộ.
+Xoá cả câu sẽ mất luôn cái guard đang giữ cho foreman là router duy nhất.
+
+Nới thêm dòng phạm vi: sửa thứ hỏng do chính thay đổi của worker vẫn nằm trong yêu cầu, không phải "việc khác" để đi báo `blocked`.
+
+**Không đụng vào dòng "worker không đọc/sửa `.foreman/` ngoài `inbox.md`".**
+Nó chịu lực cho `trace-pinning.md`: lệnh ghim dùng `grep -q "backlog\.md"` để loại transcript của chính foreman, và nó chỉ đúng khi worker không bao giờ chạm `backlog.md`.
+Nới dòng đó là lặng lẽ làm hỏng việc ghim trace, không phải chỉ nới một quyền.
 
 ### 2026-08-14 — Foreman "hiểu task" trước khi giao: **từ chối**
 
