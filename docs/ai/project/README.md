@@ -15,34 +15,60 @@ It does not describe coding conventions or project structure for a real applicat
 Read these files when the task is about workflow logic, routing, commands, artifacts, harness design, or agent behavior.
 
 ## Read Order
-Use this order when the task is about building or changing the workflow system:
+
+### Coding workflow
+
+Use this order when the task is about building or changing the coding workflow system:
 
 1. `docs/ai/project/README.md`
-2. `docs/ai/project/WORKFLOW_CONSTITUTION.md`
+2. `docs/ai/project/WORKFLOW_CODING_CONSTITUTION.md`
 3. `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 4. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 5. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
 
 If documents conflict, follow the more specific file for the current workflow task.
 
-`WORKFLOW_CONSTITUTION.md` is the exception.
+`WORKFLOW_CODING_CONSTITUTION.md` is the exception for coding workflows.
 A more specific file decides how work is executed, but it cannot override the constitution's principles.
 When a document conflicts with the constitution, surface the conflict instead of merging the two directions or inferring a resolution.
 
+For a workflow whose primary outcome is not software delivery, read the constitution for that workflow type instead.
+
+### Learning workflow
+
+Use this order when the task is about building or changing the learning workflow system:
+
+1. `docs/ai/project/README.md`
+2. `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md`
+3. The relevant learning standard or workflow artifact when it exists
+4. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md` when evaluating the workflow
+
 ## When To Read Which File
 
-### `docs/ai/project/WORKFLOW_CONSTITUTION.md`
+### `docs/ai/project/WORKFLOW_CODING_CONSTITUTION.md`
 Read when:
-- designing or changing the AI agent workflow
-- deciding whether a workflow proposal matches the long-term direction
+- designing or changing an AI-assisted coding workflow
+- deciding whether a coding workflow proposal matches the long-term direction
 - adding commands, skills, phases, or artifacts
 - resolving trade-offs between AI autonomy, human control, evidence, and simplicity
 - checking whether a new abstraction, gate, artifact, or runtime mechanism is over-engineered
 - deciding whether a workflow pattern is worth keeping
 - changing the three-phase `Plan → Implement → Validate` architecture or authority boundaries
 
-This file is the single source of principles for building the workflow.
-It defines the highest-level intent and the mandatory constraints that every workflow change must follow.
+This file is the single source of principles for building coding workflows.
+It defines the highest-level intent and the mandatory constraints that every coding workflow change must follow.
+
+### `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md`
+
+Read when:
+- designing or changing an AI-assisted learning workflow
+- deciding whether AI assistance preserves or replaces the capability being learned
+- designing cases, progression, evaluation, hints, simulations, or learning evidence
+- resolving trade-offs between learning ownership, AI autonomy, realism, efficiency, and difficulty
+- deciding whether a learning mechanism creates useful cognitive load or workflow overhead
+
+This file is the single source of principles for building learning workflows.
+It defines the highest-level intent and the mandatory constraints that every learning workflow change must follow.
 
 ### `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 Read when:
@@ -74,12 +100,20 @@ This file defines the standard workflow for evaluating workflows themselves.
 
 ## Task Routing Guide
 
-### Workflow design task
+### Coding workflow design task
+
 Read:
 - `docs/ai/project/README.md`
-- `docs/ai/project/WORKFLOW_CONSTITUTION.md`
+- `docs/ai/project/WORKFLOW_CODING_CONSTITUTION.md`
 - `docs/ai/project/WORKFLOW_IDEA_REVIEW.md` when changing pre-spec idea evaluation
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
+
+### Learning workflow design task
+
+Read:
+- `docs/ai/project/README.md`
+- `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md`
+- the relevant learning standard or workflow artifact when it exists
 
 ### Workflow implementation task
 Read:
@@ -110,7 +144,8 @@ Read:
 - Escalate when the repository documents do not cover an ambiguous decision.
 
 ## Related Files
-- `docs/ai/project/WORKFLOW_CONSTITUTION.md`
+- `docs/ai/project/WORKFLOW_CODING_CONSTITUTION.md`
+- `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md`
 - `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 - `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`

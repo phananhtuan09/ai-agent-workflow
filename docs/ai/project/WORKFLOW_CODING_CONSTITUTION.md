@@ -1,30 +1,34 @@
 ---
 phase: project
-title: Workflow Constitution
-description: Nguồn nguyên tắc duy nhất cho kiến trúc và sự phát triển của AI agent workflow
+title: Coding Workflow Constitution
+description: Nguồn nguyên tắc cho kiến trúc và sự phát triển của AI-assisted coding workflow
 ---
 
-# Hiến Pháp Workflow
+# Hiến Pháp Coding Workflow
 
 ## Mục Đích
 
-Tài liệu này định nghĩa các nguyên tắc nền tảng của AI agent workflow trong repository.
+Tài liệu này định nghĩa các nguyên tắc nền tảng của AI-assisted coding workflow trong repository.
 
-Workflow, orchestrator, skill và artifact có thể thay đổi theo project.
+Coding workflow, orchestrator, skill và artifact có thể thay đổi theo project.
 
-Tài liệu này không mô tả step, command hoặc skill cụ thể của một workflow.
+Tài liệu này không mô tả step, command hoặc skill cụ thể của một coding workflow.
 
-Tài liệu này có quyền quy định các quy ước bắt buộc mà mọi workflow trong repository phải tuân theo.
+Tài liệu này có quyền quy định các quy ước bắt buộc mà mọi coding workflow trong repository phải tuân theo.
+
+Tài liệu này không điều chỉnh workflow có primary outcome khác software delivery, ví dụ learning workflow.
+
+Mỗi loại workflow có primary outcome và authority boundary khác được phép định nghĩa hiến pháp riêng.
 
 ## North Star
 
-Workflow phải khai thác năng lực của AI đến giới hạn còn kiểm chứng và phục hồi được, để AI hoàn thành và tự kiểm tra công việc trước khi giao kết quả cho human.
+Coding workflow phải khai thác năng lực của AI đến giới hạn còn kiểm chứng và phục hồi được, để AI hoàn thành và tự kiểm tra công việc trước khi giao kết quả cho human.
 
 Human tập trung vào việc làm rõ intent, chốt các quyết định quan trọng và đánh giá kết quả cuối cùng thay vì giám sát chi tiết quá trình thực hiện.
 
-Workflow không tồn tại để buộc AI tuân thủ một quy trình suy nghĩ cố định.
+Coding workflow không tồn tại để buộc AI tuân thủ một quy trình suy nghĩ cố định.
 
-Workflow tồn tại để:
+Coding workflow tồn tại để:
 
 - cung cấp đủ context và authority cho AI làm việc hiệu quả
 - bảo vệ các boundary có rủi ro cao
@@ -173,7 +177,7 @@ Việc agent đi qua đầy đủ step không chứng minh outcome đúng.
 
 ## Nguyên Tắc Phát Triển Workflow
 
-Workflow phải giữ đơn giản và thích ứng được theo project.
+Coding workflow phải giữ đơn giản và thích ứng được theo project.
 
 Mỗi step phải cho human thấy rõ nó nhận input gì, tạo ra output gì và cho phép quyết định gì tiếp theo.
 
@@ -241,21 +245,21 @@ Correctness cũng không được dùng làm lý do để thêm ceremony không 
 
 ## Governance
 
-Tài liệu này là nguồn định hướng cao nhất cho kiến trúc workflow trong repository.
+Tài liệu này là nguồn định hướng cao nhất cho kiến trúc coding workflow trong repository.
 
-Đây là tài liệu nguyên tắc duy nhất cho việc xây dựng workflow.
+Đây là tài liệu nguyên tắc duy nhất cho việc xây dựng coding workflow.
 
-Không tạo thêm một tài liệu nguyên tắc song song; nguyên tắc mới phải vào thẳng tài liệu này.
+Không tạo thêm một tài liệu nguyên tắc song song cho coding workflow; nguyên tắc coding mới phải vào thẳng tài liệu này.
 
-Mọi standard, runtime contract, workflow config và skill trong repository đều nằm dưới hiến pháp và không được đi ngược các nguyên tắc ở đây.
+Mọi coding standard, runtime contract, workflow config và skill đều nằm dưới hiến pháp coding và không được đi ngược các nguyên tắc ở đây khi tham gia software delivery.
 
-Tài liệu chi tiết hơn quyết định cách thực hiện; hiến pháp quyết định điều gì được phép tồn tại.
+Tài liệu coding chi tiết hơn quyết định cách thực hiện; hiến pháp này quyết định điều gì được phép tồn tại trong coding workflow.
 
-Một tài liệu là tài liệu chi tiết khi nó mô tả step, command, contract, config hoặc artifact cụ thể của một workflow.
+Một tài liệu là tài liệu coding chi tiết khi nó mô tả step, command, contract, config hoặc artifact cụ thể của một coding workflow.
 
-Một phát biểu áp cho mọi workflow bất kể step nào đang chạy thì thuộc về hiến pháp.
+Một phát biểu áp cho mọi coding workflow bất kể step nào đang chạy thì thuộc về hiến pháp này.
 
-Khi một tài liệu chi tiết xung đột với hiến pháp, phải làm rõ conflict thay vì tự động suy diễn hoặc hợp nhất hai hướng.
+Khi một tài liệu coding chi tiết xung đột với hiến pháp này, phải làm rõ conflict thay vì tự động suy diễn hoặc hợp nhất hai hướng.
 
 Hiến pháp chỉ thay đổi bằng quyết định rõ ràng của human.
 
@@ -263,6 +267,6 @@ Hiến pháp chứa hai loại nội dung với ngưỡng thay đổi khác nhau
 
 Nguyên tắc nền tảng gồm North Star, ý nghĩa ba phase và ranh giới authority giữa human và AI; chỉ cập nhật khi triết lý thực sự thay đổi.
 
-Quy ước bắt buộc là các ràng buộc chung áp cho mọi workflow; được tinh chỉnh khi có bằng chứng thực tế cho thấy quy ước hiện tại gây sai sót hoặc chi phí không cần thiết.
+Quy ước bắt buộc là các ràng buộc chung áp cho mọi coding workflow; được tinh chỉnh khi có bằng chứng thực tế cho thấy quy ước hiện tại gây sai sót hoặc chi phí không cần thiết.
 
 Không cập nhật hiến pháp để phản ánh một implementation detail hoặc exception của riêng project.

@@ -385,6 +385,6 @@ It differs from `/create-spec`:
 
 ## Related Files
 
-- `docs/ai/project/WORKFLOW_CONSTITUTION.md`
+- `docs/ai/project/WORKFLOW_CODING_CONSTITUTION.md`
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 - `docs/ai/workflows/idea-review.json`
