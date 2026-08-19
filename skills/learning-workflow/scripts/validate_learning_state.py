@@ -1,0 +1,326 @@
+#!/usr/bin/env python3
+"""Validate learning-workflow case, profile, and session invariants."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+
+ID = re.compile(r"^[A-Z]+(?:-[A-Z]+)*-\d{3}$")
+SESSION_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+JUDGMENT_STATUSES = {
+    "open",
+    "first-attempt-recorded",
+    "under-review",
+    "independently-revised",
+    "assessment-closed",
+    "assessment-frozen",
+    "assisted",
+}
+TERMINAL_JUDGMENT_STATUSES = {"assessment-closed", "assessment-frozen", "assisted"}
+SESSION_STATUSES = {"boundary-pending", "active", "assessment", "completed"}
+OUTCOMES = {"independent-success", "assisted-success", "needs-revisit", "inconclusive"}
+NEXT_ACTIONS = {
+    "revisit-prerequisite",
+    "retry-similar",
+    "transfer-context",
+    "increase-difficulty",
+    "change-competency",
+}
+RATINGS = {"demonstrated", "partial", "not-demonstrated", "inconclusive"}
+INDEPENDENCE = {"independent", "assisted", "not-observed"}
+
+
+class ValidationError(ValueError):
+    pass
+
+
+def fail(message: str) -> None:
+    raise ValidationError(message)
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        fail(f"file does not exist: {path}")
+    except json.JSONDecodeError as error:
+        fail(f"invalid JSON in {path}: {error}")
+    if not isinstance(value, dict):
+        fail(f"root must be an object: {path}")
+    return value
+
+
+def require_string(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        fail(f"{field} must be a non-empty string")
+    return value.strip()
+
+
+def require_list(value: Any, field: str) -> list[Any]:
+    if not isinstance(value, list):
+        fail(f"{field} must be an array")
+    return value
+
+
+def unique_ids(items: list[Any], field: str, pattern: re.Pattern[str] = ID) -> set[str]:
+    seen: set[str] = set()
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            fail(f"{field}[{index}] must be an object")
+        item_id = require_string(item.get("id"), f"{field}[{index}].id")
+        if not pattern.fullmatch(item_id):
+            fail(f"{field}[{index}].id has invalid format: {item_id}")
+        if item_id in seen:
+            fail(f"duplicate id in {field}: {item_id}")
+        seen.add(item_id)
+    return seen
+
+
+def checksum(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def validate_case(case: dict[str, Any]) -> None:
+    if case.get("schema_version") != "learning-case/v1":
+        fail("case.schema_version must equal learning-case/v1")
+    require_string(case.get("case_id"), "case.case_id")
+    require_string(case.get("title"), "case.title")
+    require_string(case.get("domain"), "case.domain")
+    competency = case.get("active_competency")
+    if not isinstance(competency, dict):
+        fail("case.active_competency must be an object")
+    require_string(competency.get("id"), "case.active_competency.id")
+    require_string(competency.get("name"), "case.active_competency.name")
+    brief = case.get("public_brief")
+    if not isinstance(brief, dict):
+        fail("case.public_brief must be an object")
+    require_string(brief.get("business_goal"), "case.public_brief.business_goal")
+    require_string(brief.get("initial_question"), "case.public_brief.initial_question")
+
+    judgment_ids = unique_ids(require_list(case.get("protected_judgments"), "case.protected_judgments"), "case.protected_judgments")
+    if not judgment_ids:
+        fail("case.protected_judgments must not be empty")
+
+    facts = require_list(case.get("facts"), "case.facts")
+    unique_ids(facts, "case.facts")
+    for index, fact in enumerate(facts):
+        visibility = fact.get("visibility")
+        if visibility not in {"public", "discoverable"}:
+            fail(f"case.facts[{index}].visibility must be public or discoverable")
+        require_string(fact.get("statement"), f"case.facts[{index}].statement")
+        paths = require_list(fact.get("discovery_paths"), f"case.facts[{index}].discovery_paths")
+        if visibility == "discoverable" and not paths:
+            fail(f"case.facts[{index}] discoverable fact requires a discovery path")
+
+    events = require_list(case.get("future_events"), "case.future_events")
+    unique_ids(events, "case.future_events")
+    for index, event in enumerate(events):
+        require_string(event.get("trigger"), f"case.future_events[{index}].trigger")
+        require_string(event.get("statement"), f"case.future_events[{index}].statement")
+
+    rubric = require_list(case.get("rubric"), "case.rubric")
+    unique_ids(rubric, "case.rubric")
+    if not rubric:
+        fail("case.rubric must not be empty")
+    for index, dimension in enumerate(rubric):
+        required = set(require_list(dimension.get("required_judgment_ids"), f"case.rubric[{index}].required_judgment_ids"))
+        unknown = required - judgment_ids
+        if unknown:
+            fail(f"case.rubric[{index}] references unknown judgments: {sorted(unknown)}")
+        if not require_list(dimension.get("observable_signals"), f"case.rubric[{index}].observable_signals"):
+            fail(f"case.rubric[{index}].observable_signals must not be empty")
+
+
+def validate_profile(profile: dict[str, Any]) -> None:
+    if profile.get("schema_version") != "learning-profile/v1":
+        fail("profile.schema_version must equal learning-profile/v1")
+    goals = require_list(profile.get("goals"), "profile.goals")
+    if not goals:
+        fail("profile.goals must not be empty")
+    unique_ids(goals, "profile.goals", re.compile(r"^G-\d{3}$"))
+    for index, goal in enumerate(goals):
+        require_string(goal.get("statement"), f"profile.goals[{index}].statement")
+        if goal.get("status") not in {"active", "paused", "completed"}:
+            fail(f"profile.goals[{index}].status is invalid")
+    require_list(profile.get("competencies"), "profile.competencies")
+    next_action = profile.get("next_action")
+    if next_action is not None:
+        if not isinstance(next_action, dict):
+            fail("profile.next_action must be null or an object")
+        if next_action.get("type") not in NEXT_ACTIONS:
+            fail("profile.next_action.type is invalid")
+        require_string(next_action.get("reason"), "profile.next_action.reason")
+
+
+def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: Path, profile: dict[str, Any] | None) -> None:
+    if session.get("schema_version") != "learning-session/v1":
+        fail("session.schema_version must equal learning-session/v1")
+    session_id = require_string(session.get("session_id"), "session.session_id")
+    if not SESSION_ID.fullmatch(session_id):
+        fail("session.session_id must be kebab-case")
+    if session.get("case_id") != case.get("case_id"):
+        fail("session.case_id does not match case.case_id")
+    if session.get("case_checksum") != checksum(case_path):
+        fail("session.case_checksum does not match the current case; case integrity is broken")
+    if session.get("status") not in SESSION_STATUSES:
+        fail("session.status is invalid")
+
+    boundary = session.get("boundary")
+    if not isinstance(boundary, dict) or not isinstance(boundary.get("accepted"), bool):
+        fail("session.boundary.accepted must be boolean")
+    if boundary["accepted"] and not boundary.get("accepted_at"):
+        fail("accepted boundary requires boundary.accepted_at")
+
+    case_judgments = {item["id"] for item in case["protected_judgments"]}
+    judgments = require_list(session.get("protected_judgments"), "session.protected_judgments")
+    session_judgments = unique_ids(judgments, "session.protected_judgments")
+    if session_judgments != case_judgments:
+        fail("session protected judgments must exactly match the case")
+
+    material_judgments: set[str] = set()
+    assistance_ids: set[str] = set()
+    for index, item in enumerate(require_list(session.get("assistance"), "session.assistance")):
+        if not isinstance(item, dict):
+            fail(f"session.assistance[{index}] must be an object")
+        assistance_id = require_string(item.get("id"), f"session.assistance[{index}].id")
+        if assistance_id in assistance_ids:
+            fail(f"duplicate assistance id: {assistance_id}")
+        assistance_ids.add(assistance_id)
+        judgment_id = item.get("judgment_id")
+        if judgment_id not in case_judgments:
+            fail(f"session.assistance[{index}] references unknown judgment")
+        if item.get("level") not in {1, 2, 3, 4, 5, 6}:
+            fail(f"session.assistance[{index}].level must be 1..6")
+        if not isinstance(item.get("material"), bool) or not isinstance(item.get("before_first_attempt"), bool):
+            fail(f"session.assistance[{index}] material flags must be boolean")
+        if item["level"] >= 4 and not item["material"]:
+            fail(f"session.assistance[{index}] level 4..6 must be material")
+        if item["material"]:
+            material_judgments.add(judgment_id)
+
+    for index, judgment in enumerate(judgments):
+        judgment_id = judgment["id"]
+        status = judgment.get("status")
+        if status not in JUDGMENT_STATUSES:
+            fail(f"session.protected_judgments[{index}].status is invalid")
+        first_attempt = judgment.get("first_attempt")
+        revisions = require_list(judgment.get("revisions"), f"session.protected_judgments[{index}].revisions")
+        if status == "open" and (first_attempt is not None or revisions):
+            fail(f"open judgment {judgment_id} cannot contain attempts or revisions")
+        if status in {"first-attempt-recorded", "under-review", "independently-revised", "assessment-closed"}:
+            if not isinstance(first_attempt, dict):
+                fail(f"judgment {judgment_id} status {status} requires first_attempt")
+            if first_attempt.get("independent") is not True:
+                fail(f"judgment {judgment_id} first_attempt must be independent")
+        if judgment_id in material_judgments and status not in {"assisted", "assessment-frozen"}:
+            fail(f"judgment {judgment_id} received material assistance but status is {status}")
+        if status == "independently-revised" and not revisions:
+            fail(f"judgment {judgment_id} independently-revised requires a revision")
+
+    if not boundary["accepted"]:
+        if session.get("status") != "boundary-pending":
+            fail("unaccepted boundary requires boundary-pending session status")
+        if any(item.get("status") != "open" for item in judgments):
+            fail("judgments cannot advance before boundary acceptance")
+
+    fact_ids = {item["id"] for item in case["facts"]}
+    discovered = require_list(session.get("discovered_fact_ids"), "session.discovered_fact_ids")
+    if len(discovered) != len(set(discovered)) or set(discovered) - fact_ids:
+        fail("session.discovered_fact_ids contains duplicate or unknown facts")
+    event_ids = {item["id"] for item in case["future_events"]}
+    released = require_list(session.get("released_event_ids"), "session.released_event_ids")
+    if len(released) != len(set(released)) or set(released) - event_ids:
+        fail("session.released_event_ids contains duplicate or unknown events")
+    require_list(session.get("system_evidence"), "session.system_evidence")
+    require_list(session.get("history"), "session.history")
+
+    assessment = session.get("assessment")
+    if not isinstance(assessment, dict):
+        fail("session.assessment must be an object")
+    outcome = assessment.get("outcome")
+    dimensions = require_list(assessment.get("dimensions"), "session.assessment.dimensions")
+    rubric_ids = {item["id"] for item in case["rubric"]}
+    if dimensions:
+        dimension_ids = unique_ids(dimensions, "session.assessment.dimensions")
+        if dimension_ids - rubric_ids:
+            fail("session assessment references unknown rubric dimensions")
+        for index, dimension in enumerate(dimensions):
+            if dimension.get("rating") not in RATINGS:
+                fail(f"session.assessment.dimensions[{index}].rating is invalid")
+            if dimension.get("independence") not in INDEPENDENCE:
+                fail(f"session.assessment.dimensions[{index}].independence is invalid")
+            require_string(dimension.get("limitation"), f"session.assessment.dimensions[{index}].limitation")
+
+    if outcome is not None and outcome not in OUTCOMES:
+        fail("session.assessment.outcome is invalid")
+    if outcome == "independent-success":
+        if material_judgments:
+            fail("independent-success is impossible after material assistance")
+        if any(item.get("status") != "assessment-closed" for item in judgments):
+            fail("independent-success requires every judgment to be assessment-closed")
+        if any(item.get("independence") != "independent" or item.get("rating") != "demonstrated" for item in dimensions):
+            fail("independent-success requires demonstrated independent rubric dimensions")
+        if {item["id"] for item in dimensions} != rubric_ids:
+            fail("independent-success requires every rubric dimension")
+
+    if session.get("status") == "completed":
+        if outcome not in OUTCOMES:
+            fail("completed session requires an assessment outcome")
+        if any(item.get("status") not in TERMINAL_JUDGMENT_STATUSES for item in judgments):
+            fail("completed session requires every judgment to be terminal")
+        next_action = assessment.get("next_action")
+        if not isinstance(next_action, dict) or next_action.get("type") not in NEXT_ACTIONS:
+            fail("completed session requires a valid assessment.next_action")
+        require_string(next_action.get("reason"), "session.assessment.next_action.reason")
+
+    if profile is not None:
+        active_session = profile.get("active_session_id")
+        if session.get("status") == "completed" and active_session == session_id:
+            fail("completed session must be cleared from profile.active_session_id")
+        if session.get("status") != "completed" and active_session != session_id:
+            fail("profile.active_session_id must reference the active session")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=Path)
+    parser.add_argument("--case", type=Path)
+    parser.add_argument("--profile", type=Path)
+    args = parser.parse_args()
+
+    try:
+        value = load_json(args.path)
+        schema = value.get("schema_version")
+        if schema == "learning-case/v1":
+            validate_case(value)
+        elif schema == "learning-profile/v1":
+            validate_profile(value)
+        elif schema == "learning-session/v1":
+            if args.case is None:
+                fail("--case is required when validating a session")
+            case = load_json(args.case)
+            validate_case(case)
+            profile = load_json(args.profile) if args.profile else None
+            if profile is not None:
+                validate_profile(profile)
+            validate_session(value, case, args.case, profile)
+        else:
+            fail(f"unsupported schema_version: {schema}")
+    except ValidationError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+
+    print(f"OK: {args.path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

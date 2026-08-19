@@ -44,10 +44,17 @@
     "evaluation": [
       "workflow-evaluation",
       "record-workflow-friction"
+    ],
+    "learning": [
+      "learning-workflow",
+      "learning-case",
+      "learning-evidence",
+      "learning-review"
     ]
   },
   "kits": {
     "coding-standard": ["core"],
-    "workflow-eval": ["evaluation"]
+    "workflow-eval": ["evaluation"],
+    "lerning-workflow": ["learning"]
   }
 }

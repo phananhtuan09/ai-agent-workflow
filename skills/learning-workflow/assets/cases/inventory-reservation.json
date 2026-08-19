@@ -1,0 +1,168 @@
+{
+  "schema_version": "learning-case/v1",
+  "case_id": "inventory-reservation",
+  "title": "Giữ hàng trong checkout có thanh toán bất đồng bộ",
+  "domain": "commerce",
+  "difficulty": "intermediate",
+  "active_competency": {
+    "id": "COMP-PARTIAL-FAILURE-001",
+    "name": "Thiết kế bằng invariant, failure mode và evidence",
+    "description": "Xác lập invariant nghiệp vụ, reasoning về partial failure và chọn evidence phù hợp trước khi cam kết architecture."
+  },
+  "public_brief": {
+    "business_goal": "Một hệ thống bán sản phẩm số lượng hữu hạn cần cho phép khách checkout mà không bán vượt tồn kho và không thu tiền cho đơn hàng không thể hoàn tất.",
+    "current_context": [
+      "Khách có thể bắt đầu thanh toán từ web hoặc mobile.",
+      "Cổng thanh toán xử lý bất đồng bộ và có thể phản hồi sau khi request ban đầu kết thúc.",
+      "Đội vận hành cần xử lý được các trường hợp thanh toán và tồn kho không đồng nhất."
+    ],
+    "initial_question": "Hãy khám phá bài toán, xác định invariant và failure mode quan trọng, sau đó đề xuất hướng thiết kế cùng evidence cần thu thập trước khi triển khai đầy đủ."
+  },
+  "protected_judgments": [
+    {
+      "id": "PJ-001",
+      "title": "Business invariants",
+      "prompt": "Xác định các invariant cần được bảo vệ giữa inventory, order và payment.",
+      "required_observations": [
+        "Phân biệt mục tiêu nghiệp vụ với implementation mechanism.",
+        "Nêu điều kiện hoặc thời điểm invariant phải đúng.",
+        "Nhận ra các trạng thái trung gian có thể chấp nhận hoặc cần kiểm soát."
+      ]
+    },
+    {
+      "id": "PJ-002",
+      "title": "Failure model and design decision",
+      "prompt": "Mô hình hóa failure quan trọng và chọn hướng thiết kế phù hợp với constraint đã khám phá.",
+      "required_observations": [
+        "Bao phủ retry, duplicate, timeout hoặc out-of-order behavior khi có căn cứ.",
+        "So sánh ít nhất hai hướng khi tồn tại trade-off thực sự.",
+        "Nêu assumption và điều kiện làm lựa chọn không còn đúng."
+      ]
+    },
+    {
+      "id": "PJ-003",
+      "title": "Evidence selection and interpretation",
+      "prompt": "Chọn evidence cần thu thập và diễn giải giới hạn của evidence đó.",
+      "required_observations": [
+        "Evidence nhắm vào uncertainty hoặc risk quan trọng.",
+        "Phân biệt điều được chứng minh, được gợi ý và vẫn chưa biết.",
+        "Dùng evidence để giữ, sửa hoặc bỏ decision."
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "F-001",
+      "visibility": "public",
+      "statement": "Mỗi SKU có số lượng hữu hạn và business không chấp nhận confirmed orders vượt quá lượng có thể giao.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-002",
+      "visibility": "public",
+      "statement": "Kết quả thanh toán có thể đến sau khi HTTP request checkout đã timeout.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-003",
+      "visibility": "discoverable",
+      "statement": "Inventory, order và reservation hiện nằm trong một PostgreSQL database ở một region.",
+      "discovery_paths": [
+        "Hỏi về hệ thống hiện tại, nơi lưu dữ liệu hoặc transaction boundary.",
+        "Hỏi liệu inventory và order có cùng datastore không."
+      ]
+    },
+    {
+      "id": "F-004",
+      "visibility": "discoverable",
+      "statement": "Payment provider retry callback ít nhất một lần và không bảo đảm callback đến theo thứ tự tạo giao dịch.",
+      "discovery_paths": [
+        "Hỏi về retry, duplicate hoặc ordering của payment callback.",
+        "Hỏi delivery guarantee của payment provider."
+      ]
+    },
+    {
+      "id": "F-005",
+      "visibility": "discoverable",
+      "statement": "Reservation hết hạn sau 10 phút; thời gian thanh toán p99 hiện tại là 4 phút nhưng đôi khi provider gián đoạn lâu hơn.",
+      "discovery_paths": [
+        "Hỏi về reservation timeout hoặc latency distribution.",
+        "Hỏi người dùng được giữ hàng trong bao lâu."
+      ]
+    },
+    {
+      "id": "F-006",
+      "visibility": "discoverable",
+      "statement": "Mobile client tạo duplicate checkout request trong khoảng 2% phiên khi mạng chập chờn.",
+      "discovery_paths": [
+        "Hỏi về client retry hoặc duplicate request.",
+        "Hỏi các failure đã quan sát trên mobile."
+      ]
+    },
+    {
+      "id": "F-007",
+      "visibility": "discoverable",
+      "statement": "Đội vận hành có thể hoàn tiền thủ công nhưng cần correlation id và lịch sử state transition để điều tra an toàn.",
+      "discovery_paths": [
+        "Hỏi về reconciliation, support hoặc operational recovery.",
+        "Hỏi thông tin cần thiết khi payment và order lệch nhau."
+      ]
+    }
+  ],
+  "future_events": [
+    {
+      "id": "EV-001",
+      "trigger": "Sau khi PJ-002 có first attempt và human đã dự đoán failure của expiration hoặc delayed payment.",
+      "statement": "Một callback payment-success đến ở phút thứ 12, sau khi reservation đã hết hạn và SKU cuối cùng đã được khách khác mua.",
+      "purpose": "Kiểm tra khả năng thích ứng mà không dùng hindsight để chấm first attempt."
+    },
+    {
+      "id": "EV-002",
+      "trigger": "Sau khi human chọn evidence cho PJ-003.",
+      "statement": "Load test nhỏ cho thấy transaction inventory đúng ở một process, nhưng test chưa mô phỏng callback duplicate hoặc worker crash.",
+      "purpose": "Kiểm tra việc diễn giải giới hạn system evidence."
+    }
+  ],
+  "rubric": [
+    {
+      "id": "RUB-001",
+      "name": "Invariant quality",
+      "required_judgment_ids": ["PJ-001"],
+      "observable_signals": [
+        "Invariant liên kết trạng thái inventory, order và payment.",
+        "Invariant có thời điểm áp dụng và không bị đồng nhất với một technology choice."
+      ]
+    },
+    {
+      "id": "RUB-002",
+      "name": "Failure and trade-off reasoning",
+      "required_judgment_ids": ["PJ-002"],
+      "observable_signals": [
+        "Dự đoán failure trước khi future event được tiết lộ.",
+        "Decision nêu trade-off, assumption và reversal condition."
+      ]
+    },
+    {
+      "id": "RUB-003",
+      "name": "Evidence literacy",
+      "required_judgment_ids": ["PJ-003"],
+      "observable_signals": [
+        "Evidence kiểm tra uncertainty có ý nghĩa.",
+        "Diễn giải không vượt quá method và môi trường đã quan sát."
+      ]
+    },
+    {
+      "id": "RUB-004",
+      "name": "Revision under consequence",
+      "required_judgment_ids": ["PJ-002", "PJ-003"],
+      "observable_signals": [
+        "Human giữ hoặc sửa decision bằng reasoning sau counterexample hoặc evidence.",
+        "Revision phân biệt design failure, implementation failure và evidence gap."
+      ]
+    }
+  ],
+  "transfer": {
+    "prompt": "Áp dụng các nguyên lý vừa chứng minh sang hệ thống đặt lịch chỉ có một slot nhưng payment được xử lý bởi provider khác.",
+    "same_principle": "Bảo vệ resource hữu hạn qua partial failure mà không sao chép nguyên xi solution của case commerce."
+  }
+}
