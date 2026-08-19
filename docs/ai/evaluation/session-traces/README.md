@@ -25,14 +25,14 @@ Common local transcript sources:
 Use the extractor shipped inside the `workflow-evaluation` skill:
 
 ```bash
-python3 skills/workflow-evaluation/extract_session_trace.py --runtime claude --latest
-python3 skills/workflow-evaluation/extract_session_trace.py --runtime codex --latest
+python3 .claude/skills/workflow-evaluation/extract_session_trace.py --runtime claude --latest
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime codex --latest
 ```
 
 Or provide a direct transcript path:
 
 ```bash
-python3 skills/workflow-evaluation/extract_session_trace.py \
+python3 .agents/skills/workflow-evaluation/extract_session_trace.py \
   --input ~/.claude/projects/<project>/<session>.jsonl \
   --runtime claude
 ```

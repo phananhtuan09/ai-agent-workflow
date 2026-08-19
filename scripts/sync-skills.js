@@ -2,11 +2,12 @@
 
 const fs = require("fs");
 const path = require("path");
+const { adaptSkillContent } = require("../lib/skills");
 
 const root = path.resolve(__dirname, "..");
 const source = path.join(root, "skills");
 
-function copyTree(sourcePath, destinationPath, runtime) {
+function copyTree(sourcePath, destinationPath, runtime, skillId) {
   fs.mkdirSync(destinationPath, { recursive: true });
   fs.readdirSync(sourcePath, { withFileTypes: true }).forEach((entry) => {
     if (entry.name === "manifest.json") return;
@@ -14,20 +15,13 @@ function copyTree(sourcePath, destinationPath, runtime) {
     const from = path.join(sourcePath, entry.name);
     const to = path.join(destinationPath, entry.name);
     if (entry.isDirectory()) {
-      copyTree(from, to, runtime);
+      copyTree(from, to, runtime, skillId || entry.name);
       return;
     }
 
     let content = fs.readFileSync(from);
     if (entry.name.endsWith(".md") || entry.name.endsWith(".py")) {
-      content = Buffer.from(
-        content
-          .toString("utf8")
-          .split(".agents/")
-          .join(runtime === "claude" ? ".claude/" : ".agents/")
-          .split("runtime: codex")
-          .join(`runtime: ${runtime}`)
-      );
+      content = Buffer.from(adaptSkillContent(content.toString("utf8"), runtime, skillId));
     }
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.writeFileSync(to, content);

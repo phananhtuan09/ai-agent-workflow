@@ -26,6 +26,8 @@ Use this order when the task is about building or changing the coding workflow s
 4. `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 5. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
 
+When the task changes, customizes, or reconciles a skill, read `docs/ai/project/SKILL_MAINTENANCE.md` before editing any runtime skill folder.
+
 If documents conflict, follow the more specific file for the current workflow task.
 
 `WORKFLOW_CODING_CONSTITUTION.md` is the exception for coding workflows.

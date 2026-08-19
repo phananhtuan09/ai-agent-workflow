@@ -2,11 +2,30 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 const { SOURCE_ROOT } = require("../lib/config");
 const { resolveSkills } = require("../lib/skills");
 const { getCliSelectedSkills } = require("../lib/selection");
 const { getCliSelectedBundles } = require("../lib/selection");
+
+function runCli(args) {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-test-"));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-home-"));
+  const result = spawnSync(process.execPath, [path.join(SOURCE_ROOT, "cli.js"), ...args], {
+    cwd: workspace,
+    env: { ...process.env, HOME: home },
+    encoding: "utf8",
+  });
+  return {
+    ...result,
+    workspace,
+    cleanup() {
+      fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    },
+  };
+}
 
 function test(name, fn) {
   try {
@@ -33,6 +52,7 @@ test("coding-standard resolves only the core bundle", () => {
     "verify-feature",
     "verify-runtime",
     "execute-task",
+    "review-pr",
   ]);
 });
 
@@ -88,6 +108,48 @@ test("canonical skills have required entrypoints", () => {
   ids.filter((id) => !manifest.bundles[id]).forEach((id) => {
     assert.ok(fs.existsSync(path.join(SOURCE_ROOT, "skills", id, "SKILL.md")), id);
   });
+});
+
+test("coding-standard installs runtime-adapted skill paths", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const skill = fs.readFileSync(
+      path.join(result.workspace, ".agents/skills/design-spec/SKILL.md"),
+      "utf8"
+    );
+    assert.ok(skill.includes(".agents/skills/design-spec/scripts/validate_design_plan.py"));
+    assert.ok(
+      fs.existsSync(
+        path.join(result.workspace, ".agents/skills/design-spec/scripts/validate_design_plan.py")
+      )
+    );
+    assert.ok(fs.existsSync(path.join(result.workspace, ".agents/skills/review-pr/SKILL.md")));
+    assert.ok(
+      fs
+        .readFileSync(path.join(result.workspace, ".agents/roles/review-pr.md"), "utf8")
+        .includes(".agents/skills/review-pr/SKILL.md")
+    );
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("workflow-eval installs all declared files", () => {
+  const result = runCli(["--kit", "workflow-eval", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(
+      fs.existsSync(path.join(result.workspace, "docs/ai/evaluation/reports/README.md"))
+    );
+    const skill = fs.readFileSync(
+      path.join(result.workspace, ".agents/skills/workflow-evaluation/SKILL.md"),
+      "utf8"
+    );
+    assert.ok(skill.includes(".agents/skills/workflow-evaluation/extract_session_trace.py"));
+  } finally {
+    result.cleanup();
+  }
 });
 
 test("temporary package workspace can be created", () => {

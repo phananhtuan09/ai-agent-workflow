@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { adaptSkillContent } = require("../lib/skills");
 
 const root = path.resolve(__dirname, "..");
 const source = path.join(root, "skills");
@@ -19,28 +20,23 @@ function listFiles(dir, prefix = "") {
   });
 }
 
-function normalize(file, runtime) {
-  return fs
-    .readFileSync(file, "utf8")
-    .split(".agents/")
-    .join(".runtime/")
-    .split(".claude/")
-    .join(".runtime/")
-    .replace(/runtime: (codex|claude)/g, "runtime: runtime");
-}
-
 const failures = [];
+let checkedAdapters = 0;
 for (const [runtime, destination] of runtimes) {
   if (!fs.existsSync(destination)) {
-    failures.push(`${runtime}: adapter directory is missing; run npm run sync-skills`);
     continue;
   }
+  checkedAdapters += 1;
   for (const relative of listFiles(source)) {
     const expected = path.join(destination, relative);
     if (!fs.existsSync(expected)) {
       failures.push(`${runtime}: missing ${relative}`);
     } else if (
-      normalize(path.join(source, relative), "codex") !== normalize(expected, runtime)
+      adaptSkillContent(
+        fs.readFileSync(path.join(source, relative), "utf8"),
+        runtime,
+        relative.split(path.sep)[0]
+      ) !== fs.readFileSync(expected, "utf8")
     ) {
       failures.push(`${runtime}: drift in ${relative}`);
     }
@@ -51,4 +47,8 @@ if (failures.length) {
   console.error(failures.join("\n"));
   process.exit(1);
 }
-console.log("Skill adapters match canonical skills.");
+console.log(
+  checkedAdapters
+    ? "Generated skill adapters match canonical skills."
+    : "Canonical skills are valid; no generated adapters are present."
+);

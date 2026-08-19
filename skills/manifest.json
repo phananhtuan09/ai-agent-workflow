@@ -16,7 +16,8 @@
       "manual-checklist",
       "verify-feature",
       "verify-runtime",
-      "execute-task"
+      "execute-task",
+      "review-pr"
     ],
     "common-review": [
       "quality-code-check",

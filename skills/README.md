@@ -1,6 +1,9 @@
 # Canonical Skills
 
-This directory is the single source of truth for project skills.
+This directory contains the upstream source of truth for the workflow package skills.
 
-Runtime folders such as `.agents/skills/` and `.claude/skills/` are generated adapters.
-Run `npm run sync-skills` after changing a canonical skill.
+After installation, a project may customize its skills.
+
+For customized projects, read `docs/ai/project/SKILL_MAINTENANCE.md` before changing `.claude/skills/` or `.agents/skills/`.
+
+Do not use an automated sync as a conflict-resolution mechanism.
