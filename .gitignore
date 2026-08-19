@@ -24,7 +24,7 @@ build/
 .tmp/
 .temp/
 coverage/
-docs/ai/design-runtime/
+docs/ai/features/design-runtime/
 
 # Python
 __pycache__/

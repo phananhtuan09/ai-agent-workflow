@@ -1,6 +1,6 @@
 # Đăng ký luật nghiệp vụ (BR)
 
-Đọc file này khi thao tác trên `docs/ai/domain/`.
+Đọc file này khi thao tác trên `docs/ai/knowledge/domain/`.
 Không đọc cùng lúc với `registering-arch.md`.
 
 ## Luật viết
@@ -78,7 +78,7 @@ Không có trạng thái `implementing`.
 
 ## Cấp id
 
-Đọc bộ đếm ở dòng đầu `docs/ai/domain/README.md`, cấp id đó, tăng bộ đếm ngay.
+Đọc bộ đếm ở dòng đầu `docs/ai/knowledge/domain/README.md`, cấp id đó, tăng bộ đếm ngay.
 
 Id không bao giờ được tái sử dụng, kể cả khi luật bị xoá lúc còn `draft`.
 

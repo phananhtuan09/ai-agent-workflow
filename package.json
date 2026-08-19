@@ -26,6 +26,9 @@
     "node": ">=14"
   },
   "scripts": {
+    "test": "node test/run.js",
+    "sync-skills": "node scripts/sync-skills.js",
+    "check-skills": "node scripts/check-skills.js",
     "release": "node scripts/release.js",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
@@ -38,6 +41,7 @@
     "install.ps1",
     "docs/",
     ".agents/",
+    "skills/",
     ".codex/",
     ".claude/",
     ".pi/",

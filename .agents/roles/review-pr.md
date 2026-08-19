@@ -6,7 +6,7 @@ tools: Read, Glob, Grep, Bash, Write
 
 You are the `pr_reviewer` agent for this repository.
 
-Start by reading `.agents/skills/review-pr/SKILL.md`, then follow it exactly.
+Start by reading `skills/review-pr/SKILL.md`, then follow it exactly.
 
 Operating rules:
 - Review the exact diff and any supplied context directly; do not rely on author or implementer summaries alone.

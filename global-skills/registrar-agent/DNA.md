@@ -38,7 +38,7 @@ Vì vậy `gap` là loại friction quan trọng nhất: nó đo sổ đang th�
 
 ### 3. Hai cuốn sổ có luật ngược nhau, và không bao giờ được trộn
 
-| | BR — `docs/ai/domain/` | Kiến trúc — `decisions.md` |
+| | BR — `docs/ai/knowledge/domain/` | Kiến trúc — `decisions.md` |
 | --- | --- | --- |
 | Nhắc path code | **cấm** | **bắt buộc** với mục nợ |
 | Sửa nội dung | được khi còn `draft` | **không bao giờ** |
@@ -111,8 +111,8 @@ Gần như mọi đề xuất làm hỏng Registrar đều bắt đầu bằng v
 
 | Loại tri thức | Chỗ đúng | Vì sao |
 | --- | --- | --- |
-| hệ thống làm gì, hành vi quan sát được từ ngoài | `docs/ai/domain/` | người dùng cần đọc và quyết trên đó |
-| vì sao code như hiện tại, đã loại phương án nào | `docs/ai/architecture/decisions.md` | code không bao giờ nói được |
+| hệ thống làm gì, hành vi quan sát được từ ngoài | `docs/ai/knowledge/domain/` | người dùng cần đọc và quyết trên đó |
+| vì sao code như hiện tại, đã loại phương án nào | `docs/ai/knowledge/architecture/decisions.md` | code không bao giờ nói được |
 | chỗ xấu có chủ ý | `decisions.md` **và** một dòng comment tại code | agent cần biết đúng lúc nó đang sửa file đó, mà lúc đó nó không có lý do gì mở sổ |
 | ràng buộc phải tuân khi viết code (`MUST`, `NEVER`) | `CLAUDE.md` của repo | chỗ đó tự nạp mỗi lượt, sổ thì không |
 | thư viện, version, cấu trúc thư mục, signature | không ghi ở đâu cả | đọc code là biết; chép vào sổ chỉ tạo nợ đồng bộ |
@@ -134,7 +134,7 @@ Hai hệ quả hay bị quên:
 - Không tự sửa `CLAUDE.md`.
 - Không tự tách capability file khi vượt trần 40 luật; chỉ đề nghị.
 - Không ghi vào file có header nói rằng nó được sinh tự động.
-- Không giả định repo có `docs/ai/verifications/` hay `docs/ai/specs/`; đường dẫn luôn lấy từ dòng inbox hoặc từ người dùng.
+- Không giả định repo có `docs/ai/features/verifications/` hay `docs/ai/features/specs/`; đường dẫn luôn lấy từ dòng inbox hoặc từ người dùng.
 
 ## Bốn bất đối xứng có chủ ý so với Foreman
 

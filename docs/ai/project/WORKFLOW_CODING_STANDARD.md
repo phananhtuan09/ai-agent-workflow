@@ -116,8 +116,8 @@ Purpose:
 
 Rules:
 
-- write `docs/ai/designs/{feature}.html`
-- write `docs/ai/design-decisions/{feature}.json` only after explicit approval
+- write `docs/ai/features/designs/{feature}.html`
+- write `docs/ai/features/design-decisions/{feature}.json` only after explicit approval
 - keep the HTML local-only and self-contained
 - use stable `D-xxx` identifiers for required decisions
 - show the recommendation and concrete tradeoffs before alternatives
@@ -150,7 +150,7 @@ Rules:
 - keep only code symbols, file paths, API names, schema names, JSON keys, decision IDs, AC IDs, literal enum values, and command names in English
 - use tier to control analysis depth, not document length or acceptance-criteria count
 - prefer information density and traceability over repetition
-- write to `docs/ai/specs/{feature}.md`
+- write to `docs/ai/features/specs/{feature}.md`
 - split only by independently valuable outcome or dependency boundary
 - do not leave blocking product questions in a spec that is ready for execution
 
@@ -231,7 +231,7 @@ Execution expectations:
 - follow project code conventions and structure rules
 - validate changed behavior where practical
 - record important implementation decisions in the execution summary without modifying the approved spec
-- write a concise execution summary to `docs/ai/summaries/{feature}.md`
+- write a concise execution summary to `docs/ai/features/summaries/{feature}.md`
 
 Required summary sections:
 - `## Done`
@@ -259,7 +259,7 @@ Rules:
 - record important architecture, pattern, and constraint decisions discovered during implementation
 - do not silently rewrite business intent just because the code drifted
 - if business rules, acceptance criteria, scope, or visible behavior need to change, propose a spec delta and require human confirmation before applying it
-- write the updated spec back to the same path in `docs/ai/specs/`
+- write the updated spec back to the same path in `docs/ai/features/specs/`
 - never auto-chain this skill from `/execute-spec`, orchestrator, or verification
 
 Technical sections the invoked skill may update without extra confirmation:
@@ -294,7 +294,7 @@ Purpose:
 - write detailed evidence to the verification artifact and concise status to the checklist
 
 Rules:
-- read the approved spec, execution summary when present, and `docs/ai/checklists/{feature}.md`
+- read the approved spec, execution summary when present, and `docs/ai/features/checklists/{feature}.md`
 - treat the approved spec as the only source of truth for expected behavior
 - preserve checklist testcase definitions, expected results, IDs, order, and spec mappings
 - map checklist testcases to implementation surfaces before judging coverage
@@ -308,7 +308,7 @@ Rules:
 - separate executed checks, testcase evidence, failures, coverage gaps, and runtime follow-ups
 - do not modify code, write new tests, or sync the spec during verification
 - flag unresolved questions, blocked checks, or partial coverage explicitly
-- write detailed evidence to `docs/ai/verifications/{feature}.md`
+- write detailed evidence to `docs/ai/features/verifications/{feature}.md`
 - update only checklist icons, short evidence notes, human task markers, summary percentages, evidence path, and drift findings
 - update the checklist before every outcome, including fail or blocked
 - do not include runtime-only evidence in this phase; leave runtime behavior to `/verify-runtime`
@@ -381,7 +381,7 @@ Rules:
 - verify only observable runtime behavior; do not infer hidden system behavior without evidence
 - record detailed evidence and a status for each testcase checked at runtime
 - do not modify code, sync the spec, or repair failures during runtime verification
-- append or update runtime verification sections in `docs/ai/verifications/{feature}.md`
+- append or update runtime verification sections in `docs/ai/features/verifications/{feature}.md`
 - update checklist icons, short evidence notes, human task markers, summary percentages, evidence path, and drift findings
 - update the checklist before every outcome, including fail or blocked
 - do not rewrite implementation-level sections produced by `/verify-feature` except to add a narrow cross-reference when runtime evidence changes the overall conclusion
@@ -485,7 +485,7 @@ Checklist update ownership:
 - green testcase items may omit an unchecked human checkbox
 - yellow and red testcase items retain a human task checkbox
 - verifier steps never auto-check or erase an existing human checkmark
-- detailed commands, logs, screenshots, assertions, and reasoning belong in `docs/ai/verifications/{feature}.md`
+- detailed commands, logs, screenshots, assertions, and reasoning belong in `docs/ai/features/verifications/{feature}.md`
 
 Expected output sections:
 - `## Tóm tắt xác minh` with green, yellow, and red testcase counts and percentages
@@ -523,12 +523,12 @@ Rules:
 
 | Artifact path | Produced by |
 |---|---|
-| `docs/ai/designs/{feature}.html` | `/design-spec` as the interactive human review surface |
-| `docs/ai/design-decisions/{feature}.json` | `/design-spec` after explicit approval, as provenance for spec creation and review |
-| `docs/ai/specs/{feature}.md` | `/spec`; optionally updated by human-triggered `/sync-spec` |
-| `docs/ai/summaries/{feature}.md` | `/execute-spec` as an execution handoff summary, not final proof |
-| `docs/ai/verifications/{feature}.md` | `/verify-feature` and `/verify-runtime` as the detailed evidence log |
-| `docs/ai/checklists/{feature}.md` | `/manual-checklist` from the approved spec, then updated by both verification steps |
+| `docs/ai/features/designs/{feature}.html` | `/design-spec` as the interactive human review surface |
+| `docs/ai/features/design-decisions/{feature}.json` | `/design-spec` after explicit approval, as provenance for spec creation and review |
+| `docs/ai/features/specs/{feature}.md` | `/spec`; optionally updated by human-triggered `/sync-spec` |
+| `docs/ai/features/summaries/{feature}.md` | `/execute-spec` as an execution handoff summary, not final proof |
+| `docs/ai/features/verifications/{feature}.md` | `/verify-feature` and `/verify-runtime` as the detailed evidence log |
+| `docs/ai/features/checklists/{feature}.md` | `/manual-checklist` from the approved spec, then updated by both verification steps |
 | `docs/ai/reviews/{feature}.md` | `/review-pr` as an independent PR readiness review |
 
 ## Usage Notes

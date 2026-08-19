@@ -254,7 +254,7 @@ export default function subagentExtension(pi: ExtensionAPI) {
 		description: "Review a spec file with an isolated delegated Pi run",
 		handler: async (args, ctx) => {
 			if (!args.trim()) {
-				ctx.ui.notify("Usage: /review-spec @docs/ai/specs/<file>.md", "warning");
+				ctx.ui.notify("Usage: /review-spec @docs/ai/features/specs/<file>.md", "warning");
 				return;
 			}
 			if (!ctx.isIdle()) {

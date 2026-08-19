@@ -40,10 +40,10 @@ Options:
 **Directories to scan:**
 
 ```
-docs/ai/planning/             # epic-*.md, feature-*.md
-docs/ai/planning/archive/     # backup files
-docs/ai/testing/              # unit-*.md, integration-*.md, web-*.md
-docs/ai/requirements/archive/ # backup files (requirements main files are never deleted)
+docs/ai/research/plans/             # epic-*.md, feature-*.md
+docs/ai/research/plans/archive/     # backup files
+docs/ai/features/checklists/              # unit-*.md, integration-*.md, web-*.md
+docs/ai/features/designs/archive/ # backup files (requirements main files are never deleted)
 ```
 
 **Based on CLEANUP_SCOPE:**
@@ -54,19 +54,19 @@ docs/ai/requirements/archive/ # backup files (requirements main files are never 
 **Command to find old files (older than RETENTION_DAYS):**
 
 ```bash
-find docs/ai/planning docs/ai/testing docs/ai/requirements/archive -name "*.md" -type f -mtime +{RETENTION_DAYS} 2>/dev/null
+find docs/ai/research/plans docs/ai/features/checklists docs/ai/features/designs/archive -name "*.md" -type f -mtime +{RETENTION_DAYS} 2>/dev/null
 ```
 
 **For archive only:**
 
 ```bash
-find docs/ai/planning/archive docs/ai/requirements/archive -name "*.md" -type f -mtime +{RETENTION_DAYS} 2>/dev/null
+find docs/ai/research/plans/archive docs/ai/features/designs/archive -name "*.md" -type f -mtime +{RETENTION_DAYS} 2>/dev/null
 ```
 
 **For main only (exclude archive):**
 
 ```bash
-find docs/ai/planning docs/ai/testing -name "*.md" -type f -mtime +{RETENTION_DAYS} -not -path "*/archive/*" 2>/dev/null
+find docs/ai/research/plans docs/ai/features/checklists -name "*.md" -type f -mtime +{RETENTION_DAYS} -not -path "*/archive/*" 2>/dev/null
 ```
 
 ---
@@ -85,10 +85,10 @@ find docs/ai/planning docs/ai/testing -name "*.md" -type f -mtime +{RETENTION_DA
 
 | File | Last Modified | Age |
 |------|---------------|-----|
-| docs/ai/planning/feature-login.md | 2025-01-10 | 15 days |
-| docs/ai/planning/archive/feature-auth_20250105.md | 2025-01-05 | 20 days |
-| docs/ai/testing/unit-auth.md | 2025-01-12 | 13 days |
-| docs/ai/testing/web-login.md | 2025-01-14 | 11 days |
+| docs/ai/research/plans/feature-login.md | 2025-01-10 | 15 days |
+| docs/ai/research/plans/archive/feature-auth_20250105.md | 2025-01-05 | 20 days |
+| docs/ai/features/checklists/unit-auth.md | 2025-01-12 | 13 days |
+| docs/ai/features/checklists/web-login.md | 2025-01-14 | 11 days |
 
 **Total: X files**
 ```
@@ -147,9 +147,9 @@ rm "{file_path}"
 ✗ Failed: {failed_count} files
 
 ### Deleted Files
-- docs/ai/planning/feature-login.md
-- docs/ai/planning/archive/feature-auth_20250105.md
-- docs/ai/testing/unit-auth.md
+- docs/ai/research/plans/feature-login.md
+- docs/ai/research/plans/archive/feature-auth_20250105.md
+- docs/ai/features/checklists/unit-auth.md
 
 {If any failed:}
 ### Failed to Delete
@@ -169,10 +169,10 @@ rm "{file_path}"
 
 | Directory | Patterns |
 |-----------|----------|
-| `docs/ai/planning/` | `epic-*.md`, `feature-*.md` |
-| `docs/ai/planning/archive/` | `epic-*_*.md`, `feature-*_*.md` |
-| `docs/ai/testing/` | `unit-*.md`, `integration-*.md`, `web-*.md` |
-| `docs/ai/requirements/archive/` | `req-*_*.md` |
+| `docs/ai/research/plans/` | `epic-*.md`, `feature-*.md` |
+| `docs/ai/research/plans/archive/` | `epic-*_*.md`, `feature-*_*.md` |
+| `docs/ai/features/checklists/` | `unit-*.md`, `integration-*.md`, `web-*.md` |
+| `docs/ai/features/designs/archive/` | `req-*_*.md` |
 
 ### Excluded from Cleanup
 

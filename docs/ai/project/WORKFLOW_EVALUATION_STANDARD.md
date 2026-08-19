@@ -195,22 +195,22 @@ Mot session co the xac nhan `observed once`. Pattern lap lai can co numerator va
 Uu tien normalized trace artifacts thay vi raw transcript:
 
 ```text
-docs/ai/session-traces/{runtime}/{session-id}/session-trace.json
-docs/ai/session-traces/{runtime}/{session-id}/chat-history.ndjson
-docs/ai/session-traces/{runtime}/{session-id}/command-transcript.ndjson
-docs/ai/session-traces/{runtime}/{session-id}/tool-call-trace.ndjson
-docs/ai/session-traces/{runtime}/{session-id}/artifact-trail.ndjson
-docs/ai/session-traces/{runtime}/{session-id}/handoff-notes.json
-docs/ai/session-traces/{runtime}/{session-id}/decision-log.json
-docs/ai/session-traces/{runtime}/{session-id}/failure-retry-log.json
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/session-trace.json
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/chat-history.ndjson
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/command-transcript.ndjson
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/tool-call-trace.ndjson
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/artifact-trail.ndjson
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/handoff-notes.json
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/decision-log.json
+docs/ai/evaluation/session-traces/{runtime}/{session-id}/failure-retry-log.json
 ```
 
 Commands:
 
 ```bash
-python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime codex --latest --project <repo-cwd>
-python3 .claude/skills/workflow-evaluation/extract_session_trace.py --runtime claude --latest --project <repo-cwd>
-python3 .agents/skills/workflow-evaluation/extract_session_trace.py --runtime opencode --latest --project <repo-cwd>
+python3 skills/workflow-evaluation/extract_session_trace.py --runtime codex --latest --project <repo-cwd>
+python3 skills/workflow-evaluation/extract_session_trace.py --runtime claude --latest --project <repo-cwd>
+python3 skills/workflow-evaluation/extract_session_trace.py --runtime opencode --latest --project <repo-cwd>
 ```
 
 Opencode history thuong nam tai `~/.local/share/opencode/opencode.db`. Dung `opencode session list` va `opencode db path` de xac dinh session.
@@ -436,8 +436,8 @@ Observation do skill `record-workflow-friction` tao ra chi co evidence status `a
 
 Uu tien scan:
 
-- `docs/ai/agent-observations/*.md`
-- `docs/ai/workflow-observations/*.md` de backward compatibility
+- `docs/ai/evaluation/observations/*.md`
+- `docs/ai/evaluation/observations/*.md`
 
 Observation co the thuoc:
 
@@ -456,7 +456,7 @@ Khong loc observation chi vi `workflow_name` khong khop neu session/task subject
 Ghi report vao:
 
 ```text
-docs/ai/workflow-evals/{name}.html
+docs/ai/evaluation/reports/{name}.html
 ```
 
 Dung `docs/ai/project/templates/workflow-evaluation-report.html`.

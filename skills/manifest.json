@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "source": "skills",
+  "runtimes": {
+    "codex": ".agents/skills",
+    "antigravity": ".agents/skills",
+    "claude": ".claude/skills"
+  },
+  "bundles": {
+    "core": [
+      "orchestrator",
+      "idea-review",
+      "design-spec",
+      "create-spec",
+      "execute-spec",
+      "manual-checklist",
+      "verify-feature",
+      "verify-runtime",
+      "execute-task"
+    ],
+    "common-review": [
+      "quality-code-check",
+      "review-pr",
+      "refactor",
+      "fix-bug"
+    ],
+    "frontend": [
+      "frontend-design-fundamentals",
+      "frontend-design-responsive",
+      "frontend-design-figma-extraction",
+      "frontend-design-theme-factory",
+      "ux-feedback-patterns",
+      "react-best-practices"
+    ],
+    "backend": [
+      "api-design",
+      "auth-patterns",
+      "db-schema",
+      "be-security-check",
+      "be-performance-check",
+      "swagger-docs"
+    ],
+    "evaluation": [
+      "workflow-evaluation",
+      "record-workflow-friction"
+    ]
+  },
+  "kits": {
+    "coding-standard": ["core"],
+    "workflow-eval": ["evaluation"]
+  }
+}

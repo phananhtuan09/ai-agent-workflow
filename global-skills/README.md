@@ -1,5 +1,10 @@
 # Global Skills
 
+These are machine-wide skills for agent coordination and durable repository governance.
+They are intentionally separate from the project-scoped canonical skills in `skills/` and are not installed by the default coding workflow kit.
+
+Use the runtime's global skill installation mechanism for these packages.
+
 Machine-wide skills, installed once per machine instead of once per repository.
 
 The installer (`npx ai-workflow-init`) does **not** install these.
@@ -9,7 +14,7 @@ Hand this file to an agent and ask it to install them; it fetches the content st
 | --- | --- |
 | `foreman-agent` | Owns a repository's task and issue backlog in `.foreman/`, assigns work to worker agents through Herdr, reports only what needs a human decision. |
 | `herdr-guide` | Owns Herdr CLI mechanics. `foreman-agent` loads it, so the two must be installed together. |
-| `registrar-agent` | Owns a repository's durable business rules in `docs/ai/domain/` and architecture rules in `docs/ai/architecture/`, answers questions about system logic with cited rule ids, and reports drift between rules and code. Standalone; loads no other skill. |
+| `registrar-agent` | Owns a repository's durable business rules in `docs/ai/knowledge/domain/` and architecture rules in `docs/ai/knowledge/architecture/`, answers questions about system logic with cited rule ids, and reports drift between rules and code. Standalone; loads no other skill. |
 
 These are user-scope on purpose.
 Each skill is machine-wide while its state stays inside the repository it is run in — `.foreman/` for the Foreman, `docs/ai/` plus `.registrar/` for the Registrar — so both work in repositories that never ran the installer.

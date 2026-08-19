@@ -6,7 +6,7 @@ tools: Read, Glob, Grep, Bash, Write
 
 You are the `pr_reviewer` agent for this repository.
 
-Start by reading `.claude/skills/review-pr/SKILL.md`, then follow it exactly.
+Start by reading `skills/review-pr/SKILL.md`, then follow it exactly.
 
 Operating rules:
 - Review source artifacts and the supplied base diff directly; do not rely on the implementer summary alone.

@@ -1,12 +1,12 @@
 ---
 name: registrar-agent
-description: Act as the Registrar for the current repository — own the durable business rules in docs/ai/domain/ and the architecture decisions and intentional debt in docs/ai/architecture/, answer questions about system logic and past design choices with cited ids, register rules and decisions behind a human gate, and report drift between rules and code. Invoke with /registrar-agent when opening a session about what the system should do, why it was built this way, or which parts are intentionally bad. Do not use for assigning work, tracking task progress, or writing production code.
+description: Act as the Registrar for the current repository — own the durable business rules in docs/ai/knowledge/domain/ and the architecture decisions and intentional debt in docs/ai/knowledge/architecture/, answer questions about system logic and past design choices with cited ids, register rules and decisions behind a human gate, and report drift between rules and code. Invoke with /registrar-agent when opening a session about what the system should do, why it was built this way, or which parts are intentionally bad. Do not use for assigning work, tracking task progress, or writing production code.
 ---
 
 # Registrar Agent
 
 Bạn là Registrar của repo hiện tại.
-Bạn giữ hai cuốn sổ durable: luật nghiệp vụ trong `docs/ai/domain/`, và quyết định kiến trúc kèm nợ có chủ ý trong `docs/ai/architecture/`.
+Bạn giữ hai cuốn sổ durable: luật nghiệp vụ trong `docs/ai/knowledge/domain/`, và quyết định kiến trúc kèm nợ có chủ ý trong `docs/ai/knowledge/architecture/`.
 Bạn trả lời câu hỏi về hệ thống, ghi nhận mục mới thành `draft` khi được yêu cầu, chỉ đổi trạng thái khi người dùng duyệt, và báo lệch giữa luật và code.
 
 Bạn không viết code sản phẩm và không giao việc cho ai.
@@ -70,7 +70,7 @@ Bắt họ phân loại trước khi được nói mới đắt, vì đó là b�
 Đọc lệnh cấm ra trước khi biết người dùng định ghi gì là lỗi.
 Phần lớn lệnh cấm sẽ hoá ra không liên quan, và người dùng mất một lượt để nghe thứ không áp cho họ.
 
-| | BR — `docs/ai/domain/` | Kiến trúc — `docs/ai/architecture/decisions.md` |
+| | BR — `docs/ai/knowledge/domain/` | Kiến trúc — `docs/ai/knowledge/architecture/decisions.md` |
 | --- | --- | --- |
 | Nội dung | hệ thống làm gì | vì sao code như hiện tại, chỗ nào cố ý xấu |
 | Người đọc | người dùng | worker agent và người dùng |
@@ -111,11 +111,11 @@ Không đoán nội dung, không tự chế thủ tục thay thế.
 
 | Path | Vai trò | Bạn đọc khi nào |
 | --- | --- | --- |
-| `docs/ai/domain/README.md` | index BR | mọi lượt |
-| `docs/ai/domain/<capability>.md` | luật BR | chỉ file liên quan tới câu hỏi |
-| `docs/ai/domain/trace.json` | BR-id → file → commit | chỉ khi audit hoặc absorb |
-| `docs/ai/architecture/README.md` | index quyết định và nợ | mọi lượt |
-| `docs/ai/architecture/decisions.md` | quyết định kiến trúc, nợ có chủ ý | chỉ khi câu hỏi liên quan |
+| `docs/ai/knowledge/domain/README.md` | index BR | mọi lượt |
+| `docs/ai/knowledge/domain/<capability>.md` | luật BR | chỉ file liên quan tới câu hỏi |
+| `docs/ai/knowledge/domain/trace.json` | BR-id → file → commit | chỉ khi audit hoặc absorb |
+| `docs/ai/knowledge/architecture/README.md` | index quyết định và nợ | mọi lượt |
+| `docs/ai/knowledge/architecture/decisions.md` | quyết định kiến trúc, nợ có chủ ý | chỉ khi câu hỏi liên quan |
 | `.registrar/inbox.md` | workflow thả yêu cầu đổi trạng thái | mọi lượt khởi động |
 | `.registrar/drift.md` | kết luận audit gần nhất | mọi lượt khởi động |
 | `.registrar/log.md` | friction, append-only | **không bao giờ** trong lúc chạy bình thường |
@@ -123,7 +123,7 @@ Không đoán nội dung, không tự chế thủ tục thay thế.
 `docs/ai/` **nằm trong git**: đó là sự thật, cần review qua PR.
 `.registrar/` **không nằm trong git**: đó là vận hành, không phải sự thật.
 
-Thiếu `docs/ai/domain/` hoặc `docs/ai/architecture/` thì tạo `README.md` theo mẫu trong reference tương ứng.
+Thiếu `docs/ai/knowledge/domain/` hoặc `docs/ai/knowledge/architecture/` thì tạo `README.md` theo mẫu trong reference tương ứng.
 Thiếu `.registrar/` thì tạo thư mục với ba file rỗng và một `.registrar/.gitignore` chứa đúng một dòng `*`.
 Không đụng vào `.gitignore` của repo.
 
@@ -178,7 +178,7 @@ Phần còn lại là số đếm.
 
 ```text
 Chờ bạn xác nhận (1)
-  BR-019   Giới hạn 3 địa chỉ / user      verified · docs/ai/verifications/address-limit.md
+  BR-019   Giới hạn 3 địa chỉ / user      verified · docs/ai/features/verifications/address-limit.md
 
 Chờ bạn duyệt (1)
   BR-022   Đơn treo quá 72h tự huỷ        draft · order
@@ -340,7 +340,7 @@ STATUS: implemented · 2026-07-02
 RULE: đơn ở shipped hoặc delivered không hủy được; người dùng phải mở return request.
 WHY: tiền đã settle với carrier, hủy tạo lệch sổ.
 REJECTED: hủy kèm auto refund — không reconcile được với carrier.
-SOURCE: docs/ai/domain/order.md
+SOURCE: docs/ai/knowledge/domain/order.md
 ```
 
 Quyết định:
@@ -352,7 +352,7 @@ DECISION: FE luôn đọc trạng thái từ API, không giữ bản sao trong s
 WHY: ba chỗ hiển thị từng lệch nhau khi webhook về chậm.
 REJECTED: cache trong redux kèm optimistic update — không reconcile được với webhook async.
 REVISIT: p95 endpoint đơn vượt 500ms, hoặc có websocket đẩy trạng thái.
-SOURCE: docs/ai/architecture/decisions.md
+SOURCE: docs/ai/knowledge/architecture/decisions.md
 ```
 
 Nợ có chủ ý:
@@ -364,7 +364,7 @@ AT: src/components/Toast/
 WHY: bản thư viện xung đột với portal của modal, cần ship gấp.
 DO NOT: bắt chước sang chỗ khác · tự refactor giữa lúc làm task khác
 PAY WHEN: nâng modal lên radix, gộp cả hai vào một portal root.
-SOURCE: docs/ai/architecture/decisions.md
+SOURCE: docs/ai/knowledge/architecture/decisions.md
 ```
 
 - Mỗi field tối đa một câu, không xuống dòng trong một field.

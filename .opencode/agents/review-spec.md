@@ -139,7 +139,7 @@ Required sections for new specs:
     - The spec must either cite a concrete existing precedent to mirror or state explicitly that none exists, with a reason.
     - Verify the cited precedent path exists and is plausibly the closest match in shape to the planned work.
     - Fail when the spec introduces a new structure, output shape, naming scheme, or error-handling style while a close precedent exists and is not addressed.
-    - Fail when the cited precedent is marked as intentional debt in `docs/ai/architecture/decisions.md`.
+    - Fail when the cited precedent is marked as intentional debt in `docs/ai/knowledge/architecture/decisions.md`.
     - Warn when a deliberate deviation from the precedent has no stated reason.
 
 ## Output

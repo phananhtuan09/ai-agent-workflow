@@ -54,9 +54,9 @@ Every install also syncs shared workflow assets: `docs/ai/`.
 Installing for Pi adds the project-local extension at `.pi/extensions/subagent/`.
 
 Available Pi commands:
-- `/review-spec @docs/ai/specs/<file>.md` — isolated spec review with concise verdict output
-- `/review-plan @docs/ai/plans/<file>.md` — isolated pre-enrichment plan review
-- `/enrich-plan-pi @docs/ai/plans/<file>.md [--review-plan]` — enriches plan phases and can opt-in to automatic plan review before enrichment
+- `/review-spec @docs/ai/features/specs/<file>.md` — isolated spec review with concise verdict output
+- `/review-plan @docs/ai/research/plans/<file>.md` — isolated pre-enrichment plan review
+- `/enrich-plan-pi @docs/ai/research/plans/<file>.md [--review-plan]` — enriches plan phases and can opt-in to automatic plan review before enrichment
 - `/review-readiness @spec.md @plan.md @detail-1.md [@detail-2.md ...] [--brief]` — isolated readiness review and optional automatic readiness brief
 - `/readiness-brief @spec.md @plan.md @detail-1.md [@detail-2.md ...]` — short execution-focus summary for a reviewed artifact packet
 
@@ -68,10 +68,10 @@ Behavior notes for Pi users:
 
 ### Install Specific Tool
 
-By default, the installer uses the `coding-standard` kit, which matches the current spec-driven workflow bundle.
+By default, the installer uses the `coding-standard` kit and installs only the core spec-driven workflow skills.
 
 Available kits now include:
-- `coding-standard` — the current full install flow
+- `coding-standard` — core workflow docs and skills
 - `workflow-eval` — trace-first evaluation standard, session-trace docs, report template, and mirrored evaluation/friction skills
 
 ```bash
@@ -112,7 +112,11 @@ You can also select a workflow kit explicitly:
 ```bash
 npx ai-workflow-init --kit coding-standard --tool codex
 npx ai-workflow-init --kit workflow-eval --tool codex
+npx ai-workflow-init --kit coding-standard --tool codex --skill refactor --skill quality-code-check
 ```
+
+Skills are maintained canonically under `skills/` and adapted to `.agents/skills/` or `.claude/skills/` for each runtime.
+Use `npm run sync-skills` after changing a canonical skill.
 
 ```powershell
 # Install only Codex
@@ -186,7 +190,7 @@ User: /create-plan
 AI: What feature are you building?
 User: User authentication with JWT tokens
 
-→ Creates: docs/ai/planning/feature-user-authentication.md
+→ Creates: docs/ai/research/plans/feature-user-authentication.md
   - Goal & acceptance criteria
   - Implementation phases with pseudo-code
   - Risks & assumptions
@@ -203,7 +207,7 @@ User: /requirements-orchestrator
 AI: What feature needs clarification?
 User: E-commerce checkout flow
 
-→ Creates: docs/ai/requirements/req-checkout-flow.md
+→ Creates: docs/ai/research/ideas/req-checkout-flow.md
   - Problem statement
   - User stories
   - Business rules
@@ -223,7 +227,7 @@ Execute the planning doc, updating checkboxes as work progresses.
 ```
 User: /execute-plan user-authentication
 
-→ AI reads docs/ai/planning/feature-user-authentication.md
+→ AI reads docs/ai/research/plans/feature-user-authentication.md
 → Implements Phase 1: Database Schema
 → Updates [ ] → [x] in planning doc
 → Continues to Phase 2...
@@ -285,7 +289,7 @@ User: /test-web-orchestrator
 AI: Attach your spec, planning doc, Figma, or runtime notes
 User: [attaches feature-login.md + figma-login.md]
 
-→ Creates docs/ai/testing/web-login.md
+→ Creates docs/ai/features/verifications/web-login.md
 → Creates tests/web/login.spec.ts
 → Uses analyst/ui-mapper/runtime-probe/verifier roles
 → Verifies button, input, validation, navigation, and UI state behavior
@@ -301,7 +305,7 @@ User: /run-test
 AI: Which test doc?
 User: unit-user-authentication
 
-→ Runs only tests listed in docs/ai/testing/unit-user-authentication.md
+→ Runs only tests listed in docs/ai/features/checklists/unit-user-authentication.md
 → Shows pass/fail summary
 → Updates test doc with results
 ```
@@ -409,22 +413,22 @@ Use `/execute-task` for small bounded updates that do not need a design artifact
 /design-spec "user profile"
 
 # 2. Create the detailed implementation spec from approved decisions
-/create-spec @docs/ai/design-decisions/user-profile.json
+/create-spec @docs/ai/features/design-decisions/user-profile.json
 
 # 3. Run the AI spec quality gate
-/review-spec @docs/ai/specs/user-profile.md
+/review-spec @docs/ai/features/specs/user-profile.md
 
 # 4. Implement from the reviewed spec
-/execute-spec @docs/ai/specs/user-profile.md
+/execute-spec @docs/ai/features/specs/user-profile.md
 
 # 5. Generate testcases from the approved spec
-/manual-checklist @docs/ai/specs/user-profile.md
+/manual-checklist @docs/ai/features/specs/user-profile.md
 
 # 6. Verify implementation coverage and update checklist evidence
-/verify-feature @docs/ai/specs/user-profile.md
+/verify-feature @docs/ai/features/specs/user-profile.md
 
 # 7. Verify runtime behavior and finalize checklist evidence
-/verify-runtime @docs/ai/specs/user-profile.md --url http://localhost:3000
+/verify-runtime @docs/ai/features/specs/user-profile.md --url http://localhost:3000
 ```
 
 Run `/sync-spec` or `/review-pr` separately when human review calls for those steps.
@@ -436,7 +440,7 @@ Run `/sync-spec` or `/review-pr` separately when human review calls for those st
 /requirements-orchestrator
 
 # 2. Create plan from requirements
-/create-plan docs/ai/requirements/req-checkout-flow.md
+/create-plan docs/ai/research/ideas/req-checkout-flow.md
 
 # 3. Implement
 /execute-plan checkout-flow
@@ -468,16 +472,12 @@ Run `/sync-spec` or `/review-pr` separately when human review calls for those st
 ### Always Installed
 ```
 docs/ai/
-├── planning/           # Feature planning docs
-│   └── feature-template.md
-├── requirements/       # Requirement docs
-│   └── req-template.md
-├── testing/            # Test documentation
-│   ├── unit-template.md
-│   └── integration-template.md
-└── project/            # Project standards
-    ├── CODE_CONVENTIONS.md
-    └── PROJECT_STRUCTURE.md
+├── project/            # Workflow rules and project standards
+├── workflows/          # Workflow definitions and run state
+├── features/           # Grouped feature artifacts
+├── research/           # Ideas, plans, and brainstorms
+├── evaluation/         # Observations, traces, and reports
+└── knowledge/          # Architecture and domain records
 
 AGENTS.md               # Universal AI instructions (synced to ~/.codex/AGENTS.md)
 ```
@@ -486,9 +486,9 @@ AGENTS.md               # Universal AI instructions (synced to ~/.codex/AGENTS.m
 
 | Tool | Commands | Skills | Other |
 |------|----------|--------|-------|
-| **Codex** | - | `.agents/skills/*/SKILL.md` | `.agents/roles/*.md`, `.agents/knowledge/**`, `.agents/themes/*.theme.json`, `.codex/` |
-| **Google Antigravity** | - | `.agents/skills/*/SKILL.md` | - |
-| **Claude Code** | `.claude/commands/*.md` | `.claude/skills/*/SKILL.md` | `.claude/themes/`, `.claude/output-styles/`, `.claude/agents/`, `.claude/scripts/`, `.claude/settings.json`, `.claude/statusline.sh` |
+| **Codex** | - | Selected `.agents/skills/*/SKILL.md` | `.agents/roles/*.md`, `.agents/knowledge/**`, `.agents/themes/*.theme.json`, `.codex/` |
+| **Google Antigravity** | - | Selected `.agents/skills/*/SKILL.md` | - |
+| **Claude Code** | `.claude/commands/*.md` | Selected `.claude/skills/*/SKILL.md` | `.claude/themes/`, `.claude/output-styles/`, `.claude/agents/`, `.claude/scripts/`, `.claude/settings.json`, `.claude/statusline.sh` |
 
 ---
 

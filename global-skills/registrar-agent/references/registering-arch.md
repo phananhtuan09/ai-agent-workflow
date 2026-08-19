@@ -1,6 +1,6 @@
 # Đăng ký quyết định kiến trúc và nợ có chủ ý
 
-Đọc file này khi thao tác trên `docs/ai/architecture/decisions.md`.
+Đọc file này khi thao tác trên `docs/ai/knowledge/architecture/decisions.md`.
 Không đọc cùng lúc với `registering-br.md`.
 
 ## Cuốn sổ này chứa gì
@@ -27,9 +27,9 @@ Từ chối ghi, và nói với người dùng là thiếu vế `Đã loại`.
 
 ## Cấu trúc file
 
-Một file duy nhất: `docs/ai/architecture/decisions.md`, hai phần.
+Một file duy nhất: `docs/ai/knowledge/architecture/decisions.md`, hai phần.
 
-`decisions.md` **không mang bộ đếm id**; bộ đếm chỉ nằm ở dòng đầu `docs/ai/architecture/README.md`.
+`decisions.md` **không mang bộ đếm id**; bộ đếm chỉ nằm ở dòng đầu `docs/ai/knowledge/architecture/README.md`.
 
 Append-only: mục mới luôn thêm xuống cuối phần tương ứng, không chèn giữa, không sắp xếp lại.
 "Append-only" ở đây nghĩa là **nội dung một mục không bao giờ được sửa**; chỉ trường `Trạng thái` được đổi.
@@ -84,7 +84,7 @@ Mục nợ được cần **đúng lúc agent đang sửa file đó**, mà lúc 
 
 Nên mỗi mục nợ phải có hai nửa:
 
-- **Ở code**: một dòng comment — `// DEBT-004: cố ý, xem docs/ai/architecture/decisions.md`
+- **Ở code**: một dòng comment — `// DEBT-004: cố ý, xem docs/ai/knowledge/architecture/decisions.md`
 - **Ở sổ**: toàn bộ lý do
 
 Bạn không tự sửa code.
@@ -92,7 +92,7 @@ Ghi xong mục nợ thì **in ra dòng comment cần thêm và đường dẫn c
 
 ## Cấp id
 
-Đọc bộ đếm ở dòng đầu `docs/ai/architecture/README.md`, cấp id, tăng bộ đếm ngay.
+Đọc bộ đếm ở dòng đầu `docs/ai/knowledge/architecture/README.md`, cấp id, tăng bộ đếm ngay.
 Hai chuỗi id độc lập: `DEC-` và `DEBT-`.
 Id không bao giờ tái sử dụng.
 
@@ -109,7 +109,7 @@ Không sửa chính tả, không viết lại câu chữ, không "làm rõ" mộ
 
 ## Index
 
-Mỗi mục một dòng trong `docs/ai/architecture/README.md`:
+Mỗi mục một dòng trong `docs/ai/knowledge/architecture/README.md`:
 
 ```markdown
 - DEC-007 · active · Trạng thái đơn giữ ở server, không cache ở FE

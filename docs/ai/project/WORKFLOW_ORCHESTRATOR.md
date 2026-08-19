@@ -119,7 +119,7 @@ Orchestrator chỉ chấp nhận các outcome sau:
 Skill và subagent giao tiếp bằng comment:
 
 ```html
-<!-- orchestrator: outcome=continue provides=spec_path spec_path=docs/ai/specs/foo.md -->
+<!-- orchestrator: outcome=continue provides=spec_path spec_path=docs/ai/features/specs/foo.md -->
 ```
 
 Thiếu comment hoặc comment không hợp lệ phải trở thành `unknown`.

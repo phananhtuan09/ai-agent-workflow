@@ -150,4 +150,4 @@ Read:
 - `docs/ai/project/WORKFLOW_CODING_STANDARD.md`
 - `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
 - `docs/ai/workflows/`
-- `docs/ai/workflow-evals/`
+- `docs/ai/evaluation/reports/`

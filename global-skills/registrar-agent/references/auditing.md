@@ -34,7 +34,7 @@ Quyết định (`DEC`) không audit được: nó nói về lý do, không nói
 
 ## Tìm code để đọc
 
-Tra `docs/ai/domain/trace.json`.
+Tra `docs/ai/knowledge/domain/trace.json`.
 
 - Có `files` thì **bắt đầu** từ những file đó và đi theo tham chiếu khi cần. Danh sách đó là điểm vào, không phải ranh giới: code có thể đã chuyển chỗ hoặc mọc thêm đường đi mới kể từ lúc trace được ghi.
 - Một file trong `files` không còn tồn tại thì trace đã stale. Kết luận `không đọc được`, báo người dùng cập nhật trace, **không** kết luận `khớp`.

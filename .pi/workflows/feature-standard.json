@@ -36,14 +36,14 @@
       "title": "Execute spec",
       "type": "command",
       "value": "/execute-spec",
-      "hint": "Gõ /execute-spec @docs/ai/specs/<file>.md"
+      "hint": "Gõ /execute-spec @docs/ai/features/specs/<file>.md"
     },
     {
       "id": "sync-spec",
       "title": "Sync spec",
       "type": "command",
       "value": "/sync-spec",
-      "hint": "Gõ /sync-spec @docs/ai/specs/<file>.md"
+      "hint": "Gõ /sync-spec @docs/ai/features/specs/<file>.md"
     },
     {
       "id": "verify-feature",
@@ -57,7 +57,7 @@
       "title": "Verify runtime",
       "type": "command",
       "value": "/verify-runtime",
-      "hint": "Gõ /verify-runtime @docs/ai/specs/<file>.md --url <runtime-url>"
+      "hint": "Gõ /verify-runtime @docs/ai/features/specs/<file>.md --url <runtime-url>"
     }
   ]
 }

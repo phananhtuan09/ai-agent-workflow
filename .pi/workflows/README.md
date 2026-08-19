@@ -42,7 +42,7 @@ Mỗi step nên có tối thiểu:
   "title": "Execute spec",
   "type": "command",
   "value": "/execute-spec",
-  "hint": "Gõ /execute-spec @docs/ai/specs/<file>.md"
+  "hint": "Gõ /execute-spec @docs/ai/features/specs/<file>.md"
 }
 ```
 
