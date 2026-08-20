@@ -61,12 +61,12 @@ The human should be able to operate the workflow with ordinary requests such as:
 1. Inspect the profile and sessions.
 2. Resume the single non-completed session when one exists, unless the human explicitly chooses another.
 3. If no profile exists, ask for one concise long-term capability goal.
-4. Use `learning-case` in selection mode to choose an existing case. Use the bundled MVP case when no better approved case exists.
+4. Use `learning-case` in selection mode to choose an existing case. Use the bundled MVP case when no better approved case exists. Record the returned path as `selected_case_path`.
 5. Initialize the session:
 
    ```bash
    python3 skills/learning-workflow/scripts/init_learning_session.py \
-     --case skills/learning-workflow/assets/cases/inventory-reservation.json \
+     --case "{selected_case_path}" \
      --profile docs/ai/learning/profile.json \
      --session docs/ai/learning/sessions/{session_id}.json \
      --goal "{human-approved goal}"
@@ -150,12 +150,12 @@ When a helper is invoked directly by the human, let it complete only its bounded
 
 ## Validation
 
-Run after initialization and every material state transition:
+Run after initialization and every material state transition. For a resumed session, read `case_path` from the session and use it as `selected_case_path` instead of falling back to the bundled case:
 
 ```bash
 python3 skills/learning-workflow/scripts/validate_learning_state.py \
   docs/ai/learning/sessions/{session_id}.json \
-  --case skills/learning-workflow/assets/cases/inventory-reservation.json \
+  --case "{selected_case_path}" \
   --profile docs/ai/learning/profile.json
 ```
 
@@ -170,4 +170,3 @@ Do not weaken an invariant to make a session pass.
 - Use `learning-case` transfer mode instead of a separate transfer skill.
 - Keep progression updates in this coordinator using the accepted `learning-review` result.
 - Treat the workflow as experimental until representative sessions provide workflow evidence.
-

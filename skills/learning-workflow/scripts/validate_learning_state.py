@@ -33,6 +33,7 @@ NEXT_ACTIONS = {
     "increase-difficulty",
     "change-competency",
 }
+PROGRESSION_ACTIONS = {"transfer-context", "increase-difficulty"}
 RATINGS = {"demonstrated", "partial", "not-demonstrated", "inconclusive"}
 INDEPENDENCE = {"independent", "assisted", "not-observed"}
 
@@ -69,6 +70,15 @@ def require_list(value: Any, field: str) -> list[Any]:
     return value
 
 
+def require_string_list(value: Any, field: str, allow_empty: bool = True) -> list[str]:
+    items = require_list(value, field)
+    if not allow_empty and not items:
+        fail(f"{field} must not be empty")
+    for index, item in enumerate(items):
+        require_string(item, f"{field}[{index}]")
+    return items
+
+
 def unique_ids(items: list[Any], field: str, pattern: re.Pattern[str] = ID) -> set[str]:
     seen: set[str] = set()
     for index, item in enumerate(items):
@@ -103,10 +113,20 @@ def validate_case(case: dict[str, Any]) -> None:
         fail("case.public_brief must be an object")
     require_string(brief.get("business_goal"), "case.public_brief.business_goal")
     require_string(brief.get("initial_question"), "case.public_brief.initial_question")
+    require_string_list(brief.get("current_context"), "case.public_brief.current_context", allow_empty=False)
 
-    judgment_ids = unique_ids(require_list(case.get("protected_judgments"), "case.protected_judgments"), "case.protected_judgments")
+    judgments = require_list(case.get("protected_judgments"), "case.protected_judgments")
+    judgment_ids = unique_ids(judgments, "case.protected_judgments")
     if not judgment_ids:
         fail("case.protected_judgments must not be empty")
+    for index, judgment in enumerate(judgments):
+        require_string(judgment.get("title"), f"case.protected_judgments[{index}].title")
+        require_string(judgment.get("prompt"), f"case.protected_judgments[{index}].prompt")
+        require_string_list(
+            judgment.get("required_observations"),
+            f"case.protected_judgments[{index}].required_observations",
+            allow_empty=False,
+        )
 
     facts = require_list(case.get("facts"), "case.facts")
     unique_ids(facts, "case.facts")
@@ -115,7 +135,7 @@ def validate_case(case: dict[str, Any]) -> None:
         if visibility not in {"public", "discoverable"}:
             fail(f"case.facts[{index}].visibility must be public or discoverable")
         require_string(fact.get("statement"), f"case.facts[{index}].statement")
-        paths = require_list(fact.get("discovery_paths"), f"case.facts[{index}].discovery_paths")
+        paths = require_string_list(fact.get("discovery_paths"), f"case.facts[{index}].discovery_paths")
         if visibility == "discoverable" and not paths:
             fail(f"case.facts[{index}] discoverable fact requires a discovery path")
 
@@ -124,18 +144,29 @@ def validate_case(case: dict[str, Any]) -> None:
     for index, event in enumerate(events):
         require_string(event.get("trigger"), f"case.future_events[{index}].trigger")
         require_string(event.get("statement"), f"case.future_events[{index}].statement")
+        require_string(event.get("purpose"), f"case.future_events[{index}].purpose")
 
     rubric = require_list(case.get("rubric"), "case.rubric")
     unique_ids(rubric, "case.rubric")
     if not rubric:
         fail("case.rubric must not be empty")
     for index, dimension in enumerate(rubric):
+        require_string(dimension.get("name"), f"case.rubric[{index}].name")
         required = set(require_list(dimension.get("required_judgment_ids"), f"case.rubric[{index}].required_judgment_ids"))
         unknown = required - judgment_ids
         if unknown:
             fail(f"case.rubric[{index}] references unknown judgments: {sorted(unknown)}")
-        if not require_list(dimension.get("observable_signals"), f"case.rubric[{index}].observable_signals"):
-            fail(f"case.rubric[{index}].observable_signals must not be empty")
+        require_string_list(
+            dimension.get("observable_signals"),
+            f"case.rubric[{index}].observable_signals",
+            allow_empty=False,
+        )
+
+    transfer = case.get("transfer")
+    if not isinstance(transfer, dict):
+        fail("case.transfer must be an object")
+    require_string(transfer.get("prompt"), "case.transfer.prompt")
+    require_string(transfer.get("same_principle"), "case.transfer.same_principle")
 
 
 def validate_profile(profile: dict[str, Any]) -> None:
@@ -167,6 +198,9 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
         fail("session.session_id must be kebab-case")
     if session.get("case_id") != case.get("case_id"):
         fail("session.case_id does not match case.case_id")
+    session_case_path = require_string(session.get("case_path"), "session.case_path")
+    if Path(session_case_path).resolve() != case_path.resolve():
+        fail("session.case_path does not match the validated case path")
     if session.get("case_checksum") != checksum(case_path):
         fail("session.case_checksum does not match the current case; case integrity is broken")
     if session.get("status") not in SESSION_STATUSES:
@@ -185,6 +219,7 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
         fail("session protected judgments must exactly match the case")
 
     material_judgments: set[str] = set()
+    pre_attempt_material_judgments: set[str] = set()
     assistance_ids: set[str] = set()
     for index, item in enumerate(require_list(session.get("assistance"), "session.assistance")):
         if not isinstance(item, dict):
@@ -204,6 +239,8 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
             fail(f"session.assistance[{index}] level 4..6 must be material")
         if item["material"]:
             material_judgments.add(judgment_id)
+            if item["before_first_attempt"]:
+                pre_attempt_material_judgments.add(judgment_id)
 
     for index, judgment in enumerate(judgments):
         judgment_id = judgment["id"]
@@ -219,6 +256,8 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
                 fail(f"judgment {judgment_id} status {status} requires first_attempt")
             if first_attempt.get("independent") is not True:
                 fail(f"judgment {judgment_id} first_attempt must be independent")
+        if judgment_id in pre_attempt_material_judgments and first_attempt is not None:
+            fail(f"judgment {judgment_id} cannot record a first_attempt after prior material assistance")
         if judgment_id in material_judgments and status not in {"assisted", "assessment-frozen"}:
             fail(f"judgment {judgment_id} received material assistance but status is {status}")
         if status == "independently-revised" and not revisions:
@@ -245,6 +284,16 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
     if not isinstance(assessment, dict):
         fail("session.assessment must be an object")
     outcome = assessment.get("outcome")
+    disputes = require_list(assessment.get("disputes"), "session.assessment.disputes")
+    unresolved_disputes = []
+    for index, dispute in enumerate(disputes):
+        if not isinstance(dispute, dict):
+            fail(f"session.assessment.disputes[{index}] must be an object")
+        if dispute.get("status") not in {"open", "resolved"}:
+            fail(f"session.assessment.disputes[{index}].status is invalid")
+        require_string(dispute.get("reason"), f"session.assessment.disputes[{index}].reason")
+        if dispute["status"] == "open":
+            unresolved_disputes.append(dispute)
     dimensions = require_list(assessment.get("dimensions"), "session.assessment.dimensions")
     rubric_ids = {item["id"] for item in case["rubric"]}
     if dimensions:
@@ -279,6 +328,11 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
         if not isinstance(next_action, dict) or next_action.get("type") not in NEXT_ACTIONS:
             fail("completed session requires a valid assessment.next_action")
         require_string(next_action.get("reason"), "session.assessment.next_action.reason")
+        if unresolved_disputes:
+            if outcome != "inconclusive":
+                fail("completed session with an open dispute must be inconclusive")
+            if next_action.get("type") in PROGRESSION_ACTIONS:
+                fail("open dispute cannot produce a progression next action")
 
     if profile is not None:
         active_session = profile.get("active_session_id")
@@ -323,4 +377,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

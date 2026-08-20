@@ -55,6 +55,6 @@
   "kits": {
     "coding-standard": ["core"],
     "workflow-eval": ["evaluation"],
-    "lerning-workflow": ["learning"]
+    "learning-workflow": ["learning"]
   }
 }

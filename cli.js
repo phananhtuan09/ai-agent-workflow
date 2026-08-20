@@ -48,7 +48,7 @@ When installing for Pi, the CLI syncs:
 
 Examples:
   npx ai-workflow-init --kit coding-standard --tool codex
-  npx ai-workflow-init --kit lerning-workflow --tool codex
+  npx ai-workflow-init --kit learning-workflow --tool codex
   npx ai-workflow-init --kit workflow-eval --tool codex
   npx ai-workflow-init --tool pi
   npx ai-workflow-init --tool codex
@@ -64,7 +64,7 @@ The workflow-eval kit installs:
   - docs/ai/evaluation/session-traces/
   - workflow-evaluation and record-workflow-friction skills for the selected runtime(s)
 
-The lerning-workflow kit installs:
+The learning-workflow kit installs:
   - docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md
   - docs/ai/learning/ session state folders
   - learning-workflow coordinator with learning-case, learning-evidence, and learning-review helpers
