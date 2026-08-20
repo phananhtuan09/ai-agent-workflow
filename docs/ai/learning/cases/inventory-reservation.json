@@ -4,6 +4,18 @@
   "title": "Giữ hàng trong checkout có thanh toán bất đồng bộ",
   "domain": "commerce",
   "difficulty": "intermediate",
+  "provenance": {
+    "kind": "simulation",
+    "statement": "Synthetic software-engineering case created for learning workflow validation.",
+    "external_sources": []
+  },
+  "assumptions": [],
+  "case_history": [
+    {
+      "version": 1,
+      "change": "Initial MVP case declaration."
+    }
+  ],
   "active_competency": {
     "id": "COMP-PARTIAL-FAILURE-001",
     "name": "Thiết kế bằng invariant, failure mode và evidence",

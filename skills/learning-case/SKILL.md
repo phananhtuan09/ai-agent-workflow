@@ -7,7 +7,7 @@ description: Select, create, validate, or serve facts and predeclared consequenc
 
 Own case integrity without taking over the learning conversation.
 
-Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` before changing or serving a case.
+Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` and `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` before changing or serving a case.
 
 When invoked by `learning-workflow`, return a concise structured result to the coordinator and do not address the human directly.
 
@@ -50,6 +50,8 @@ Write it to `docs/ai/learning/cases/{case_id}.json` using schema `learning-case/
 The case must contain:
 
 - business goal and current context;
+- explicit simulation or source provenance;
+- declared assumptions and case history;
 - one active competency;
 - explicit protected judgments;
 - public and discoverable facts;
@@ -82,6 +84,8 @@ Return:
 {
   "status": "fact-found",
   "facts": [{"id": "F-001", "statement": "..."}],
+  "question": "...",
+  "matched_discovery_path": "...",
   "material_assistance": false
 }
 ```
@@ -98,7 +102,7 @@ Input:
 
 Release an event only when its predeclared trigger is satisfied.
 
-Return the event statement and purpose without interpreting it for the human.
+Return the event ID, statement, purpose and record IDs that prove its predeclared trigger is satisfied without interpreting it for the human.
 
 Never create or modify an event after seeing the human's decision in order to make that decision wrong.
 
@@ -117,4 +121,3 @@ Do not leak the source case's mechanism into the new public brief.
 - A missed fact counts against discovery only when it existed before assessment and had a reasonable discovery path.
 - Evaluate decisions against facts available at the time, not future-event hindsight.
 - Return case data to the coordinator; do not produce learning assessment or progression decisions.
-

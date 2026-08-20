@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,9 +18,11 @@ def now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def write_json(path: Path, value: dict) -> None:
+def write_json_atomic(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary_path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary_path.replace(path)
 
 
 def main() -> int:
@@ -58,6 +61,9 @@ def main() -> int:
                 ],
                 "baseline": {
                     "summary": args.baseline.strip(),
+                    "prerequisites": [],
+                    "strengths": [],
+                    "independence": "unknown",
                     "recorded_at": timestamp
                 },
                 "competencies": [],
@@ -65,6 +71,7 @@ def main() -> int:
                 "progress_history": [],
                 "active_session_id": None,
                 "next_action": None,
+                "cadence": "session-by-session",
                 "updated_at": timestamp
             }
 
@@ -83,6 +90,7 @@ def main() -> int:
                 "accepted": False,
                 "accepted_at": None,
                 "scope": "case",
+                "ai_authority": "case support and explicitly authorized mechanical work",
                 "protected_judgment_ids": [item["id"] for item in case["protected_judgments"]]
             },
             "protected_judgments": [
@@ -97,10 +105,13 @@ def main() -> int:
                 for item in case["protected_judgments"]
             ],
             "discovered_fact_ids": [item["id"] for item in case["facts"] if item["visibility"] == "public"],
+            "discovery_records": [],
             "released_event_ids": [],
+            "event_release_records": [],
             "assistance": [],
             "evidence_requests": [],
             "system_evidence": [],
+            "evidence_interpretations": [],
             "assessment": {
                 "dimensions": [],
                 "result_summary": {
@@ -112,7 +123,9 @@ def main() -> int:
                 "outcome": None,
                 "limitations": [],
                 "disputes": [],
-                "next_action": None
+                "next_action": None,
+                "accepted_by_human": False,
+                "accepted_at": None
             },
             "history": [
                 {
@@ -127,8 +140,12 @@ def main() -> int:
         profile["updated_at"] = timestamp
         validate_profile(profile)
         validate_session(session, case, args.case, profile)
-        write_json(args.profile, profile)
-        write_json(args.session, session)
+        write_json_atomic(args.session, session)
+        try:
+            write_json_atomic(args.profile, profile)
+        except OSError:
+            args.session.unlink(missing_ok=True)
+            raise
     except ValidationError as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1

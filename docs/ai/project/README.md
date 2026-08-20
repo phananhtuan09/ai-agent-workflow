@@ -42,8 +42,9 @@ Use this order when the task is about building or changing the learning workflow
 
 1. `docs/ai/project/README.md`
 2. `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md`
-3. The relevant learning standard or workflow artifact when it exists
-4. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md` when evaluating the workflow
+3. `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md`
+4. The relevant learning workflow artifact
+5. `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md` when evaluating the workflow
 
 ## When To Read Which File
 
@@ -71,6 +72,17 @@ Read when:
 
 This file is the single source of principles for building learning workflows.
 It defines the highest-level intent and the mandatory constraints that every learning workflow change must follow.
+
+### `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md`
+
+Read when:
+
+- implementing or changing learning session state and artifacts
+- deciding assistance escalation or assessment closure
+- recording discovery, attempts, evidence, assessment, disputes, or progression
+- validating whether a learning session can complete
+
+This file defines the executable MVP contracts under the learning constitution.
 
 ### `docs/ai/project/WORKFLOW_IDEA_REVIEW.md`
 Read when:
@@ -115,6 +127,7 @@ Read:
 Read:
 - `docs/ai/project/README.md`
 - `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md`
+- `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md`
 - the relevant learning standard or workflow artifact when it exists
 
 ### Workflow implementation task

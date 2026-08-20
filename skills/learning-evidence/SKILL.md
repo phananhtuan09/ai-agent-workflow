@@ -7,7 +7,7 @@ description: Execute an explicitly authorized research, spike, test, simulation,
 
 Turn a human-approved uncertainty into bounded system evidence.
 
-Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` before executing evidence work.
+Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` and `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` before executing evidence work.
 
 When invoked by `learning-workflow`, return structured evidence to the coordinator and do not interpret protected evidence for the human.
 
@@ -32,8 +32,8 @@ Do not convert a vague request such as “prove this design scales” into a bro
 1. Confirm the method can answer the stated evidence question.
 2. State assumptions, environment, stopping condition, and material limitations before expensive or mutating work.
 3. Perform only authorized mechanical work.
-4. When the experiment creates a software deliverable, follow the applicable coding workflow and its safety and verification rules.
-5. Stop before implementation when required authority or a necessary runtime dependency is unavailable.
+4. When the experiment creates a software deliverable, require the applicable coding constitution, standard and execution skills to exist before implementation.
+5. Return `blocked` before implementation when required authority or a coding-workflow dependency is unavailable.
 6. Preserve raw commands, results, logs, and artifact references needed to audit the claim.
 7. Separate observed result from interpretation.
 
@@ -44,6 +44,8 @@ Return one package per method:
 ```json
 {
   "id": "SE-001",
+  "request_id": "ER-001",
+  "judgment_id": "PJ-001",
   "question": "...",
   "method": "...",
   "environment": {},
@@ -70,4 +72,3 @@ Do not claim production scale, reliability, security, or cost capability beyond 
 - Do not repair the design while running the experiment unless separately authorized.
 - Do not treat generated implementation or passing tests as proof that the human understands the design.
 - Return blocked or incomplete evidence honestly; incompleteness is itself relevant system evidence but not automatically a learning failure.
-

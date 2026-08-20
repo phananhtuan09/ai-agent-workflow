@@ -7,7 +7,7 @@ description: Assess a learning session from recorded attempts, revisions, assist
 
 Produce an evidence-bound assessment without reopening coaching.
 
-Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` before assessing a session.
+Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` and `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` before assessing a session.
 
 When invoked by `learning-workflow`, return a structured assessment proposal to the coordinator.
 
@@ -45,6 +45,7 @@ For each rubric dimension:
 3. Rate it as `demonstrated`, `partial`, `not-demonstrated`, or `inconclusive`.
 4. Mark independence as `independent`, `assisted`, or `not-observed`.
 5. State a concrete limitation.
+6. Reference the exact attempt, revision, assistance, evidence, interpretation or event record IDs supporting the rating.
 
 Classify important gaps when supported:
 
@@ -94,7 +95,7 @@ Return no more than three current gaps. Each gap must be supported by learning e
       "id": "RUB-001",
       "rating": "demonstrated",
       "independence": "independent",
-      "evidence": [],
+      "evidence": ["AT-001", "RV-001"],
       "limitation": "..."
     }
   ],

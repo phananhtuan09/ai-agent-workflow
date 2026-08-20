@@ -37,6 +37,10 @@ PROGRESSION_ACTIONS = {"transfer-context", "increase-difficulty"}
 RATINGS = {"demonstrated", "partial", "not-demonstrated", "inconclusive"}
 INDEPENDENCE = {"independent", "assisted", "not-observed"}
 RESULT_GROUPS = {"independent", "assisted", "not_demonstrated"}
+CONFIDENCE_LEVELS = {"low", "medium", "high"}
+EVIDENCE_REQUEST_STATUSES = {"authorized", "completed", "blocked"}
+DECISION_CHANGES = {"kept", "revised", "rejected", "unknown"}
+DISPUTE_CATEGORIES = {"fact", "rubric-mapping", "attribution", "interpretation"}
 
 
 class ValidationError(ValueError):
@@ -80,6 +84,51 @@ def require_string_list(value: Any, field: str, allow_empty: bool = True) -> lis
     return items
 
 
+def require_boolean(value: Any, field: str) -> bool:
+    if not isinstance(value, bool):
+        fail(f"{field} must be boolean")
+    return value
+
+
+def require_object(value: Any, field: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        fail(f"{field} must be an object")
+    return value
+
+
+def require_record_id(value: Any, field: str, prefix: str) -> str:
+    record_id = require_string(value, field)
+    if not re.fullmatch(rf"^{re.escape(prefix)}-\d{{3}}$", record_id):
+        fail(f"{field} has invalid format: {record_id}")
+    return record_id
+
+
+def validate_attempt(value: Any, field: str) -> str:
+    attempt = require_object(value, field)
+    attempt_id = require_record_id(attempt.get("id"), f"{field}.id", "AT")
+    require_string(attempt.get("summary"), f"{field}.summary")
+    require_string(attempt.get("reasoning"), f"{field}.reasoning")
+    require_boolean(attempt.get("independent"), f"{field}.independent")
+    require_string(attempt.get("recorded_at"), f"{field}.recorded_at")
+    observation_fields = ["assumptions", "constraints", "invariants", "risks", "predictions", "tradeoffs"]
+    observations = []
+    for name in observation_fields:
+        observations.extend(require_string_list(attempt.get(name), f"{field}.{name}"))
+    if not observations:
+        fail(f"{field} must record at least one assumption, constraint, invariant, risk, prediction, or tradeoff")
+    return attempt_id
+
+
+def validate_revision(value: Any, field: str) -> str:
+    revision = require_object(value, field)
+    revision_id = require_record_id(revision.get("id"), f"{field}.id", "RV")
+    require_string(revision.get("summary"), f"{field}.summary")
+    require_string(revision.get("reason"), f"{field}.reason")
+    require_string_list(revision.get("evidence_refs"), f"{field}.evidence_refs", allow_empty=False)
+    require_string(revision.get("recorded_at"), f"{field}.recorded_at")
+    return revision_id
+
+
 def unique_ids(items: list[Any], field: str, pattern: re.Pattern[str] = ID) -> set[str]:
     seen: set[str] = set()
     for index, item in enumerate(items):
@@ -104,6 +153,20 @@ def validate_case(case: dict[str, Any]) -> None:
     require_string(case.get("case_id"), "case.case_id")
     require_string(case.get("title"), "case.title")
     require_string(case.get("domain"), "case.domain")
+    provenance = require_object(case.get("provenance"), "case.provenance")
+    if provenance.get("kind") not in {"simulation", "external-source", "maintained-system", "composite"}:
+        fail("case.provenance.kind is invalid")
+    require_string(provenance.get("statement"), "case.provenance.statement")
+    require_string_list(provenance.get("external_sources"), "case.provenance.external_sources")
+    require_string_list(case.get("assumptions"), "case.assumptions")
+    case_history = require_list(case.get("case_history"), "case.case_history")
+    if not case_history:
+        fail("case.case_history must not be empty")
+    for index, entry in enumerate(case_history):
+        entry = require_object(entry, f"case.case_history[{index}]")
+        if not isinstance(entry.get("version"), int) or entry["version"] < 1:
+            fail(f"case.case_history[{index}].version must be a positive integer")
+        require_string(entry.get("change"), f"case.case_history[{index}].change")
     competency = case.get("active_competency")
     if not isinstance(competency, dict):
         fail("case.active_competency must be an object")
@@ -185,8 +248,27 @@ def validate_profile(profile: dict[str, Any]) -> None:
     if not isinstance(baseline, dict):
         fail("profile.baseline must be an object")
     require_string(baseline.get("summary"), "profile.baseline.summary")
+    require_string_list(baseline.get("prerequisites"), "profile.baseline.prerequisites")
+    require_string_list(baseline.get("strengths"), "profile.baseline.strengths")
+    if baseline.get("independence") not in {"unknown", "dependent", "assisted", "independent"}:
+        fail("profile.baseline.independence is invalid")
     require_string(baseline.get("recorded_at"), "profile.baseline.recorded_at")
-    require_list(profile.get("competencies"), "profile.competencies")
+    competencies = require_list(profile.get("competencies"), "profile.competencies")
+    competency_ids: set[str] = set()
+    for index, competency in enumerate(competencies):
+        if not isinstance(competency, dict):
+            fail(f"profile.competencies[{index}] must be an object")
+        competency_id = require_string(competency.get("id"), f"profile.competencies[{index}].id")
+        if competency_id in competency_ids:
+            fail(f"duplicate profile competency: {competency_id}")
+        competency_ids.add(competency_id)
+        require_string(competency.get("name"), f"profile.competencies[{index}].name")
+        if competency.get("latest_outcome") not in OUTCOMES:
+            fail(f"profile.competencies[{index}].latest_outcome is invalid")
+        if competency.get("independence") not in INDEPENDENCE:
+            fail(f"profile.competencies[{index}].independence is invalid")
+        require_string(competency.get("last_session_id"), f"profile.competencies[{index}].last_session_id")
+        require_string(competency.get("updated_at"), f"profile.competencies[{index}].updated_at")
     current_gaps = require_string_list(profile.get("current_gaps"), "profile.current_gaps")
     if len(current_gaps) > 3:
         fail("profile.current_gaps must contain at most three items")
@@ -214,6 +296,8 @@ def validate_profile(profile: dict[str, Any]) -> None:
         if next_action.get("type") not in NEXT_ACTIONS:
             fail("profile.next_action.type is invalid")
         require_string(next_action.get("reason"), "profile.next_action.reason")
+    if profile.get("cadence") != "session-by-session":
+        fail("profile.cadence must equal session-by-session for MVP")
 
 
 def validate_result_summary(value: Any, field: str) -> dict[str, Any]:
@@ -237,18 +321,36 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
     session_case_path = require_string(session.get("case_path"), "session.case_path")
     if Path(session_case_path).resolve() != case_path.resolve():
         fail("session.case_path does not match the validated case path")
+    if not case_path.resolve().parent.as_posix().endswith("/docs/ai/learning/cases"):
+        fail("active sessions must bind a durable case under docs/ai/learning/cases")
     if session.get("case_checksum") != checksum(case_path):
         fail("session.case_checksum does not match the current case; case integrity is broken")
     if session.get("status") not in SESSION_STATUSES:
         fail("session.status is invalid")
+    require_string(session.get("started_at"), "session.started_at")
+    require_string(session.get("updated_at"), "session.updated_at")
+    if session.get("active_competency") != case.get("active_competency"):
+        fail("session.active_competency must exactly match the case")
 
     boundary = session.get("boundary")
     if not isinstance(boundary, dict) or not isinstance(boundary.get("accepted"), bool):
         fail("session.boundary.accepted must be boolean")
     if boundary["accepted"] and not boundary.get("accepted_at"):
         fail("accepted boundary requires boundary.accepted_at")
+    if boundary["accepted"] and session.get("status") == "boundary-pending":
+        fail("accepted boundary cannot remain boundary-pending")
+    if boundary.get("scope") != "case":
+        fail("session.boundary.scope must equal case for MVP")
+    require_string(boundary.get("ai_authority"), "session.boundary.ai_authority")
 
     case_judgments = {item["id"] for item in case["protected_judgments"]}
+    boundary_judgments = set(require_string_list(
+        boundary.get("protected_judgment_ids"),
+        "session.boundary.protected_judgment_ids",
+        allow_empty=False,
+    ))
+    if boundary_judgments != case_judgments:
+        fail("session.boundary.protected_judgment_ids must exactly match the case")
     judgments = require_list(session.get("protected_judgments"), "session.protected_judgments")
     session_judgments = unique_ids(judgments, "session.protected_judgments")
     if session_judgments != case_judgments:
@@ -260,7 +362,7 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
     for index, item in enumerate(require_list(session.get("assistance"), "session.assistance")):
         if not isinstance(item, dict):
             fail(f"session.assistance[{index}] must be an object")
-        assistance_id = require_string(item.get("id"), f"session.assistance[{index}].id")
+        assistance_id = require_record_id(item.get("id"), f"session.assistance[{index}].id", "AS")
         if assistance_id in assistance_ids:
             fail(f"duplicate assistance id: {assistance_id}")
         assistance_ids.add(assistance_id)
@@ -271,13 +373,23 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
             fail(f"session.assistance[{index}].level must be 1..6")
         if not isinstance(item.get("material"), bool) or not isinstance(item.get("before_first_attempt"), bool):
             fail(f"session.assistance[{index}] material flags must be boolean")
+        require_string(item.get("kind"), f"session.assistance[{index}].kind")
+        require_string(item.get("content"), f"session.assistance[{index}].content")
+        require_string(item.get("impact"), f"session.assistance[{index}].impact")
+        require_string(item.get("recorded_at"), f"session.assistance[{index}].recorded_at")
         if item["level"] >= 4 and not item["material"]:
             fail(f"session.assistance[{index}] level 4..6 must be material")
+        if item["material"]:
+            require_string(item.get("material_reason"), f"session.assistance[{index}].material_reason")
+        if item["level"] == 6 and item.get("judgment_status_before") not in {"assessment-closed", "assessment-frozen"}:
+            fail(f"session.assistance[{index}] level 6 requires a previously closed or frozen judgment")
         if item["material"]:
             material_judgments.add(judgment_id)
             if item["before_first_attempt"]:
                 pre_attempt_material_judgments.add(judgment_id)
 
+    attempt_ids: set[str] = set()
+    revision_ids: set[str] = set()
     for index, judgment in enumerate(judgments):
         judgment_id = judgment["id"]
         status = judgment.get("status")
@@ -290,14 +402,33 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
         if status in {"first-attempt-recorded", "under-review", "independently-revised", "assessment-closed"}:
             if not isinstance(first_attempt, dict):
                 fail(f"judgment {judgment_id} status {status} requires first_attempt")
+            attempt_id = validate_attempt(first_attempt, f"session.protected_judgments[{index}].first_attempt")
+            if attempt_id in attempt_ids:
+                fail(f"duplicate attempt id: {attempt_id}")
+            attempt_ids.add(attempt_id)
             if first_attempt.get("independent") is not True:
                 fail(f"judgment {judgment_id} first_attempt must be independent")
+        elif first_attempt is not None:
+            attempt_id = validate_attempt(first_attempt, f"session.protected_judgments[{index}].first_attempt")
+            if attempt_id in attempt_ids:
+                fail(f"duplicate attempt id: {attempt_id}")
+            attempt_ids.add(attempt_id)
+        for revision_index, revision in enumerate(revisions):
+            revision_id = validate_revision(
+                revision,
+                f"session.protected_judgments[{index}].revisions[{revision_index}]",
+            )
+            if revision_id in revision_ids:
+                fail(f"duplicate revision id: {revision_id}")
+            revision_ids.add(revision_id)
         if judgment_id in pre_attempt_material_judgments and first_attempt is not None:
             fail(f"judgment {judgment_id} cannot record a first_attempt after prior material assistance")
         if judgment_id in material_judgments and status not in {"assisted", "assessment-frozen"}:
             fail(f"judgment {judgment_id} received material assistance but status is {status}")
         if status == "independently-revised" and not revisions:
             fail(f"judgment {judgment_id} independently-revised requires a revision")
+        if status in TERMINAL_JUDGMENT_STATUSES and not judgment.get("closed_at"):
+            fail(f"terminal judgment {judgment_id} requires closed_at")
 
     if not boundary["accepted"]:
         if session.get("status") != "boundary-pending":
@@ -305,37 +436,215 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
         if any(item.get("status") != "open" for item in judgments):
             fail("judgments cannot advance before boundary acceptance")
 
-    fact_ids = {item["id"] for item in case["facts"]}
+    facts_by_id = {item["id"]: item for item in case["facts"]}
+    fact_ids = set(facts_by_id)
+    public_fact_ids = {item["id"] for item in case["facts"] if item["visibility"] == "public"}
     discovered = require_list(session.get("discovered_fact_ids"), "session.discovered_fact_ids")
     if len(discovered) != len(set(discovered)) or set(discovered) - fact_ids:
         fail("session.discovered_fact_ids contains duplicate or unknown facts")
+    discovery_records = require_list(session.get("discovery_records"), "session.discovery_records")
+    discovery_record_ids: set[str] = set()
+    recorded_fact_ids: set[str] = set()
+    for index, record in enumerate(discovery_records):
+        record = require_object(record, f"session.discovery_records[{index}]")
+        record_id = require_record_id(record.get("id"), f"session.discovery_records[{index}].id", "DR")
+        if record_id in discovery_record_ids:
+            fail(f"duplicate discovery record id: {record_id}")
+        discovery_record_ids.add(record_id)
+        require_string(record.get("question"), f"session.discovery_records[{index}].question")
+        matched_path = require_string(record.get("matched_discovery_path"), f"session.discovery_records[{index}].matched_discovery_path")
+        record_fact_ids = set(require_string_list(
+            record.get("fact_ids"),
+            f"session.discovery_records[{index}].fact_ids",
+            allow_empty=False,
+        ))
+        if record_fact_ids - fact_ids:
+            fail(f"session.discovery_records[{index}] references unknown facts")
+        if record_fact_ids & recorded_fact_ids:
+            fail(f"session.discovery_records[{index}] repeats an already discovered fact")
+        for fact_id in record_fact_ids:
+            fact = facts_by_id[fact_id]
+            if fact["visibility"] != "discoverable":
+                fail(f"session.discovery_records[{index}] may only record discoverable facts")
+            if matched_path not in fact["discovery_paths"]:
+                fail(f"session.discovery_records[{index}] path does not match fact {fact_id}")
+        recorded_fact_ids.update(record_fact_ids)
+        require_string(record.get("recorded_at"), f"session.discovery_records[{index}].recorded_at")
+    if set(discovered) != public_fact_ids | recorded_fact_ids:
+        fail("session.discovered_fact_ids must equal public facts plus discovery records")
+
     event_ids = {item["id"] for item in case["future_events"]}
     released = require_list(session.get("released_event_ids"), "session.released_event_ids")
     if len(released) != len(set(released)) or set(released) - event_ids:
         fail("session.released_event_ids contains duplicate or unknown events")
-    require_list(session.get("system_evidence"), "session.system_evidence")
-    require_list(session.get("history"), "session.history")
+    event_records = require_list(session.get("event_release_records"), "session.event_release_records")
+    event_record_ids: set[str] = set()
+    recorded_event_ids: set[str] = set()
+    for index, record in enumerate(event_records):
+        record = require_object(record, f"session.event_release_records[{index}]")
+        record_id = require_record_id(record.get("id"), f"session.event_release_records[{index}].id", "ERL")
+        if record_id in event_record_ids:
+            fail(f"duplicate event release record id: {record_id}")
+        event_record_ids.add(record_id)
+        event_id = require_string(record.get("event_id"), f"session.event_release_records[{index}].event_id")
+        if event_id not in event_ids:
+            fail(f"session.event_release_records[{index}] references unknown event")
+        if event_id in recorded_event_ids:
+            fail(f"event released more than once: {event_id}")
+        recorded_event_ids.add(event_id)
+        require_string_list(record.get("trigger_evidence"), f"session.event_release_records[{index}].trigger_evidence", allow_empty=False)
+        require_string(record.get("released_at"), f"session.event_release_records[{index}].released_at")
+    if set(released) != recorded_event_ids:
+        fail("session.released_event_ids must match event_release_records")
+
+    evidence_requests = require_list(session.get("evidence_requests"), "session.evidence_requests")
+    evidence_request_ids: set[str] = set()
+    evidence_requests_by_id: dict[str, dict[str, Any]] = {}
+    for index, request in enumerate(evidence_requests):
+        request = require_object(request, f"session.evidence_requests[{index}]")
+        request_id = require_record_id(request.get("id"), f"session.evidence_requests[{index}].id", "ER")
+        if request_id in evidence_request_ids:
+            fail(f"duplicate evidence request id: {request_id}")
+        evidence_request_ids.add(request_id)
+        evidence_requests_by_id[request_id] = request
+        if request.get("judgment_id") not in case_judgments:
+            fail(f"session.evidence_requests[{index}] references unknown judgment")
+        require_string(request.get("decision_or_assumption"), f"session.evidence_requests[{index}].decision_or_assumption")
+        require_string(request.get("question"), f"session.evidence_requests[{index}].question")
+        require_string(request.get("method"), f"session.evidence_requests[{index}].method")
+        require_string(request.get("scope"), f"session.evidence_requests[{index}].scope")
+        require_boolean(request.get("interpretation_protected"), f"session.evidence_requests[{index}].interpretation_protected")
+        if request.get("status") not in EVIDENCE_REQUEST_STATUSES:
+            fail(f"session.evidence_requests[{index}].status is invalid")
+        require_string(request.get("authorized_at"), f"session.evidence_requests[{index}].authorized_at")
+        if request.get("status") == "blocked":
+            require_string(request.get("blocked_reason"), f"session.evidence_requests[{index}].blocked_reason")
+
+    system_evidence = require_list(session.get("system_evidence"), "session.system_evidence")
+    system_evidence_ids: set[str] = set()
+    system_evidence_by_id: dict[str, dict[str, Any]] = {}
+    evidence_count_by_request: dict[str, int] = {}
+    for index, evidence in enumerate(system_evidence):
+        evidence = require_object(evidence, f"session.system_evidence[{index}]")
+        evidence_id = require_record_id(evidence.get("id"), f"session.system_evidence[{index}].id", "SE")
+        if evidence_id in system_evidence_ids:
+            fail(f"duplicate system evidence id: {evidence_id}")
+        system_evidence_ids.add(evidence_id)
+        system_evidence_by_id[evidence_id] = evidence
+        request_id = require_string(evidence.get("request_id"), f"session.system_evidence[{index}].request_id")
+        request = evidence_requests_by_id.get(request_id)
+        if request is None:
+            fail(f"session.system_evidence[{index}] references unknown request")
+        if evidence.get("judgment_id") != request.get("judgment_id"):
+            fail(f"session.system_evidence[{index}] judgment does not match its request")
+        evidence_count_by_request[request_id] = evidence_count_by_request.get(request_id, 0) + 1
+        require_string(evidence.get("question"), f"session.system_evidence[{index}].question")
+        require_string(evidence.get("method"), f"session.system_evidence[{index}].method")
+        require_object(evidence.get("environment"), f"session.system_evidence[{index}].environment")
+        require_string_list(evidence.get("assumptions"), f"session.system_evidence[{index}].assumptions")
+        require_string(evidence.get("result"), f"session.system_evidence[{index}].result")
+        require_string_list(evidence.get("evidence_references"), f"session.system_evidence[{index}].evidence_references", allow_empty=False)
+        require_string_list(evidence.get("limitations"), f"session.system_evidence[{index}].limitations", allow_empty=False)
+        if evidence.get("confidence") not in CONFIDENCE_LEVELS:
+            fail(f"session.system_evidence[{index}].confidence is invalid")
+        require_string_list(evidence.get("proves"), f"session.system_evidence[{index}].proves")
+        require_string_list(evidence.get("suggests"), f"session.system_evidence[{index}].suggests")
+        require_string_list(evidence.get("does_not_prove"), f"session.system_evidence[{index}].does_not_prove", allow_empty=False)
+        require_boolean(evidence.get("interpretation_withheld"), f"session.system_evidence[{index}].interpretation_withheld")
+        require_string(evidence.get("recorded_at"), f"session.system_evidence[{index}].recorded_at")
+    for request_id, request in evidence_requests_by_id.items():
+        count = evidence_count_by_request.get(request_id, 0)
+        if request["status"] == "completed" and count != 1:
+            fail(f"completed evidence request {request_id} requires exactly one evidence package")
+        if request["status"] != "completed" and count:
+            fail(f"evidence request {request_id} has evidence but status is {request['status']}")
+
+    interpretations = require_list(session.get("evidence_interpretations"), "session.evidence_interpretations")
+    interpretation_ids: set[str] = set()
+    interpreted_evidence_ids: set[str] = set()
+    for index, interpretation in enumerate(interpretations):
+        interpretation = require_object(interpretation, f"session.evidence_interpretations[{index}]")
+        interpretation_id = require_record_id(interpretation.get("id"), f"session.evidence_interpretations[{index}].id", "EI")
+        if interpretation_id in interpretation_ids:
+            fail(f"duplicate evidence interpretation id: {interpretation_id}")
+        interpretation_ids.add(interpretation_id)
+        evidence_id = require_string(interpretation.get("evidence_id"), f"session.evidence_interpretations[{index}].evidence_id")
+        evidence = system_evidence_by_id.get(evidence_id)
+        if evidence is None:
+            fail(f"session.evidence_interpretations[{index}] references unknown evidence")
+        if evidence_id in interpreted_evidence_ids:
+            fail(f"system evidence interpreted more than once: {evidence_id}")
+        interpreted_evidence_ids.add(evidence_id)
+        if interpretation.get("judgment_id") != evidence.get("judgment_id"):
+            fail(f"session.evidence_interpretations[{index}] judgment does not match evidence")
+        require_string(interpretation.get("summary"), f"session.evidence_interpretations[{index}].summary")
+        require_string_list(interpretation.get("proves"), f"session.evidence_interpretations[{index}].proves")
+        require_string_list(interpretation.get("does_not_prove"), f"session.evidence_interpretations[{index}].does_not_prove", allow_empty=False)
+        if interpretation.get("decision_change") not in DECISION_CHANGES:
+            fail(f"session.evidence_interpretations[{index}].decision_change is invalid")
+        require_string(interpretation.get("recorded_at"), f"session.evidence_interpretations[{index}].recorded_at")
+    for evidence_id, evidence in system_evidence_by_id.items():
+        request = evidence_requests_by_id[evidence["request_id"]]
+        if request["interpretation_protected"] and evidence_id not in interpreted_evidence_ids and session.get("status") == "completed":
+            fail(f"completed session requires human interpretation for protected evidence {evidence_id}")
+
+    history = require_list(session.get("history"), "session.history")
+    for index, entry in enumerate(history):
+        entry = require_object(entry, f"session.history[{index}]")
+        require_string(entry.get("at"), f"session.history[{index}].at")
+        require_string(entry.get("type"), f"session.history[{index}].type")
+        require_string(entry.get("detail"), f"session.history[{index}].detail")
+
+    if not boundary["accepted"]:
+        if discovery_records or event_records or session.get("assistance") or evidence_requests or system_evidence or interpretations:
+            fail("learning records cannot advance before boundary acceptance")
 
     assessment = session.get("assessment")
     if not isinstance(assessment, dict):
         fail("session.assessment must be an object")
     outcome = assessment.get("outcome")
+    require_string_list(assessment.get("limitations"), "session.assessment.limitations")
+    accepted_by_human = require_boolean(
+        assessment.get("accepted_by_human"),
+        "session.assessment.accepted_by_human",
+    )
+    if accepted_by_human and not assessment.get("accepted_at"):
+        fail("accepted assessment requires accepted_at")
     result_summary = validate_result_summary(assessment.get("result_summary"), "session.assessment.result_summary")
     gaps = require_string_list(assessment.get("gaps"), "session.assessment.gaps")
     if len(gaps) > 3:
         fail("session.assessment.gaps must contain at most three items")
     disputes = require_list(assessment.get("disputes"), "session.assessment.disputes")
     unresolved_disputes = []
+    dispute_ids: set[str] = set()
     for index, dispute in enumerate(disputes):
         if not isinstance(dispute, dict):
             fail(f"session.assessment.disputes[{index}] must be an object")
+        dispute_id = require_record_id(dispute.get("id"), f"session.assessment.disputes[{index}].id", "DP")
+        if dispute_id in dispute_ids:
+            fail(f"duplicate dispute id: {dispute_id}")
+        dispute_ids.add(dispute_id)
+        if dispute.get("category") not in DISPUTE_CATEGORIES:
+            fail(f"session.assessment.disputes[{index}].category is invalid")
         if dispute.get("status") not in {"open", "resolved"}:
             fail(f"session.assessment.disputes[{index}].status is invalid")
         require_string(dispute.get("reason"), f"session.assessment.disputes[{index}].reason")
+        require_string(dispute.get("raised_at"), f"session.assessment.disputes[{index}].raised_at")
+        if dispute["status"] == "resolved":
+            require_string(dispute.get("resolution"), f"session.assessment.disputes[{index}].resolution")
         if dispute["status"] == "open":
             unresolved_disputes.append(dispute)
     dimensions = require_list(assessment.get("dimensions"), "session.assessment.dimensions")
     rubric_ids = {item["id"] for item in case["rubric"]}
+    known_evidence_refs = (
+        attempt_ids
+        | revision_ids
+        | assistance_ids
+        | system_evidence_ids
+        | interpretation_ids
+        | event_record_ids
+        | discovery_record_ids
+    )
     if dimensions:
         dimension_ids = unique_ids(dimensions, "session.assessment.dimensions")
         if dimension_ids - rubric_ids:
@@ -345,6 +654,14 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
                 fail(f"session.assessment.dimensions[{index}].rating is invalid")
             if dimension.get("independence") not in INDEPENDENCE:
                 fail(f"session.assessment.dimensions[{index}].independence is invalid")
+            evidence_refs = set(require_string_list(
+                dimension.get("evidence"),
+                f"session.assessment.dimensions[{index}].evidence",
+            ))
+            if dimension.get("rating") in {"demonstrated", "partial"} and not evidence_refs:
+                fail(f"session.assessment.dimensions[{index}] requires evidence references")
+            if evidence_refs - known_evidence_refs:
+                fail(f"session.assessment.dimensions[{index}] references unknown learning evidence")
             require_string(dimension.get("limitation"), f"session.assessment.dimensions[{index}].limitation")
 
     if outcome is not None and outcome not in OUTCOMES:
@@ -364,12 +681,16 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
             fail("completed session requires an assessment outcome")
         if any(item.get("status") not in TERMINAL_JUDGMENT_STATUSES for item in judgments):
             fail("completed session requires every judgment to be terminal")
+        if {item["id"] for item in dimensions} != rubric_ids:
+            fail("completed session requires every rubric dimension")
         next_action = assessment.get("next_action")
         if not isinstance(next_action, dict) or next_action.get("type") not in NEXT_ACTIONS:
             fail("completed session requires a valid assessment.next_action")
         require_string(next_action.get("reason"), "session.assessment.next_action.reason")
         if not any(result_summary.values()):
             fail("completed session requires a non-empty assessment.result_summary")
+        if assessment.get("accepted_by_human") is not True or not assessment.get("accepted_at"):
+            fail("completed session requires a human-accepted assessment")
         if unresolved_disputes:
             if outcome != "inconclusive":
                 fail("completed session with an open dispute must be inconclusive")
@@ -399,6 +720,19 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
                 fail("profile.current_gaps must match the latest completed session gaps")
             if profile.get("next_action") != assessment.get("next_action"):
                 fail("profile.next_action must match the completed session assessment")
+            competency_entries = [
+                item for item in profile["competencies"]
+                if item.get("id") == session["active_competency"].get("id")
+            ]
+            if len(competency_entries) != 1:
+                fail("completed session requires exactly one matching profile competency entry")
+            competency_entry = competency_entries[0]
+            if competency_entry.get("name") != session["active_competency"].get("name"):
+                fail("profile competency name does not match the session")
+            if competency_entry.get("latest_outcome") != outcome:
+                fail("profile competency outcome does not match the session")
+            if competency_entry.get("last_session_id") != session_id:
+                fail("profile competency last_session_id does not match the session")
 
 
 def main() -> int:

@@ -11,7 +11,10 @@ Keep internal skills, artifact paths, state names, judgment IDs, and rubric IDs 
 
 ## Required Source And Helpers
 
-Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` before starting or resuming a session.
+Read these sources before starting or resuming a session:
+
+- `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` for protected principles.
+- `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` for executable MVP contracts.
 
 Resolve these helpers as sibling skill directories in the same installed skills root:
 
@@ -21,11 +24,13 @@ Resolve these helpers as sibling skill directories in the same installed skills 
 
 Read a helper's `SKILL.md` only when routing work to that helper.
 
-Use the bundled resources relative to this `SKILL.md`:
+Use these executable resources relative to this `SKILL.md`:
 
-- `assets/cases/inventory-reservation.json`: the initial MVP case.
 - `scripts/init_learning_session.py`: initialize a profile and immutable case-bound session.
+- `scripts/update_learning_state.py`: apply validated state transitions without hand-editing session JSON.
 - `scripts/validate_learning_state.py`: validate case, profile, and session invariants.
+
+Read `references/state-transitions.md` before applying the first state transition in a session.
 
 ## Human Interface
 
@@ -52,6 +57,7 @@ The human should be able to operate the workflow with ordinary requests such as:
 ## Runtime State
 
 - Profile: `docs/ai/learning/profile.json`.
+- Durable cases: `docs/ai/learning/cases/{case_id}.json`.
 - Sessions: `docs/ai/learning/sessions/{session_id}.json`.
 - The session JSON is the durable record. Do not create a transcript or a duplicate narrative report.
 - Store concise observable decisions, assumptions, predictions, revisions, assistance, and evidence. Never store private chain-of-thought.
@@ -61,8 +67,10 @@ The human should be able to operate the workflow with ordinary requests such as:
 1. Inspect the profile and sessions.
 2. Resume the single non-completed session when one exists, unless the human explicitly chooses another.
 3. If no profile exists, ask for one concise long-term capability goal and one concise baseline describing what the human can currently do without AI help.
-4. Use `learning-case` in selection mode to choose an existing case. Use the bundled MVP case when no better approved case exists. Record the returned path as `selected_case_path`.
-5. Initialize the session:
+4. Use `learning-case` in selection mode to choose an existing durable case under `docs/ai/learning/cases/`.
+5. Use `docs/ai/learning/cases/inventory-reservation.json` when no better approved case exists.
+6. Never bind a session directly to an asset inside an installed skill directory.
+7. Initialize the session:
 
    ```bash
    python3 skills/learning-workflow/scripts/init_learning_session.py \
@@ -73,9 +81,9 @@ The human should be able to operate the workflow with ordinary requests such as:
      --baseline "{human-provided baseline}"
    ```
 
-6. Present the focus, what reasoning the human owns, and what help AI may provide in one short message.
-7. Ask “Bắt đầu nhé?” or an equivalent natural confirmation.
-8. After acceptance, update the boundary and validate state before continuing.
+8. Present the focus, what reasoning the human owns, and what help AI may provide in one short message.
+9. Ask “Bắt đầu nhé?” or an equivalent natural confirmation.
+10. After acceptance, use `update_learning_state.py accept-boundary` before continuing.
 
 Do not expose the internal phrase `protected judgment` unless it helps answer a human question about the workflow.
 
@@ -85,16 +93,18 @@ Do not expose the internal phrase `protected judgment` unless it helps answer a 
 - Return only facts justified by the human's question.
 - Do not explain a fact's design implication before the human attempts that reasoning.
 - If the case has no answer, say the information is unknown instead of inventing a constraint.
-- Record disclosed fact IDs silently and validate state.
+- Record the exact question, matched discovery path and disclosed fact IDs with `update_learning_state.py disclose-facts`.
 
 ## Decide
 
 A valid first attempt contains a conclusion, model, or direction plus relevant reasoning and at least one assumption, constraint, invariant, risk, or tradeoff.
 
-- Record a concise faithful summary without strengthening the human's answer.
+- Record a concise faithful summary with `update_learning_state.py record-attempt` without strengthening the human's answer.
 - Ask neutral questions or present one high-value counterexample at a time.
 - Give the human a clear opportunity to revise or defend the decision.
 - Do not reveal a complete solution while independent assessment remains open.
+
+Use the escalation and closure rules in `WORKFLOW_LEARNING_STANDARD.md`.
 
 Use the smallest intervention that restores progress:
 
@@ -107,16 +117,18 @@ Use the smallest intervention that restores progress:
 
 Levels 4-6 are material assistance.
 
-Record their impact and never later represent the affected judgment as independent.
+Record every intervention with `update_learning_state.py record-assistance` and never later represent materially affected judgment as independent.
 
 When the human chooses evidence and authorizes execution:
 
-1. Route the bounded request to `learning-evidence`.
-2. Persist its evidence package without adding a stronger conclusion.
-3. Present the observable result and limitations in plain language.
-4. Ask the human what the evidence proves, does not prove, and whether the decision changes.
+1. Record the authorized request with `update_learning_state.py request-evidence`.
+2. Route the bounded request to `learning-evidence`.
+3. Persist its package with `update_learning_state.py record-evidence` without adding a stronger conclusion.
+4. Present the observable result and limitations in plain language.
+5. Ask the human what the evidence proves, does not prove, and whether the decision changes.
+6. Record protected interpretation with `update_learning_state.py interpret-evidence`.
 
-When a case consequence is useful, route release validation to `learning-case` before presenting the event.
+When a case consequence is useful, route release validation to `learning-case`, then record it with `update_learning_state.py release-event` before presenting the event.
 
 ## Reflect
 
@@ -131,15 +143,17 @@ Route the case and session to `learning-review`.
 
 After receiving its result:
 
-1. Present the session result in three plain-language groups: independently demonstrated, demonstrated with AI assistance, and not yet demonstrated.
-2. Present no more than three current improvement areas supported by the session evidence.
-3. Present limitations without rubric IDs.
-4. Give the human a chance to dispute the assessment.
-5. Apply an accepted assessment to the session and profile.
-6. Record exactly one recommended next action: revisit prerequisite, retry similar, transfer context, increase difficulty, or change competency.
-7. Update `profile.current_gaps` and append one concise `profile.progress_history` entry from the accepted assessment. Do not copy the full session record into the profile.
-8. Validate state.
-9. Ask the human whether to accept the recommendation, continue unfinished evidence work, or choose another direction.
+1. Persist the proposal with `update_learning_state.py propose-assessment`.
+2. Present the session result in three plain-language groups: independently demonstrated, demonstrated with AI assistance, and not yet demonstrated.
+3. Present no more than three current improvement areas supported by the session evidence.
+4. Present limitations without rubric IDs.
+5. Give the human a chance to dispute the assessment.
+6. Record and resolve disputes with `raise-dispute` and `resolve-dispute`, then propose a corrected assessment when evidence requires a change.
+7. After explicit acceptance, apply the assessment atomically with `update_learning_state.py complete-session`.
+8. Keep exactly one recommended next action: revisit prerequisite, retry similar, transfer context, increase difficulty, or change competency.
+9. Let the state script update `profile.current_gaps`, `profile.competencies` and one concise `profile.progress_history` entry.
+10. Validate state.
+11. Ask the human whether to accept the recommendation, continue unfinished evidence work, or choose another direction.
 
 Do not present step completion as learning evidence.
 
@@ -166,6 +180,8 @@ python3 skills/learning-workflow/scripts/validate_learning_state.py \
 Stop and repair state when validation fails.
 
 Do not weaken an invariant to make a session pass.
+
+Do not hand-edit profile or session state when `update_learning_state.py` supports the transition.
 
 ## MVP Boundaries
 
