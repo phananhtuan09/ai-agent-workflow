@@ -27,10 +27,13 @@ Read a helper's `SKILL.md` only when routing work to that helper.
 Use these executable resources relative to this `SKILL.md`:
 
 - `scripts/init_learning_session.py`: initialize a profile and immutable case-bound session.
+- `scripts/update_learning_context.py`: approve or evolve the durable project and schedule.
 - `scripts/update_learning_state.py`: apply validated state transitions without hand-editing session JSON.
 - `scripts/validate_learning_state.py`: validate case, profile, and session invariants.
 
 Read `references/state-transitions.md` before applying the first state transition in a session.
+
+Read `references/learning-context.md` when project or schedule artifacts are draft or need an approved update.
 
 ## Human Interface
 
@@ -57,6 +60,8 @@ The human should be able to operate the workflow with ordinary requests such as:
 ## Runtime State
 
 - Profile: `docs/ai/learning/profile.json`.
+- Project: `docs/ai/learning/project.json`.
+- Schedule: `docs/ai/learning/schedule.json`.
 - Durable cases: `docs/ai/learning/cases/{case_id}.json`.
 - Sessions: `docs/ai/learning/sessions/{session_id}.json`.
 - The session JSON is the durable record. Do not create a transcript or a duplicate narrative report.
@@ -64,26 +69,32 @@ The human should be able to operate the workflow with ordinary requests such as:
 
 ## Start Or Resume
 
-1. Inspect the profile and sessions.
+1. Inspect the project, schedule, profile and sessions.
 2. Resume the single non-completed session when one exists, unless the human explicitly chooses another.
-3. If no profile exists, ask for one concise long-term capability goal and one concise baseline describing what the human can currently do without AI help.
-4. Use `learning-case` in selection mode to choose an existing durable case under `docs/ai/learning/cases/`.
-5. Use `docs/ai/learning/cases/inventory-reservation.json` when no better approved case exists.
-6. Never bind a session directly to an asset inside an installed skill directory.
-7. Initialize the session:
+3. If project or schedule is draft, present their concise base and request human approval before continuing.
+4. Apply accepted project and schedule artifacts with `update_learning_context.py accept`.
+5. If no profile exists, ask for one concise long-term capability goal and one concise baseline describing what the human can currently do without AI help.
+6. Use `learning-case` in selection mode with the active project, current schedule week, goal, competency evidence and current gaps.
+7. Select only a case aligned with the active project version and current schedule week.
+8. Use `docs/ai/learning/cases/inventory-reservation.json` when it is aligned and no better approved case exists.
+9. Create a new project-aligned case when no existing case matches the current week.
+10. Never bind a session directly to an asset inside an installed skill directory.
+11. Initialize the session:
 
    ```bash
    python3 skills/learning-workflow/scripts/init_learning_session.py \
      --case "{selected_case_path}" \
+     --project docs/ai/learning/project.json \
+     --schedule docs/ai/learning/schedule.json \
      --profile docs/ai/learning/profile.json \
      --session docs/ai/learning/sessions/{session_id}.json \
      --goal "{human-approved goal}" \
      --baseline "{human-provided baseline}"
    ```
 
-8. Present the focus, what reasoning the human owns, and what help AI may provide in one short message.
-9. Ask “Bắt đầu nhé?” or an equivalent natural confirmation.
-10. After acceptance, use `update_learning_state.py accept-boundary` before continuing.
+12. Present the project context, current week focus, case focus, what reasoning the human owns, and what help AI may provide in one short message.
+13. Ask “Bắt đầu nhé?” or an equivalent natural confirmation.
+14. After acceptance, use `update_learning_state.py accept-boundary` before continuing.
 
 Do not expose the internal phrase `protected judgment` unless it helps answer a human question about the workflow.
 
@@ -152,8 +163,11 @@ After receiving its result:
 7. After explicit acceptance, apply the assessment atomically with `update_learning_state.py complete-session`.
 8. Keep exactly one recommended next action: revisit prerequisite, retry similar, transfer context, increase difficulty, or change competency.
 9. Let the state script update `profile.current_gaps`, `profile.competencies` and one concise `profile.progress_history` entry.
-10. Validate state.
-11. Ask the human whether to accept the recommendation, continue unfinished evidence work, or choose another direction.
+10. Let the state script record the session under the current schedule week and advance the week only when the standard permits.
+11. Ask whether accepted decisions should update the durable project state.
+12. Record explicitly accepted project evolution with `update_learning_context.py record-project-evolution`.
+13. Validate state.
+14. Ask the human whether to accept the recommendation, continue unfinished evidence work, or choose another direction.
 
 Do not present step completion as learning evidence.
 
@@ -168,13 +182,15 @@ When a helper is invoked directly by the human, let it complete only its bounded
 
 ## Validation
 
-Run after initialization and every material state transition. For a resumed session, read `case_path` from the session and use it as `selected_case_path` instead of falling back to the bundled case:
+Run after initialization and every material state transition. For a resumed session, read `case_path` from the session and use it as `selected_case_path` instead of selecting a new case:
 
 ```bash
 python3 skills/learning-workflow/scripts/validate_learning_state.py \
   docs/ai/learning/sessions/{session_id}.json \
   --case "{selected_case_path}" \
-  --profile docs/ai/learning/profile.json
+  --profile docs/ai/learning/profile.json \
+  --project docs/ai/learning/project.json \
+  --schedule docs/ai/learning/schedule.json
 ```
 
 Stop and repair state when validation fails.
@@ -186,6 +202,7 @@ Do not hand-edit profile or session state when `update_learning_state.py` suppor
 ## MVP Boundaries
 
 - Run one active session at a time.
+- Run one active project and one active schedule at a time.
 - Do not add a scheduler, database, mastery score, dashboard, or multi-agent roles.
 - Use `learning-case` transfer mode instead of a separate transfer skill.
 - Keep progression updates in this coordinator using the accepted `learning-review` result.

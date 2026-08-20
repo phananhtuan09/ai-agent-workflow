@@ -22,9 +22,23 @@ Explore -> Decide -> Reflect
 
 Profile phải lưu goal đã được human chấp thuận, baseline, current gaps, competency history và đúng một next action gần nhất.
 
-Cadence mặc định là chọn lại challenge sau mỗi completed session dựa trên goal, current gaps, independence và next action gần nhất.
+Learning program phải có một durable project và một schedule đã được human chấp thuận trước session đầu tiên.
+
+Project cung cấp domain, product goal, actor, architecture baseline, business rule, constraint và evolution history xuyên suốt.
+
+Schedule cung cấp horizon, cadence, competency focus và project focus ở độ mịn tuần.
+
+Cadence mặc định là chọn challenge theo tuần hiện tại rồi điều chỉnh dựa trên goal, current gaps, independence và next action gần nhất.
 
 Case hoặc competency được đề xuất bởi AI nhưng chỉ có hiệu lực sau khi human chấp thuận boundary của session.
+
+Case continuity phải tham chiếu project và tuần schedule đang áp dụng.
+
+Transfer case được phép nằm ngoài project nhưng phải nói rõ principle nào đang được kiểm tra.
+
+Schedule là planning intent và không được dùng như bằng chứng competency.
+
+Cứ mỗi recalibration checkpoint hoặc khi learning evidence cho thấy prerequisite hay difficulty không còn phù hợp, AI phải đề xuất cập nhật các tuần chưa completed và chờ human chấp thuận.
 
 ## Boundary
 
@@ -125,9 +139,17 @@ Next action dùng đúng một trong `revisit-prerequisite`, `retry-similar`, `t
 
 Profile phải lưu một progress history entry cho mỗi completed session và cập nhật competency record tương ứng.
 
+Completed session phải được ghi vào đúng schedule week cùng các learning evidence reference đã dùng trong assessment.
+
+Schedule week chỉ được advance khi đủ cadence đã chốt, outcome là `independent-success` hoặc `assisted-success`, và next action không yêu cầu prerequisite hay retry cùng competency.
+
+Nếu chưa đủ điều kiện advance, schedule phải giữ nguyên tuần và ghi adjustment reason.
+
 Session tiếp theo phải được chọn từ goal, current gaps, competency history và next action gần nhất.
 
 `transfer-context` phải dùng domain hoặc constraint context khác và không được copy solution mechanism của case trước.
+
+Project evolution chỉ được ghi sau khi human chấp thuận decision hoặc project-state change tương ứng.
 
 ## Durable Artifacts
 
@@ -137,14 +159,20 @@ Không bind active session trực tiếp vào asset trong thư mục skill vì s
 
 Profile nằm tại `docs/ai/learning/profile.json`.
 
+Project nằm tại `docs/ai/learning/project.json`.
+
+Schedule nằm tại `docs/ai/learning/schedule.json`.
+
 Session nằm tại `docs/ai/learning/sessions/{session_id}.json`.
 
 Session JSON là durable learning record duy nhất và không được nhân bản thành transcript narrative.
 
-Mọi state transition phải được validate trước khi commit đồng thời session và profile liên quan.
+Mọi state transition phải được validate trước khi commit đồng thời session, profile và schedule liên quan.
+
+Project và schedule update phải được validate trước khi commit đồng thời hai artifact.
 
 ## MVP Verification
 
-MVP phải có controlled lifecycle test bao phủ initialization, boundary acceptance, discovery, first attempt, assistance, evidence, interpretation, revision, assessment, dispute handling, completion, profile update và next-session selection input.
+MVP phải có controlled lifecycle test bao phủ project/schedule approval, initialization, boundary acceptance, discovery, first attempt, assistance, evidence, interpretation, revision, assessment, dispute handling, completion, schedule progression, project evolution, profile update và next-session selection input.
 
 MVP vẫn mang trạng thái experimental cho tới khi có representative session traces và workflow evidence thực tế.

@@ -18,6 +18,8 @@ from validate_learning_state import (
     load_json,
     validate_case,
     validate_profile,
+    validate_project,
+    validate_schedule,
     validate_session,
 )
 
@@ -325,7 +327,12 @@ def derive_independence(dimensions: list[dict[str, Any]]) -> str:
     return "not-observed"
 
 
-def complete_session(session: dict[str, Any], profile: dict[str, Any], timestamp: str) -> None:
+def complete_session(
+    session: dict[str, Any],
+    profile: dict[str, Any],
+    schedule: dict[str, Any],
+    timestamp: str,
+) -> None:
     if session["status"] != "assessment":
         raise ValidationError("complete-session requires assessment status")
     assessment = session["assessment"]
@@ -358,43 +365,86 @@ def complete_session(session: dict[str, Any], profile: dict[str, Any], timestamp
         "completed_at": timestamp,
     })
 
+    week_number = session["learning_context"]["schedule_week"]
+    if schedule["current_week"] != week_number:
+        raise ValidationError("completed session must belong to the current schedule week")
+    week = schedule["weeks"][week_number - 1]
+    if session["session_id"] in week["completed_session_ids"]:
+        raise ValidationError("session is already recorded in the schedule")
+    week["completed_session_ids"].append(session["session_id"])
+    week["evidence_refs"] = list(dict.fromkeys([
+        *week["evidence_refs"],
+        *[
+            reference
+            for dimension in assessment["dimensions"]
+            for reference in dimension["evidence"]
+        ],
+    ]))
+    can_advance = (
+        assessment["outcome"] in {"independent-success", "assisted-success"}
+        and assessment["next_action"]["type"] not in {"revisit-prerequisite", "retry-similar"}
+        and len(week["completed_session_ids"]) >= schedule["sessions_per_week"]
+    )
+    if can_advance:
+        week["status"] = "completed"
+        if week_number == schedule["horizon_weeks"]:
+            schedule["status"] = "completed"
+        else:
+            schedule["current_week"] += 1
+            schedule["weeks"][schedule["current_week"] - 1]["status"] = "in-progress"
+    else:
+        week["adjustments"].append({
+            "session_id": session["session_id"],
+            "reason": assessment["next_action"]["reason"],
+            "recorded_at": timestamp,
+        })
+    profile["schedule_week"] = schedule["current_week"]
+
 
 TRANSITIONS = {
-    "accept-boundary": lambda session, profile, payload, timestamp: accept_boundary(session, timestamp),
-    "disclose-facts": lambda session, profile, payload, timestamp: disclose_facts(session, payload, timestamp),
-    "record-attempt": lambda session, profile, payload, timestamp: record_attempt(session, payload, timestamp),
-    "record-revision": lambda session, profile, payload, timestamp: record_revision(session, payload, timestamp),
-    "record-assistance": lambda session, profile, payload, timestamp: record_assistance(session, payload, timestamp),
-    "request-evidence": lambda session, profile, payload, timestamp: request_evidence(session, payload, timestamp),
-    "block-evidence": lambda session, profile, payload, timestamp: block_evidence(session, payload, timestamp),
-    "record-evidence": lambda session, profile, payload, timestamp: record_evidence(session, payload, timestamp),
-    "interpret-evidence": lambda session, profile, payload, timestamp: interpret_evidence(session, payload, timestamp),
-    "release-event": lambda session, profile, payload, timestamp: release_event(session, payload, timestamp),
-    "close-judgment": lambda session, profile, payload, timestamp: close_judgment(session, payload, timestamp),
-    "propose-assessment": lambda session, profile, payload, timestamp: propose_assessment(session, payload, timestamp),
-    "raise-dispute": lambda session, profile, payload, timestamp: raise_dispute(session, payload, timestamp),
-    "resolve-dispute": lambda session, profile, payload, timestamp: resolve_dispute(session, payload, timestamp),
-    "complete-session": lambda session, profile, payload, timestamp: complete_session(session, profile, timestamp),
+    "accept-boundary": lambda session, profile, schedule, payload, timestamp: accept_boundary(session, timestamp),
+    "disclose-facts": lambda session, profile, schedule, payload, timestamp: disclose_facts(session, payload, timestamp),
+    "record-attempt": lambda session, profile, schedule, payload, timestamp: record_attempt(session, payload, timestamp),
+    "record-revision": lambda session, profile, schedule, payload, timestamp: record_revision(session, payload, timestamp),
+    "record-assistance": lambda session, profile, schedule, payload, timestamp: record_assistance(session, payload, timestamp),
+    "request-evidence": lambda session, profile, schedule, payload, timestamp: request_evidence(session, payload, timestamp),
+    "block-evidence": lambda session, profile, schedule, payload, timestamp: block_evidence(session, payload, timestamp),
+    "record-evidence": lambda session, profile, schedule, payload, timestamp: record_evidence(session, payload, timestamp),
+    "interpret-evidence": lambda session, profile, schedule, payload, timestamp: interpret_evidence(session, payload, timestamp),
+    "release-event": lambda session, profile, schedule, payload, timestamp: release_event(session, payload, timestamp),
+    "close-judgment": lambda session, profile, schedule, payload, timestamp: close_judgment(session, payload, timestamp),
+    "propose-assessment": lambda session, profile, schedule, payload, timestamp: propose_assessment(session, payload, timestamp),
+    "raise-dispute": lambda session, profile, schedule, payload, timestamp: raise_dispute(session, payload, timestamp),
+    "resolve-dispute": lambda session, profile, schedule, payload, timestamp: resolve_dispute(session, payload, timestamp),
+    "complete-session": lambda session, profile, schedule, payload, timestamp: complete_session(session, profile, schedule, timestamp),
 }
 
 
-def write_pair_atomic(session_path: Path, session: dict[str, Any], profile_path: Path, profile: dict[str, Any]) -> None:
-    session_text = json.dumps(session, ensure_ascii=False, indent=2) + "\n"
-    profile_text = json.dumps(profile, ensure_ascii=False, indent=2) + "\n"
-    session_tmp = session_path.with_name(f".{session_path.name}.{os.getpid()}.tmp")
-    profile_tmp = profile_path.with_name(f".{profile_path.name}.{os.getpid()}.tmp")
-    previous_session = session_path.read_bytes()
-    previous_profile = profile_path.read_bytes()
-    session_tmp.write_text(session_text, encoding="utf-8")
-    profile_tmp.write_text(profile_text, encoding="utf-8")
+def write_state_atomic(
+    session_path: Path,
+    session: dict[str, Any],
+    profile_path: Path,
+    profile: dict[str, Any],
+    schedule_path: Path,
+    schedule: dict[str, Any],
+) -> None:
+    values = {
+        session_path: json.dumps(session, ensure_ascii=False, indent=2) + "\n",
+        profile_path: json.dumps(profile, ensure_ascii=False, indent=2) + "\n",
+        schedule_path: json.dumps(schedule, ensure_ascii=False, indent=2) + "\n",
+    }
+    previous = {path: path.read_bytes() for path in values}
+    temporary = {path: path.with_name(f".{path.name}.{os.getpid()}.tmp") for path in values}
+    for path, text in values.items():
+        temporary[path].write_text(text, encoding="utf-8")
     try:
-        session_tmp.replace(session_path)
-        profile_tmp.replace(profile_path)
+        for path in values:
+            temporary[path].replace(path)
     except OSError:
-        session_path.write_bytes(previous_session)
-        profile_path.write_bytes(previous_profile)
-        session_tmp.unlink(missing_ok=True)
-        profile_tmp.unlink(missing_ok=True)
+        for path, content in previous.items():
+            path.write_bytes(content)
+        for path in temporary.values():
+            path.unlink(missing_ok=True)
         raise
 
 
@@ -404,6 +454,8 @@ def main() -> int:
     parser.add_argument("--session", required=True, type=Path)
     parser.add_argument("--case", required=True, type=Path)
     parser.add_argument("--profile", required=True, type=Path)
+    parser.add_argument("--project", required=True, type=Path)
+    parser.add_argument("--schedule", required=True, type=Path)
     parser.add_argument("--payload", type=Path)
     args = parser.parse_args()
 
@@ -411,17 +463,22 @@ def main() -> int:
         session = load_json(args.session)
         case = load_json(args.case)
         profile = load_json(args.profile)
+        project = load_json(args.project)
+        schedule = load_json(args.schedule)
         validate_case(case)
         validate_profile(profile)
-        validate_session(session, case, args.case, profile)
+        validate_project(project)
+        validate_schedule(schedule, project)
+        validate_session(session, case, args.case, profile, project, schedule)
         payload = {} if args.payload is None else require_payload(args)
         if args.operation not in {"accept-boundary", "complete-session"} and args.payload is None:
             raise ValidationError(f"{args.operation} requires --payload")
         timestamp = now()
-        TRANSITIONS[args.operation](session, profile, payload, timestamp)
+        TRANSITIONS[args.operation](session, profile, schedule, payload, timestamp)
         validate_profile(profile)
-        validate_session(session, case, args.case, profile)
-        write_pair_atomic(args.session, session, args.profile, profile)
+        validate_schedule(schedule, project)
+        validate_session(session, case, args.case, profile, project, schedule)
+        write_state_atomic(args.session, session, args.profile, profile, args.schedule, schedule)
     except (OSError, ValidationError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
@@ -430,6 +487,7 @@ def main() -> int:
         "operation": args.operation,
         "session_path": str(args.session),
         "profile_path": str(args.profile),
+        "schedule_path": str(args.schedule),
     }, ensure_ascii=False))
     return 0
 

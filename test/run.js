@@ -175,16 +175,22 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
     const skillsRoot = path.join(result.workspace, ".agents/skills");
     const casePath = path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json");
+    const projectPath = path.join(result.workspace, "docs/ai/learning/project.json");
+    const schedulePath = path.join(result.workspace, "docs/ai/learning/schedule.json");
     const standardPath = path.join(result.workspace, "docs/ai/project/WORKFLOW_LEARNING_STANDARD.md");
     const initPath = path.join(skillRoot, "scripts/init_learning_session.py");
+    const contextPath = path.join(skillRoot, "scripts/update_learning_context.py");
     const updatePath = path.join(skillRoot, "scripts/update_learning_state.py");
     const validatePath = path.join(skillRoot, "scripts/validate_learning_state.py");
     const profilePath = path.join(result.workspace, "docs/ai/learning/profile.json");
     const sessionPath = path.join(result.workspace, "docs/ai/learning/sessions/inventory-reservation-001.json");
 
     assert.ok(fs.existsSync(casePath));
+    assert.ok(fs.existsSync(projectPath));
+    assert.ok(fs.existsSync(schedulePath));
     assert.ok(fs.existsSync(standardPath));
     assert.ok(fs.existsSync(initPath));
+    assert.ok(fs.existsSync(contextPath));
     assert.ok(fs.existsSync(updatePath));
     assert.ok(fs.existsSync(validatePath));
     assert.ok(fs.existsSync(path.join(skillsRoot, "learning-case/SKILL.md")));
@@ -195,6 +201,72 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     assert.ok(coordinator.includes("Explore -> Decide -> Reflect"));
     assert.ok(coordinator.includes("WORKFLOW_LEARNING_STANDARD.md"));
     assert.ok(coordinator.includes("update_learning_state.py"));
+    assert.ok(coordinator.includes("update_learning_context.py"));
+
+    const blockedInitialization = spawnSync(
+      "python3",
+      [
+        initPath,
+        "--case",
+        casePath,
+        "--project",
+        projectPath,
+        "--schedule",
+        schedulePath,
+        "--profile",
+        profilePath,
+        "--session",
+        sessionPath,
+        "--goal",
+        "Develop senior system-design judgment",
+        "--baseline",
+        "Can design ordinary CRUD systems but needs guidance with partial failures",
+      ],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.notStrictEqual(blockedInitialization.status, 0);
+    assert.ok(blockedInitialization.stderr.includes("must be active"));
+    assert.ok(!fs.existsSync(profilePath));
+    assert.ok(!fs.existsSync(sessionPath));
+
+    const acceptedContext = spawnSync(
+      "python3",
+      [contextPath, "accept", "--project", projectPath, "--schedule", schedulePath],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(acceptedContext.status, 0, acceptedContext.stderr || acceptedContext.stdout);
+
+    const recalibrationPath = path.join(result.workspace, "schedule-recalibration.json");
+    fs.writeFileSync(
+      recalibrationPath,
+      JSON.stringify({
+        reason: "Controlled evidence requires a sharper state-modeling focus.",
+        effective_week: 2,
+        updates: [
+          {
+            week: 2,
+            theme: "Domain model and explicit state transitions",
+            competency_focus: ["domain modeling", "state-machine reasoning"],
+            project_focus: "Reservation, order, and payment transitions",
+          },
+        ],
+      }, null, 2) + "\n"
+    );
+    const recalibrated = spawnSync(
+      "python3",
+      [
+        contextPath,
+        "recalibrate-schedule",
+        "--project",
+        projectPath,
+        "--schedule",
+        schedulePath,
+        "--payload",
+        recalibrationPath,
+      ],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(recalibrated.status, 0, recalibrated.stderr || recalibrated.stdout);
 
     const initialized = spawnSync(
       "python3",
@@ -202,6 +274,10 @@ test("learning-workflow installs durable artifacts and executable state tooling"
         initPath,
         "--case",
         casePath,
+        "--project",
+        projectPath,
+        "--schedule",
+        schedulePath,
         "--profile",
         profilePath,
         "--session",
@@ -216,13 +292,26 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     assert.strictEqual(initialized.status, 0, initialized.stderr || initialized.stdout);
 
     const initializedProfile = JSON.parse(fs.readFileSync(profilePath, "utf8"));
-    assert.strictEqual(initializedProfile.cadence, "session-by-session");
+    assert.strictEqual(initializedProfile.cadence, "schedule-driven");
+    assert.strictEqual(initializedProfile.project_id, "commerce-operations-platform");
+    assert.strictEqual(initializedProfile.schedule_week, 1);
     assert.deepStrictEqual(initializedProfile.current_gaps, []);
     assert.deepStrictEqual(initializedProfile.progress_history, []);
 
     const validated = spawnSync(
       "python3",
-      [validatePath, sessionPath, "--case", casePath, "--profile", profilePath],
+      [
+        validatePath,
+        sessionPath,
+        "--case",
+        casePath,
+        "--profile",
+        profilePath,
+        "--project",
+        projectPath,
+        "--schedule",
+        schedulePath,
+      ],
       { cwd: result.workspace, encoding: "utf8" }
     );
     assert.strictEqual(validated.status, 0, validated.stderr || validated.stdout);
@@ -241,6 +330,10 @@ function runLearningTransition(paths, operation, payload) {
     paths.casePath,
     "--profile",
     paths.profilePath,
+    "--project",
+    paths.projectPath,
+    "--schedule",
+    paths.schedulePath,
   ];
   if (payload !== undefined) {
     const payloadPath = path.join(paths.workspace, "transition-payload.json");
@@ -272,12 +365,25 @@ test("learning-workflow completes a controlled MVP lifecycle", () => {
     const paths = {
       workspace: result.workspace,
       casePath: path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json"),
+      projectPath: path.join(result.workspace, "docs/ai/learning/project.json"),
+      schedulePath: path.join(result.workspace, "docs/ai/learning/schedule.json"),
       profilePath: path.join(result.workspace, "docs/ai/learning/profile.json"),
       sessionPath: path.join(result.workspace, "docs/ai/learning/sessions/controlled-lifecycle.json"),
       initPath: path.join(skillRoot, "scripts/init_learning_session.py"),
+      contextPath: path.join(skillRoot, "scripts/update_learning_context.py"),
       updatePath: path.join(skillRoot, "scripts/update_learning_state.py"),
       validatePath: path.join(skillRoot, "scripts/validate_learning_state.py"),
     };
+
+    const draftSchedule = JSON.parse(fs.readFileSync(paths.schedulePath, "utf8"));
+    draftSchedule.sessions_per_week = 1;
+    fs.writeFileSync(paths.schedulePath, JSON.stringify(draftSchedule, null, 2) + "\n");
+    const acceptedContext = spawnSync(
+      "python3",
+      [paths.contextPath, "accept", "--project", paths.projectPath, "--schedule", paths.schedulePath],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(acceptedContext.status, 0, acceptedContext.stderr || acceptedContext.stdout);
 
     const initialized = spawnSync(
       "python3",
@@ -285,6 +391,10 @@ test("learning-workflow completes a controlled MVP lifecycle", () => {
         paths.initPath,
         "--case",
         paths.casePath,
+        "--project",
+        paths.projectPath,
+        "--schedule",
+        paths.schedulePath,
         "--profile",
         paths.profilePath,
         "--session",
@@ -455,19 +565,83 @@ test("learning-workflow completes a controlled MVP lifecycle", () => {
 
     const validated = spawnSync(
       "python3",
-      [paths.validatePath, paths.sessionPath, "--case", paths.casePath, "--profile", paths.profilePath],
+      [
+        paths.validatePath,
+        paths.sessionPath,
+        "--case",
+        paths.casePath,
+        "--profile",
+        paths.profilePath,
+        "--project",
+        paths.projectPath,
+        "--schedule",
+        paths.schedulePath,
+      ],
       { cwd: result.workspace, encoding: "utf8" }
     );
     assert.strictEqual(validated.status, 0, validated.stderr || validated.stdout);
 
     const profile = JSON.parse(fs.readFileSync(paths.profilePath, "utf8"));
     const session = JSON.parse(fs.readFileSync(paths.sessionPath, "utf8"));
+    const schedule = JSON.parse(fs.readFileSync(paths.schedulePath, "utf8"));
     assert.strictEqual(session.status, "completed");
     assert.strictEqual(session.assessment.accepted_by_human, true);
     assert.strictEqual(profile.active_session_id, null);
     assert.strictEqual(profile.progress_history.length, 1);
     assert.strictEqual(profile.competencies[0].independence, "assisted");
     assert.strictEqual(profile.next_action.type, "transfer-context");
+    assert.strictEqual(profile.schedule_week, 2);
+    assert.strictEqual(schedule.current_week, 2);
+    assert.strictEqual(schedule.weeks[0].status, "completed");
+    assert.strictEqual(schedule.weeks[1].status, "in-progress");
+    assert.deepStrictEqual(schedule.weeks[0].completed_session_ids, [session.session_id]);
+
+    const evolutionPayloadPath = path.join(result.workspace, "project-evolution.json");
+    fs.writeFileSync(
+      evolutionPayloadPath,
+      JSON.stringify({
+        session_id: session.session_id,
+        summary: "Accepted delayed-payment reconciliation into the project state.",
+        decisions: ["Late successful payments enter reconciliation."],
+        delivered_capabilities: [],
+        active_constraints: ["Payment success may arrive after reservation expiry."],
+      }, null, 2) + "\n"
+    );
+    const evolved = spawnSync(
+      "python3",
+      [
+        paths.contextPath,
+        "record-project-evolution",
+        "--project",
+        paths.projectPath,
+        "--schedule",
+        paths.schedulePath,
+        "--payload",
+        evolutionPayloadPath,
+      ],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(evolved.status, 0, evolved.stderr || evolved.stdout);
+    const project = JSON.parse(fs.readFileSync(paths.projectPath, "utf8"));
+    assert.strictEqual(project.version, 2);
+    assert.strictEqual(project.evolution_history[1].session_id, session.session_id);
+    const historicalValidation = spawnSync(
+      "python3",
+      [
+        paths.validatePath,
+        paths.sessionPath,
+        "--case",
+        paths.casePath,
+        "--profile",
+        paths.profilePath,
+        "--project",
+        paths.projectPath,
+        "--schedule",
+        paths.schedulePath,
+      ],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(historicalValidation.status, 0, historicalValidation.stderr || historicalValidation.stdout);
   } finally {
     result.cleanup();
   }
@@ -478,9 +652,17 @@ test("learning-workflow preserves an installed durable case", () => {
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const casePath = path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json");
+    const projectPath = path.join(result.workspace, "docs/ai/learning/project.json");
+    const schedulePath = path.join(result.workspace, "docs/ai/learning/schedule.json");
     const customized = JSON.parse(fs.readFileSync(casePath, "utf8"));
     customized.title = "Locally preserved durable case";
     fs.writeFileSync(casePath, JSON.stringify(customized, null, 2) + "\n");
+    const customizedProject = JSON.parse(fs.readFileSync(projectPath, "utf8"));
+    customizedProject.title = "Locally preserved learning project";
+    fs.writeFileSync(projectPath, JSON.stringify(customizedProject, null, 2) + "\n");
+    const customizedSchedule = JSON.parse(fs.readFileSync(schedulePath, "utf8"));
+    customizedSchedule.weeks[0].theme = "Locally preserved first week";
+    fs.writeFileSync(schedulePath, JSON.stringify(customizedSchedule, null, 2) + "\n");
 
     const reinstall = spawnSync(
       process.execPath,
@@ -489,6 +671,8 @@ test("learning-workflow preserves an installed durable case", () => {
     );
     assert.strictEqual(reinstall.status, 0, reinstall.stderr || reinstall.stdout);
     assert.strictEqual(JSON.parse(fs.readFileSync(casePath, "utf8")).title, "Locally preserved durable case");
+    assert.strictEqual(JSON.parse(fs.readFileSync(projectPath, "utf8")).title, "Locally preserved learning project");
+    assert.strictEqual(JSON.parse(fs.readFileSync(schedulePath, "utf8")).weeks[0].theme, "Locally preserved first week");
   } finally {
     result.cleanup();
   }
@@ -529,6 +713,42 @@ test("learning validator rejects malformed case contracts", () => {
   }
 });
 
+test("learning validator rejects malformed project and schedule contracts", () => {
+  const result = runCli(["--kit", "learning-workflow", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const validatePath = path.join(
+      result.workspace,
+      ".agents/skills/learning-workflow/scripts/validate_learning_state.py"
+    );
+    const projectPath = path.join(result.workspace, "docs/ai/learning/project.json");
+    const schedulePath = path.join(result.workspace, "docs/ai/learning/schedule.json");
+    const invalidProjectPath = path.join(result.workspace, "invalid-project.json");
+    const invalidSchedulePath = path.join(result.workspace, "invalid-schedule.json");
+
+    const invalidProject = JSON.parse(fs.readFileSync(projectPath, "utf8"));
+    delete invalidProject.architecture_baseline;
+    fs.writeFileSync(invalidProjectPath, JSON.stringify(invalidProject, null, 2) + "\n");
+    const rejectedProject = spawnSync("python3", [validatePath, invalidProjectPath], {
+      cwd: result.workspace,
+      encoding: "utf8",
+    });
+    assert.notStrictEqual(rejectedProject.status, 0);
+
+    const invalidSchedule = JSON.parse(fs.readFileSync(schedulePath, "utf8"));
+    invalidSchedule.weeks[1].week = 1;
+    fs.writeFileSync(invalidSchedulePath, JSON.stringify(invalidSchedule, null, 2) + "\n");
+    const rejectedSchedule = spawnSync(
+      "python3",
+      [validatePath, invalidSchedulePath, "--project", projectPath],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.notStrictEqual(rejectedSchedule.status, 0);
+  } finally {
+    result.cleanup();
+  }
+});
+
 test("learning state tooling rejects first attempts after material assistance", () => {
   const result = runCli(["--kit", "learning-workflow", "--tool", "codex"]);
   try {
@@ -537,17 +757,30 @@ test("learning state tooling rejects first attempts after material assistance", 
     const paths = {
       workspace: result.workspace,
       casePath: path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json"),
+      projectPath: path.join(result.workspace, "docs/ai/learning/project.json"),
+      schedulePath: path.join(result.workspace, "docs/ai/learning/schedule.json"),
       profilePath: path.join(result.workspace, "docs/ai/learning/profile.json"),
       sessionPath: path.join(result.workspace, "docs/ai/learning/sessions/prior-help.json"),
       initPath: path.join(skillRoot, "scripts/init_learning_session.py"),
+      contextPath: path.join(skillRoot, "scripts/update_learning_context.py"),
       updatePath: path.join(skillRoot, "scripts/update_learning_state.py"),
     };
+    const acceptedContext = spawnSync(
+      "python3",
+      [paths.contextPath, "accept", "--project", paths.projectPath, "--schedule", paths.schedulePath],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(acceptedContext.status, 0, acceptedContext.stderr || acceptedContext.stdout);
     const initialized = spawnSync(
       "python3",
       [
         paths.initPath,
         "--case",
         paths.casePath,
+        "--project",
+        paths.projectPath,
+        "--schedule",
+        paths.schedulePath,
         "--profile",
         paths.profilePath,
         "--session",

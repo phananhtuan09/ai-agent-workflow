@@ -19,12 +19,16 @@ When invoked directly, complete only the requested case operation and do not sta
 
 Input:
 
+- active project and project version;
+- current schedule week and weekly competency focus;
 - human-approved goal;
 - competency evidence and current gaps;
 - requested difficulty or `unknown`;
 - continuity preference or `unknown`.
 
 Prefer an existing case that exercises the active competency without repeating a memorized solution.
+
+Reject an existing case when its established facts conflict with the active project's current state or accepted evolution history.
 
 Recommend a competency or case but never decide the human's learning direction.
 
@@ -59,10 +63,15 @@ The case must contain:
 - future events declared before assessment;
 - an observable rubric;
 - a transfer prompt.
+- a learning-context link to project ID, minimum project version and aligned schedule weeks.
 
 Do not include a canonical solution.
 
 Do not add technology, scale, failure, or complexity without a supporting constraint.
+
+Use the active project's domain, architecture baseline and accepted evolution history as continuity context.
+
+Do not copy future weeks into the current public brief.
 
 Validate the file with the validator in the sibling `learning-workflow` skill before returning it.
 

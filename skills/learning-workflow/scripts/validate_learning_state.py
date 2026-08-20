@@ -41,6 +41,9 @@ CONFIDENCE_LEVELS = {"low", "medium", "high"}
 EVIDENCE_REQUEST_STATUSES = {"authorized", "completed", "blocked"}
 DECISION_CHANGES = {"kept", "revised", "rejected", "unknown"}
 DISPUTE_CATEGORIES = {"fact", "rubric-mapping", "attribution", "interpretation"}
+PROJECT_STATUSES = {"draft", "active", "completed"}
+SCHEDULE_STATUSES = {"draft", "active", "completed"}
+WEEK_STATUSES = {"planned", "in-progress", "completed"}
 
 
 class ValidationError(ValueError):
@@ -167,6 +170,16 @@ def validate_case(case: dict[str, Any]) -> None:
         if not isinstance(entry.get("version"), int) or entry["version"] < 1:
             fail(f"case.case_history[{index}].version must be a positive integer")
         require_string(entry.get("change"), f"case.case_history[{index}].change")
+    learning_context = require_object(case.get("learning_context"), "case.learning_context")
+    require_string(learning_context.get("project_id"), "case.learning_context.project_id")
+    minimum_project_version = learning_context.get("minimum_project_version")
+    if not isinstance(minimum_project_version, int) or minimum_project_version < 1:
+        fail("case.learning_context.minimum_project_version must be a positive integer")
+    schedule_weeks = require_list(learning_context.get("schedule_weeks"), "case.learning_context.schedule_weeks")
+    if not schedule_weeks or any(not isinstance(item, int) or item < 1 for item in schedule_weeks):
+        fail("case.learning_context.schedule_weeks must contain positive integers")
+    if len(schedule_weeks) != len(set(schedule_weeks)):
+        fail("case.learning_context.schedule_weeks must not contain duplicates")
     competency = case.get("active_competency")
     if not isinstance(competency, dict):
         fail("case.active_competency must be an object")
@@ -233,9 +246,148 @@ def validate_case(case: dict[str, Any]) -> None:
     require_string(transfer.get("same_principle"), "case.transfer.same_principle")
 
 
+def validate_project(project: dict[str, Any]) -> None:
+    if project.get("schema_version") != "learning-project/v1":
+        fail("project.schema_version must equal learning-project/v1")
+    require_string(project.get("project_id"), "project.project_id")
+    require_string(project.get("title"), "project.title")
+    if project.get("status") not in PROJECT_STATUSES:
+        fail("project.status is invalid")
+    if project["status"] != "draft" and not project.get("accepted_at"):
+        fail("active or completed project requires accepted_at")
+    version = project.get("version")
+    if not isinstance(version, int) or version < 1:
+        fail("project.version must be a positive integer")
+
+    domain = require_object(project.get("domain"), "project.domain")
+    require_string(domain.get("name"), "project.domain.name")
+    require_string(domain.get("summary"), "project.domain.summary")
+    product = require_object(project.get("product"), "project.product")
+    require_string(product.get("goal"), "project.product.goal")
+    require_string_list(product.get("primary_actors"), "project.product.primary_actors", allow_empty=False)
+    require_string_list(product.get("base_capabilities"), "project.product.base_capabilities", allow_empty=False)
+
+    architecture = require_object(project.get("architecture_baseline"), "project.architecture_baseline")
+    require_string(architecture.get("summary"), "project.architecture_baseline.summary")
+    require_string(architecture.get("application_shape"), "project.architecture_baseline.application_shape")
+    require_string_list(architecture.get("components"), "project.architecture_baseline.components", allow_empty=False)
+    require_string_list(architecture.get("data_stores"), "project.architecture_baseline.data_stores", allow_empty=False)
+    require_string_list(architecture.get("external_integrations"), "project.architecture_baseline.external_integrations")
+    require_string(architecture.get("deployment"), "project.architecture_baseline.deployment")
+
+    require_string_list(project.get("base_business_rules"), "project.base_business_rules", allow_empty=False)
+    require_string_list(project.get("base_constraints"), "project.base_constraints", allow_empty=False)
+    current_state = require_object(project.get("current_state"), "project.current_state")
+    require_string_list(current_state.get("accepted_decisions"), "project.current_state.accepted_decisions")
+    require_string_list(current_state.get("delivered_capabilities"), "project.current_state.delivered_capabilities")
+    require_string_list(current_state.get("active_constraints"), "project.current_state.active_constraints")
+
+    history = require_list(project.get("evolution_history"), "project.evolution_history")
+    if len(history) != version:
+        fail("project.evolution_history must contain exactly one entry per version")
+    for index, entry in enumerate(history):
+        entry = require_object(entry, f"project.evolution_history[{index}]")
+        if entry.get("version") != index + 1:
+            fail("project.evolution_history versions must be sequential")
+        session_id = entry.get("session_id")
+        if session_id is not None:
+            require_string(session_id, f"project.evolution_history[{index}].session_id")
+        require_string(entry.get("summary"), f"project.evolution_history[{index}].summary")
+        require_string_list(entry.get("decisions"), f"project.evolution_history[{index}].decisions")
+        require_string_list(entry.get("delivered_capabilities"), f"project.evolution_history[{index}].delivered_capabilities")
+        require_string_list(entry.get("active_constraints"), f"project.evolution_history[{index}].active_constraints")
+        if index > 0 or project["status"] != "draft":
+            require_string(entry.get("accepted_at"), f"project.evolution_history[{index}].accepted_at")
+
+
+def validate_schedule(schedule: dict[str, Any], project: dict[str, Any] | None = None) -> None:
+    if schedule.get("schema_version") != "learning-schedule/v1":
+        fail("schedule.schema_version must equal learning-schedule/v1")
+    require_string(schedule.get("schedule_id"), "schedule.schedule_id")
+    project_id = require_string(schedule.get("project_id"), "schedule.project_id")
+    if project is not None and project_id != project.get("project_id"):
+        fail("schedule.project_id must match project.project_id")
+    if schedule.get("status") not in SCHEDULE_STATUSES:
+        fail("schedule.status is invalid")
+    if schedule["status"] != "draft":
+        require_string(schedule.get("accepted_at"), "schedule.accepted_at")
+        require_string(schedule.get("started_at"), "schedule.started_at")
+    horizon = schedule.get("horizon_weeks")
+    sessions_per_week = schedule.get("sessions_per_week")
+    recalibration = schedule.get("recalibration_every_weeks")
+    current_week = schedule.get("current_week")
+    if not isinstance(horizon, int) or horizon < 1:
+        fail("schedule.horizon_weeks must be a positive integer")
+    if not isinstance(sessions_per_week, int) or sessions_per_week < 1:
+        fail("schedule.sessions_per_week must be a positive integer")
+    if not isinstance(recalibration, int) or recalibration < 1:
+        fail("schedule.recalibration_every_weeks must be a positive integer")
+    if not isinstance(current_week, int) or current_week < 1 or current_week > horizon:
+        fail("schedule.current_week must be within the schedule horizon")
+
+    weeks = require_list(schedule.get("weeks"), "schedule.weeks")
+    if len(weeks) != horizon:
+        fail("schedule.weeks must contain exactly horizon_weeks entries")
+    all_session_ids: set[str] = set()
+    for index, week in enumerate(weeks):
+        week = require_object(week, f"schedule.weeks[{index}]")
+        week_number = index + 1
+        if week.get("week") != week_number:
+            fail("schedule week numbers must be sequential")
+        require_string(week.get("theme"), f"schedule.weeks[{index}].theme")
+        require_string_list(week.get("competency_focus"), f"schedule.weeks[{index}].competency_focus", allow_empty=False)
+        require_string(week.get("project_focus"), f"schedule.weeks[{index}].project_focus")
+        if week.get("status") not in WEEK_STATUSES:
+            fail(f"schedule.weeks[{index}].status is invalid")
+        session_ids = require_string_list(week.get("completed_session_ids"), f"schedule.weeks[{index}].completed_session_ids")
+        if len(session_ids) != len(set(session_ids)):
+            fail(f"schedule.weeks[{index}] contains duplicate session IDs")
+        if all_session_ids & set(session_ids):
+            fail("a completed session may appear in only one schedule week")
+        all_session_ids.update(session_ids)
+        require_string_list(week.get("evidence_refs"), f"schedule.weeks[{index}].evidence_refs")
+        adjustments = require_list(week.get("adjustments"), f"schedule.weeks[{index}].adjustments")
+        for adjustment_index, adjustment in enumerate(adjustments):
+            adjustment = require_object(adjustment, f"schedule.weeks[{index}].adjustments[{adjustment_index}]")
+            require_string(adjustment.get("session_id"), f"schedule.weeks[{index}].adjustments[{adjustment_index}].session_id")
+            require_string(adjustment.get("reason"), f"schedule.weeks[{index}].adjustments[{adjustment_index}].reason")
+            require_string(adjustment.get("recorded_at"), f"schedule.weeks[{index}].adjustments[{adjustment_index}].recorded_at")
+
+        if schedule["status"] == "draft" and week["status"] != "planned":
+            fail("draft schedule weeks must all be planned")
+        if schedule["status"] == "active":
+            expected = "completed" if week_number < current_week else "in-progress" if week_number == current_week else "planned"
+            if week["status"] != expected:
+                fail(f"schedule week {week_number} must be {expected}")
+        if schedule["status"] == "completed" and week["status"] != "completed":
+            fail("completed schedule requires every week to be completed")
+
+    revisions = require_list(schedule.get("revision_history"), "schedule.revision_history")
+    for index, revision in enumerate(revisions):
+        revision = require_object(revision, f"schedule.revision_history[{index}]")
+        require_string(revision.get("reason"), f"schedule.revision_history[{index}].reason")
+        effective_week = revision.get("effective_week")
+        if not isinstance(effective_week, int) or effective_week < 1 or effective_week > horizon:
+            fail(f"schedule.revision_history[{index}].effective_week is invalid")
+        updates = require_list(revision.get("updates"), f"schedule.revision_history[{index}].updates")
+        if not updates:
+            fail(f"schedule.revision_history[{index}].updates must not be empty")
+        for update_index, update in enumerate(updates):
+            update = require_object(update, f"schedule.revision_history[{index}].updates[{update_index}]")
+            week_number = update.get("week")
+            if not isinstance(week_number, int) or week_number < effective_week or week_number > horizon:
+                fail(f"schedule.revision_history[{index}].updates[{update_index}].week is invalid")
+        require_string(revision.get("accepted_at"), f"schedule.revision_history[{index}].accepted_at")
+
+
 def validate_profile(profile: dict[str, Any]) -> None:
     if profile.get("schema_version") != "learning-profile/v1":
         fail("profile.schema_version must equal learning-profile/v1")
+    require_string(profile.get("project_id"), "profile.project_id")
+    require_string(profile.get("schedule_id"), "profile.schedule_id")
+    schedule_week = profile.get("schedule_week")
+    if not isinstance(schedule_week, int) or schedule_week < 1:
+        fail("profile.schedule_week must be a positive integer")
     goals = require_list(profile.get("goals"), "profile.goals")
     if not goals:
         fail("profile.goals must not be empty")
@@ -296,8 +448,8 @@ def validate_profile(profile: dict[str, Any]) -> None:
         if next_action.get("type") not in NEXT_ACTIONS:
             fail("profile.next_action.type is invalid")
         require_string(next_action.get("reason"), "profile.next_action.reason")
-    if profile.get("cadence") != "session-by-session":
-        fail("profile.cadence must equal session-by-session for MVP")
+    if profile.get("cadence") != "schedule-driven":
+        fail("profile.cadence must equal schedule-driven for MVP")
 
 
 def validate_result_summary(value: Any, field: str) -> dict[str, Any]:
@@ -310,7 +462,14 @@ def validate_result_summary(value: Any, field: str) -> dict[str, Any]:
     return value
 
 
-def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: Path, profile: dict[str, Any] | None) -> None:
+def validate_session(
+    session: dict[str, Any],
+    case: dict[str, Any],
+    case_path: Path,
+    profile: dict[str, Any] | None,
+    project: dict[str, Any] | None = None,
+    schedule: dict[str, Any] | None = None,
+) -> None:
     if session.get("schema_version") != "learning-session/v1":
         fail("session.schema_version must equal learning-session/v1")
     session_id = require_string(session.get("session_id"), "session.session_id")
@@ -331,6 +490,61 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
     require_string(session.get("updated_at"), "session.updated_at")
     if session.get("active_competency") != case.get("active_competency"):
         fail("session.active_competency must exactly match the case")
+
+    learning_context = require_object(session.get("learning_context"), "session.learning_context")
+    project_id = require_string(learning_context.get("project_id"), "session.learning_context.project_id")
+    project_version = learning_context.get("project_version")
+    if not isinstance(project_version, int) or project_version < 1:
+        fail("session.learning_context.project_version must be a positive integer")
+    schedule_id = require_string(learning_context.get("schedule_id"), "session.learning_context.schedule_id")
+    schedule_week = learning_context.get("schedule_week")
+    if not isinstance(schedule_week, int) or schedule_week < 1:
+        fail("session.learning_context.schedule_week must be a positive integer")
+    project_snapshot = require_object(learning_context.get("project_snapshot"), "session.learning_context.project_snapshot")
+    require_string(project_snapshot.get("title"), "session.learning_context.project_snapshot.title")
+    require_string(project_snapshot.get("domain"), "session.learning_context.project_snapshot.domain")
+    require_string(project_snapshot.get("product_goal"), "session.learning_context.project_snapshot.product_goal")
+    require_string(project_snapshot.get("architecture_baseline"), "session.learning_context.project_snapshot.architecture_baseline")
+    weekly_plan = require_object(learning_context.get("weekly_plan"), "session.learning_context.weekly_plan")
+    require_string(weekly_plan.get("theme"), "session.learning_context.weekly_plan.theme")
+    require_string_list(weekly_plan.get("competency_focus"), "session.learning_context.weekly_plan.competency_focus", allow_empty=False)
+    require_string(weekly_plan.get("project_focus"), "session.learning_context.weekly_plan.project_focus")
+
+    case_context = require_object(case.get("learning_context"), "case.learning_context")
+    if case_context.get("project_id") != project_id:
+        fail("case.learning_context.project_id must match the session project")
+    if project_version < case_context.get("minimum_project_version", 1):
+        fail("session project version is older than the case requirement")
+    aligned_weeks = require_list(case_context.get("schedule_weeks"), "case.learning_context.schedule_weeks")
+    if schedule_week not in aligned_weeks:
+        fail("case is not aligned with the session schedule week")
+
+    if project is not None:
+        validate_project(project)
+        if session.get("status") != "completed" and project.get("status") != "active":
+            fail("active session requires an active learning project")
+        if session.get("status") == "completed" and project.get("status") not in {"active", "completed"}:
+            fail("completed session requires an accepted learning project")
+        if project_id != project.get("project_id"):
+            fail("session learning context does not match the active project")
+        if session.get("status") != "completed" and project_version != project.get("version"):
+            fail("active session must use the current project version")
+        if session.get("status") == "completed" and project_version > project.get("version"):
+            fail("completed session references a future project version")
+    if schedule is not None:
+        validate_schedule(schedule, project)
+        if session.get("status") != "completed" and schedule.get("status") != "active":
+            fail("active session requires an active learning schedule")
+        if session.get("status") == "completed" and schedule.get("status") not in {"active", "completed"}:
+            fail("completed session requires an accepted learning schedule")
+        if schedule_id != schedule.get("schedule_id"):
+            fail("session learning context does not match the active schedule")
+        if session.get("status") != "completed" and schedule_week != schedule.get("current_week"):
+            fail("active session must use the current schedule week")
+        if session.get("status") == "completed":
+            recorded_sessions = schedule["weeks"][schedule_week - 1]["completed_session_ids"]
+            if session_id not in recorded_sessions:
+                fail("completed session must be recorded in its schedule week")
 
     boundary = session.get("boundary")
     if not isinstance(boundary, dict) or not isinstance(boundary.get("accepted"), bool):
@@ -698,6 +912,12 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
                 fail("open dispute cannot produce a progression next action")
 
     if profile is not None:
+        if profile.get("project_id") != project_id or profile.get("schedule_id") != schedule_id:
+            fail("profile learning context must match the session")
+        if session.get("status") != "completed" and profile.get("schedule_week") != schedule_week:
+            fail("profile.schedule_week must match the active session")
+        if schedule is not None and profile.get("schedule_week") != schedule.get("current_week"):
+            fail("profile.schedule_week must match the active schedule")
         active_session = profile.get("active_session_id")
         if session.get("status") == "completed" and active_session == session_id:
             fail("completed session must be cleared from profile.active_session_id")
@@ -740,6 +960,8 @@ def main() -> int:
     parser.add_argument("path", type=Path)
     parser.add_argument("--case", type=Path)
     parser.add_argument("--profile", type=Path)
+    parser.add_argument("--project", type=Path)
+    parser.add_argument("--schedule", type=Path)
     args = parser.parse_args()
 
     try:
@@ -747,17 +969,28 @@ def main() -> int:
         schema = value.get("schema_version")
         if schema == "learning-case/v1":
             validate_case(value)
+        elif schema == "learning-project/v1":
+            validate_project(value)
+        elif schema == "learning-schedule/v1":
+            project = load_json(args.project) if args.project else None
+            if project is not None:
+                validate_project(project)
+            validate_schedule(value, project)
         elif schema == "learning-profile/v1":
             validate_profile(value)
         elif schema == "learning-session/v1":
-            if args.case is None:
-                fail("--case is required when validating a session")
+            if args.case is None or args.project is None or args.schedule is None:
+                fail("--case, --project, and --schedule are required when validating a session")
             case = load_json(args.case)
+            project = load_json(args.project)
+            schedule = load_json(args.schedule)
             validate_case(case)
+            validate_project(project)
+            validate_schedule(schedule, project)
             profile = load_json(args.profile) if args.profile else None
             if profile is not None:
                 validate_profile(profile)
-            validate_session(value, case, args.case, profile)
+            validate_session(value, case, args.case, profile, project, schedule)
         else:
             fail(f"unsupported schema_version: {schema}")
     except ValidationError as error:

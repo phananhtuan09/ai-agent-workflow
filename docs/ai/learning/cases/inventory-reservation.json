@@ -16,6 +16,11 @@
       "change": "Initial MVP case declaration."
     }
   ],
+  "learning_context": {
+    "project_id": "commerce-operations-platform",
+    "minimum_project_version": 1,
+    "schedule_weeks": [1, 2, 7, 8]
+  },
   "active_competency": {
     "id": "COMP-PARTIAL-FAILURE-001",
     "name": "Thiết kế bằng invariant, failure mode và evidence",

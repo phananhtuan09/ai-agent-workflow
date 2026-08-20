@@ -1,0 +1,72 @@
+{
+  "schema_version": "learning-project/v1",
+  "project_id": "commerce-operations-platform",
+  "title": "Commerce Operations Platform",
+  "status": "draft",
+  "accepted_at": null,
+  "version": 1,
+  "domain": {
+    "name": "commerce",
+    "summary": "A platform that coordinates finite inventory, checkout, payment, fulfillment, support, and operational recovery."
+  },
+  "product": {
+    "goal": "Let customers purchase limited inventory safely while giving operators enough control and evidence to recover from failures.",
+    "primary_actors": [
+      "customer",
+      "operations staff",
+      "support staff",
+      "finance staff"
+    ],
+    "base_capabilities": [
+      "catalog and finite inventory",
+      "checkout and reservation",
+      "asynchronous payment",
+      "order lifecycle",
+      "refund and reconciliation",
+      "operational investigation"
+    ]
+  },
+  "architecture_baseline": {
+    "summary": "A single-region modular monolith with a PostgreSQL system of record and external payment integration.",
+    "application_shape": "modular-monolith",
+    "components": [
+      "web and mobile clients",
+      "commerce application",
+      "background workers",
+      "operations interface"
+    ],
+    "data_stores": [
+      "PostgreSQL for inventory, reservations, orders, and audit history"
+    ],
+    "external_integrations": [
+      "asynchronous payment provider"
+    ],
+    "deployment": "single region with independently restartable application and worker processes"
+  },
+  "base_business_rules": [
+    "Confirmed orders must not exceed fulfillable inventory.",
+    "A payment event must not create more than one business transition.",
+    "Operators need correlation and state history for financial recovery."
+  ],
+  "base_constraints": [
+    "Inventory is finite.",
+    "Payment callbacks may be duplicated, delayed, or delivered out of order.",
+    "The MVP team prefers the least complex architecture that protects current invariants."
+  ],
+  "current_state": {
+    "accepted_decisions": [],
+    "delivered_capabilities": [],
+    "active_constraints": []
+  },
+  "evolution_history": [
+    {
+      "version": 1,
+      "session_id": null,
+      "summary": "Initial project baseline proposed for the learning program.",
+      "decisions": [],
+      "delivered_capabilities": [],
+      "active_constraints": [],
+      "accepted_at": null
+    }
+  ]
+}

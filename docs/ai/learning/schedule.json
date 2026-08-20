@@ -1,0 +1,255 @@
+{
+  "schema_version": "learning-schedule/v1",
+  "schedule_id": "commerce-senior-path-24w",
+  "project_id": "commerce-operations-platform",
+  "status": "draft",
+  "accepted_at": null,
+  "started_at": null,
+  "horizon_weeks": 24,
+  "sessions_per_week": 2,
+  "recalibration_every_weeks": 4,
+  "current_week": 1,
+  "weeks": [
+    {
+      "week": 1,
+      "theme": "Product context and business invariants",
+      "competency_focus": ["problem framing", "business discovery", "invariant definition"],
+      "project_focus": "Inventory, checkout, payment, and order goals",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 2,
+      "theme": "Domain model and state transitions",
+      "competency_focus": ["domain modeling", "state-machine reasoning", "unknown identification"],
+      "project_focus": "Reservation, order, payment, and fulfillment states",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 3,
+      "theme": "Failure assumptions and discovery quality",
+      "competency_focus": ["failure modeling", "assumption tracking", "discovery strategy"],
+      "project_focus": "Retries, timeouts, duplicate requests, and operational unknowns",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 4,
+      "theme": "System boundaries and first architecture review",
+      "competency_focus": ["boundary design", "trade-off reasoning", "architecture communication"],
+      "project_focus": "Client, application, worker, database, and provider boundaries",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 5,
+      "theme": "Data model and transactional consistency",
+      "competency_focus": ["data modeling", "transaction design", "consistency reasoning"],
+      "project_focus": "Inventory and order data ownership",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 6,
+      "theme": "API contracts and idempotency",
+      "competency_focus": ["contract design", "idempotency", "error semantics"],
+      "project_focus": "Checkout requests and payment callbacks",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 7,
+      "theme": "Asynchronous workflows and partial failure",
+      "competency_focus": ["async flow design", "partial-failure reasoning", "reconciliation"],
+      "project_focus": "Reservation expiry and delayed payment",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 8,
+      "theme": "Payment and reservation reliability milestone",
+      "competency_focus": ["evidence selection", "failure recovery", "design revision"],
+      "project_focus": "End-to-end checkout reliability",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 9,
+      "theme": "Authentication and authorization boundaries",
+      "competency_focus": ["identity boundaries", "authorization modeling", "trust analysis"],
+      "project_focus": "Customer and operations access",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 10,
+      "theme": "Abuse cases and security failure modes",
+      "competency_focus": ["threat modeling", "abuse reasoning", "security trade-offs"],
+      "project_focus": "Checkout abuse, replay, and privilege misuse",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 11,
+      "theme": "Privacy, financial data, and auditability",
+      "competency_focus": ["data classification", "audit design", "privacy boundaries"],
+      "project_focus": "Payment references and operational history",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 12,
+      "theme": "Security review milestone",
+      "competency_focus": ["security review", "risk acceptance", "evidence limitation"],
+      "project_focus": "Commerce security posture",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 13,
+      "theme": "Observability and service objectives",
+      "competency_focus": ["SLO definition", "signal selection", "operational diagnosis"],
+      "project_focus": "Checkout and payment health",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 14,
+      "theme": "Capacity, latency, and cost models",
+      "competency_focus": ["capacity modeling", "latency budgeting", "cost reasoning"],
+      "project_focus": "Checkout load and worker throughput",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 15,
+      "theme": "Caching and consistency trade-offs",
+      "competency_focus": ["cache suitability", "consistency models", "staleness reasoning"],
+      "project_focus": "Catalog reads and inventory visibility",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 16,
+      "theme": "Load and failure testing milestone",
+      "competency_focus": ["experiment design", "failure injection", "evidence interpretation"],
+      "project_focus": "Runtime behavior under bounded stress",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 17,
+      "theme": "Schema and contract evolution",
+      "competency_focus": ["migration design", "compatibility", "reversibility"],
+      "project_focus": "Order and payment contract changes",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 18,
+      "theme": "Incident response and recovery",
+      "competency_focus": ["incident diagnosis", "recovery planning", "consequence ownership"],
+      "project_focus": "Inventory-payment mismatch incident",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 19,
+      "theme": "Operability and sustainable cost",
+      "competency_focus": ["operability", "maintenance cost", "team constraints"],
+      "project_focus": "Operational workflows and ownership",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 20,
+      "theme": "Architecture evolution milestone",
+      "competency_focus": ["architecture evolution", "decision revision", "intentional debt"],
+      "project_focus": "Reassessing the modular monolith boundary",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 21,
+      "theme": "Delegation contracts for AI agents",
+      "competency_focus": ["delegation design", "acceptance criteria", "authority boundaries"],
+      "project_focus": "Delegating bounded project changes",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 22,
+      "theme": "Implementation and evidence review",
+      "competency_focus": ["implementation review", "test evidence", "design-versus-code diagnosis"],
+      "project_focus": "Reviewing agent-produced project work",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 23,
+      "theme": "Transfer challenge",
+      "competency_focus": ["principle transfer", "context adaptation", "solution independence"],
+      "project_focus": "Applying learned principles outside commerce",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    },
+    {
+      "week": 24,
+      "theme": "Capstone and learning-direction review",
+      "competency_focus": ["integrated judgment", "evidence synthesis", "next-direction selection"],
+      "project_focus": "Defending the evolved project and its limitations",
+      "status": "planned",
+      "completed_session_ids": [],
+      "evidence_refs": [],
+      "adjustments": []
+    }
+  ],
+  "revision_history": []
+}

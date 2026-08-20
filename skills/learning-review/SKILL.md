@@ -18,6 +18,7 @@ When invoked directly, assess only the requested closed or frozen scope and do n
 Required:
 
 - case path and checksum-bound session;
+- project snapshot and schedule-week context recorded in the session;
 - assessment scope;
 - protected-judgment states;
 - first attempts and revisions;
@@ -57,6 +58,8 @@ Classify important gaps when supported:
 - `learning-evidence-gap`.
 
 Do not infer competency from completion, confidence, implementation output, or system evidence alone.
+
+Do not infer competency from reaching or completing a planned schedule week.
 
 ## Outcome
 
