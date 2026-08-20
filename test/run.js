@@ -205,10 +205,20 @@ test("learning-workflow installs an executable validated case workflow", () => {
         sessionPath,
         "--goal",
         "Develop senior system-design judgment",
+        "--baseline",
+        "Can design ordinary CRUD systems but needs guidance with partial failures",
       ],
       { cwd: result.workspace, encoding: "utf8" }
     );
     assert.strictEqual(initialized.status, 0, initialized.stderr || initialized.stdout);
+
+    const initializedProfile = JSON.parse(fs.readFileSync(profilePath, "utf8"));
+    assert.strictEqual(
+      initializedProfile.baseline.summary,
+      "Can design ordinary CRUD systems but needs guidance with partial failures"
+    );
+    assert.deepStrictEqual(initializedProfile.current_gaps, []);
+    assert.deepStrictEqual(initializedProfile.progress_history, []);
 
     const validated = spawnSync(
       "python3",
@@ -251,6 +261,12 @@ test("learning-workflow installs an executable validated case workflow", () => {
         independence: "independent",
         limitation: "Synthetic validator test",
       })),
+      result_summary: {
+        independent: ["Identified the inventory invariant"],
+        assisted: ["Handled delayed payment after a hint"],
+        not_demonstrated: [],
+      },
+      gaps: ["Reason about delayed callbacks before assistance"],
       outcome: "independent-success",
       limitations: [],
       disputes: [],
@@ -321,7 +337,7 @@ test("learning validator rejects independent attempts after prior material assis
     const sessionPath = path.join(result.workspace, "docs/ai/learning/sessions/prior-help.json");
     const initialized = spawnSync(
       "python3",
-      [initPath, "--case", casePath, "--profile", profilePath, "--session", sessionPath, "--goal", "test"],
+      [initPath, "--case", casePath, "--profile", profilePath, "--session", sessionPath, "--goal", "test", "--baseline", "test baseline"],
       { cwd: result.workspace, encoding: "utf8" }
     );
     assert.strictEqual(initialized.status, 0, initialized.stderr || initialized.stdout);
@@ -372,7 +388,7 @@ test("learning validator blocks progression while an assessment dispute is open"
     const sessionPath = path.join(result.workspace, "docs/ai/learning/sessions/disputed.json");
     const initialized = spawnSync(
       "python3",
-      [initPath, "--case", casePath, "--profile", profilePath, "--session", sessionPath, "--goal", "test"],
+      [initPath, "--case", casePath, "--profile", profilePath, "--session", sessionPath, "--goal", "test", "--baseline", "test baseline"],
       { cwd: result.workspace, encoding: "utf8" }
     );
     assert.strictEqual(initialized.status, 0, initialized.stderr || initialized.stdout);
@@ -386,6 +402,12 @@ test("learning validator blocks progression while an assessment dispute is open"
     }));
     session.assessment = {
       dimensions: [],
+      result_summary: {
+        independent: [],
+        assisted: [],
+        not_demonstrated: ["Assessment remains disputed"],
+      },
+      gaps: ["Assessment evidence is unresolved"],
       outcome: "inconclusive",
       limitations: [],
       disputes: [{ status: "open", reason: "Rubric mapping is disputed" }],
@@ -404,6 +426,106 @@ test("learning validator blocks progression while an assessment dispute is open"
     );
     assert.notStrictEqual(rejected.status, 0);
     assert.ok(rejected.stderr.includes("open dispute cannot produce a progression next action"));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("learning validator requires completed sessions to update practical learning outputs", () => {
+  const result = runCli(["--kit", "learning-workflow", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
+    const casePath = path.join(skillRoot, "assets/cases/inventory-reservation.json");
+    const initPath = path.join(skillRoot, "scripts/init_learning_session.py");
+    const validatePath = path.join(skillRoot, "scripts/validate_learning_state.py");
+    const profilePath = path.join(result.workspace, "docs/ai/learning/profile.json");
+    const sessionPath = path.join(result.workspace, "docs/ai/learning/sessions/completed-output.json");
+    const initialized = spawnSync(
+      "python3",
+      [
+        initPath,
+        "--case",
+        casePath,
+        "--profile",
+        profilePath,
+        "--session",
+        sessionPath,
+        "--goal",
+        "Develop senior system-design judgment",
+        "--baseline",
+        "Can design CRUD systems independently",
+      ],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(initialized.status, 0, initialized.stderr || initialized.stdout);
+
+    const completedAt = "2026-08-20T01:00:00Z";
+    const session = JSON.parse(fs.readFileSync(sessionPath, "utf8"));
+    session.boundary = { ...session.boundary, accepted: true, accepted_at: "2026-08-20T00:00:00Z" };
+    session.status = "completed";
+    session.protected_judgments = session.protected_judgments.map((judgment) => ({
+      ...judgment,
+      status: "assessment-closed",
+      first_attempt: {
+        summary: `Independent attempt for ${judgment.id}`,
+        independent: true,
+        recorded_at: "2026-08-20T00:10:00Z",
+      },
+      closed_at: completedAt,
+    }));
+    session.assessment = {
+      dimensions: ["RUB-001", "RUB-002", "RUB-003", "RUB-004"].map((id) => ({
+        id,
+        rating: "demonstrated",
+        independence: "independent",
+        limitation: "Observed in one case only",
+      })),
+      result_summary: {
+        independent: ["Identified invariants and revised the design from evidence"],
+        assisted: [],
+        not_demonstrated: ["Has not transferred the reasoning to another domain"],
+      },
+      gaps: ["Transfer the same reasoning to another domain"],
+      outcome: "independent-success",
+      limitations: ["One case does not establish transfer"],
+      disputes: [],
+      next_action: { type: "transfer-context", reason: "Verify the reasoning in another domain" },
+    };
+    fs.writeFileSync(sessionPath, `${JSON.stringify(session, null, 2)}\n`);
+
+    const profile = JSON.parse(fs.readFileSync(profilePath, "utf8"));
+    profile.active_session_id = null;
+    profile.current_gaps = session.assessment.gaps;
+    profile.next_action = session.assessment.next_action;
+    profile.progress_history = [
+      {
+        session_id: session.session_id,
+        competency_id: session.active_competency.id,
+        outcome: session.assessment.outcome,
+        result_summary: session.assessment.result_summary,
+        gaps: session.assessment.gaps,
+        completed_at: completedAt,
+      },
+    ];
+    fs.writeFileSync(profilePath, `${JSON.stringify(profile, null, 2)}\n`);
+
+    const validated = spawnSync(
+      "python3",
+      [validatePath, sessionPath, "--case", casePath, "--profile", profilePath],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(validated.status, 0, validated.stderr || validated.stdout);
+
+    profile.progress_history = [];
+    fs.writeFileSync(profilePath, `${JSON.stringify(profile, null, 2)}\n`);
+    const rejected = spawnSync(
+      "python3",
+      [validatePath, sessionPath, "--case", casePath, "--profile", profilePath],
+      { cwd: result.workspace, encoding: "utf8" }
+    );
+    assert.notStrictEqual(rejected.status, 0);
+    assert.ok(rejected.stderr.includes("matching profile.progress_history entry"));
   } finally {
     result.cleanup();
   }

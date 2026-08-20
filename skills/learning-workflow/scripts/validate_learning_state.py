@@ -36,6 +36,7 @@ NEXT_ACTIONS = {
 PROGRESSION_ACTIONS = {"transfer-context", "increase-difficulty"}
 RATINGS = {"demonstrated", "partial", "not-demonstrated", "inconclusive"}
 INDEPENDENCE = {"independent", "assisted", "not-observed"}
+RESULT_GROUPS = {"independent", "assisted", "not_demonstrated"}
 
 
 class ValidationError(ValueError):
@@ -180,7 +181,32 @@ def validate_profile(profile: dict[str, Any]) -> None:
         require_string(goal.get("statement"), f"profile.goals[{index}].statement")
         if goal.get("status") not in {"active", "paused", "completed"}:
             fail(f"profile.goals[{index}].status is invalid")
+    baseline = profile.get("baseline")
+    if not isinstance(baseline, dict):
+        fail("profile.baseline must be an object")
+    require_string(baseline.get("summary"), "profile.baseline.summary")
+    require_string(baseline.get("recorded_at"), "profile.baseline.recorded_at")
     require_list(profile.get("competencies"), "profile.competencies")
+    current_gaps = require_string_list(profile.get("current_gaps"), "profile.current_gaps")
+    if len(current_gaps) > 3:
+        fail("profile.current_gaps must contain at most three items")
+    progress_history = require_list(profile.get("progress_history"), "profile.progress_history")
+    history_session_ids: set[str] = set()
+    for index, entry in enumerate(progress_history):
+        if not isinstance(entry, dict):
+            fail(f"profile.progress_history[{index}] must be an object")
+        history_session_id = require_string(entry.get("session_id"), f"profile.progress_history[{index}].session_id")
+        if history_session_id in history_session_ids:
+            fail(f"duplicate progress history session: {history_session_id}")
+        history_session_ids.add(history_session_id)
+        require_string(entry.get("competency_id"), f"profile.progress_history[{index}].competency_id")
+        if entry.get("outcome") not in OUTCOMES:
+            fail(f"profile.progress_history[{index}].outcome is invalid")
+        validate_result_summary(entry.get("result_summary"), f"profile.progress_history[{index}].result_summary")
+        entry_gaps = require_string_list(entry.get("gaps"), f"profile.progress_history[{index}].gaps")
+        if len(entry_gaps) > 3:
+            fail(f"profile.progress_history[{index}].gaps must contain at most three items")
+        require_string(entry.get("completed_at"), f"profile.progress_history[{index}].completed_at")
     next_action = profile.get("next_action")
     if next_action is not None:
         if not isinstance(next_action, dict):
@@ -188,6 +214,16 @@ def validate_profile(profile: dict[str, Any]) -> None:
         if next_action.get("type") not in NEXT_ACTIONS:
             fail("profile.next_action.type is invalid")
         require_string(next_action.get("reason"), "profile.next_action.reason")
+
+
+def validate_result_summary(value: Any, field: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        fail(f"{field} must be an object")
+    if set(value) != RESULT_GROUPS:
+        fail(f"{field} must contain exactly: {sorted(RESULT_GROUPS)}")
+    for group in sorted(RESULT_GROUPS):
+        require_string_list(value.get(group), f"{field}.{group}")
+    return value
 
 
 def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: Path, profile: dict[str, Any] | None) -> None:
@@ -284,6 +320,10 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
     if not isinstance(assessment, dict):
         fail("session.assessment must be an object")
     outcome = assessment.get("outcome")
+    result_summary = validate_result_summary(assessment.get("result_summary"), "session.assessment.result_summary")
+    gaps = require_string_list(assessment.get("gaps"), "session.assessment.gaps")
+    if len(gaps) > 3:
+        fail("session.assessment.gaps must contain at most three items")
     disputes = require_list(assessment.get("disputes"), "session.assessment.disputes")
     unresolved_disputes = []
     for index, dispute in enumerate(disputes):
@@ -328,6 +368,8 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
         if not isinstance(next_action, dict) or next_action.get("type") not in NEXT_ACTIONS:
             fail("completed session requires a valid assessment.next_action")
         require_string(next_action.get("reason"), "session.assessment.next_action.reason")
+        if not any(result_summary.values()):
+            fail("completed session requires a non-empty assessment.result_summary")
         if unresolved_disputes:
             if outcome != "inconclusive":
                 fail("completed session with an open dispute must be inconclusive")
@@ -340,6 +382,23 @@ def validate_session(session: dict[str, Any], case: dict[str, Any], case_path: P
             fail("completed session must be cleared from profile.active_session_id")
         if session.get("status") != "completed" and active_session != session_id:
             fail("profile.active_session_id must reference the active session")
+        if session.get("status") == "completed":
+            history_entries = [item for item in profile["progress_history"] if item.get("session_id") == session_id]
+            if len(history_entries) != 1:
+                fail("completed session requires exactly one matching profile.progress_history entry")
+            history_entry = history_entries[0]
+            if history_entry.get("competency_id") != session["active_competency"].get("id"):
+                fail("progress history competency does not match the completed session")
+            if history_entry.get("outcome") != outcome:
+                fail("progress history outcome does not match the completed session")
+            if history_entry.get("result_summary") != result_summary:
+                fail("progress history result_summary does not match the completed session")
+            if history_entry.get("gaps") != gaps:
+                fail("progress history gaps do not match the completed session")
+            if profile.get("current_gaps") != gaps:
+                fail("profile.current_gaps must match the latest completed session gaps")
+            if profile.get("next_action") != assessment.get("next_action"):
+                fail("profile.next_action must match the completed session assessment")
 
 
 def main() -> int:

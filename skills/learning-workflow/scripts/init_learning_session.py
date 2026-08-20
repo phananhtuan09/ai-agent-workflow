@@ -28,6 +28,7 @@ def main() -> int:
     parser.add_argument("--profile", required=True, type=Path)
     parser.add_argument("--session", required=True, type=Path)
     parser.add_argument("--goal", required=True)
+    parser.add_argument("--baseline")
     args = parser.parse_args()
 
     try:
@@ -43,6 +44,8 @@ def main() -> int:
             if profile.get("active_session_id"):
                 raise ValidationError(f"profile already has active session: {profile['active_session_id']}")
         else:
+            if not args.baseline or not args.baseline.strip():
+                raise ValidationError("--baseline is required when creating a profile")
             profile = {
                 "schema_version": "learning-profile/v1",
                 "goals": [
@@ -53,8 +56,13 @@ def main() -> int:
                         "accepted_at": timestamp
                     }
                 ],
-                "baseline": [],
+                "baseline": {
+                    "summary": args.baseline.strip(),
+                    "recorded_at": timestamp
+                },
                 "competencies": [],
+                "current_gaps": [],
+                "progress_history": [],
                 "active_session_id": None,
                 "next_action": None,
                 "updated_at": timestamp
@@ -95,6 +103,12 @@ def main() -> int:
             "system_evidence": [],
             "assessment": {
                 "dimensions": [],
+                "result_summary": {
+                    "independent": [],
+                    "assisted": [],
+                    "not_demonstrated": []
+                },
+                "gaps": [],
                 "outcome": None,
                 "limitations": [],
                 "disputes": [],
@@ -125,4 +139,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

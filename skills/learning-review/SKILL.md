@@ -76,6 +76,14 @@ Recommend exactly one next action:
 - `increase-difficulty`;
 - `change-competency`.
 
+Summarize the observable result in exactly three groups:
+
+- `independent`: behavior demonstrated without material assistance;
+- `assisted`: behavior demonstrated after material assistance;
+- `not_demonstrated`: behavior still missing or contradicted by available learning evidence.
+
+Return no more than three current gaps. Each gap must be supported by learning evidence and useful for choosing the next challenge.
+
 ## Output Contract
 
 ```json
@@ -91,6 +99,11 @@ Recommend exactly one next action:
     }
   ],
   "gaps": [],
+  "result_summary": {
+    "independent": [],
+    "assisted": [],
+    "not_demonstrated": []
+  },
   "outcome": "needs-revisit",
   "reason": "...",
   "next_action": {
@@ -114,4 +127,3 @@ Recommend exactly one next action:
 - Do not introduce facts that were unavailable at decision time.
 - Do not grade by similarity to a canonical solution.
 - Do not update the profile directly when invoked by the coordinator; return the proposal so `learning-workflow` can present it and handle human disagreement first.
-

@@ -60,7 +60,7 @@ The human should be able to operate the workflow with ordinary requests such as:
 
 1. Inspect the profile and sessions.
 2. Resume the single non-completed session when one exists, unless the human explicitly chooses another.
-3. If no profile exists, ask for one concise long-term capability goal.
+3. If no profile exists, ask for one concise long-term capability goal and one concise baseline describing what the human can currently do without AI help.
 4. Use `learning-case` in selection mode to choose an existing case. Use the bundled MVP case when no better approved case exists. Record the returned path as `selected_case_path`.
 5. Initialize the session:
 
@@ -69,7 +69,8 @@ The human should be able to operate the workflow with ordinary requests such as:
      --case "{selected_case_path}" \
      --profile docs/ai/learning/profile.json \
      --session docs/ai/learning/sessions/{session_id}.json \
-     --goal "{human-approved goal}"
+     --goal "{human-approved goal}" \
+     --baseline "{human-provided baseline}"
    ```
 
 6. Present the focus, what reasoning the human owns, and what help AI may provide in one short message.
@@ -130,12 +131,15 @@ Route the case and session to `learning-review`.
 
 After receiving its result:
 
-1. Present demonstrated behaviors, gaps, assistance, and limitations without rubric IDs.
-2. Give the human a chance to dispute the assessment.
-3. Apply an accepted assessment to the session and profile.
-4. Record exactly one recommended next action: revisit prerequisite, retry similar, transfer context, increase difficulty, or change competency.
-5. Validate state.
-6. Ask the human whether to accept the recommendation, continue unfinished evidence work, or choose another direction.
+1. Present the session result in three plain-language groups: independently demonstrated, demonstrated with AI assistance, and not yet demonstrated.
+2. Present no more than three current improvement areas supported by the session evidence.
+3. Present limitations without rubric IDs.
+4. Give the human a chance to dispute the assessment.
+5. Apply an accepted assessment to the session and profile.
+6. Record exactly one recommended next action: revisit prerequisite, retry similar, transfer context, increase difficulty, or change competency.
+7. Update `profile.current_gaps` and append one concise `profile.progress_history` entry from the accepted assessment. Do not copy the full session record into the profile.
+8. Validate state.
+9. Ask the human whether to accept the recommendation, continue unfinished evidence work, or choose another direction.
 
 Do not present step completion as learning evidence.
 
