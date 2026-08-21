@@ -73,6 +73,11 @@ By default, the installer uses the `coding-standard` kit and installs only the c
 Available kits now include:
 - `coding-standard` — core workflow docs and skills
 - `workflow-eval` — trace-first evaluation standard, session-trace docs, report template, and mirrored evaluation/friction skills
+- `learning-workflow` — case-based learning workflow with durable session state and learning-review helpers
+
+`coding-standard` supports Codex, Claude Code, Google Antigravity, and Pi.
+`workflow-eval` installs its skills for Codex, Claude Code, and Google Antigravity; Pi receives its evaluation docs only.
+`learning-workflow` supports Codex, Claude Code, and Google Antigravity, but not Pi.
 
 ```bash
 # Install only Codex
@@ -99,6 +104,9 @@ npx ai-workflow-init --list-tools
 
 # List supported workflow kits
 npx ai-workflow-init --list-kits
+
+# List available skill bundles
+npx ai-workflow-init --list-bundles
 ```
 
 The CLI help explicitly includes the Pi install target:
@@ -112,11 +120,18 @@ You can also select a workflow kit explicitly:
 ```bash
 npx ai-workflow-init --kit coding-standard --tool codex
 npx ai-workflow-init --kit workflow-eval --tool codex
+npx ai-workflow-init --kit learning-workflow --tool codex
 npx ai-workflow-init --kit coding-standard --tool codex --skill refactor --skill quality-code-check
+npx ai-workflow-init --kit coding-standard --tool codex --bundle frontend
 ```
 
 Skills are maintained canonically under `skills/` and adapted to `.agents/skills/` or `.claude/skills/` for each runtime.
 Use `npm run sync-skills` after changing a canonical skill.
+
+Each kit installs its default skill bundle.
+Use repeatable `--skill <id>` or `--bundle <id>` flags to add skills to that kit.
+Duplicate skills are installed once.
+Do not use `--all` with `learning-workflow`, because that target includes Pi.
 
 ```powershell
 # Install only Codex
