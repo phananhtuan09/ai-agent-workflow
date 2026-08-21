@@ -4,7 +4,7 @@ A standardized AI workflow system for modern AI coding assistants. Initialize st
 
 ## Features
 
-- **Multi-Platform Support**: Works with Codex, Claude Code, Google Antigravity, and Pi
+- **Multi-Platform Support**: Works with Codex, Claude Code, Google Antigravity, Pi, and OpenCode
 - **Structured Workflows**: Human Design Review → Detailed Spec → AI Review → Execute → Checklist → Verify
 - **Pre-built Commands**: Spec creation, execution, sync, verification, testing, reviews, and more
 - **Reusable Skills**: Verification, quality checks, design fundamentals, theme generation, and more
@@ -42,9 +42,10 @@ irm https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/insta
 ```
 
 Choose from:
-- **Codex** → `.agents/skills/`, `.agents/roles/`, `.agents/knowledge/`, `.agents/themes/`, and `.codex/`
+- **Codex** → `.agents/skills/`, `.agents/roles/`, `.agents/themes/`, and `.codex/`
 - **Google Antigravity** → `.agents/skills/`
 - **Pi** → `.pi/extensions/`
+- **OpenCode** → `.opencode/agents/`
 - **Claude Code** → `.claude/commands/`, `.claude/skills/`, `.claude/themes/`, and supporting Claude config files
 
 Every install also syncs shared workflow assets: `docs/ai/`.
@@ -68,16 +69,32 @@ Behavior notes for Pi users:
 
 ### Install Specific Tool
 
-By default, the installer uses the `coding-standard` kit and installs only the core spec-driven workflow skills.
+By default, the installer uses the `coding-standard` kit.
+It installs the core spec-driven skill bundle and the selected runtime's applicable project assets.
 
 Available kits now include:
 - `coding-standard` — core workflow docs and skills
 - `workflow-eval` — trace-first evaluation standard, session-trace docs, report template, and mirrored evaluation/friction skills
 - `learning-workflow` — case-based learning workflow with durable session state and learning-review helpers
 
-`coding-standard` supports Codex, Claude Code, Google Antigravity, and Pi.
-`workflow-eval` installs its skills for Codex, Claude Code, and Google Antigravity; Pi receives its evaluation docs only.
-`learning-workflow` supports Codex, Claude Code, and Google Antigravity, but not Pi.
+`coding-standard` supports Codex, Claude Code, Google Antigravity, Pi, and OpenCode.
+OpenCode currently receives its native agents only; skills are not translated to an OpenCode-specific format.
+`workflow-eval` installs its skills for Codex, Claude Code, and Google Antigravity; Pi receives evaluation docs, while OpenCode receives evaluation docs and native agents.
+`learning-workflow` supports Codex, Claude Code, and Google Antigravity, but not Pi or OpenCode.
+
+### Installation Matrix
+
+This matrix is the expected project-local output for each supported kit and tool combination.
+`coding-standard` additionally synchronizes `~/.codex/AGENTS.md`; its Claude installation also synchronizes the global Claude context and status line.
+
+| Kit | Codex | Claude Code | OpenCode | Google Antigravity | Pi |
+| --- | --- | --- | --- | --- | --- |
+| `coding-standard` | Full `docs/ai/`, selected `.agents/skills/`, roles, themes, `.codex/config.toml`, and all `.codex/agents/` | Full `docs/ai/`, selected `.claude/skills/`, commands, themes, output styles, scripts, settings, and all `.claude/agents/` | Full `docs/ai/` and all `.opencode/agents/` | Full `docs/ai/` and selected `.agents/skills/` | Full `docs/ai/`, `.pi/extensions/`, and `.pi/workflows/` |
+| `workflow-eval` | Evaluation docs, evaluation skills, and all `.codex/agents/` | Evaluation docs, evaluation skills, and all `.claude/agents/` | Evaluation docs and all `.opencode/agents/` | Evaluation docs and evaluation skills | Evaluation docs only |
+| `learning-workflow` | Learning docs, learning skills, and all `.codex/agents/` | Learning docs, learning skills, and all `.claude/agents/` | Unsupported | Learning docs and learning skills | Unsupported |
+
+OpenCode does not receive skill bundles because the repository has no OpenCode-specific skill adapter.
+Any supported kit for Codex, Claude Code, or OpenCode copies the complete corresponding subagent folder.
 
 ```bash
 # Install only Codex
@@ -91,6 +108,9 @@ curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/mai
 
 # Install only Pi
 curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool pi
+
+# Install only OpenCode agents
+curl -fsSL https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/install.sh | bash -s -- --tool opencode
 ```
 
 ### CLI Help
@@ -131,7 +151,7 @@ Use `npm run sync-skills` after changing a canonical skill.
 Each kit installs its default skill bundle.
 Use repeatable `--skill <id>` or `--bundle <id>` flags to add skills to that kit.
 Duplicate skills are installed once.
-Do not use `--all` with `learning-workflow`, because that target includes Pi.
+Do not use `--all` with `learning-workflow`, because that target includes unsupported Pi and OpenCode runtimes.
 
 ```powershell
 # Install only Codex
@@ -164,6 +184,9 @@ npx ai-workflow-init --tool antigravity
 
 # Install only Pi
 npx ai-workflow-init --tool pi
+
+# Install only OpenCode agents
+npx ai-workflow-init --tool opencode
 ```
 
 #### Install All Tools
@@ -482,9 +505,12 @@ Run `/sync-spec` or `/review-pr` separately when human review calls for those st
 
 ---
 
-## What Gets Installed
+## Coding-Standard Assets
 
-### Always Installed
+The installation matrix above is authoritative for every kit.
+The following detail describes the full `coding-standard` installation only.
+
+### Documentation
 ```
 docs/ai/
 ├── project/            # Workflow rules and project standards
@@ -501,8 +527,10 @@ AGENTS.md               # Universal AI instructions (synced to ~/.codex/AGENTS.m
 
 | Tool | Commands | Skills | Other |
 |------|----------|--------|-------|
-| **Codex** | - | Selected `.agents/skills/*/SKILL.md` | `.agents/roles/*.md`, `.agents/knowledge/**`, `.agents/themes/*.theme.json`, `.codex/` |
+| **Codex** | - | Selected `.agents/skills/*/SKILL.md` | `.agents/roles/*.md`, `.agents/themes/*.theme.json`, `.codex/` |
 | **Google Antigravity** | - | Selected `.agents/skills/*/SKILL.md` | - |
+| **OpenCode** | - | - | `.opencode/agents/*.md` |
+| **Pi** | - | - | `.pi/extensions/`, `.pi/workflows/` |
 | **Claude Code** | `.claude/commands/*.md` | Selected `.claude/skills/*/SKILL.md` | `.claude/themes/`, `.claude/output-styles/`, `.claude/agents/`, `.claude/scripts/`, `.claude/settings.json`, `.claude/statusline.sh` |
 
 ---

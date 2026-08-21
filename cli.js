@@ -40,17 +40,23 @@ ${kitList}
 Pi install target:
   --tool pi
 
+OpenCode install target:
+  --tool opencode
+
 When installing for Pi, the CLI syncs:
   - docs/ai/
   - ~/.codex/AGENTS.md
   - .pi/extensions/
   - .pi/workflows/
 
+When installing a supported kit for Codex, Claude Code, or OpenCode, the CLI also syncs that runtime's full subagent folder.
+
 Examples:
   npx ai-workflow-init --kit coding-standard --tool codex
   npx ai-workflow-init --kit learning-workflow --tool codex
   npx ai-workflow-init --kit workflow-eval --tool codex
   npx ai-workflow-init --tool pi
+  npx ai-workflow-init --tool opencode
   npx ai-workflow-init --tool codex
   npx ai-workflow-init --all
 

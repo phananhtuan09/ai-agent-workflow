@@ -9,7 +9,7 @@
   "bundles": {
     "core": [
       "orchestrator",
-      "idea-review",
+      "brainstorm-partner",
       "design-spec",
       "create-spec",
       "execute-spec",
@@ -17,7 +17,9 @@
       "verify-feature",
       "verify-runtime",
       "execute-task",
-      "review-pr"
+      "review-pr",
+      "prompt-leverage",
+      "sync-spec"
     ],
     "common-review": [
       "quality-code-check",

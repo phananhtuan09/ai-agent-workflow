@@ -44,7 +44,7 @@ test("coding-standard resolves only the core bundle", () => {
   });
   assert.deepStrictEqual(skillIds, [
     "orchestrator",
-    "idea-review",
+    "brainstorm-partner",
     "design-spec",
     "create-spec",
     "execute-spec",
@@ -53,6 +53,8 @@ test("coding-standard resolves only the core bundle", () => {
     "verify-runtime",
     "execute-task",
     "review-pr",
+    "prompt-leverage",
+    "sync-spec",
   ]);
 });
 
@@ -148,6 +150,19 @@ test("coding-standard installs runtime-adapted skill paths", () => {
   }
 });
 
+test("coding-standard installs OpenCode agents without dependencies", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "opencode"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(
+      fs.existsSync(path.join(result.workspace, ".opencode/agents/review-spec.md"))
+    );
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".opencode/node_modules")));
+  } finally {
+    result.cleanup();
+  }
+});
+
 test("workflow-eval installs all declared files", () => {
   const result = runCli(["--kit", "workflow-eval", "--tool", "codex"]);
   try {
@@ -163,6 +178,17 @@ test("workflow-eval installs all declared files", () => {
       "utf8"
     );
     assert.ok(skill.includes(".agents/skills/workflow-evaluation/extract_session_trace.py"));
+    assert.ok(fs.existsSync(path.join(result.workspace, ".codex/agents/review-spec.toml")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("workflow-eval installs Claude subagents", () => {
+  const result = runCli(["--kit", "workflow-eval", "--tool", "claude"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.existsSync(path.join(result.workspace, ".claude/agents/review-spec.md")));
   } finally {
     result.cleanup();
   }
