@@ -52,6 +52,12 @@
       "learning-case",
       "learning-evidence",
       "learning-review"
+    ],
+    "verify-experimental": [
+      "verify-workflow",
+      "manual-checklist",
+      "verify-feature",
+      "verify-runtime"
     ]
   },
   "kits": {

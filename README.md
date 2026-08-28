@@ -212,6 +212,11 @@ This workflow system separates high-level human decisions from the detailed AI e
 The completed workflow returns the checklist as the primary human validation artifact.
 `/sync-spec` and `/review-pr` remain human-triggered tools outside the automated feature workflow.
 
+`/verify-workflow` is an **experimental** single-entry alternative to the three verification steps above.
+It plans testcases, routes evidence collection to `/verify-feature` and `/verify-runtime`, gates that evidence with a deterministic script, judges each testcase independently, adds regression coverage, and returns a short status plus a paste-ready fix handoff.
+It accepts an approved spec, a `fix-bug` summary, or a stated intent, so a bug fix does not need a spec.
+It is not part of any workflow config; install it with `--bundle verify-experimental` and run it by hand next to the existing steps so both paths stay comparable.
+
 ---
 
 ## Use Cases & Commands
