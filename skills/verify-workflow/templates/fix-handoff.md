@@ -2,7 +2,17 @@
 
 Two outputs come from one source: a block written into the verification artifact, and a paste-ready prompt printed on request.
 
-The block must be written before `handoff` is offered.
+| Output | Written by | When |
+|---|---|---|
+| artifact block | the verify run, in its report phase | while the evidence is still fresh |
+| paste-ready prompt | `handoff` | on request, printed to the response only |
+
+`handoff` is read-only.
+It never writes the artifact block, never edits the checklist, and never re-runs a testcase.
+
+If `handoff` finds no block for a confirmed failure, report that and let the human re-run `/verify-workflow`.
+Do not reconstruct a reproduction path after the fact; the browser context and dataset that produced the failure are gone by then.
+
 The prompt must never contain information the block does not already carry, because the fix session reads the block, not the prompt.
 
 ## Success Condition
@@ -15,7 +25,7 @@ Every field below exists to prevent that.
 
 ## Artifact Block — Confirmed Failure
 
-Write into `docs/ai/features/verifications/{feature-slug}.md`.
+The verify run appends this into `docs/ai/features/verifications/{feature-slug}.md` in its report phase, not on `handoff`.
 Keep headings in English and descriptions in Vietnamese.
 
 ````markdown
