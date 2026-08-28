@@ -45,6 +45,21 @@ Read a helper's `SKILL.md` only when routing work to that helper.
 Do not reimplement helper behavior in this skill.
 Do not modify a helper's rules to make a run pass.
 
+Before planning, confirm the helpers this run needs are installed in the same skills root:
+
+- every mode needs `verify-feature` and `verify-runtime`;
+- mode A additionally needs `manual-checklist`.
+
+If one is missing, stop as blocked, name the missing helper, and report that the bundle installs them together:
+
+```bash
+npx ai-workflow-init --kit coding-standard --bundle verify-experimental --tool {tool}
+```
+
+`verify-runtime` also needs its configured browser driver to be reachable, per its own `tools.yaml` and `project.env`.
+Let `verify-runtime` report that failure in its own words rather than pre-checking the driver here.
+Never substitute a missing helper by driving a browser or writing evidence directly from this skill.
+
 Use these executable resources relative to this `SKILL.md`:
 
 - `skills/verify-workflow/scripts/update_manifest.py`: create and update the run manifest.
