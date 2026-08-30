@@ -1,11 +1,11 @@
 ---
 name: verify-runtime
-description: Use when the user asks to run real browser-driven end-to-end verification against an approved spec and its spec-derived checklist. Loads the project E2E tool and environment definitions, exercises observable user flows through the configured browser tool, writes detailed evidence to the verification artifact, and updates checklist testcase status.
+description: Use when the user asks to run real browser-driven end-to-end verification against an approved spec and its structured testcase definitions. Loads the project E2E tool and environment definitions, exercises observable user flows through the configured browser tool, appends detailed evidence to the verification record without touching the checklist.
 ---
 
 # Verify Runtime
 
-Run browser-driven end-to-end verification for the testcases defined by the approved spec checklist.
+Run browser-driven end-to-end verification for testcase types that require a real browser.
 
 ## Bundled Project Configuration
 
@@ -26,25 +26,30 @@ Never print, persist, screenshot, or return secret values.
 
 ## Input
 
+- Required: testcase definitions path, for example `docs/ai/features/checklists/{feature-name}-testcases.json`.
 - Required: approved spec path, for example `docs/ai/features/specs/{feature-name}.md`.
-- Required: checklist path, for example `docs/ai/features/checklists/{feature-name}.md`.
-- Required: existing verification path, for example `docs/ai/features/verifications/{feature-name}.md`.
+- Required: existing verification record path, for example `docs/ai/features/verifications/{feature-name}.md`.
 - Required: readable `tools.yaml` and `project.env` files in this skill directory.
 - Optional: explicit runtime target, tool, auth, fixture, or setup overrides for the current run.
 
 ## Output
 
-Update detailed E2E evidence in `docs/ai/features/verifications/{feature-name}.md`.
-Update final evidence status in `docs/ai/features/checklists/{feature-name}.md`.
-Store screenshots or other browser artifacts under the configured `E2E_ARTIFACT_DIR` when the selected tool supports file output.
-The checklist is the primary human-facing output.
+Append detailed E2E evidence to `docs/ai/features/verifications/{feature-name}.md`.
+
+**This skill does NOT modify the checklist.** The checklist is updated only by `verify-workflow` after all evidence is collected.
+
+## Scope
+
+This skill handles only `test_type: runtime_e2e` testcases.
+
+Testcases with `test_type: code_test`, `build_check`, or `api_check` belong to `verify-feature`. Skip them entirely and record `skipped: {test_type} testcase, belongs to verify-feature` in the verification record.
 
 ## Source Of Truth And Ownership
 
 - Treat the approved spec as the only source of truth for expected behavior.
-- Treat checklist testcase definitions and spec mappings as a projection of that spec.
+- Treat testcase definitions as a projection of that spec.
 - Use browser observations only as runtime evidence.
-- Do not add, delete, split, merge, or rewrite checklist testcases from observed implementation behavior.
+- Do not add, delete, split, merge, or rewrite testcase definitions from observed implementation behavior.
 - Do not change expected results to match what the application currently does.
 - If runtime behavior conflicts with the spec, record drift and mark the affected testcase red.
 - If a required expected result is unclear, record a spec gap instead of guessing.
@@ -57,28 +62,33 @@ The checklist is the primary human-facing output.
 - Use direct API calls only for declared fixture setup or cleanup when that API interaction is not the behavior under test.
 - Never use DOM injection, direct database mutation, internal state mutation, or route shortcuts to simulate the user action being verified.
 - Do not substitute code inspection, unit tests, builds, lint output, or component rendering for E2E execution.
-- Keep execution bounded to approved checklist testcases and the minimum setup, diagnostics, and cleanup needed to verify them.
+- Keep execution bounded to approved testcase definitions and the minimum setup, diagnostics, and cleanup needed to verify them.
 
 ## E2E Workflow
 
-1. Read the approved spec, checklist, existing verification artifact, `tools.yaml`, and `project.env`.
-2. Stop as blocked if a required artifact or configuration file is missing or unreadable.
-3. Resolve the configured default tool and confirm that its declared MCP server or driver is available.
-4. Resolve the base URL and other non-secret settings from explicit inputs first, then `project.env`.
-5. Resolve required credentials from their named process environment variables without exposing their values.
-6. Check the configured healthcheck or base URL.
-7. If the target is unavailable and `E2E_START_COMMAND` is configured, run only that command and wait up to `E2E_START_TIMEOUT_SECONDS` for readiness.
-8. Stop as blocked if the application, required account, test data, or selected browser driver is unavailable.
-9. Select checklist testcases whose evidence strategy requires runtime, E2E, environment validation, or human judgment.
-10. Convert each selected testcase into a browser scenario without changing its action, expected result, preconditions, role, viewport, or data variants.
-11. Use the configured browser driver to establish preconditions, perform user actions, and assert the exact expected result.
-12. Inspect browser console errors and relevant network requests for each scenario, especially when the testcase crosses frontend and backend boundaries.
-13. Verify required persistence by revisiting, refreshing, or opening a clean browser context when the testcase requires it.
-14. Capture the actual URL, viewport, role, test data identity, actions, assertions, visible result, network result, console result, and screenshot or artifact pointer.
-15. Run declared cleanup when needed without deleting unrelated project or user data.
-16. Record detailed evidence and update checklist status using the deterministic rules below.
-17. Recalculate checklist counts, percentages, fully covered AC count, and verification evidence path.
-18. Update the verification artifact and checklist before returning any orchestrator outcome, including fail or blocked outcomes.
+1. Read the testcase definitions JSON completely.
+2. Read the approved spec completely.
+3. Read the existing verification record if it exists.
+4. Read `tools.yaml` and `project.env`.
+5. Stop as blocked if a required artifact or configuration file is missing or unreadable.
+6. Resolve the configured default tool and confirm that its declared MCP server or driver is available.
+7. Resolve the base URL and other non-secret settings from explicit inputs first, then `project.env`.
+8. Resolve required credentials from their named process environment variables without exposing their values.
+9. Check the configured healthcheck or base URL.
+10. If the target is unavailable and `E2E_START_COMMAND` is configured, run only that command and wait up to `E2E_START_TIMEOUT_SECONDS` for readiness.
+11. Stop as blocked if the application, required account, test data, or selected browser driver is unavailable.
+12. Filter testcases to `runtime_e2e` only.
+13. For each testcase, read its `done_criteria` from the JSON.
+14. Convert each testcase into a browser scenario without changing its action, expected result, preconditions, role, viewport, or data variants.
+15. Use the configured browser driver to establish preconditions, perform user actions, and assert the exact expected result.
+16. Inspect browser console errors and relevant network requests for each scenario.
+17. Verify required persistence by revisiting, refreshing, or opening a clean browser context when the testcase requires it.
+18. Capture the actual URL, viewport, role, test data identity, actions, assertions, visible result, network result, console result, and screenshot or artifact pointer.
+19. Compare evidence against `done_criteria.required` — all items must be satisfied for green.
+20. Check evidence against `done_criteria.not_sufficient` — if any item matches, evidence is insufficient.
+21. Run declared cleanup when needed without deleting unrelated project or user data.
+22. Append detailed evidence to the verification record.
+23. Record `skipped: {test_type} testcase, belongs to verify-feature` for any skipped testcase.
 
 ## Browser Execution Rules
 
@@ -92,104 +102,77 @@ The checklist is the primary human-facing output.
 - Do not mark a scenario passed if only the final UI state was observed without performing its required user actions.
 - Do not continue destructive or state-changing scenarios when their exact target is ambiguous.
 
-## Runtime Artifact Format
+## Evidence Classification
 
-Append or update these sections without deleting valid implementation evidence:
+Read `skills/verify-workflow/references/evidence-rules.md` for the complete evidence rules.
+
+Key rule: evidence must match the testcase's `done_criteria.required` items. If the done_criteria requires "browser screenshot" and "user action performed" and you only captured a screenshot without performing the action, the evidence is insufficient — do not mark green.
+
+## Verification Record Format
+
+Append or update these sections in the verification record:
 
 ```markdown
-## Runtime Target
+## Runtime Verification — {timestamp}
+
+### Sources
+- Testcase definitions: docs/ai/features/checklists/{feature-name}-testcases.json
+- Approved spec: docs/ai/features/specs/{feature-name}.md
+
+### Runtime Target
 - Tool / driver
 - Base URL / API URL / healthcheck
 - Browser, viewport, role, and setup actually used
 
-## Runtime Testcase Evidence
-| Testcase | Spec mapping | E2E actions and assertions | Browser diagnostics | Artifact | Result | Checklist status |
+### Runtime Testcase Evidence
+| Testcase | Test type | Done criteria satisfied | E2E actions and assertions | Browser diagnostics | Artifact | Result |
 |---|---|---|---|---|---|---|
-| TC-001 | AC1 | [user steps and observed result] | [network and console result] | [screenshot or trace pointer] | Pass | 🟢 |
-| TC-002 | AC2 | [evidence and limitation] | [diagnostic result] | [artifact pointer] | Partial | 🟡 |
+| TC-001 | runtime_e2e | [list of satisfied criteria] | [user steps and observed result] | [network and console result] | [screenshot pointer] | Pass |
 
-## Automated Runtime Checks
-- [browser scenario actually executed] → [result]
+### Skipped (implementation-level)
+- TC-002: code_test testcase, belongs to verify-feature
 
-## Manual-Only Testcases
-- [testcase requiring subjective human judgment and why]
+### Failed
+- [testcase with concrete reason]
 
-## Runtime Failures / Blocks
-- [failed or blocked testcase with reason]
-
-## Spec Gaps / Drift
+### Spec Gaps / Drift
 - [runtime behavior that contradicts or is not defined by the spec]
 
-## Final Checklist Update
-- Green: {green}/{total}
-- Yellow: {yellow}/{total}
-- Red: {red}/{total}
-- Fully covered ACs: {covered}/{total_ac}
-
-## Runtime Status
-Pass | Fail | Partial | Blocked
+### Coverage Summary
+- Verified: {n}/{total}
+- Skipped (implementation-level): {n}
+- Failed: {n}
 ```
 
-## Checklist Evidence Rules
+## Final Status Rules
 
-Icons are evidence classifications, not self-reported confidence.
-
-- Set `🟢` only when the exact testcase was executed and passed through the configured browser driver with direct evidence covering its action, expected result, preconditions, and required environment.
-- Set `🟡` when E2E evidence covers only part of the testcase, uses a narrower environment or dataset, or still requires subjective human judgment.
-- Set `🔴` when the testcase was not run, failed, was blocked, has contradictory evidence, or depends on an unclear spec rule.
-- Direct E2E evidence may upgrade an implementation-phase yellow testcase to green.
-- E2E evidence must downgrade a previous green result when it contradicts earlier evidence.
-- CSS declarations, code inspection, build output, or agent confidence cannot prove responsive, overflow, persistence, visible feedback, or other observable behavior.
-- Prefer concrete evidence such as viewport dimensions, visible text, accessible state, URLs, DOM counts, screenshots, console output, network responses, and persisted values after refresh.
-- Do not use one viewport, user role, dataset, happy path, or mocked dependency to mark broader testcase variants green.
-- Subjective UX or business-judgment testcases remain yellow unless the spec defines objective assertions that were directly observed.
-- Never change `[ ]` to `[x]` or erase an existing `[x]`.
-- Green testcase items may remove an unchecked `[ ]` task marker.
-- Yellow and red testcase items retain their human task marker.
-- Keep the checklist AI verification note to one short method-and-result phrase.
-- Put all detailed E2E evidence in the verification artifact.
-
-## Checklist Integrity Rules
-
-- Preserve testcase IDs, wording, expected results, order, and spec mappings.
-- Preserve the checklist's Vietnamese section headings.
-- Write updated summary labels, short AI verification notes, and spec-gap or drift findings in Vietnamese while preserving technical identifiers.
-- Update only the icon, short AI verification note, human task marker, summary counts, percentages, fully covered AC count, evidence path, and spec-gap or drift section.
-- Derive all percentages from testcase counts.
-- Count an AC as fully covered only when every testcase mapped to it is green.
-- Preserve implementation evidence sections in the verification artifact.
-- If E2E setup prevents execution, update affected checklist items to red with a short blocked reason before stopping.
-
-## Runtime Status Rules
-
-- `Pass`: every E2E testcase selected for this phase passed with adequate direct browser evidence; manual-only cases may remain yellow.
-- `Partial`: meaningful browser evidence was collected but one or more selected testcases remain incomplete or manual-only.
-- `Fail`: at least one selected E2E testcase failed.
-- `Blocked`: tool, application, auth, data, environment, checklist, or verification artifacts prevented meaningful E2E execution.
-- Use `Not automatically verifiable` only in detailed evidence, never as the final runtime status.
+- `Pass`: every `runtime_e2e` testcase passed with adequate direct browser evidence matching its done_criteria.
+- `Partial`: meaningful browser evidence was collected but one or more testcases remain incomplete.
+- `Fail`: at least one `runtime_e2e` testcase failed.
+- `Blocked`: tool, application, auth, data, environment, or verification artifacts prevented meaningful E2E execution.
 
 ## Artifact Boundaries
 
 - Do not modify code, tests, specs, or testcase definitions during E2E verification.
 - Do not repair failures in this phase.
-- Do not recreate the verification artifact from scratch.
+- Do not recreate the verification record from scratch.
 - Do not write secrets into artifacts, logs, screenshots, commands, or final output.
-- Keep automation bounded to the approved spec checklist.
+- Do not touch the checklist file.
+- Keep automation bounded to the approved testcase definitions.
 
 ## Orchestrator Contract
 
 When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
 
-- Runtime status `Pass` or `Partial`:
-  `<!-- orchestrator: outcome=continue provides=runtime_verified,checklist_path checklist_path=docs/ai/features/checklists/{feature-name}.md -->`
-- Runtime status `Fail`:
+- Final status `Pass` or `Partial`:
+  `<!-- orchestrator: outcome=continue provides=verification_path verification_path=docs/ai/features/verifications/{feature-name}.md -->`
+- Final status `Fail`:
   `<!-- orchestrator: outcome=stop-fail -->`
-- Runtime status `Blocked`:
+- Final status `Blocked`:
   `<!-- orchestrator: outcome=stop-blocked -->`
 
 Rules:
 
-- Emit the comment only after the verification artifact and checklist have been updated.
-- Use `stop-blocked` if required artifacts or configuration are missing, the configured driver is unavailable, or runtime setup prevents meaningful execution.
-- Report the checklist path as the primary human-facing output.
+- Emit the comment only after the verification record has been updated.
+- `verification_path` must match the file actually written or updated.
 - If this skill runs standalone, the comment is optional.

@@ -1,0 +1,100 @@
+{
+  "test_types": {
+    "code_test": {
+      "description": "Unit/integration test executed through a test runner",
+      "executor": "verify-feature",
+      "tools": ["jest", "vitest", "pytest", "flutter test", "cargo test"],
+      "done_criteria": {
+        "required": [
+          "Test file exists and matches naming convention",
+          "Test passes with exit code 0",
+          "Test covers stated scenario with matching inputs, state transitions, and expected outputs"
+        ],
+        "not_sufficient": [
+          "Code inspection",
+          "Build or compilation success",
+          "Agent confidence or reasoning",
+          "Test file exists but was not executed"
+        ]
+      }
+    },
+    "build_check": {
+      "description": "Compile, lint, typecheck, or static analysis",
+      "executor": "verify-feature",
+      "tools": ["flutter analyze", "cargo check", "tsc --noEmit", "eslint", "mypy"],
+      "done_criteria": {
+        "required": [
+          "Tool output shows success with exit code 0",
+          "No errors in output"
+        ],
+        "not_sufficient": [
+          "Agent intention or reasoning",
+          "Code looks correct",
+          "Tool output shows warnings (warnings are yellow, not green)"
+        ]
+      }
+    },
+    "runtime_e2e": {
+      "description": "Browser-driven end-to-end test through configured driver",
+      "executor": "verify-runtime",
+      "tools": ["playwright", "cypress", "puppeteer"],
+      "done_criteria": {
+        "required": [
+          "User action performed through browser driver",
+          "Expected state observed in DOM or visible UI",
+          "Browser screenshot captured showing result"
+        ],
+        "not_sufficient": [
+          "Code inspection",
+          "CSS declaration or design token check",
+          "Component render without browser execution",
+          "DOM injection or route shortcut"
+        ]
+      }
+    },
+    "api_check": {
+      "description": "Real API request with response validation",
+      "executor": "verify-feature",
+      "tools": ["curl", "httpie", "fetch"],
+      "done_criteria": {
+        "required": [
+          "Real API request sent to configured endpoint",
+          "Response status code matches expected",
+          "Response body matches expected schema and values"
+        ],
+        "not_sufficient": [
+          "Mocked API response",
+          "Code inspection of API handler",
+          "Schema definition without execution"
+        ]
+      }
+    }
+  },
+  "evidence_artifacts": {
+    "screenshot": {
+      "description": "Browser screenshot file",
+      "path_pattern": "docs/ai/features/verifications/e2e-artifacts/{TC-ID}/*.png",
+      "required_for": ["runtime_e2e"]
+    },
+    "test_output": {
+      "description": "Test runner output log",
+      "path_pattern": "docs/ai/features/verifications/{feature}.md",
+      "required_for": ["code_test"]
+    },
+    "console_log": {
+      "description": "Browser console output",
+      "path_pattern": "docs/ai/features/verifications/e2e-artifacts/{TC-ID}/console.log",
+      "required_for": ["runtime_e2e"]
+    },
+    "network_log": {
+      "description": "Network request/response log",
+      "path_pattern": "docs/ai/features/verifications/e2e-artifacts/{TC-ID}/network.log",
+      "required_for": ["runtime_e2e"]
+    }
+  },
+  "checklist_output": {
+    "path_pattern": "docs/ai/features/checklists/{feature}.md",
+    "verification_record_pattern": "docs/ai/features/verifications/{feature}.md",
+    "language": "vi"
+  }
+}

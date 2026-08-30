@@ -47,11 +47,12 @@ Prefer user-visible entry points that already exist in the application over synt
 
 - Use ids `RG-001`, `RG-002`, and so on.
 - Regression testcases carry no acceptance-criterion mapping.
+- Every regression testcase must include `mapped_to` (the changed file or function it protects) and `rationale` (why this regression risk exists).
 - Write them in their own checklist section so `manual-checklist` rules and its acceptance-criterion coverage math stay untouched:
 
 ```markdown
 ## Ca kiểm thử hồi quy
-- [ ] 🔴 RG-001 — {hành động} → {kết quả mong đợi} — Nguồn: {test có sẵn | tính toàn vẹn luồng} — AI: Chưa chạy
+- [ ] 🔴 RG-001 — {hành động} → {kết quả mong đợi} — Nguồn: {test có sẵn | tính toàn vẹn luồng} — Phù hợp: {changed file/function} — Lý do: {tại sao cần test} — AI: Chưa chạy
 
 ## Rủi ro chưa kiểm
 - {surface không được kiểm và lý do}

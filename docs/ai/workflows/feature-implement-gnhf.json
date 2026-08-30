@@ -57,7 +57,7 @@
         "summary_path",
         "implementation_workspace_path"
       ],
-      "provides": ["checklist_path"],
+      "provides": ["checklist_path", "testcases_path"],
       "cwd_from": "implementation_workspace_path",
       "skippable": false
     },
@@ -99,7 +99,29 @@
         "checklist_path",
         "implementation_workspace_path"
       ],
-      "provides": ["runtime_verified", "checklist_path"],
+      "provides": ["runtime_verified", "verification_path"],
+      "cwd_from": "implementation_workspace_path",
+      "skippable": false
+    },
+    {
+      "id": "verify-workflow",
+      "title": "Validate and update checklist",
+      "type": "skill",
+      "value": "verify-workflow",
+      "hint": "Validate verification evidence va cap nhat checklist voi trang thai cuoi cung",
+      "exec": "skill",
+      "skill": "verify-workflow",
+      "auto": true,
+      "human_gate": false,
+      "stop_on_outcome": ["stop-fail", "stop-blocked"],
+      "requires": [
+        "spec_path",
+        "testcases_path",
+        "verification_path",
+        "checklist_path",
+        "implementation_workspace_path"
+      ],
+      "provides": ["checklist_path"],
       "cwd_from": "implementation_workspace_path",
       "skippable": false
     }
