@@ -92,9 +92,32 @@
       "required_for": ["runtime_e2e"]
     }
   },
+  "risk_policies": {
+    "authorization": {
+      "required_test_types": ["code_test", "runtime_e2e"],
+      "required_scenarios": ["allowed role", "denied role"]
+    },
+    "data_migration": {
+      "required_test_types": ["build_check", "code_test"],
+      "required_scenarios": ["migration or dry-run", "existing-data compatibility", "rollback or recovery"]
+    },
+    "money_or_state_transition": {
+      "required_test_types": ["code_test", "api_check"],
+      "required_scenarios": ["valid transition", "invalid transition", "duplicate or retry behavior"]
+    },
+    "external_integration": {
+      "required_test_types": ["code_test", "api_check"],
+      "required_scenarios": ["success", "remote failure", "timeout or retry behavior"]
+    },
+    "destructive_operation": {
+      "required_test_types": ["code_test"],
+      "required_scenarios": ["exact target", "authorization", "failure or recovery behavior"]
+    }
+  },
   "checklist_output": {
     "path_pattern": "docs/ai/features/checklists/{feature}.md",
     "verification_record_pattern": "docs/ai/features/verifications/{feature}.md",
+    "verification_results_pattern": "docs/ai/features/verifications/{feature}.json",
     "language": "vi"
   }
 }

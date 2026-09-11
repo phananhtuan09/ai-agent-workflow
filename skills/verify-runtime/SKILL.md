@@ -28,13 +28,14 @@ Never print, persist, screenshot, or return secret values.
 
 - Required: testcase definitions path, for example `docs/ai/features/checklists/{feature-name}-testcases.json`.
 - Required: approved spec path, for example `docs/ai/features/specs/{feature-name}.md`.
-- Required: existing verification record path, for example `docs/ai/features/verifications/{feature-name}.md`.
+- Required: verification record path, for example `docs/ai/features/verifications/{feature-name}.md`.
+- Required: verification results path, for example `docs/ai/features/verifications/{feature-name}.json`, created by `verify-feature`.
 - Required: readable `tools.yaml` and `project.env` files in this skill directory.
 - Optional: explicit runtime target, tool, auth, fixture, or setup overrides for the current run.
 
 ## Output
 
-Append detailed E2E evidence to `docs/ai/features/verifications/{feature-name}.md`.
+Update authoritative testcase results in `docs/ai/features/verifications/{feature-name}.json` and render corresponding E2E detail in `docs/ai/features/verifications/{feature-name}.md`.
 
 **This skill does NOT modify the checklist.** The checklist is updated only by `verify-workflow` after all evidence is collected.
 
@@ -69,26 +70,39 @@ Testcases with `test_type: code_test`, `build_check`, or `api_check` belong to `
 1. Read the testcase definitions JSON completely.
 2. Read the approved spec completely.
 3. Read the existing verification record if it exists.
-4. Read `tools.yaml` and `project.env`.
-5. Stop as blocked if a required artifact or configuration file is missing or unreadable.
-6. Resolve the configured default tool and confirm that its declared MCP server or driver is available.
-7. Resolve the base URL and other non-secret settings from explicit inputs first, then `project.env`.
-8. Resolve required credentials from their named process environment variables without exposing their values.
-9. Check the configured healthcheck or base URL.
-10. If the target is unavailable and `E2E_START_COMMAND` is configured, run only that command and wait up to `E2E_START_TIMEOUT_SECONDS` for readiness.
-11. Stop as blocked if the application, required account, test data, or selected browser driver is unavailable.
-12. Filter testcases to `runtime_e2e` only.
-13. For each testcase, read its `done_criteria` from the JSON.
-14. Convert each testcase into a browser scenario without changing its action, expected result, preconditions, role, viewport, or data variants.
-15. Use the configured browser driver to establish preconditions, perform user actions, and assert the exact expected result.
-16. Inspect browser console errors and relevant network requests for each scenario.
-17. Verify required persistence by revisiting, refreshing, or opening a clean browser context when the testcase requires it.
-18. Capture the actual URL, viewport, role, test data identity, actions, assertions, visible result, network result, console result, and screenshot or artifact pointer.
-19. Compare evidence against `done_criteria.required` — all items must be satisfied for green.
-20. Check evidence against `done_criteria.not_sufficient` — if any item matches, evidence is insufficient.
-21. Run declared cleanup when needed without deleting unrelated project or user data.
-22. Append detailed evidence to the verification record.
-23. Record `skipped: {test_type} testcase, belongs to verify-feature` for any skipped testcase.
+4. Read and validate the existing verification results JSON.
+5. Read `tools.yaml` and `project.env`.
+6. Stop as blocked if a required artifact or configuration file is missing or unreadable.
+7. Resolve the configured default tool and confirm that its declared MCP server or driver is available.
+8. Resolve the base URL and other non-secret settings from explicit inputs first, then `project.env`.
+9. Resolve required credentials from their named process environment variables without exposing their values.
+10. Check the configured healthcheck or base URL.
+11. If the target is unavailable and `E2E_START_COMMAND` is configured, run only that command and wait up to `E2E_START_TIMEOUT_SECONDS` for readiness.
+12. Stop as blocked if the application, required account, test data, or selected browser driver is unavailable.
+13. Filter testcases to `runtime_e2e` only.
+14. For each testcase, read its `done_criteria` from the JSON.
+15. Convert each testcase into a browser scenario without changing its action, expected result, preconditions, role, viewport, or data variants.
+16. Use the configured browser driver to establish preconditions, perform user actions, and assert the exact expected result.
+17. Inspect browser console errors and relevant network requests for each scenario.
+18. Verify required persistence by revisiting, refreshing, or opening a clean browser context when the testcase requires it.
+19. Capture the actual URL, viewport, role, test data identity, actions, assertions, visible result, network result, console result, and screenshot or artifact pointer.
+20. Compare evidence against `done_criteria.required` — all items must be satisfied for green.
+21. Check evidence against `done_criteria.not_sufficient` — if any item matches, evidence is insufficient.
+22. Run declared cleanup when needed without deleting unrelated project or user data.
+23. Record one structured result per runtime testcase in the verification results JSON.
+24. Append or replace that testcase's human-readable evidence in the verification record from the same result.
+25. Record `skipped: {test_type} testcase, belongs to verify-feature` for any skipped testcase.
+
+For skipped implementation testcases, write a structured result with `executor: verify-feature`, `result: skipped`, `classification: not_applicable`, empty `satisfied` and `evidence`, and a `missing` note naming `verify-feature` as the executor.
+
+## Structured Results And Freshness
+
+- Treat the verification results JSON as authoritative for downstream status; Markdown is human-readable only.
+- Run `verify-workflow/scripts/validate_verification.py` before preserving implementation-level results.
+- Stop as stale instead of running when the approved spec or testcase definitions no longer match their recorded SHA-256 values.
+- If source files changed since `verify-feature`, return `stop-drift`; the orchestrator must rerun `verify-feature` before E2E execution.
+- Write `executor: verify-runtime`, `result`, `classification`, `satisfied`, `missing`, `evidence`, and `verified_at` for every runtime testcase.
+- Never attach new evidence to a prior `source_sha256`.
 
 ## Browser Execution Rules
 
@@ -153,23 +167,42 @@ Append or update these sections in the verification record:
 
 ## Artifact Boundaries
 
-- Do not modify code, tests, specs, or testcase definitions during E2E verification.
-- Do not repair failures in this phase.
+- Do not modify specs or testcase definitions during E2E verification.
+- Production code and focused tests may be repaired only under the bounded repair rules below.
 - Do not recreate the verification record from scratch.
 - Do not write secrets into artifacts, logs, screenshots, commands, or final output.
 - Do not touch the checklist file.
 - Keep automation bounded to the approved testcase definitions.
+
+## Bounded Auto-Repair
+
+When browser evidence confirms an `implementation_defect`, apply a focused repair only when it stays inside approved behavior and the recorded source scope.
+
+The bounded loop is:
+`runtime verify → classify → (implementation_defect in scope ? repair + record attempt → implementation verify → runtime verify again : stop/continue)`.
+The two-attempt limit is shared with `verify-feature` and is enforced by the repair recorder and final validator.
+
+- Share the two-attempt maximum stored in `verification_results.repair` with `verify-feature`.
+- Record each attempt with `skills/verify-workflow/scripts/record_repair_attempt.py`; never hand-edit the repair history.
+- Run it after the focused repair and before rerunning implementation and browser checks, with the failed testcase IDs and both source fingerprints supplied explicitly.
+- Record failed testcase IDs, source fingerprints before and after, and the change made.
+- After repair, rerun affected implementation-level checks before rerunning the failed runtime testcase.
+- Stop without repair for missing product decisions, spec ambiguity, scope change, risk acceptance, destructive uncertainty, or environment blockers.
+- Stop for no progress when the source fingerprint does not change or the same observable failure repeats.
+- Never weaken assertions, required evidence, roles, fixtures, viewports, or expected results.
 
 ## Orchestrator Contract
 
 When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
 
 - Final status `Pass` or `Partial`:
-  `<!-- orchestrator: outcome=continue provides=verification_path verification_path=docs/ai/features/verifications/{feature-name}.md -->`
+  `<!-- orchestrator: outcome=continue provides=runtime_verified,verification_path,verification_results_path verification_path=docs/ai/features/verifications/{feature-name}.md verification_results_path=docs/ai/features/verifications/{feature-name}.json -->`
 - Final status `Fail`:
   `<!-- orchestrator: outcome=stop-fail -->`
 - Final status `Blocked`:
   `<!-- orchestrator: outcome=stop-blocked -->`
+- Spec, testcase-definition, or implementation-source freshness mismatch:
+  `<!-- orchestrator: outcome=stop-drift -->`
 
 Rules:
 

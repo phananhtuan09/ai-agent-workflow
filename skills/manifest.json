@@ -16,6 +16,7 @@
       "manual-checklist",
       "verify-feature",
       "verify-runtime",
+      "verify-workflow",
       "execute-task",
       "review-pr",
       "prompt-leverage",

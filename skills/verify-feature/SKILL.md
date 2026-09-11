@@ -11,13 +11,14 @@ Verify implementation-level evidence for testcase types that can be checked with
 
 - Required: testcase definitions path, for example `docs/ai/features/checklists/{feature-name}-testcases.json`.
 - Required: approved spec path, for example `docs/ai/features/specs/{feature-name}.md`.
-- Required: existing verification record path, for example `docs/ai/features/verifications/{feature-name}.md`.
+- Required: verification record path, for example `docs/ai/features/verifications/{feature-name}.md`; create it when absent.
+- Required: verification results path, for example `docs/ai/features/verifications/{feature-name}.json`; create it when absent.
 - Optional: execution summary path, for example `docs/ai/features/summaries/{feature-name}.md`.
 - Optional: focused file or module scope when the feature touches a narrow area.
 
 ## Output
 
-Append evidence to `docs/ai/features/verifications/{feature-name}.md`.
+Write the authoritative testcase result to `docs/ai/features/verifications/{feature-name}.json` and render the corresponding detail in `docs/ai/features/verifications/{feature-name}.md`.
 
 **This skill does NOT modify the checklist.** The checklist is updated only by `verify-workflow` after all evidence is collected.
 
@@ -46,16 +47,48 @@ Testcases with `test_type: runtime_e2e` belong to `verify-runtime`. Skip them en
 2. Read the approved spec completely.
 3. Read the existing verification record if it exists.
 4. Read the execution summary when provided, but treat it only as a navigation aid.
-5. Filter testcases to `code_test`, `build_check`, and `api_check` only.
-6. For each testcase, read its `done_criteria` from the JSON.
-7. Execute the verification strategy that matches the `test_type`:
+5. Read risk tags and required scenarios from testcase definitions; do not infer a risk level from implementation confidence.
+6. Filter testcases to `code_test`, `build_check`, and `api_check` only.
+7. For each testcase, read its `done_criteria` from the JSON.
+8. Execute the verification strategy that matches the `test_type`:
    - `code_test`: find and run the relevant test file
    - `build_check`: run the relevant tool (lint, typecheck, analyze)
    - `api_check`: send real API request and validate response
-8. Compare evidence against `done_criteria.required` — all items must be satisfied for green.
-9. Check evidence against `done_criteria.not_sufficient` — if any item matches, evidence is insufficient.
-10. Append detailed evidence to the verification record.
-11. Record `skipped: runtime_e2e testcase, belongs to verify-runtime` for any skipped testcase.
+9. Compare evidence against `done_criteria.required` — all items must be satisfied for green.
+10. Check evidence against `done_criteria.not_sufficient` — if any item matches, evidence is insufficient.
+11. Record one structured result per evaluated testcase in the verification results JSON.
+12. Append or replace that testcase's human-readable evidence in the verification record from the same result.
+13. Record `skipped: runtime_e2e testcase, belongs to verify-runtime` for any skipped testcase.
+
+For skipped runtime testcases, write a structured result with `executor: verify-runtime`, `result: skipped`, `classification: not_applicable`, empty `satisfied` and `evidence`, and a `missing` note naming `verify-runtime` as the executor.
+
+## Structured Results And Freshness
+
+The JSON result is authoritative for downstream classification.
+Markdown is the human-readable rendering and must not be parsed by `verify-workflow` to determine pass or fail.
+
+The results root must contain:
+
+- `schema_version: 1`
+- `feature`, `spec_path`, and `testcases_path`
+- `spec_sha256` copied from testcase definitions after verifying the current spec bytes match it
+- `testcases_sha256` computed from the current testcase-definition bytes
+- `source_sha256` computed over `source_files` using `verify-workflow/scripts/validate_verification.py`
+- `repair` with `max_attempts: 2` and an `attempts` array
+- `results`, keyed by testcase ID
+
+Each evaluated testcase result must contain:
+
+- `executor`: `verify-feature`
+- `result`: `pass`, `fail`, `partial`, or `blocked`
+- `classification`: one of the classifications accepted by the validator
+- `satisfied`, `missing`, and `evidence` arrays
+- `verified_at`
+
+Before preserving an earlier result, verify that its spec, testcase-definition, and source fingerprints still match.
+When the scoped source fingerprint changes, start a new verification cycle by clearing stale testcase results and repair attempts while preserving the approved spec and testcase definitions.
+When the spec or testcase-definition fingerprint changes, stop with `stop-drift` so the upstream review/checklist contract can be regenerated.
+Never reuse evidence from a different fingerprint.
 
 ## Evidence Classification
 
@@ -104,23 +137,45 @@ Append or update these sections in the verification record:
 
 ## Artifact Boundaries
 
-- Do not modify code, tests, specs, or testcase definitions during verification.
-- Do not repair failures in this phase.
+- Do not modify specs or testcase definitions during verification.
+- Production code and focused tests may be repaired only under the bounded repair rules below.
 - Do not create test infrastructure.
 - Do not touch the checklist file.
 - Existing relevant tests may be executed.
 - Detailed evidence belongs in the verification record.
+
+## Bounded Auto-Repair
+
+When direct evidence confirms an `implementation_defect`, repair it without human intervention only when the fix stays inside the approved behavior and affected source scope.
+
+The bounded loop is:
+`verify → classify → (implementation_defect in scope ? repair + record attempt → verify again : stop/continue)`.
+The verifier must finish the loop inside this step; it must not hand an implementation defect to a later phase without first checking whether the bounded repair conditions apply.
+
+Rules:
+
+- Allow at most two repair attempts across the shared verification results file.
+- Record each attempt with `skills/verify-workflow/scripts/record_repair_attempt.py`; this command rejects a third attempt, non-implementation classifications, unchanged fingerprints, and empty summaries.
+- The command must run after the focused repair and before rerunning verification, with the failed testcase IDs and both source fingerprints supplied explicitly.
+- Record attempt number, failed testcase IDs, source fingerprint before and after, and a short change summary.
+- After a repair, rerun the failed testcase and any already-green testcase whose source surface changed.
+- Stop immediately without repair for `spec_ambiguity`, `scope_change`, `risk_authority`, or `environment_blocker`.
+- Stop when the same testcase fails with the same observable failure after a repair, or when the source fingerprint did not change.
+- Never broaden expected behavior, weaken a testcase, relax required evidence, or accept security or destructive-operation risk to make the run pass.
+- Recompute `source_sha256` after every repair and attach all later evidence only to the new fingerprint.
 
 ## Orchestrator Contract
 
 When this skill is run under `/orchestrator`, append exactly one HTML comment as the final output line:
 
 - Final status `Pass` or `Partial`:
-  `<!-- orchestrator: outcome=continue provides=verification_path verification_path=docs/ai/features/verifications/{feature-name}.md -->`
+  `<!-- orchestrator: outcome=continue provides=verification_path,verification_results_path verification_path=docs/ai/features/verifications/{feature-name}.md verification_results_path=docs/ai/features/verifications/{feature-name}.json -->`
 - Final status `Fail`:
   `<!-- orchestrator: outcome=stop-fail -->`
 - Final status `Blocked`:
   `<!-- orchestrator: outcome=stop-blocked -->`
+- Spec or testcase-definition freshness mismatch:
+  `<!-- orchestrator: outcome=stop-drift -->`
 
 Rules:
 

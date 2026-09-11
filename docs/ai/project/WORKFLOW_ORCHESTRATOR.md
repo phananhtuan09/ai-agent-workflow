@@ -30,6 +30,7 @@ design-spec
   -> manual-checklist
   -> verify-feature
   -> verify-runtime
+  -> verify-workflow
   -> completed with checklist
 ```
 
@@ -64,6 +65,7 @@ State tối thiểu phải lưu:
 - run id, workflow id, workflow path, và feature slug
 - current step và status
 - contracts và artifact paths đã được skill emit
+- fingerprint metadata gắn approval hoặc evidence với source bytes đã được kiểm tra
 - persisted step inputs
 - history của các action và outcome
 - trạng thái repo lock
@@ -76,6 +78,7 @@ Nếu run khác đang giữ lock hợp lệ, invocation làm workflow tiến lê
 1. Load workflow config và run state.
 2. Chọn pending step kế tiếp theo đúng thứ tự config.
 3. Verify toàn bộ `requires` trước khi chạy step.
+   Contract có fingerprint chỉ hợp lệ khi source hiện tại vẫn khớp fingerprint đã lưu.
 4. Resolve và persist input khi step được chạm tới.
 5. Acquire repo lock nếu step yêu cầu.
 6. Execute theo `inline`, `skill`, hoặc `subagent` như config khai báo.
@@ -127,22 +130,26 @@ Orchestrator không được suy đoán outcome hoặc artifact path từ prose 
 
 ## Feature Standard Contracts
 
-- `design_path`: HTML review surface do `design-spec` tạo và human duyệt qua local runner
+- `design_path`: design-plan JSON do `design-spec` tạo và human duyệt qua fixed viewer/local runner
 - `design_decisions_path`: validated approval manifest do `design-spec` persist sau approval
 - `spec_path`: spec đã được tạo và dùng làm source of truth cho các step sau
 - `spec_reviewed`: `review-spec` đã pass decision traceability và execution readiness
+- `spec_reviewed` phải lưu `spec_sha256` của đúng spec bytes đã review
 - `summary_path`: execution summary do `execute-spec` tạo
-- `checklist_path`: checklist testcase do `manual-checklist` tạo từ approved spec và được verifier cập nhật
+- `checklist_path`: checklist testcase do `manual-checklist` tạo từ approved spec và `verify-workflow` cập nhật
 - `verification_path`: verification artifact do `verify-feature` tạo
-- `runtime_verified`: runtime sections đã được `verify-runtime` cập nhật
+- `verification_results_path`: structured result contract do verifier cập nhật và `verify-workflow` tiêu thụ
+- testcase definitions phải có `source_files_origin=git-working-tree+explicit`; scope được thu thập bằng `collect_source_files.py` để bao gồm untracked files
+- `runtime_verified`: runtime sections đã được `verify-runtime` cập nhật trong structured results và evidence record
 
 `create-spec` yêu cầu `design_decisions_path`.
 `review-spec` yêu cầu `design_decisions_path` và `spec_path`.
 `execute-spec` yêu cầu `spec_path` và `spec_reviewed`.
 `manual-checklist` yêu cầu `spec_path` và `summary_path`, nhưng chỉ đọc spec để định nghĩa testcase.
-`verify-feature` yêu cầu `spec_path`, `summary_path`, và `checklist_path`.
-`verify-runtime` yêu cầu `spec_path`, `verification_path`, và `checklist_path`.
-`verify-runtime` re-emit `checklist_path` để checklist là artifact chính khi workflow hoàn tất.
+`verify-feature` yêu cầu `spec_path`, `summary_path`, và `testcases_path`.
+`verify-runtime` yêu cầu `spec_path`, `testcases_path`, `verification_path`, và `verification_results_path`.
+`verify-workflow` yêu cầu `spec_path`, `testcases_path`, `verification_path`, `verification_results_path`, và `checklist_path`.
+`verify-workflow` re-emit `checklist_path` để checklist là artifact chính khi workflow hoàn tất.
 Workflow chuẩn không có contract `shape_checked`, `recon_checked`, `decision_ready`, `spec_synced`, hoặc `pr_review_path`.
 
 ## Status Lifecycle
@@ -166,7 +173,9 @@ Stale lock vẫn trông như đang chạy chỉ được force-release khi human
 - Mọi step trong `feature-standard` đều có `skippable: false`.
 - `execute-spec` là step duy nhất của workflow chuẩn dùng repo lock.
 - `manual-checklist` chạy ngay sau `execute-spec` và không phải human gate.
-- `verify-feature` và `verify-runtime` phải cập nhật checklist trước mọi outcome, kể cả fail hoặc blocked.
+- Chỉ `verify-workflow` cập nhật checklist từ structured results đã validate.
+- Spec đổi sau review chỉ invalidate `spec_reviewed` và downstream contracts; design approval còn hợp lệ nếu design checksum vẫn khớp.
+- Source code đổi sau verification chỉ invalidate evidence gắn với source fingerprint đó và rerun verifier gần nhất cần thiết.
 - Khi `checklist_path` tồn tại, orchestrator phải hiển thị nó như artifact chính cho human.
 - Step không có trong config không được orchestrator tự chạy.
 - Spec không bị workflow tự động sửa sau khi `review-spec` pass.

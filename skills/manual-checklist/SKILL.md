@@ -1,6 +1,6 @@
 ---
 name: manual-checklist
-description: "Create a Vietnamese spec-derived testcase checklist and structured testcase definitions after implementation so verification can update evidence status and the human can validate only the remaining cases. Runs automatically under supported orchestrator workflows and may be invoked directly to regenerate the checklist from an approved spec."
+description: "Create a Vietnamese spec-derived testcase checklist and structured testcase definitions after implementation so verifier skills can record evidence and verify-workflow can update final status. Runs automatically under supported orchestrator workflows and may be invoked directly to regenerate the checklist from an approved spec."
 ---
 
 # Manual Checklist
@@ -13,14 +13,15 @@ Create the human validation checklist and structured testcase definitions from t
 - Under `feature-implement-gnhf`, run automatically after `/execute-gnhf` and before `/verify-feature` in the implementation workspace.
 - When invoked directly, regenerate the checklist from the provided approved spec.
 - This skill creates testcase definitions but does not verify them.
-- `/verify-feature` and `/verify-runtime` update evidence status later.
+- `/verify-feature` and `/verify-runtime` write machine-readable results and a human-readable evidence record later.
+- `verify-workflow` is the only skill that updates checklist evidence status.
 - The checklist is the primary human-facing output of the completed workflow.
 
 ## Input
 
 - Required: approved spec path, for example `docs/ai/features/specs/{feature}.md`.
 - Required: project verify config, for example `skills/verify-workflow/references/verify-config.json` or project override.
-- Required: changed files list (from git diff or implementation summary) for regression testcase generation.
+- Required: implementation scope collected with `skills/verify-workflow/scripts/collect_source_files.py` (it combines tracked, staged, and untracked worktree files; add explicit impacted files when the implementation summary identifies dependencies).
 - The orchestrator may require `summary_path` to prove execution completed, but this skill must not read the summary to define expected behavior.
 
 ## Source Of Truth Boundary
@@ -47,6 +48,19 @@ Missing project verify config: skills/verify-workflow/references/verify-config.j
 
 If a testcase requires a `test_type` not defined in the config, stop and report the unknown type.
 
+## Freshness And Risk Inputs
+
+- Compute SHA-256 from the exact approved spec bytes and store it as `spec_sha256`.
+- Run `python3 skills/verify-workflow/scripts/collect_source_files.py --repo-root {repo_root}` and persist its complete `source_files` output.
+- In a deliberately dirty workspace, pass explicit `--exclude` globs for unrelated changes; never silently remove a file from the collected scope.
+- If the implementation summary names an impacted dependency that is not changed in Git, rerun with `--include {path}` and preserve the explicit path in the same list.
+- Persist `source_files_origin: "git-working-tree+explicit"`; do not hand-type a partial list.
+- Classify only the transparent risk tags declared by `risk_policies` in the project config.
+- Derive a risk tag from explicit spec behavior, never from a hidden score or the spec's `Lite`, `Standard`, or `Extended` implementation-depth tier.
+- For every applicable risk tag, generate testcases covering all configured `required_test_types` and `required_scenarios`, unless the spec explicitly makes one inapplicable.
+- Record an inapplicable requirement and its reason under `risk_exceptions`; do not silently omit it.
+- A change with no configured risk tag uses the ordinary smallest-suitable-evidence rules and creates no synthetic risk level.
+
 ## Testcase Generation Rules
 
 Each checklist item represents one independently executable testcase, not one acceptance criterion.
@@ -57,6 +71,8 @@ Structured testcase definition:
   "id": "TC-001",
   "ac": ["AC1"],
   "test_type": "runtime_e2e",
+  "risk_tags": [],
+  "risk_scenarios": [],
   "done_criteria": {
     "required": ["browser screenshot showing error message", "network request captured"],
     "not_sufficient": ["code inspection", "build success"]
@@ -96,7 +112,7 @@ Read `skills/verify-workflow/references/regression-scope.md` for:
 - Status rules
 
 Rules:
-- Collect changed files from the implementation summary or git diff.
+- Collect the source scope from `collect_source_files.py`; use the implementation summary only to add explicit impacted dependencies with `--include`.
 - Select L1 modules only: modules and routes that directly import, call, or render the changed code.
 - Each regression testcase must include `mapped_to` (the changed file or function) and `rationale` (why this regression risk exists).
 - Assign `test_type` based on the nature of the changed code (e.g., UI change → `runtime_e2e`, API change → `api_check`).
@@ -159,8 +175,14 @@ Write to `docs/ai/features/checklists/{feature}-testcases.json`.
 {
   "feature": "{feature}",
   "spec_path": "docs/ai/features/specs/{feature}.md",
+  "spec_sha256": "sha256 of the exact spec bytes",
   "checklist_path": "docs/ai/features/checklists/{feature}.md",
   "verification_record_path": "docs/ai/features/verifications/{feature}.md",
+  "verification_results_path": "docs/ai/features/verifications/{feature}.json",
+  "source_files": ["path/to/changed-file"],
+  "source_files_origin": "git-working-tree+explicit",
+  "risk_tags": ["authorization"],
+  "risk_exceptions": [],
   "generated_at": "ISO-8601 timestamp",
   "test_types_used": ["code_test", "runtime_e2e"],
   "testcases": [
@@ -168,6 +190,8 @@ Write to `docs/ai/features/checklists/{feature}-testcases.json`.
       "id": "TC-001",
       "ac": ["AC1"],
       "test_type": "runtime_e2e",
+      "risk_tags": [],
+      "risk_scenarios": [],
       "description": "Validate email format rejection",
       "steps": [
         "Navigate to registration page",

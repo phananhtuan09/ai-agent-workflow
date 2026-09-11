@@ -16,6 +16,9 @@
   - `web-{name}.md`: browser UI test docs (legacy/orchestrator-oriented flows only)
 - docs/ai/features/verifications/: implementation and runtime verification artifacts per feature
   - `{name}.md`: verification record extended by `/verify-feature` and `/verify-runtime`
+  - `{name}.json`: structured verification results consumed by `/verify-workflow`
+- docs/ai/features/checklists/
+  - `{name}-testcases.json`: spec-derived testcase definitions with source and risk provenance
 - docs/ai/tooling/: cross-tool workflow mapping and migration references
 
 ## Design Patterns (in use)
@@ -54,6 +57,7 @@
 
 ## AI Agent Workflow Assets
 - `skills/`: canonical portable skill definitions
+- `skills/verify-workflow/scripts/`: executable provenance, structured-result, and bounded-repair validators
 - `.claude/`: Claude runtime commands, agents, styles, and themes
 - `.claude/commands/`: primary workflow commands to author and sync from
 - `.claude/agents/`: primary worker-role prompts to author and sync from

@@ -202,20 +202,19 @@ npx ai-workflow-init --all
 This workflow system separates high-level human decisions from the detailed AI execution contract:
 
 ```
-/design-spec → human HTML approval → /create-spec → review-spec → /execute-spec → /manual-checklist → /verify-feature → /verify-runtime
+/design-spec → human HTML approval → /create-spec → review-spec → /execute-spec → /manual-checklist → /verify-feature → /verify-runtime → /verify-workflow
 ```
 
 `/design-spec` opens a local HTML review through the bundled runner and persists approved high-level decisions.
 `/create-spec` converts those decisions and codebase evidence into a detailed implementation specification.
 `review-spec` is an automatic AI quality gate; the human does not need to review the full detailed spec unless they choose to.
-`/manual-checklist` creates spec-derived testcases after execution, and both verification steps update its evidence icons.
+`/manual-checklist` creates spec-derived testcases after execution.
+`/verify-feature` and `/verify-runtime` write structured results plus human-readable evidence, then `/verify-workflow` validates freshness and updates checklist icons.
 The completed workflow returns the checklist as the primary human validation artifact.
 `/sync-spec` and `/review-pr` remain human-triggered tools outside the automated feature workflow.
 
-`/verify-workflow` is an **experimental** single-entry alternative to the three verification steps above.
-It plans testcases, routes evidence collection to `/verify-feature` and `/verify-runtime`, gates that evidence with a deterministic script, judges each testcase independently, adds regression coverage, and returns a short status plus a paste-ready fix handoff.
-It accepts an approved spec, a `fix-bug` summary, or a stated intent, so a bug fix does not need a spec.
-It is not part of any workflow config; install it with `--bundle verify-experimental` and run it by hand next to the existing steps so both paths stay comparable.
+`/verify-workflow` is the final evidence-validation step in the standard workflow.
+It consumes the machine-readable results produced by the two verifier skills, rejects stale evidence, and renders final status into the human checklist.
 
 ---
 
@@ -448,7 +447,7 @@ Best for: Features and user-visible changes that need durable product decisions 
 Use `/execute-task` for small bounded updates that do not need a design artifact.
 
 ```
-/design-spec → human HTML approval → /create-spec → review-spec → /execute-spec → /manual-checklist → /verify-feature → /verify-runtime
+/design-spec → human HTML approval → /create-spec → review-spec → /execute-spec → /manual-checklist → /verify-feature → /verify-runtime → /verify-workflow
 ```
 
 ```bash
@@ -467,11 +466,14 @@ Use `/execute-task` for small bounded updates that do not need a design artifact
 # 5. Generate testcases from the approved spec
 /manual-checklist @docs/ai/features/specs/user-profile.md
 
-# 6. Verify implementation coverage and update checklist evidence
+# 6. Verify implementation coverage and record evidence
 /verify-feature @docs/ai/features/specs/user-profile.md
 
-# 7. Verify runtime behavior and finalize checklist evidence
+# 7. Verify runtime behavior and record evidence
 /verify-runtime @docs/ai/features/specs/user-profile.md --url http://localhost:3000
+
+# 8. Validate evidence freshness and finalize the checklist
+/verify-workflow user-profile
 ```
 
 Run `/sync-spec` or `/review-pr` separately when human review calls for those steps.

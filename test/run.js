@@ -1,5 +1,6 @@
 const assert = require("assert");
 const fs = require("fs");
+const crypto = require("crypto");
 const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
@@ -51,6 +52,7 @@ test("coding-standard resolves only the core bundle", () => {
     "manual-checklist",
     "verify-feature",
     "verify-runtime",
+    "verify-workflow",
     "execute-task",
     "review-pr",
     "prompt-leverage",
@@ -123,6 +125,183 @@ test("canonical skills have required entrypoints", () => {
   ids.filter((id) => !manifest.bundles[id]).forEach((id) => {
     assert.ok(fs.existsSync(path.join(SOURCE_ROOT, "skills", id, "SKILL.md")), id);
   });
+});
+
+test("documented feature workflows have satisfiable contracts and installed skills", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(SOURCE_ROOT, "skills/manifest.json"), "utf8"));
+  const core = new Set(manifest.bundles.core);
+  ["feature-standard.json", "feature-implement-gnhf.json"].forEach((file) => {
+    const workflow = JSON.parse(
+      fs.readFileSync(path.join(SOURCE_ROOT, "docs/ai/workflows", file), "utf8")
+    );
+    const produced = new Set();
+    workflow.steps.forEach((step) => {
+      (step.requires || []).forEach((contract) => {
+        assert.ok(produced.has(contract), `${file}:${step.id} requires ${contract} too early`);
+      });
+      (step.provides || []).forEach((contract) => produced.add(contract));
+      if (step.exec === "skill") {
+        assert.ok(
+          fs.existsSync(path.join(SOURCE_ROOT, "skills", step.skill, "SKILL.md")),
+          `${file}:${step.id} skill ${step.skill} is not installed`
+        );
+        if (file === "feature-standard.json") {
+          assert.ok(core.has(step.skill), `${file}:${step.id} skill ${step.skill} is not in core`);
+        }
+        const skill = fs.readFileSync(
+          path.join(SOURCE_ROOT, "skills", step.skill, "SKILL.md"),
+          "utf8"
+        );
+        const declared = new Set();
+        for (const match of skill.matchAll(/provides=([A-Za-z0-9_,]+)/g)) {
+          match[1].split(",").forEach((contract) => declared.add(contract));
+        }
+        (step.provides || []).forEach((contract) => {
+          assert.ok(declared.has(contract), `${file}:${step.id} never emits ${contract}`);
+        });
+      }
+    });
+  });
+});
+
+test("verification freshness validator rejects changed scoped source", () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "verification-freshness-"));
+  try {
+    const spec = path.join(workspace, "spec.md");
+    const source = path.join(workspace, "src.ts");
+    const definitionsPath = path.join(workspace, "testcases.json");
+    const resultsPath = path.join(workspace, "results.json");
+    fs.writeFileSync(spec, "approved behavior\n");
+    fs.writeFileSync(source, "export const value = 1;\n");
+    const hashFile = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+    const sourceFingerprint = () => {
+      const digest = crypto.createHash("sha256");
+      digest.update("src.ts");
+      digest.update("\0");
+      digest.update("file\0");
+      digest.update(fs.readFileSync(source));
+      return digest.digest("hex");
+    };
+    const definitions = {
+      feature: "freshness",
+      spec_path: "spec.md",
+      spec_sha256: hashFile(spec),
+      source_files: ["src.ts"],
+      source_files_origin: "git-working-tree+explicit",
+      risk_tags: [],
+      risk_exceptions: [],
+      testcases: [{ id: "TC-001", ac: ["AC1"], test_type: "build_check", steps: ["run"], expected: "passes", done_criteria: { required: [], not_sufficient: [] } }],
+      regression_testcases: [],
+    };
+    fs.writeFileSync(definitionsPath, JSON.stringify(definitions, null, 2) + "\n");
+    const results = {
+      schema_version: 1,
+      feature: "freshness",
+      spec_path: "spec.md",
+      testcases_path: "testcases.json",
+      spec_sha256: definitions.spec_sha256,
+      testcases_sha256: hashFile(definitionsPath),
+      source_sha256: sourceFingerprint(),
+      repair: { max_attempts: 2, attempts: [] },
+      results: {
+        "TC-001": {
+          executor: "verify-feature",
+          result: "pass",
+          classification: "verified",
+          satisfied: ["build"],
+          missing: [],
+          evidence: [{ kind: "command", ref: "test output" }],
+          verified_at: "2026-09-11T00:00:00Z",
+        },
+      },
+    };
+    fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2) + "\n");
+    const validator = path.join(
+      SOURCE_ROOT,
+      "skills/verify-workflow/scripts/validate_verification.py"
+    );
+    let checked = spawnSync(
+      "python3",
+      [validator, "--testcases", definitionsPath, "--results", resultsPath, "--spec", spec, "--repo-root", workspace, "--complete"],
+      { cwd: workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(checked.status, 0, checked.stderr || checked.stdout);
+    const resultDocument = JSON.parse(fs.readFileSync(resultsPath, "utf8"));
+    resultDocument.results["TC-001"].executor = "verify-runtime";
+    fs.writeFileSync(resultsPath, JSON.stringify(resultDocument, null, 2) + "\n");
+    checked = spawnSync(
+      "python3",
+      [validator, "--testcases", definitionsPath, "--results", resultsPath, "--spec", spec, "--repo-root", workspace, "--complete"],
+      { cwd: workspace, encoding: "utf8" }
+    );
+    assert.notStrictEqual(checked.status, 0);
+    assert.ok(checked.stderr.includes("must be emitted by verify-feature"));
+    resultDocument.results["TC-001"].executor = "verify-feature";
+    resultDocument.schema_version = 2;
+    fs.writeFileSync(resultsPath, JSON.stringify(resultDocument, null, 2) + "\n");
+    checked = spawnSync(
+      "python3",
+      [validator, "--testcases", definitionsPath, "--results", resultsPath, "--spec", spec, "--repo-root", workspace, "--complete"],
+      { cwd: workspace, encoding: "utf8" }
+    );
+    assert.notStrictEqual(checked.status, 0);
+    assert.ok(checked.stderr.includes("schema_version must equal 1"));
+    resultDocument.schema_version = 1;
+    fs.writeFileSync(resultsPath, JSON.stringify(resultDocument, null, 2) + "\n");
+    fs.writeFileSync(source, "export const value = 2;\n");
+    checked = spawnSync(
+      "python3",
+      [validator, "--testcases", definitionsPath, "--results", resultsPath, "--spec", spec, "--repo-root", workspace, "--complete"],
+      { cwd: workspace, encoding: "utf8" }
+    );
+    assert.notStrictEqual(checked.status, 0);
+    assert.ok(checked.stderr.includes("implementation source files changed"));
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("repair recorder enforces the two-attempt bound", () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "verification-repair-"));
+  try {
+    const resultsPath = path.join(workspace, "results.json");
+    fs.writeFileSync(resultsPath, JSON.stringify({ repair: { max_attempts: 2, attempts: [] } }, null, 2) + "\n");
+    const recorder = path.join(SOURCE_ROOT, "skills/verify-workflow/scripts/record_repair_attempt.py");
+    const invoke = (before, after) => spawnSync(
+      "python3",
+      [recorder, "--results", resultsPath, "--failed-testcase", "TC-001", "--source-sha256-before", before, "--source-sha256-after", after, "--summary", "focused fix"],
+      { cwd: workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(invoke("a".repeat(64), "b".repeat(64)).status, 0);
+    assert.strictEqual(invoke("b".repeat(64), "c".repeat(64)).status, 0);
+    const blocked = invoke("c".repeat(64), "d".repeat(64));
+    assert.notStrictEqual(blocked.status, 0);
+    assert.ok(blocked.stderr.includes("limit of 2"));
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("source collector includes untracked and explicit files", () => {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "verification-scope-"));
+  try {
+    spawnSync("git", ["init", "-q"], { cwd: workspace, encoding: "utf8" });
+    fs.writeFileSync(path.join(workspace, "untracked.ts"), "export const value = 1;\n");
+    const explicit = path.join(workspace, "dependency.ts");
+    const collector = path.join(SOURCE_ROOT, "skills/verify-workflow/scripts/collect_source_files.py");
+    const collected = spawnSync(
+      "python3",
+      [collector, "--repo-root", workspace, "--include", explicit],
+      { cwd: workspace, encoding: "utf8" }
+    );
+    assert.strictEqual(collected.status, 0, collected.stderr || collected.stdout);
+    const output = JSON.parse(collected.stdout);
+    assert.ok(output.source_files.includes("untracked.ts"));
+    assert.ok(output.source_files.includes("dependency.ts"));
+    assert.strictEqual(output.source_files_origin, "git-working-tree+explicit");
+  } finally {
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test("coding-standard installs runtime-adapted skill paths", () => {

@@ -71,14 +71,14 @@
       "skill": "verify-feature",
       "auto": true,
       "human_gate": false,
-      "stop_on_outcome": ["stop-fail", "stop-blocked"],
+      "stop_on_outcome": ["stop-fail", "stop-blocked", "stop-drift"],
       "requires": [
         "spec_path",
         "summary_path",
-        "checklist_path",
+        "testcases_path",
         "implementation_workspace_path"
       ],
-      "provides": ["verification_path"],
+      "provides": ["verification_path", "verification_results_path"],
       "cwd_from": "implementation_workspace_path",
       "skippable": false
     },
@@ -92,14 +92,15 @@
       "skill": "verify-runtime",
       "auto": true,
       "human_gate": false,
-      "stop_on_outcome": ["stop-fail", "stop-blocked"],
+      "stop_on_outcome": ["stop-fail", "stop-blocked", "stop-drift"],
       "requires": [
         "spec_path",
+        "testcases_path",
         "verification_path",
-        "checklist_path",
+        "verification_results_path",
         "implementation_workspace_path"
       ],
-      "provides": ["runtime_verified", "verification_path"],
+      "provides": ["runtime_verified", "verification_path", "verification_results_path"],
       "cwd_from": "implementation_workspace_path",
       "skippable": false
     },
@@ -113,11 +114,12 @@
       "skill": "verify-workflow",
       "auto": true,
       "human_gate": false,
-      "stop_on_outcome": ["stop-fail", "stop-blocked"],
+      "stop_on_outcome": ["stop-fail", "stop-blocked", "stop-drift"],
       "requires": [
         "spec_path",
         "testcases_path",
         "verification_path",
+        "verification_results_path",
         "checklist_path",
         "implementation_workspace_path"
       ],

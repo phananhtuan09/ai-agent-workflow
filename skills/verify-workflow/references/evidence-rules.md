@@ -2,6 +2,8 @@
 
 Consolidated rules for evidence classification, checklist status, and verification boundaries.
 All verification skills read this file instead of defining rules locally.
+The machine-readable verification-results JSON is the status source consumed by `verify-workflow`.
+Markdown evidence records are for human review and must not override structured results.
 
 ## Evidence Status Icons
 
@@ -14,7 +16,7 @@ Icons are evidence classifications, not self-reported confidence.
 ## Rules That NEVER Produce Green
 
 - Code inspection or an implementation that appears correct
-- Lint, typecheck, build, or compilation success
+- Lint, typecheck, build, or compilation success cannot prove an unrelated user-behavior testcase; it may prove an explicitly planned `build_check` testcase
 - The agent's intention, reasoning, confidence, or expected implementation behavior
 - A test that does not execute the exact testcase behavior
 - One happy-path test used to claim negative, boundary, persistence, responsive, or fallback cases

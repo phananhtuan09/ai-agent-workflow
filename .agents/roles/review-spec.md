@@ -157,6 +157,7 @@ Include:
 - blocking issues
 - warnings
 - final result
+- SHA-256 of the exact reviewed spec bytes
 
 Do not edit the spec, manifest, design plan, code, or workflow state.
 
@@ -165,8 +166,9 @@ Do not edit the spec, manifest, design plan, code, or workflow state.
 When run under `/orchestrator`, append exactly one HTML comment as the final output line.
 
 - Review result `pass` or `warn`:
-  `<!-- orchestrator: outcome=continue provides=spec_reviewed -->`
+  `<!-- orchestrator: outcome=continue provides=spec_reviewed spec_sha256={64-lowercase-hex} -->`
 - Review result `fail`:
   `<!-- orchestrator: outcome=stop-fail -->`
 
 Emit `spec_reviewed` only after approval provenance, decision traceability, and execution readiness pass.
+The orchestrator must bind `spec_reviewed` to `spec_sha256`; a later spec-byte change invalidates only this contract and its downstream outputs.

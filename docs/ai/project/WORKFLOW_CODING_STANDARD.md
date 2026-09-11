@@ -39,8 +39,8 @@ The workflow must not rewrite the approved spec automatically after implementati
 
 | Task type | Standard workflow |
 |---|---|
-| New feature | `/design-spec` → `/spec` → `review-spec` → `/execute-spec` → `/manual-checklist` → `/verify-feature` → `/verify-runtime` |
-| Fix bug (user-visible or business-impacting, requiring durable design decisions) | `/design-spec` → `/spec` → `review-spec` → `/execute-spec` → `/manual-checklist` → `/verify-feature` → `/verify-runtime` |
+| New feature | `/design-spec` → `/spec` → `review-spec` → `/execute-spec` → `/manual-checklist` → `/verify-feature` → `/verify-runtime` → `/verify-workflow` |
+| Fix bug (user-visible or business-impacting, requiring durable design decisions) | `/design-spec` → `/spec` → `review-spec` → `/execute-spec` → `/manual-checklist` → `/verify-feature` → `/verify-runtime` → `/verify-workflow` |
 | Refactor | `/execute-task "Refactor: ..."` |
 | Small update (1-2 files) | `/execute-task "..."` |
 
@@ -91,6 +91,8 @@ review-spec (AI gate)
 /verify-feature
   ↓
 /verify-runtime
+  ↓
+/verify-workflow
 ```
 
 ## Design And Spec Guardrails
@@ -116,7 +118,7 @@ Purpose:
 
 Rules:
 
-- write `docs/ai/features/designs/{feature}.html`
+- write `docs/ai/features/designs/{feature}.json`
 - write `docs/ai/features/design-decisions/{feature}.json` only after explicit approval
 - keep the HTML local-only and self-contained
 - use stable `D-xxx` identifiers for required decisions
@@ -195,7 +197,7 @@ Purpose:
 
 Rules:
 
-- validate the design decision manifest and referenced HTML checksum
+- validate the design decision manifest and referenced design-plan checksum
 - ensure every approved `D-xxx` decision is represented without semantic drift
 - fail invented product behavior or falsely attributed human decisions
 - verify important codebase evidence and planned implementation surfaces
@@ -203,6 +205,8 @@ Rules:
 - do not enforce line-count or acceptance-criteria-count limits
 - do not modify the spec or approval artifacts
 - emit `spec_reviewed` only for `pass` or non-blocking `warn`
+- emit the SHA-256 of the exact reviewed spec and bind `spec_reviewed` to it
+- invalidate `spec_reviewed` and its downstream contracts when the spec bytes change; keep an unchanged design approval valid
 
 The standard workflow does not require a second human gate after this review.
 The human may still inspect the detailed spec explicitly when the feature or organization requires technical approval.
@@ -291,10 +295,10 @@ Sync rule for transparent logic:
 ### `/verify-feature`
 Purpose:
 - verify implementation evidence for the spec-derived checklist testcases
-- write detailed evidence to the verification artifact and concise status to the checklist
+- write structured implementation results and a human-readable evidence record
 
 Rules:
-- read the approved spec, execution summary when present, and `docs/ai/features/checklists/{feature}.md`
+- read the approved spec, testcase definitions JSON, and execution summary when present
 - treat the approved spec as the only source of truth for expected behavior
 - preserve checklist testcase definitions, expected results, IDs, order, and spec mappings
 - map checklist testcases to implementation surfaces before judging coverage
@@ -306,11 +310,11 @@ Rules:
 - do not add fixed `unit-test` or `integration-test` workflow phases, and do not require test infrastructure merely to satisfy the workflow
 - run only the relevant implementation checks for the changed feature
 - separate executed checks, testcase evidence, failures, coverage gaps, and runtime follow-ups
-- do not modify code, write new tests, or sync the spec during verification
+- do not modify code, write new tests, or sync the spec during ordinary evidence collection; bounded repair is allowed only under the repair rules below
 - flag unresolved questions, blocked checks, or partial coverage explicitly
-- write detailed evidence to `docs/ai/features/verifications/{feature}.md`
-- update only checklist icons, short evidence notes, human task markers, summary percentages, evidence path, and drift findings
-- update the checklist before every outcome, including fail or blocked
+- write authoritative testcase results to `docs/ai/features/verifications/{feature}.json`
+- render detailed human-readable evidence to `docs/ai/features/verifications/{feature}.md`
+- do not update the checklist; final checklist mutation belongs to `/verify-workflow`
 - do not include runtime-only evidence in this phase; leave runtime behavior to `/verify-runtime`
 
 Typical checks when relevant:
@@ -338,7 +342,6 @@ Expected output sections:
 - `## Coverage Gaps`
 - `## Needs Runtime Verification`
 - `## Spec Gaps / Drift`
-- `## Checklist Update`
 - `## Final Status`
 
 Section intent:
@@ -351,7 +354,6 @@ Section intent:
 - `## Coverage Gaps`: ACs or behaviors not proven yet
 - `## Needs Runtime Verification`: observable behaviors that still need browser/manual/runtime proof
 - `## Spec Gaps / Drift`: unclear requirements or implementation behavior that conflicts with the approved spec
-- `## Checklist Update`: green, yellow, and red testcase counts after implementation verification
 - `## Final Status`: one of `Pass`, `Partial`, `Fail`, `Blocked`
 
 Status rules:
@@ -371,19 +373,20 @@ Overwrite rules:
 ### `/verify-runtime`
 Purpose:
 - verify runtime behavior for the spec-derived checklist testcases after implementation verification is complete
-- leave the updated checklist as the primary human-facing workflow artifact
+- contribute runtime results before `/verify-workflow` finalizes the human-facing checklist
 
 Rules:
-- read the approved spec, checklist, and current verification artifact before runtime checks
-- if the checklist or verification file does not exist, stop as blocked
+- read the approved spec, testcase definitions JSON, and current verification artifact before runtime checks
+- if testcase definitions JSON or the verification file does not exist, stop as blocked
 - if the verification file already exists from another session, append or update runtime sections in place instead of recreating the file from scratch
 - classify testcases as automatically verifiable, manual-only, or blocked before execution
 - verify only observable runtime behavior; do not infer hidden system behavior without evidence
 - record detailed evidence and a status for each testcase checked at runtime
-- do not modify code, sync the spec, or repair failures during runtime verification
+- do not modify code or sync the spec during ordinary runtime verification; bounded repair is allowed only for confirmed in-scope implementation defects under the repair rules below
 - append or update runtime verification sections in `docs/ai/features/verifications/{feature}.md`
-- update checklist icons, short evidence notes, human task markers, summary percentages, evidence path, and drift findings
-- update the checklist before every outcome, including fail or blocked
+- update authoritative runtime results in `docs/ai/features/verifications/{feature}.json`
+- render runtime detail in `docs/ai/features/verifications/{feature}.md`
+- do not update the checklist; final checklist mutation belongs to `/verify-workflow`
 - do not rewrite implementation-level sections produced by `/verify-feature` except to add a narrow cross-reference when runtime evidence changes the overall conclusion
 
 Per-testcase runtime results:
@@ -408,20 +411,50 @@ Expected output sections:
 - `## Automated Runtime Checks`
 - `## Manual Follow-ups`
 - `## Spec Gaps / Drift`
-- `## Final Checklist Update`
 - `## Runtime Status`
 
 Runtime append rules:
 - `/verify-runtime` owns only the runtime sections above
 - keep existing implementation-level sections intact
 - if runtime evidence contradicts an earlier implementation-only pass, preserve the earlier section and record the contradiction explicitly in runtime sections
-- preserve testcase definitions and downgrade checklist status when runtime evidence contradicts earlier evidence
+- preserve testcase definitions and record any contradiction in the runtime evidence; `/verify-workflow` performs the checklist downgrade after structured validation
 
 Evidence rules:
 - do not claim `no overflow`, `responsive`, `works on mobile`, or similar layout outcomes from CSS declarations alone when runtime measurement is available
 - prefer concrete evidence such as viewport dimensions, DOM counts, visible text, screenshots, console output, `scrollWidth/clientWidth`, or browser-evaluated state
 - when a claim cannot be proven in the current environment, mark it `Partial`, `Blocked`, or `Not automatically verifiable` instead of upgrading it to `Pass`
 - never derive a green icon from agent confidence, code inspection, lint, typecheck, build, or a narrower testcase
+
+### `/verify-workflow`
+
+Purpose:
+
+- validate structured testcase results, provenance, completeness, and freshness
+- update the human-facing checklist without parsing Markdown for pass/fail state
+
+Rules:
+
+- consume `testcases_path`, `verification_results_path`, `verification_path`, `spec_path`, and `checklist_path`
+- reject results when the spec bytes, testcase-definition bytes, or scoped implementation source files no longer match their recorded SHA-256 values
+- preserve current checklist status when validation fails
+- derive checklist icons only from validated structured results
+- use the Markdown verification record only as human-readable evidence detail
+
+### Bounded implementation repair
+
+Verification remains part of the AI-owned Implement phase.
+When direct evidence confirms an implementation defect inside approved behavior, the active verifier may repair and rerun affected checks up to two attempts across the verification run.
+Each repair attempt must be recorded by `record_repair_attempt.py` before evidence is rerun, so the bound and source transition are mechanically validated.
+It must stop without repair for a missing product decision, spec ambiguity, scope change, risk acceptance, destructive uncertainty, or an environment blocker.
+It must also stop when the source fingerprint does not change or the same observable failure repeats.
+Repair must not weaken a testcase, expected result, or evidence requirement.
+
+### Risk-adaptive verification
+
+Verification depth is selected by explicit risk tags and project-configured rules, not by a hidden score.
+Authorization, data migration, money or state transitions, external integrations, and destructive operations require the test types and scenarios declared in `verify-config.json`.
+The `Lite`, `Standard`, and `Extended` spec tier continues to control planning depth only and must not be reused as a risk verdict.
+Ordinary changes with no configured risk tag use the smallest suitable evidence for their observable behavior.
 
 ## Human-Controlled Execution
 
@@ -435,6 +468,7 @@ The human decides which step to invoke next:
 - `/sync-spec` only when the human intentionally wants to reconcile the approved spec with implementation
 - `/verify-feature` when checking implementation readiness against the approved spec
 - `/verify-runtime` when checking runtime behavior against the approved spec
+- `/verify-workflow` when validating collected evidence and finalizing the checklist
 - `/manual-checklist` to generate or regenerate spec-derived testcases; orchestrator runs it automatically after execution
 - `/review-pr` when the human wants an independent, evidence-bound review before creating a PR
 
@@ -448,7 +482,7 @@ Agent behavior rules:
 Purpose:
 - create the human validation testcases immediately after execution
 - derive testcase definitions and expected results only from the approved spec
-- give verification steps a stable human-facing artifact to update
+- give `/verify-workflow` a stable human-facing artifact to update
 - let the human focus on remaining yellow and red testcases instead of reading implementation code
 
 When to run:
@@ -458,6 +492,7 @@ When to run:
 
 Input and sequencing:
 - consume only the approved spec when defining testcases
+- collect implementation scope with `skills/verify-workflow/scripts/collect_source_files.py`; include untracked files and explicit impacted dependencies in `source_files`
 - the orchestrator requires `summary_path` only to prove execution completed before checklist generation
 - do not read code, summary, verification, or runtime behavior to define expected results
 
@@ -479,9 +514,9 @@ Evidence icon rules:
 
 Checklist update ownership:
 - `/manual-checklist` owns testcase definitions, mappings, expected results, and initial red status
-- `/verify-feature` and `/verify-runtime` may update only icons, short evidence notes, human task markers, summary percentages, evidence path, and drift findings
+- only `/verify-workflow` may update icons, short evidence notes, human task markers, summary percentages, evidence path, and drift findings
 - the complete checklist and later verification updates to it must remain in Vietnamese
-- verification must update the checklist before returning pass, partial, fail, or blocked
+- `/verify-workflow` updates the checklist only after structured evidence validation passes
 - green testcase items may omit an unchecked human checkbox
 - yellow and red testcase items retain a human task checkbox
 - verifier steps never auto-check or erase an existing human checkmark
@@ -523,12 +558,14 @@ Rules:
 
 | Artifact path | Produced by |
 |---|---|
-| `docs/ai/features/designs/{feature}.html` | `/design-spec` as the interactive human review surface |
+| `docs/ai/features/designs/{feature}.json` | `/design-spec` as the reviewed design plan rendered by the fixed viewer |
 | `docs/ai/features/design-decisions/{feature}.json` | `/design-spec` after explicit approval, as provenance for spec creation and review |
 | `docs/ai/features/specs/{feature}.md` | `/spec`; optionally updated by human-triggered `/sync-spec` |
 | `docs/ai/features/summaries/{feature}.md` | `/execute-spec` as an execution handoff summary, not final proof |
-| `docs/ai/features/verifications/{feature}.md` | `/verify-feature` and `/verify-runtime` as the detailed evidence log |
-| `docs/ai/features/checklists/{feature}.md` | `/manual-checklist` from the approved spec, then updated by both verification steps |
+| `docs/ai/features/checklists/{feature}-testcases.json` | `/manual-checklist` as machine-readable testcase definitions and source provenance |
+| `docs/ai/features/verifications/{feature}.json` | `/verify-feature` and `/verify-runtime` as authoritative structured results |
+| `docs/ai/features/verifications/{feature}.md` | `/verify-feature` and `/verify-runtime` as the human-readable evidence log |
+| `docs/ai/features/checklists/{feature}.md` | `/manual-checklist` from the approved spec, then updated by `/verify-workflow` |
 | `docs/ai/reviews/{feature}.md` | `/review-pr` as an independent PR readiness review |
 
 ## Usage Notes

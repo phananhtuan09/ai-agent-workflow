@@ -69,6 +69,11 @@ Minimum fields:
     "summary_path": true,
     "checklist_path": true
   },
+  "contract_metadata": {
+    "spec_reviewed": {
+      "spec_sha256": "64-lowercase-hex"
+    }
+  },
   "artifact_paths": {
     "design_path": "docs/ai/features/designs/my-feature.json",
     "design_decisions_path": "docs/ai/features/design-decisions/my-feature.json",
@@ -121,6 +126,8 @@ Minimum fields:
    - run lightweight cleanup: remove orphan locks, archive terminal runs if policy allows, and report stale locks
    - if a repo lock is held by another run for the next step that declares `uses_repo_lock`, stop immediately and report the owner run instead of advancing
    - verify every `requires` contract exists in state
+   - when a required contract has fingerprint metadata, recompute the fingerprint before accepting it
+   - if `spec_reviewed.spec_sha256` differs from the current `spec_path`, move `review-spec` back to pending and invalidate only `spec_reviewed` plus contracts produced after it; preserve design approval and artifact files for audit
    - reject `--skip` if `skippable` is `false`
    - collect step inputs only when the step is reached; resolve `default:<value>` metadata without prompting, persist inputs under `step_inputs.<step-id>`, and reuse them when a resumable step runs again
    - merge explicit `--input` overrides into the current step's stored inputs before execution
@@ -142,6 +149,7 @@ Minimum fields:
    - write outcome to history
    - add any emitted contracts to `contracts`
    - add any emitted `*_path` fields to `artifact_paths`
+   - record emitted fingerprint fields under `contract_metadata` for the contract they qualify
    - update `updated_at`
    - release any lock held by the step after the state write completes
 8. Continue automatically only when:
@@ -213,6 +221,8 @@ Rules:
 - Do not insert or run skills that are absent from the selected workflow config
 - `requires` means contract or artifact presence in state, not "a previous step once ran"
 - `provides` means contracts that must be recorded when the step succeeds with `continue`
+- a fingerprint-bound contract is present only while its current source bytes match the recorded fingerprint
+- freshness invalidation rewinds to the nearest producer needed to restore the stale contract; it must not restart unaffected approval or planning steps
 - a human interaction performed inside a skill is complete only when that skill emits `continue`; do not add a second inferred human gate
 - `cwd_from` names an `artifact_paths` key whose absolute directory becomes the working directory for that step
 - `uses_repo_lock` means the step needs the single shared repo lock; if another run already holds it, the current invocation must stop immediately
