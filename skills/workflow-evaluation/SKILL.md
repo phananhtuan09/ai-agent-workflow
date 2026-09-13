@@ -1,6 +1,6 @@
 ---
 name: workflow-evaluation
-description: Evaluate, compare, improve, promote, reject, or review an AI workflow. For workflow improvement and usage diagnosis, analyze real session history trace-first to find agent friction, rework, retries, human intervention, and first divergence before mapping findings back to workflow rules. For new-workflow adoption without traces, review artifacts and controlled exercises. Writes a Vietnamese HTML report to docs/ai/evaluation/reports/.
+description: Evaluate, compare, improve, promote, reject, or review an AI workflow. For workflow improvement and usage diagnosis, analyze real session history trace-first to find agent friction, rework, retries, human intervention, and first divergence before mapping findings back to workflow rules. For new-workflow adoption without traces, review artifacts and controlled exercises. Writes a Vietnamese HTML report to docs/evaluation/reports/.
 ---
 
 # Workflow Evaluation
@@ -11,18 +11,18 @@ Evaluate observable agent behavior and determine whether, where, and how the wor
 
 Always read:
 
-- `docs/ai/project/WORKFLOW_EVALUATION_STANDARD.md`
+- `docs/evaluation/STANDARD.md`
 
 Read when relevant:
 
-- `docs/ai/project/WORKFLOW_CODING_CONSTITUTION.md` when evaluating a coding workflow
-- `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` when evaluating a learning workflow
+- `docs/WORKFLOW.md` when evaluating a coding workflow
+- `docs/learning/CONSTITUTION.md` when evaluating a learning workflow
 - normalized session traces
 - `.foreman/` when the repo is Foreman-managed: `done.md`, `log.md`, and pre-extracted traces in `.foreman/traces/`
-- observations in `docs/ai/evaluation/observations/`
-- observations in `docs/ai/evaluation/`
+- observations in `docs/evaluation/observations/`
+- observations in `docs/evaluation/`
 - the workflow artifact under review, but only after the blind behavioral pass for trace-first evaluations
-- existing reports in `docs/ai/evaluation/reports/`
+- existing reports in `docs/evaluation/reports/`
 
 Do not reconstruct the evaluation process from memory when the standard is available.
 
@@ -246,10 +246,10 @@ Treat observations created by `record-workflow-friction` as `agent-reported-obse
 Write a self-contained Vietnamese HTML5 report to:
 
 ```text
-docs/ai/evaluation/reports/{name}.html
+docs/evaluation/reports/{name}.html
 ```
 
-Use `docs/ai/project/templates/workflow-evaluation-report.html`.
+Use `docs/evaluation/templates/report.html`.
 
 Required section IDs:
 

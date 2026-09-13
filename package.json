@@ -1,7 +1,7 @@
 {
   "name": "ai-workflow-init",
-  "version": "8.3.7",
-  "description": "Initialize AI workflow docs & commands into any repo with one command",
+  "version": "10.0.0",
+  "description": "Install a repository-driven AI agent protocol and optional workflow capabilities",
   "bin": {
     "ai-workflow-init": "./cli.js"
   },
@@ -35,6 +35,7 @@
     "release:major": "node scripts/release.js major"
   },
   "files": [
+    "AGENTS.md",
     "cli.js",
     "lib/",
     "install.sh",
@@ -44,8 +45,6 @@
     "skills/",
     ".codex/",
     ".claude/",
-    ".pi/",
-    "project-wiki/",
     "README.md"
   ]
 }

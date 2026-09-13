@@ -7,7 +7,7 @@ description: Select, create, validate, or serve facts and predeclared consequenc
 
 Own case integrity without taking over the learning conversation.
 
-Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` and `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` before changing or serving a case.
+Read `docs/learning/CONSTITUTION.md` and `docs/learning/STANDARD.md` before changing or serving a case.
 
 When invoked by `learning-workflow`, return a concise structured result to the coordinator and do not address the human directly.
 
@@ -49,7 +49,7 @@ Return:
 
 Create the smallest realistic case that can produce the requested learning evidence.
 
-Write it to `docs/ai/learning/cases/{case_id}.json` using schema `learning-case/v1`.
+Write it to `docs/learning/cases/{case_id}.json` using schema `learning-case/v1`.
 
 The case must contain:
 

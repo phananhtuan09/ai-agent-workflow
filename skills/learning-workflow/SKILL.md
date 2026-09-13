@@ -13,8 +13,8 @@ Keep internal skills, artifact paths, state names, judgment IDs, and rubric IDs 
 
 Read these sources before starting or resuming a session:
 
-- `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` for protected principles.
-- `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` for executable MVP contracts.
+- `docs/learning/CONSTITUTION.md` for protected principles.
+- `docs/learning/STANDARD.md` for executable MVP contracts.
 
 Resolve these helpers as sibling skill directories in the same installed skills root:
 
@@ -59,11 +59,11 @@ The human should be able to operate the workflow with ordinary requests such as:
 
 ## Runtime State
 
-- Profile: `docs/ai/learning/profile.json`.
-- Project: `docs/ai/learning/project.json`.
-- Schedule: `docs/ai/learning/schedule.json`.
-- Durable cases: `docs/ai/learning/cases/{case_id}.json`.
-- Sessions: `docs/ai/learning/sessions/{session_id}.json`.
+- Profile: `docs/learning/profile.json`.
+- Project: `docs/learning/project.json`.
+- Schedule: `docs/learning/schedule.json`.
+- Durable cases: `docs/learning/cases/{case_id}.json`.
+- Sessions: `docs/learning/sessions/{session_id}.json`.
 - The session JSON is the durable record. Do not create a transcript or a duplicate narrative report.
 - Store concise observable decisions, assumptions, predictions, revisions, assistance, and evidence. Never store private chain-of-thought.
 
@@ -76,7 +76,7 @@ The human should be able to operate the workflow with ordinary requests such as:
 5. If no profile exists, ask for one concise long-term capability goal and one concise baseline describing what the human can currently do without AI help.
 6. Use `learning-case` in selection mode with the active project, current schedule week, goal, competency evidence and current gaps.
 7. Select only a case aligned with the active project version and current schedule week.
-8. Use `docs/ai/learning/cases/inventory-reservation.json` when it is aligned and no better approved case exists.
+8. Use `docs/learning/cases/inventory-reservation.json` when it is aligned and no better approved case exists.
 9. Create a new project-aligned case when no existing case matches the current week.
 10. Never bind a session directly to an asset inside an installed skill directory.
 11. Initialize the session:
@@ -84,10 +84,10 @@ The human should be able to operate the workflow with ordinary requests such as:
    ```bash
    python3 skills/learning-workflow/scripts/init_learning_session.py \
      --case "{selected_case_path}" \
-     --project docs/ai/learning/project.json \
-     --schedule docs/ai/learning/schedule.json \
-     --profile docs/ai/learning/profile.json \
-     --session docs/ai/learning/sessions/{session_id}.json \
+     --project docs/learning/project.json \
+     --schedule docs/learning/schedule.json \
+     --profile docs/learning/profile.json \
+     --session docs/learning/sessions/{session_id}.json \
      --goal "{human-approved goal}" \
      --baseline "{human-provided baseline}"
    ```
@@ -115,7 +115,7 @@ A valid first attempt contains a conclusion, model, or direction plus relevant r
 - Give the human a clear opportunity to revise or defend the decision.
 - Do not reveal a complete solution while independent assessment remains open.
 
-Use the escalation and closure rules in `WORKFLOW_LEARNING_STANDARD.md`.
+Use the escalation and closure rules in `STANDARD.md`.
 
 Use the smallest intervention that restores progress:
 
@@ -186,11 +186,11 @@ Run after initialization and every material state transition. For a resumed sess
 
 ```bash
 python3 skills/learning-workflow/scripts/validate_learning_state.py \
-  docs/ai/learning/sessions/{session_id}.json \
+  docs/learning/sessions/{session_id}.json \
   --case "{selected_case_path}" \
-  --profile docs/ai/learning/profile.json \
-  --project docs/ai/learning/project.json \
-  --schedule docs/ai/learning/schedule.json
+  --profile docs/learning/profile.json \
+  --project docs/learning/project.json \
+  --schedule docs/learning/schedule.json
 ```
 
 Stop and repair state when validation fails.

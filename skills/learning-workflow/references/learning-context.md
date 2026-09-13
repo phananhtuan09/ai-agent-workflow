@@ -4,8 +4,8 @@ Read this reference when project or schedule artifacts are missing, draft, or ne
 
 ## Paths
 
-- Project: `docs/ai/learning/project.json`.
-- Schedule: `docs/ai/learning/schedule.json`.
+- Project: `docs/learning/project.json`.
+- Schedule: `docs/learning/schedule.json`.
 
 The installed artifacts are proposals until the human approves them.
 
@@ -17,8 +17,8 @@ Do not expose future case events or hidden constraints while presenting the proj
 
 ```bash
 python3 {skill_root}/scripts/update_learning_context.py accept \
-  --project docs/ai/learning/project.json \
-  --schedule docs/ai/learning/schedule.json
+  --project docs/learning/project.json \
+  --schedule docs/learning/schedule.json
 ```
 
 Run this only after explicit human approval.
@@ -28,9 +28,9 @@ If the human changes the proposed domain, architecture baseline, horizon or cade
 Validate draft edits with:
 
 ```bash
-python3 {skill_root}/scripts/validate_learning_state.py docs/ai/learning/project.json
-python3 {skill_root}/scripts/validate_learning_state.py docs/ai/learning/schedule.json \
-  --project docs/ai/learning/project.json
+python3 {skill_root}/scripts/validate_learning_state.py docs/learning/project.json
+python3 {skill_root}/scripts/validate_learning_state.py docs/learning/schedule.json \
+  --project docs/learning/project.json
 ```
 
 ## Record Project Evolution
@@ -49,8 +49,8 @@ Use this after the human explicitly accepts project decisions or state changes p
 
 ```bash
 python3 {skill_root}/scripts/update_learning_context.py record-project-evolution \
-  --project docs/ai/learning/project.json \
-  --schedule docs/ai/learning/schedule.json \
+  --project docs/learning/project.json \
+  --schedule docs/learning/schedule.json \
   --payload {payload.json}
 ```
 
@@ -77,8 +77,8 @@ Use this only after presenting the evidence-based reason and receiving human app
 
 ```bash
 python3 {skill_root}/scripts/update_learning_context.py recalibrate-schedule \
-  --project docs/ai/learning/project.json \
-  --schedule docs/ai/learning/schedule.json \
+  --project docs/learning/project.json \
+  --schedule docs/learning/schedule.json \
   --payload {payload.json}
 ```
 

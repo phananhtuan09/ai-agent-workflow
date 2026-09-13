@@ -480,8 +480,8 @@ def validate_session(
     session_case_path = require_string(session.get("case_path"), "session.case_path")
     if Path(session_case_path).resolve() != case_path.resolve():
         fail("session.case_path does not match the validated case path")
-    if not case_path.resolve().parent.as_posix().endswith("/docs/ai/learning/cases"):
-        fail("active sessions must bind a durable case under docs/ai/learning/cases")
+    if not case_path.resolve().parent.as_posix().endswith("/docs/learning/cases"):
+        fail("active sessions must bind a durable case under docs/learning/cases")
     if session.get("case_checksum") != checksum(case_path):
         fail("session.case_checksum does not match the current case; case integrity is broken")
     if session.get("status") not in SESSION_STATUSES:

@@ -7,7 +7,7 @@ description: Assess a learning session from recorded attempts, revisions, assist
 
 Produce an evidence-bound assessment without reopening coaching.
 
-Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` and `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` before assessing a session.
+Read `docs/learning/CONSTITUTION.md` and `docs/learning/STANDARD.md` before assessing a session.
 
 When invoked by `learning-workflow`, return a structured assessment proposal to the coordinator.
 

@@ -7,7 +7,7 @@ description: Execute an explicitly authorized research, spike, test, simulation,
 
 Turn a human-approved uncertainty into bounded system evidence.
 
-Read `docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md` and `docs/ai/project/WORKFLOW_LEARNING_STANDARD.md` before executing evidence work.
+Read `docs/learning/CONSTITUTION.md` and `docs/learning/STANDARD.md` before executing evidence work.
 
 When invoked by `learning-workflow`, return structured evidence to the coordinator and do not interpret protected evidence for the human.
 

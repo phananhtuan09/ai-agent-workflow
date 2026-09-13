@@ -39,7 +39,7 @@ The workflow name and phase may be `unknown`. Do not force a workflow attributio
 5. Write one Markdown artifact to:
 
 ```text
-docs/ai/evaluation/observations/YYYY-MM-DD-{subject}-{short-slug}.md
+docs/evaluation/observations/YYYY-MM-DD-{subject}-{short-slug}.md
 ```
 
 If the path exists, add a numeric suffix. Keep one observation per file.
@@ -131,7 +131,7 @@ Observation counts do not establish a failure rate without a known session denom
 
 ## Done When
 
-- one observation exists in `docs/ai/evaluation/observations/`
+- one observation exists in `docs/evaluation/observations/`
 - facts, impact, and unverified attribution are separated
 - first divergence and extra work are recorded or marked `unknown`
 - missing evidence is marked `unavailable`

@@ -1,30 +1,40 @@
-# Agent Standards
+# Repository-driven Agent Protocol
 
-## Principles
-- Choose the least complex implementation that fully satisfies confirmed current requirements.
-- Do not add abstractions, extensibility, or infrastructure for hypothetical future needs.
-- Do not sacrifice correctness, security, or maintainability solely to reduce implementation effort.
-- Pre-optimize only for security risks and demonstrated performance or scale requirements.
-- If requirements are materially unclear, ask focused questions in one batch.
-- Recommend directly when one option is clearly better.
-- Present options only when the decision depends on the user's priorities, and state the concrete tradeoff of each.
+## Operating model
 
-## Communication
-- Reply in the user's language; write code and comments in English.
-- Provide concise status updates before and after key actions.
+- Start from the requested outcome, then inspect the repository authority and implementation needed to deliver it.
+- Read `docs/WORKFLOW.md` for the detailed authority, work-shape, durable-memory, and proof rules.
+- Use the least complex work shape that remains correct, safe, maintainable, and recoverable.
+- Treat specialized skills as optional capabilities. Load one only when it materially improves the work; they never form a required execution chain.
 
-## Engineering Quality
-- Match the surrounding codebase before applying general best practice; when they conflict, follow the codebase and say which convention you followed.
-- Before creating a new component, service, hook, helper, or utility, search for an existing equivalent and reuse it instead of adding a near-duplicate.
-- When building something that resembles an existing feature, mirror its file layout, output shape, naming, and error handling; state any deliberate deviation and why.
-- When substantially editing Markdown, put each complete sentence on its own line while preserving normal Markdown structure.
-- Before changing code for a bug, reproduce the failure.
-- Prefer an existing E2E path whenever it can reproduce the observed behavior and the required environment is available.
-- If E2E reproduction is not feasible, state the constraint before using another method.
-- During verification, inspect the affected UI carefully and investigate clear UI defects, lint errors, test failures, and flaky tests.
-- Fix issues caused by the current change; fix unrelated issues only when the change is isolated and safe, otherwise report them.
-- Never overwrite, revert, or interfere with existing changes you did not make.
+## Authority
 
-## Evidence and Source of Truth
-- Treat instructions and skills as process rules, approved requirements as intended behavior, and runtime evidence and code as current behavior; other documentation may be outdated.
-- When sources conflict, do not guess or merge them; surface the mismatch and ask only if the correct outcome cannot be determined.
+- Approved product and domain rules define intended externally observable behavior.
+- Approved architecture and compatibility decisions constrain implementation choices.
+- Code, tests, schemas, configuration, and runtime evidence define current implemented behavior.
+- Active plans record work state but do not override product or architecture authority.
+- Evaluation and learning capabilities use their canonical namespaces under `docs/evaluation/` and `docs/learning/`.
+- When relevant authorities conflict, stop before behavior-changing mutation and request the smallest necessary decision.
+- Never invent material product, security, compatibility, or operational policy.
+
+## Work shaping
+
+- For read-only work, inspect the smallest relevant surface and answer with evidence without creating a workflow artifact.
+- For a bounded change, inspect affected authority and behavior, implement the smallest coherent change, prove it, and report it directly without creating feature artifacts, a durable plan, or coordinator state.
+- Create or resume `docs/plans/active/<plan>.md` only when work must survive sessions, contributors need shared state, dependencies are meaningful, or recovery context cannot be reconstructed safely from the repository.
+- Ask for human direction only when materially different externally observable choices remain unresolved.
+
+## Execution
+
+- Inspect only relevant files and reuse existing repository patterns before introducing new structure.
+- Preserve unrelated work and never overwrite, revert, or reformat changes outside the requested scope.
+- Keep durable repository knowledge only when it will outlive the current task.
+- Load a specialized skill only when it materially improves correctness or proof.
+- Use direct repository-driven execution; do not create or depend on a legacy coordinator state.
+
+## Proof and completion
+
+- Select the cheapest reliable proof for the changed behavior, such as a focused test, integration check, runtime observation, browser check, or measurement.
+- Reproduce a reported bug before changing code when the repository and environment make reproduction feasible.
+- Do not claim completion until the requested behavior is implemented end to end and relevant proof has passed.
+- Report changed behavior, checks actually run, unresolved failures, and remaining material risk without fabricating evidence.

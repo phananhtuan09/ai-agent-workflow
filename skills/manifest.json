@@ -8,18 +8,9 @@
   },
   "bundles": {
     "core": [
-      "orchestrator",
       "brainstorm-partner",
-      "design-spec",
-      "create-spec",
-      "execute-spec",
-      "manual-checklist",
-      "verify-feature",
-      "verify-runtime",
-      "execute-task",
       "review-pr",
-      "prompt-leverage",
-      "sync-spec"
+      "prompt-leverage"
     ],
     "common-review": [
       "quality-code-check",
@@ -30,7 +21,6 @@
     "frontend": [
       "frontend-design-fundamentals",
       "frontend-design-responsive",
-      "frontend-design-figma-extraction",
       "frontend-design-theme-factory",
       "ux-feedback-patterns",
       "react-best-practices"
@@ -52,16 +42,10 @@
       "learning-case",
       "learning-evidence",
       "learning-review"
-    ],
-    "verify-experimental": [
-      "verify-workflow",
-      "manual-checklist",
-      "verify-feature",
-      "verify-runtime"
     ]
   },
   "kits": {
-    "coding-standard": ["core"],
+    "coding-standard": [],
     "workflow-eval": ["evaluation"],
     "learning-workflow": ["learning"]
   }

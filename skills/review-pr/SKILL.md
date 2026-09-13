@@ -207,9 +207,3 @@ Use this structure:
 If no findings exist, write `Không phát hiện lỗi nào đạt ngưỡng báo cáo.`
 
 Do not add non-blocking suggestions unless the user explicitly requests them.
-
-## Orchestrator Contract
-
-When an orchestrator invokes the skill, read and follow [references/orchestrator-contract.md](references/orchestrator-contract.md).
-
-Do not load or apply that contract during a standalone review.

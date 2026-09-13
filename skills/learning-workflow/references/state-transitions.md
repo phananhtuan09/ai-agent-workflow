@@ -6,11 +6,11 @@ Every command uses:
 
 ```bash
 python3 {skill_root}/scripts/update_learning_state.py {operation} \
-  --session docs/ai/learning/sessions/{session_id}.json \
-  --case docs/ai/learning/cases/{case_id}.json \
-  --profile docs/ai/learning/profile.json \
-  --project docs/ai/learning/project.json \
-  --schedule docs/ai/learning/schedule.json \
+  --session docs/learning/sessions/{session_id}.json \
+  --case docs/learning/cases/{case_id}.json \
+  --profile docs/learning/profile.json \
+  --project docs/learning/project.json \
+  --schedule docs/learning/schedule.json \
   [--payload {payload.json}]
 ```
 

@@ -9,9 +9,24 @@ const { resolveSkills } = require("../lib/skills");
 const { getCliSelectedSkills } = require("../lib/selection");
 const { getCliSelectedBundles } = require("../lib/selection");
 
-function runCli(args) {
+const PROTOCOL_FILES = [
+  "AGENTS.md",
+  "docs/README.md",
+  "docs/WORKFLOW.md",
+  "docs/product/README.md",
+  "docs/decisions/README.md",
+  "docs/plans/active/README.md",
+  "docs/plans/completed/README.md",
+  "docs/patterns/README.md",
+  "docs/runbooks/README.md",
+];
+
+function runCli(args, setup) {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-test-"));
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-home-"));
+  if (setup) {
+    setup({ workspace, home });
+  }
   const result = spawnSync(process.execPath, [path.join(SOURCE_ROOT, "cli.js"), ...args], {
     cwd: workspace,
     env: { ...process.env, HOME: home },
@@ -20,11 +35,81 @@ function runCli(args) {
   return {
     ...result,
     workspace,
+    home,
     cleanup() {
       fs.rmSync(workspace, { recursive: true, force: true });
       fs.rmSync(home, { recursive: true, force: true });
     },
   };
+}
+function copyFixturePath(sourcePath, destinationPath) {
+  const stat = fs.statSync(sourcePath);
+  if (stat.isDirectory()) {
+    fs.mkdirSync(destinationPath, { recursive: true });
+    fs.readdirSync(sourcePath).forEach((name) => {
+      copyFixturePath(path.join(sourcePath, name), path.join(destinationPath, name));
+    });
+    return;
+  }
+  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+  fs.copyFileSync(sourcePath, destinationPath);
+  fs.chmodSync(destinationPath, stat.mode);
+}
+
+function createUpdateFixture(tool = "opencode") {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-update-"));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-update-home-"));
+  const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-update-source-"));
+  [
+    "package.json",
+    ...PROTOCOL_FILES,
+    "skills/manifest.json",
+    ".agents/themes",
+    ".claude",
+    ".codex/config.toml",
+  ].forEach((relativePath) => {
+    const sourcePath = path.join(SOURCE_ROOT, relativePath);
+    if (fs.existsSync(sourcePath)) {
+      copyFixturePath(sourcePath, path.join(sourceRoot, relativePath));
+    }
+  });
+  const env = { ...process.env, HOME: home, AI_WORKFLOW_SOURCE_ROOT: sourceRoot };
+  const run = (args) => spawnSync(
+    process.execPath,
+    [path.join(SOURCE_ROOT, "cli.js"), ...args],
+    { cwd: workspace, env, encoding: "utf8" }
+  );
+  const install = run(["--kit", "coding-standard", "--tool", tool]);
+  assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+  return {
+    workspace,
+    home,
+    sourceRoot,
+    run,
+    statePath: path.join(workspace, ".ai-workflow/installed.json"),
+    cleanup() {
+      fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+      fs.rmSync(sourceRoot, { recursive: true, force: true });
+    },
+  };
+}
+
+function snapshotFiles(root) {
+  const snapshot = {};
+  const visit = (directory, prefix = "") => {
+    fs.readdirSync(directory, { withFileTypes: true }).forEach((entry) => {
+      const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const target = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(target, relativePath);
+      } else {
+        snapshot[relativePath] = fs.readFileSync(target).toString("base64");
+      }
+    });
+  };
+  visit(root);
+  return snapshot;
 }
 
 function test(name, fn) {
@@ -37,26 +122,14 @@ function test(name, fn) {
   }
 }
 
-test("coding-standard resolves only the core bundle", () => {
+test("coding-standard defaults to direct execution without skills", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
   });
-  assert.deepStrictEqual(skillIds, [
-    "orchestrator",
-    "brainstorm-partner",
-    "design-spec",
-    "create-spec",
-    "execute-spec",
-    "manual-checklist",
-    "verify-feature",
-    "verify-runtime",
-    "execute-task",
-    "review-pr",
-    "prompt-leverage",
-    "sync-spec",
-  ]);
+  assert.deepStrictEqual(skillIds, []);
 });
+
 
 test("extra skills are deduplicated and appended", () => {
   const { skillIds } = resolveSkills({
@@ -106,6 +179,20 @@ test("repeatable --bundle flags are parsed", () => {
   );
 });
 
+test("CLI help describes direct protocol and optional kits", () => {
+  const result = runCli(["--help"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(result.stdout.includes("no skills"));
+    assert.ok(result.stdout.includes("docs/evaluation/"));
+    assert.ok(result.stdout.includes("docs/learning/"));
+    assert.ok(!result.stdout.includes("strict-workflows"));
+    assert.ok(!result.stdout.includes("orchestrator"));
+  } finally {
+    result.cleanup();
+  }
+});
+
 test("bundle skills are expanded and deduplicated", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
@@ -125,70 +212,465 @@ test("canonical skills have required entrypoints", () => {
   });
 });
 
-test("coding-standard installs runtime-adapted skill paths", () => {
+test("canonical Claude mirror matches root protocol byte for byte", () => {
+  assert.ok(
+    fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md")).equals(
+      fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.md"))
+    )
+  );
+});
+
+test("clean coding-standard install includes protocol without legacy artifacts", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "opencode"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    PROTOCOL_FILES.forEach((relativePath) => {
+      assert.ok(
+        fs.readFileSync(path.join(result.workspace, relativePath)).equals(
+          fs.readFileSync(path.join(SOURCE_ROOT, relativePath))
+        ),
+        relativePath
+      );
+    });
+    assert.ok(!fs.existsSync(path.join(result.workspace, "docs/ai")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".pi")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".claude/commands")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("coding-standard preserves an existing project protocol file", () => {
+  const existingContent = "# Project-owned protocol\n";
+  const result = runCli(
+    ["--kit", "coding-standard", "--tool", "opencode"],
+    ({ workspace }) => {
+      fs.writeFileSync(path.join(workspace, "AGENTS.md"), existingContent);
+    }
+  );
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(
+      fs.readFileSync(path.join(result.workspace, "AGENTS.md"), "utf8"),
+      existingContent
+    );
+    assert.ok(result.stdout.includes("Preserving existing project file: AGENTS.md"));
+  } finally {
+    result.cleanup();
+  }
+});
+test("installer preserves an existing selected skill directory", () => {
+  const customSkill = "# Consumer-owned refactor skill\n";
+  const result = runCli(
+    ["--kit", "coding-standard", "--tool", "codex", "--skill", "refactor"],
+    ({ workspace }) => {
+      const skillPath = path.join(workspace, ".agents/skills/refactor/SKILL.md");
+      fs.mkdirSync(path.dirname(skillPath), { recursive: true });
+      fs.writeFileSync(skillPath, customSkill);
+    }
+  );
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(
+      fs.readFileSync(path.join(result.workspace, ".agents/skills/refactor/SKILL.md"), "utf8"),
+      customSkill
+    );
+    assert.ok(result.stdout.includes("Preserving existing skill directory"));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("installer refuses dangling destination symlinks without touching their targets", () => {
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-installer-outside-"));
+  const result = runCli(
+    ["--kit", "coding-standard", "--tool", "claude"],
+    ({ workspace }) => {
+      fs.mkdirSync(path.join(workspace, ".claude"), { recursive: true });
+      fs.symlinkSync(
+        path.join(outside, "missing-statusline.sh"),
+        path.join(workspace, ".claude/statusline.sh")
+      );
+    }
+  );
+  try {
+    assert.notStrictEqual(result.status, 0);
+    assert.ok(result.stdout.includes("Refusing to write through symlink"));
+    assert.ok(fs.lstatSync(path.join(result.workspace, ".claude/statusline.sh")).isSymbolicLink());
+    assert.ok(!fs.existsSync(path.join(outside, "missing-statusline.sh")));
+  } finally {
+    result.cleanup();
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test("Claude install does not mutate global settings or statusline", () => {
+  const settings = "{\"statusLine\":{\"type\":\"command\",\"command\":\"custom\"}}\\n";
+  const statusline = "#!/usr/bin/env bash\\necho custom\\n";
+  const result = runCli(
+    ["--kit", "coding-standard", "--tool", "claude"],
+    ({ home }) => {
+      fs.mkdirSync(path.join(home, ".claude"), { recursive: true });
+      fs.writeFileSync(path.join(home, ".claude/settings.json"), settings);
+      fs.writeFileSync(path.join(home, ".claude/statusline.sh"), statusline);
+    }
+  );
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(fs.readFileSync(path.join(result.home, ".claude/settings.json"), "utf8"), settings);
+    assert.strictEqual(fs.readFileSync(path.join(result.home, ".claude/statusline.sh"), "utf8"), statusline);
+  } finally {
+    result.cleanup();
+  }
+});
+
+
+test("Codex default installs direct instructions without optional skills", () => {
   const result = runCli(["--kit", "coding-standard", "--tool", "codex"]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    const skill = fs.readFileSync(
-      path.join(result.workspace, ".agents/skills/design-spec/SKILL.md"),
-      "utf8"
-    );
-    assert.ok(skill.includes(".agents/skills/design-spec/scripts/validate_design_plan.py"));
     assert.ok(
-      fs.existsSync(
-        path.join(result.workspace, ".agents/skills/design-spec/scripts/validate_design_plan.py")
+      fs.readFileSync(path.join(result.home, ".codex/AGENTS.md")).equals(
+        fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md"))
       )
     );
-    assert.ok(fs.existsSync(path.join(result.workspace, ".agents/skills/review-pr/SKILL.md")));
+    assert.ok(!fs.existsSync(path.join(result.home, ".claude/CLAUDE.md")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".agents/skills")));
+    assert.ok(!result.stdout.includes("✓ .agents/skills"));
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".agents/roles")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".codex/agents")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("Claude selection installs only missing Claude global instructions", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "claude"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(
-      fs
-        .readFileSync(path.join(result.workspace, ".agents/roles/review-pr.md"), "utf8")
-        .includes(".agents/skills/review-pr/SKILL.md")
+      fs.readFileSync(path.join(result.home, ".claude/CLAUDE.md")).equals(
+        fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md"))
+      )
+    );
+    assert.ok(!fs.existsSync(path.join(result.home, ".codex/AGENTS.md")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("coding-standard preserves divergent global instructions", () => {
+  const codexContent = "# Existing Codex instructions\n";
+  const claudeContent = "# Existing Claude instructions\n";
+  const result = runCli(
+    ["--kit", "coding-standard", "--all"],
+    ({ home }) => {
+      fs.mkdirSync(path.join(home, ".codex"), { recursive: true });
+      fs.mkdirSync(path.join(home, ".claude"), { recursive: true });
+      fs.writeFileSync(path.join(home, ".codex/AGENTS.md"), codexContent);
+      fs.writeFileSync(path.join(home, ".claude/CLAUDE.md"), claudeContent);
+    }
+  );
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(
+      fs.readFileSync(path.join(result.home, ".codex/AGENTS.md"), "utf8"),
+      codexContent
+    );
+    assert.strictEqual(
+      fs.readFileSync(path.join(result.home, ".claude/CLAUDE.md"), "utf8"),
+      claudeContent
+    );
+    assert.ok(
+      result.stdout.includes("Preserving existing global instructions: ~/.codex/AGENTS.md")
+    );
+    assert.ok(
+      result.stdout.includes("Preserving existing global instructions: ~/.claude/CLAUDE.md")
     );
   } finally {
     result.cleanup();
   }
 });
 
-test("coding-standard installs OpenCode agents without dependencies", () => {
+test("install records managed hashes and update dry-run writes nothing", () => {
+  const fixture = createUpdateFixture();
+  try {
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.strictEqual(state.schemaVersion, 1);
+    assert.strictEqual(state.packageVersion, require("../package.json").version);
+    assert.strictEqual(state.kit, "coding-standard");
+    assert.deepStrictEqual(state.runtimes, ["opencode"]);
+    assert.deepStrictEqual(state.skills, []);
+    assert.ok(state.files.length > 0);
+    state.files.forEach((file) => {
+      assert.ok(["repository", "codex-global", "claude-global"].includes(file.scope));
+      assert.match(file.hash, /^sha256:[a-f0-9]{64}$/);
+    });
+
+    const workspaceBefore = snapshotFiles(fixture.workspace);
+    const homeBefore = snapshotFiles(fixture.home);
+    const dryRun = fixture.run(["update"]);
+    assert.strictEqual(dryRun.status, 0, dryRun.stderr || dryRun.stdout);
+    assert.ok(dryRun.stdout.includes("Dry run:"));
+    assert.deepStrictEqual(snapshotFiles(fixture.workspace), workspaceBefore);
+    assert.deepStrictEqual(snapshotFiles(fixture.home), homeBefore);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update applies safe changes and preserves local collisions", () => {
+  const fixture = createUpdateFixture();
+  try {
+    const upstreamAgents = "# Updated upstream protocol\n";
+    const localWorkflow = "# Locally customized workflow\n";
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), upstreamAgents);
+    fs.writeFileSync(path.join(fixture.sourceRoot, "docs/WORKFLOW.md"), "# New upstream workflow\n");
+    fs.writeFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), localWorkflow);
+
+    const beforeDryRun = snapshotFiles(fixture.workspace);
+    const dryRun = fixture.run(["update"]);
+    assert.strictEqual(dryRun.status, 0, dryRun.stderr || dryRun.stdout);
+    assert.ok(dryRun.stdout.includes("UPDATE repository:AGENTS.md"));
+    assert.ok(dryRun.stdout.includes("SKIP LOCAL repository:docs/WORKFLOW.md"));
+    assert.deepStrictEqual(snapshotFiles(fixture.workspace), beforeDryRun);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.strictEqual(fs.readFileSync(path.join(fixture.workspace, "AGENTS.md"), "utf8"), upstreamAgents);
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), "utf8"),
+      localWorkflow
+    );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update preserves pre-hard-cut legacy files", () => {
+  const fixture = createUpdateFixture();
+  try {
+    const legacyPath = "docs/ai/workflows/feature-standard.json";
+    const legacyTarget = path.join(fixture.workspace, legacyPath);
+    const legacyBytes = "{\"legacy\":true}\n";
+    fs.mkdirSync(path.dirname(legacyTarget), { recursive: true });
+    fs.writeFileSync(legacyTarget, legacyBytes);
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    state.files.push({
+      scope: "repository",
+      path: legacyPath,
+      hash: require("../lib/update").hashBytes(Buffer.from(legacyBytes)),
+    });
+    fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes(`PRESERVE LEGACY repository:${legacyPath}`));
+    assert.strictEqual(fs.readFileSync(legacyTarget, "utf8"), legacyBytes);
+    const nextState = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(nextState.files.some((file) => file.path === legacyPath));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update adopts only exact files when installed state is missing", () => {
+  const fixture = createUpdateFixture();
+  try {
+    const divergent = "# Consumer-owned workflow\n";
+    fs.unlinkSync(fixture.statePath);
+    fs.unlinkSync(path.join(fixture.workspace, "docs/README.md"));
+    fs.writeFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), divergent);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("UNCHANGED repository:AGENTS.md"));
+    assert.ok(apply.stdout.includes("ADD repository:docs/README.md"));
+    assert.ok(apply.stdout.includes("SKIP UNKNOWN repository:docs/WORKFLOW.md"));
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), "utf8"),
+      divergent
+    );
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(state.files.some((file) => file.path === "AGENTS.md"));
+    assert.ok(state.files.some((file) => file.path === "docs/README.md"));
+    assert.ok(!state.files.some((file) => file.path === "docs/WORKFLOW.md"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update rerun completes safely after file operations outpace installed state", () => {
+  const fixture = createUpdateFixture();
+  try {
+    const upstreamAgents = "# Interrupted update agents\n";
+    const upstreamDocsReadme = "# Interrupted update docs\n";
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), upstreamAgents);
+    fs.writeFileSync(path.join(fixture.sourceRoot, "docs/README.md"), upstreamDocsReadme);
+
+    // This is the observable state left when a file rename succeeds before state is replaced.
+    fs.writeFileSync(path.join(fixture.workspace, "AGENTS.md"), upstreamAgents);
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("UNCHANGED repository:AGENTS.md"));
+    assert.ok(apply.stdout.includes("UPDATE repository:docs/README.md"));
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "docs/README.md"), "utf8"),
+      upstreamDocsReadme
+    );
+
+    const rerun = fixture.run(["update", "--apply"]);
+    assert.strictEqual(rerun.status, 0, rerun.stderr || rerun.stdout);
+    assert.ok(!rerun.stdout.includes("UPDATE repository:"));
+    assert.ok(!rerun.stdout.includes("ADD repository:"));
+    assert.ok(!rerun.stdout.includes("RETIRE repository:"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+test("update rejects dangling managed-path symlinks", () => {
+  const fixture = createUpdateFixture();
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-dangling-outside-"));
+  try {
+    const target = path.join(fixture.workspace, "docs/WORKFLOW.md");
+    fs.unlinkSync(target);
+    fs.symlinkSync(path.join(outside, "missing-workflow.md"), target);
+
+    const result = fixture.run(["update", "--apply"]);
+    assert.notStrictEqual(result.status, 0);
+    assert.ok(result.stdout.includes("dangling symlink"));
+    assert.ok(fs.lstatSync(target).isSymbolicLink());
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test("update rejects invalid, absolute, traversal, and symlink-escape state paths", () => {
+  const fixture = createUpdateFixture();
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-outside-"));
+  try {
+    const original = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    const writeState = (state) => {
+      fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+    };
+    const withFirstPath = (filePath) => ({
+      ...original,
+      files: [{ ...original.files[0], path: filePath }, ...original.files.slice(1)],
+    });
+
+    writeState(withFirstPath("/tmp/absolute"));
+    let result = fixture.run(["update"]);
+    assert.notStrictEqual(result.status, 0);
+    assert.ok(result.stdout.includes("Unsafe managed path"));
+
+    writeState(withFirstPath("../traversal"));
+    result = fixture.run(["update"]);
+    assert.notStrictEqual(result.status, 0);
+    assert.ok(result.stdout.includes("Unsafe managed path"));
+
+    writeState({
+      ...original,
+      files: [{ ...original.files[0], hash: "not-a-hash" }, ...original.files.slice(1)],
+    });
+    result = fixture.run(["update"]);
+    assert.notStrictEqual(result.status, 0);
+    assert.ok(result.stdout.includes("Invalid installed hash"));
+
+    fs.writeFileSync(path.join(outside, "owned.txt"), "outside\n");
+    writeState(original);
+    const docsReal = path.join(fixture.workspace, "docs");
+    fs.renameSync(docsReal, `${docsReal}-real`);
+    fs.symlinkSync(outside, docsReal);
+    fs.writeFileSync(path.join(outside, "WORKFLOW.md"), "outside\n");
+    result = fixture.run(["update"]);
+    assert.notStrictEqual(result.status, 0);
+    assert.ok(result.stdout.includes("through a symlink"));
+    assert.strictEqual(fs.readFileSync(path.join(outside, "WORKFLOW.md"), "utf8"), "outside\n");
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test("update touches global instructions only for selected tracked runtimes", () => {
+  const fixture = createUpdateFixture("claude");
+  try {
+    const claudePath = path.join(fixture.home, ".claude/CLAUDE.md");
+    const codexPath = path.join(fixture.home, ".codex/AGENTS.md");
+    const unselectedBytes = "# Unselected Codex instructions\n";
+    const statuslineSource = path.join(fixture.sourceRoot, ".claude/statusline.sh");
+    const statuslineTarget = path.join(fixture.workspace, ".claude/statusline.sh");
+    fs.mkdirSync(path.dirname(codexPath), { recursive: true });
+    fs.writeFileSync(codexPath, unselectedBytes);
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Selected update\n");
+    fs.writeFileSync(statuslineSource, "#!/usr/bin/env bash\nexit 0\n");
+    fs.chmodSync(statuslineSource, 0o755);
+
+    let apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.strictEqual(fs.readFileSync(claudePath, "utf8"), "# Selected update\n");
+    assert.strictEqual(fs.readFileSync(codexPath, "utf8"), unselectedBytes);
+    assert.ok(!apply.stdout.includes("codex-global"));
+    assert.strictEqual(
+      fs.readFileSync(statuslineTarget, "utf8"),
+      "#!/usr/bin/env bash\nexit 0\n"
+    );
+    assert.strictEqual(fs.statSync(statuslineTarget).mode & 0o111, 0o111);
+
+    const localClaudeBytes = "# Locally changed Claude instructions\n";
+    fs.writeFileSync(claudePath, localClaudeBytes);
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Another update\n");
+    apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("SKIP LOCAL claude-global:CLAUDE.md"));
+    assert.strictEqual(fs.readFileSync(claudePath, "utf8"), localClaudeBytes);
+    assert.strictEqual(fs.readFileSync(codexPath, "utf8"), unselectedBytes);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+
+
+
+test("coding-standard does not install optional OpenCode subagents by default", () => {
   const result = runCli(["--kit", "coding-standard", "--tool", "opencode"]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.ok(
-      fs.existsSync(path.join(result.workspace, ".opencode/agents/review-spec.md"))
-    );
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".opencode/agents")));
     assert.ok(!fs.existsSync(path.join(result.workspace, ".opencode/node_modules")));
   } finally {
     result.cleanup();
   }
 });
 
-test("workflow-eval installs all declared files", () => {
+test("workflow-eval installs canonical evaluation files", () => {
   const result = runCli(["--kit", "workflow-eval", "--tool", "codex"]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(
-      fs.existsSync(path.join(result.workspace, "docs/ai/evaluation/reports/README.md"))
+      fs.existsSync(path.join(result.workspace, "docs/evaluation/reports/README.md"))
     );
     assert.ok(
-      fs.existsSync(path.join(result.workspace, "docs/ai/project/WORKFLOW_LEARNING_STANDARD.md"))
+      fs.existsSync(path.join(result.workspace, "docs/evaluation/STANDARD.md"))
     );
     const skill = fs.readFileSync(
       path.join(result.workspace, ".agents/skills/workflow-evaluation/SKILL.md"),
       "utf8"
     );
     assert.ok(skill.includes(".agents/skills/workflow-evaluation/extract_session_trace.py"));
-    assert.ok(fs.existsSync(path.join(result.workspace, ".codex/agents/review-spec.toml")));
+    assert.ok(fs.existsSync(path.join(result.workspace, ".codex/agents/review-pr.toml")));
   } finally {
     result.cleanup();
   }
 });
 
-test("workflow-eval installs Claude subagents", () => {
+test("workflow-eval installs Claude review agents", () => {
   const result = runCli(["--kit", "workflow-eval", "--tool", "claude"]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.ok(fs.existsSync(path.join(result.workspace, ".claude/agents/review-spec.md")));
+    assert.ok(fs.existsSync(path.join(result.workspace, ".claude/agents/review-pr.md")));
   } finally {
     result.cleanup();
   }
@@ -200,16 +682,16 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
     const skillsRoot = path.join(result.workspace, ".agents/skills");
-    const casePath = path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json");
-    const projectPath = path.join(result.workspace, "docs/ai/learning/project.json");
-    const schedulePath = path.join(result.workspace, "docs/ai/learning/schedule.json");
-    const standardPath = path.join(result.workspace, "docs/ai/project/WORKFLOW_LEARNING_STANDARD.md");
+    const casePath = path.join(result.workspace, "docs/learning/cases/inventory-reservation.json");
+    const projectPath = path.join(result.workspace, "docs/learning/project.json");
+    const schedulePath = path.join(result.workspace, "docs/learning/schedule.json");
+    const standardPath = path.join(result.workspace, "docs/learning/STANDARD.md");
     const initPath = path.join(skillRoot, "scripts/init_learning_session.py");
     const contextPath = path.join(skillRoot, "scripts/update_learning_context.py");
     const updatePath = path.join(skillRoot, "scripts/update_learning_state.py");
     const validatePath = path.join(skillRoot, "scripts/validate_learning_state.py");
-    const profilePath = path.join(result.workspace, "docs/ai/learning/profile.json");
-    const sessionPath = path.join(result.workspace, "docs/ai/learning/sessions/inventory-reservation-001.json");
+    const profilePath = path.join(result.workspace, "docs/learning/profile.json");
+    const sessionPath = path.join(result.workspace, "docs/learning/sessions/inventory-reservation-001.json");
 
     assert.ok(fs.existsSync(casePath));
     assert.ok(fs.existsSync(projectPath));
@@ -225,7 +707,7 @@ test("learning-workflow installs durable artifacts and executable state tooling"
 
     const coordinator = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
     assert.ok(coordinator.includes("Explore -> Decide -> Reflect"));
-    assert.ok(coordinator.includes("WORKFLOW_LEARNING_STANDARD.md"));
+    assert.ok(coordinator.includes("STANDARD.md"));
     assert.ok(coordinator.includes("update_learning_state.py"));
     assert.ok(coordinator.includes("update_learning_context.py"));
 
@@ -390,11 +872,11 @@ test("learning-workflow completes a controlled MVP lifecycle", () => {
     const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
     const paths = {
       workspace: result.workspace,
-      casePath: path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json"),
-      projectPath: path.join(result.workspace, "docs/ai/learning/project.json"),
-      schedulePath: path.join(result.workspace, "docs/ai/learning/schedule.json"),
-      profilePath: path.join(result.workspace, "docs/ai/learning/profile.json"),
-      sessionPath: path.join(result.workspace, "docs/ai/learning/sessions/controlled-lifecycle.json"),
+      casePath: path.join(result.workspace, "docs/learning/cases/inventory-reservation.json"),
+      projectPath: path.join(result.workspace, "docs/learning/project.json"),
+      schedulePath: path.join(result.workspace, "docs/learning/schedule.json"),
+      profilePath: path.join(result.workspace, "docs/learning/profile.json"),
+      sessionPath: path.join(result.workspace, "docs/learning/sessions/controlled-lifecycle.json"),
       initPath: path.join(skillRoot, "scripts/init_learning_session.py"),
       contextPath: path.join(skillRoot, "scripts/update_learning_context.py"),
       updatePath: path.join(skillRoot, "scripts/update_learning_state.py"),
@@ -677,9 +1159,9 @@ test("learning-workflow preserves an installed durable case", () => {
   const result = runCli(["--kit", "learning-workflow", "--tool", "codex"]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    const casePath = path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json");
-    const projectPath = path.join(result.workspace, "docs/ai/learning/project.json");
-    const schedulePath = path.join(result.workspace, "docs/ai/learning/schedule.json");
+    const casePath = path.join(result.workspace, "docs/learning/cases/inventory-reservation.json");
+    const projectPath = path.join(result.workspace, "docs/learning/project.json");
+    const schedulePath = path.join(result.workspace, "docs/learning/schedule.json");
     const customized = JSON.parse(fs.readFileSync(casePath, "utf8"));
     customized.title = "Locally preserved durable case";
     fs.writeFileSync(casePath, JSON.stringify(customized, null, 2) + "\n");
@@ -709,7 +1191,7 @@ test("learning-workflow rejects unsupported Pi installs before writing files", (
   try {
     assert.notStrictEqual(result.status, 0);
     assert.ok(result.stdout.includes("Learning workflow does not support: pi"));
-    assert.ok(!fs.existsSync(path.join(result.workspace, "docs/ai/project/WORKFLOW_LEARNING_CONSTITUTION.md")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, "docs/learning/CONSTITUTION.md")));
   } finally {
     result.cleanup();
   }
@@ -720,7 +1202,7 @@ test("learning validator rejects malformed case contracts", () => {
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
-    const casePath = path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json");
+    const casePath = path.join(result.workspace, "docs/learning/cases/inventory-reservation.json");
     const validatePath = path.join(skillRoot, "scripts/validate_learning_state.py");
     const invalidCasePath = path.join(result.workspace, "invalid-case.json");
     const invalidCase = JSON.parse(fs.readFileSync(casePath, "utf8"));
@@ -747,8 +1229,8 @@ test("learning validator rejects malformed project and schedule contracts", () =
       result.workspace,
       ".agents/skills/learning-workflow/scripts/validate_learning_state.py"
     );
-    const projectPath = path.join(result.workspace, "docs/ai/learning/project.json");
-    const schedulePath = path.join(result.workspace, "docs/ai/learning/schedule.json");
+    const projectPath = path.join(result.workspace, "docs/learning/project.json");
+    const schedulePath = path.join(result.workspace, "docs/learning/schedule.json");
     const invalidProjectPath = path.join(result.workspace, "invalid-project.json");
     const invalidSchedulePath = path.join(result.workspace, "invalid-schedule.json");
 
@@ -782,11 +1264,11 @@ test("learning state tooling rejects first attempts after material assistance", 
     const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
     const paths = {
       workspace: result.workspace,
-      casePath: path.join(result.workspace, "docs/ai/learning/cases/inventory-reservation.json"),
-      projectPath: path.join(result.workspace, "docs/ai/learning/project.json"),
-      schedulePath: path.join(result.workspace, "docs/ai/learning/schedule.json"),
-      profilePath: path.join(result.workspace, "docs/ai/learning/profile.json"),
-      sessionPath: path.join(result.workspace, "docs/ai/learning/sessions/prior-help.json"),
+      casePath: path.join(result.workspace, "docs/learning/cases/inventory-reservation.json"),
+      projectPath: path.join(result.workspace, "docs/learning/project.json"),
+      schedulePath: path.join(result.workspace, "docs/learning/schedule.json"),
+      profilePath: path.join(result.workspace, "docs/learning/profile.json"),
+      sessionPath: path.join(result.workspace, "docs/learning/sessions/prior-help.json"),
       initPath: path.join(skillRoot, "scripts/init_learning_session.py"),
       contextPath: path.join(skillRoot, "scripts/update_learning_context.py"),
       updatePath: path.join(skillRoot, "scripts/update_learning_state.py"),
