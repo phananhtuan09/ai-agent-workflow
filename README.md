@@ -62,6 +62,7 @@ Supported tools: Codex, Claude Code, Google Antigravity, Pi, and OpenCode.
 
 - Codex and Antigravity use `.agents/skills/`.
 - Claude Code uses `.claude/skills/`.
+- Claude project installs generate `.claude/CLAUDE.md` from the current `AGENTS.md` protocol, while global instruction installs use the preserved legacy context in `.claude/CLAUDE.global.md`.
 - OpenCode receives native agents only when a selected kit requires them.
 - Pi uses the repository protocol directly and receives no workflow extension.
 - Existing project and global instruction files are preserved.

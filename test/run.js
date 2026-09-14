@@ -257,12 +257,8 @@ test("canonical skills have required entrypoints", () => {
   });
 });
 
-test("canonical Claude mirror matches root protocol byte for byte", () => {
-  assert.ok(
-    fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md")).equals(
-      fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.md"))
-    )
-  );
+test("Claude project instructions use the root protocol as their source", () => {
+  assert.ok(!fs.existsSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.md")));
 });
 
 test("clean coding-standard install includes protocol without legacy artifacts", () => {
@@ -376,7 +372,7 @@ test("Codex default installs direct instructions without optional skills", () =>
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(
       fs.readFileSync(path.join(result.home, ".codex/AGENTS.md")).equals(
-        fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md"))
+        fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.global.md"))
       )
     );
     assert.ok(!fs.existsSync(path.join(result.home, ".claude/CLAUDE.md")));
@@ -395,6 +391,11 @@ test("Claude selection installs only missing Claude global instructions", () => 
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(
       fs.readFileSync(path.join(result.home, ".claude/CLAUDE.md")).equals(
+        fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.global.md"))
+      )
+    );
+    assert.ok(
+      fs.readFileSync(path.join(result.workspace, ".claude/CLAUDE.md")).equals(
         fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md"))
       )
     );
@@ -432,6 +433,20 @@ test("coding-standard preserves divergent global instructions", () => {
     assert.ok(
       result.stdout.includes("Preserving existing global instructions: ~/.claude/CLAUDE.md")
     );
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("global instructions keep the legacy context while Claude project scope uses the current protocol", () => {
+  const result = runCli(["--kit", "coding-standard", "--all"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const legacyGlobal = fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.global.md"));
+    const currentProject = fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md"));
+    assert.ok(fs.readFileSync(path.join(result.home, ".codex/AGENTS.md")).equals(legacyGlobal));
+    assert.ok(fs.readFileSync(path.join(result.home, ".claude/CLAUDE.md")).equals(legacyGlobal));
+    assert.ok(fs.readFileSync(path.join(result.workspace, ".claude/CLAUDE.md")).equals(currentProject));
   } finally {
     result.cleanup();
   }
@@ -652,7 +667,10 @@ test("update touches global instructions only for selected tracked runtimes", ()
     const statuslineTarget = path.join(fixture.workspace, ".claude/statusline.sh");
     fs.mkdirSync(path.dirname(codexPath), { recursive: true });
     fs.writeFileSync(codexPath, unselectedBytes);
-    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Selected update\n");
+    fs.writeFileSync(
+      path.join(fixture.sourceRoot, ".claude/CLAUDE.global.md"),
+      "# Selected update\n"
+    );
     fs.writeFileSync(statuslineSource, "#!/usr/bin/env bash\nexit 0\n");
     fs.chmodSync(statuslineSource, 0o755);
 
@@ -669,7 +687,10 @@ test("update touches global instructions only for selected tracked runtimes", ()
 
     const localClaudeBytes = "# Locally changed Claude instructions\n";
     fs.writeFileSync(claudePath, localClaudeBytes);
-    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Another update\n");
+    fs.writeFileSync(
+      path.join(fixture.sourceRoot, ".claude/CLAUDE.global.md"),
+      "# Another update\n"
+    );
     apply = fixture.run(["update", "--apply"]);
     assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
     assert.ok(apply.stdout.includes("SKIP LOCAL claude-global:CLAUDE.md"));
@@ -807,7 +828,7 @@ test("pre-existing matching global instructions remain consumer-owned across upd
     fs.mkdirSync(path.join(home, ".codex"), { recursive: true });
     fs.writeFileSync(
       path.join(home, ".codex/AGENTS.md"),
-      fs.readFileSync(path.join(sourceRoot, "AGENTS.md"))
+      fs.readFileSync(path.join(sourceRoot, ".claude/CLAUDE.global.md"))
     );
   });
   try {
@@ -817,7 +838,10 @@ test("pre-existing matching global instructions remain consumer-owned across upd
     assert.ok(!state.files.some((file) => file.scope === "codex-global" && file.path === "AGENTS.md"));
 
     const originalGlobal = fs.readFileSync(path.join(fixture.home, ".codex/AGENTS.md"), "utf8");
-    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Upstream changed global instructions\n");
+    fs.writeFileSync(
+      path.join(fixture.sourceRoot, ".claude/CLAUDE.global.md"),
+      "# Upstream changed global instructions\n"
+    );
     const update = fixture.run(["update", "--apply"]);
     assert.strictEqual(update.status, 0, update.stderr || update.stdout);
     assert.ok(update.stdout.includes("SKIP UNKNOWN codex-global:AGENTS.md"));
