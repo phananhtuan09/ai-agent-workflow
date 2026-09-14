@@ -63,10 +63,13 @@ function createUpdateFixture(tool = "opencode") {
   [
     "package.json",
     ...PROTOCOL_FILES,
-    "skills/manifest.json",
-    ".agents/themes",
+    "skills",
+    "docs/evaluation",
+    "docs/learning",
+    ".agents",
     ".claude",
-    ".codex/config.toml",
+    ".codex",
+    ".opencode",
   ].forEach((relativePath) => {
     const sourcePath = path.join(SOURCE_ROOT, relativePath);
     if (fs.existsSync(sourcePath)) {
@@ -86,6 +89,48 @@ function createUpdateFixture(tool = "opencode") {
     home,
     sourceRoot,
     run,
+    statePath: path.join(workspace, ".ai-workflow/installed.json"),
+    cleanup() {
+      fs.rmSync(workspace, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+      fs.rmSync(sourceRoot, { recursive: true, force: true });
+    },
+  };
+}
+
+function createCliFixture(setup) {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-cli-"));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-cli-home-"));
+  const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-cli-source-"));
+  [
+    "package.json",
+    ...PROTOCOL_FILES,
+    "skills",
+    "docs/evaluation",
+    "docs/learning",
+    ".agents",
+    ".claude",
+    ".codex",
+    ".opencode",
+  ].forEach((relativePath) => {
+    const sourcePath = path.join(SOURCE_ROOT, relativePath);
+    if (fs.existsSync(sourcePath)) {
+      copyFixturePath(sourcePath, path.join(sourceRoot, relativePath));
+    }
+  });
+  const env = { ...process.env, HOME: home, AI_WORKFLOW_SOURCE_ROOT: sourceRoot };
+  if (setup) setup({ workspace, home, sourceRoot });
+  return {
+    workspace,
+    home,
+    sourceRoot,
+    run(args) {
+      return spawnSync(
+        process.execPath,
+        [path.join(SOURCE_ROOT, "cli.js"), ...args],
+        { cwd: workspace, env, encoding: "utf8" }
+      );
+    },
     statePath: path.join(workspace, ".ai-workflow/installed.json"),
     cleanup() {
       fs.rmSync(workspace, { recursive: true, force: true });
@@ -292,10 +337,10 @@ test("installer refuses dangling destination symlinks without touching their tar
         path.join(workspace, ".claude/statusline.sh")
       );
     }
-  );
+    );
   try {
     assert.notStrictEqual(result.status, 0);
-    assert.ok(result.stdout.includes("Refusing to write through symlink"));
+    assert.ok(result.stdout.includes("dangling symlink"));
     assert.ok(fs.lstatSync(path.join(result.workspace, ".claude/statusline.sh")).isSymbolicLink());
     assert.ok(!fs.existsSync(path.join(outside, "missing-statusline.sh")));
   } finally {
@@ -396,9 +441,13 @@ test("install records managed hashes and update dry-run writes nothing", () => {
   const fixture = createUpdateFixture();
   try {
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
-    assert.strictEqual(state.schemaVersion, 1);
+    assert.strictEqual(state.schemaVersion, 2);
     assert.strictEqual(state.packageVersion, require("../package.json").version);
-    assert.strictEqual(state.kit, "coding-standard");
+    assert.strictEqual(state.core.id, "repository-driven-protocol");
+    assert.deepStrictEqual(state.core.runtimes, ["opencode"]);
+    assert.deepStrictEqual(state.core.skills, []);
+    assert.deepStrictEqual(state.addons, []);
+    assert.deepStrictEqual(state.kits, ["coding-standard"]);
     assert.deepStrictEqual(state.runtimes, ["opencode"]);
     assert.deepStrictEqual(state.skills, []);
     assert.ok(state.files.length > 0);
@@ -474,7 +523,7 @@ test("update preserves pre-hard-cut legacy files", () => {
   }
 });
 
-test("update adopts only exact files when installed state is missing", () => {
+test("update without installed state does not adopt pre-existing exact files", () => {
   const fixture = createUpdateFixture();
   try {
     const divergent = "# Consumer-owned workflow\n";
@@ -484,7 +533,7 @@ test("update adopts only exact files when installed state is missing", () => {
 
     const apply = fixture.run(["update", "--apply"]);
     assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
-    assert.ok(apply.stdout.includes("UNCHANGED repository:AGENTS.md"));
+    assert.ok(apply.stdout.includes("SKIP UNKNOWN repository:AGENTS.md"));
     assert.ok(apply.stdout.includes("ADD repository:docs/README.md"));
     assert.ok(apply.stdout.includes("SKIP UNKNOWN repository:docs/WORKFLOW.md"));
     assert.strictEqual(
@@ -492,8 +541,8 @@ test("update adopts only exact files when installed state is missing", () => {
       divergent
     );
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
-    assert.ok(state.files.some((file) => file.path === "AGENTS.md"));
     assert.ok(state.files.some((file) => file.path === "docs/README.md"));
+    assert.ok(!state.files.some((file) => file.path === "AGENTS.md"));
     assert.ok(!state.files.some((file) => file.path === "docs/WORKFLOW.md"));
   } finally {
     fixture.cleanup();
@@ -626,6 +675,207 @@ test("update touches global instructions only for selected tracked runtimes", ()
     assert.ok(apply.stdout.includes("SKIP LOCAL claude-global:CLAUDE.md"));
     assert.strictEqual(fs.readFileSync(claudePath, "utf8"), localClaudeBytes);
     assert.strictEqual(fs.readFileSync(codexPath, "utf8"), unselectedBytes);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("workflow-eval composes with an existing protocol install", () => {
+  const fixture = createUpdateFixture("opencode");
+  try {
+    const installEval = fixture.run(["--kit", "workflow-eval", "--tool", "codex"]);
+    assert.strictEqual(installEval.status, 0, installEval.stderr || installEval.stdout);
+    let state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.deepStrictEqual(state.kits, ["coding-standard", "workflow-eval"]);
+    assert.deepStrictEqual(state.core.runtimes, ["codex", "opencode"]);
+    assert.deepStrictEqual(state.addons.map((addon) => addon.id), ["evaluation"]);
+    assert.deepStrictEqual(state.addons[0].runtimes, ["codex"]);
+    assert.ok(state.files.some((file) => file.path === "docs/evaluation/STANDARD.md"));
+    assert.ok(state.files.some((file) => file.path === ".codex/config.toml"));
+
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Composed protocol update\n");
+    fs.writeFileSync(
+      path.join(fixture.sourceRoot, "docs/evaluation/STANDARD.md"),
+      "# Composed evaluation update\n"
+    );
+    const update = fixture.run(["update", "--apply"]);
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "AGENTS.md"), "utf8"),
+      "# Composed protocol update\n"
+    );
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "docs/evaluation/STANDARD.md"), "utf8"),
+      "# Composed evaluation update\n"
+    );
+    state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.deepStrictEqual(state.kits, ["coding-standard", "workflow-eval"]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("learning-workflow composes with an existing protocol install", () => {
+  const fixture = createUpdateFixture("opencode");
+  try {
+    const installLearning = fixture.run(["--kit", "learning-workflow", "--tool", "codex"]);
+    assert.strictEqual(installLearning.status, 0, installLearning.stderr || installLearning.stdout);
+    let state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.deepStrictEqual(state.kits, ["coding-standard", "learning-workflow"]);
+    assert.deepStrictEqual(state.core.runtimes, ["codex", "opencode"]);
+    assert.deepStrictEqual(state.addons.map((addon) => addon.id), ["learning"]);
+    assert.deepStrictEqual(state.addons[0].runtimes, ["codex"]);
+    assert.ok(state.files.some((file) => file.path === "docs/learning/STANDARD.md"));
+
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Learning composed protocol update\n");
+    fs.writeFileSync(
+      path.join(fixture.sourceRoot, "docs/learning/STANDARD.md"),
+      "# Learning composed standard update\n"
+    );
+    const update = fixture.run(["update", "--apply"]);
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "AGENTS.md"), "utf8"),
+      "# Learning composed protocol update\n"
+    );
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "docs/learning/STANDARD.md"), "utf8"),
+      "# Learning composed standard update\n"
+    );
+    state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.deepStrictEqual(state.kits, ["coding-standard", "learning-workflow"]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("workflow-eval on a clean repository installs the core protocol", () => {
+  const result = runCli(["--kit", "workflow-eval", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.existsSync(path.join(result.workspace, "AGENTS.md")));
+    assert.ok(fs.existsSync(path.join(result.workspace, "docs/WORKFLOW.md")));
+    assert.ok(fs.existsSync(path.join(result.workspace, "docs/evaluation/STANDARD.md")));
+    const state = JSON.parse(fs.readFileSync(path.join(result.workspace, ".ai-workflow/installed.json"), "utf8"));
+    assert.deepStrictEqual(state.kits, ["workflow-eval"]);
+    assert.deepStrictEqual(state.core.runtimes, ["codex"]);
+    assert.deepStrictEqual(state.addons.map((addon) => addon.id), ["evaluation"]);
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("pre-existing matching protocol files remain consumer-owned across update", () => {
+  const fixture = createCliFixture(({ workspace, sourceRoot }) => {
+    fs.mkdirSync(path.join(workspace, "docs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(workspace, "AGENTS.md"),
+      fs.readFileSync(path.join(sourceRoot, "AGENTS.md"))
+    );
+    fs.writeFileSync(
+      path.join(workspace, "docs/WORKFLOW.md"),
+      fs.readFileSync(path.join(sourceRoot, "docs/WORKFLOW.md"))
+    );
+  });
+  try {
+    const install = fixture.run(["--kit", "coding-standard", "--tool", "opencode"]);
+    assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+    let state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(!state.files.some((file) => file.scope === "repository" && file.path === "AGENTS.md"));
+    assert.ok(!state.files.some((file) => file.scope === "repository" && file.path === "docs/WORKFLOW.md"));
+
+    const originalAgents = fs.readFileSync(path.join(fixture.workspace, "AGENTS.md"), "utf8");
+    const originalWorkflow = fs.readFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), "utf8");
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Upstream changed AGENTS\n");
+    fs.writeFileSync(path.join(fixture.sourceRoot, "docs/WORKFLOW.md"), "# Upstream changed workflow\n");
+    const update = fixture.run(["update", "--apply"]);
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    assert.ok(update.stdout.includes("SKIP UNKNOWN repository:AGENTS.md"));
+    assert.ok(update.stdout.includes("SKIP UNKNOWN repository:docs/WORKFLOW.md"));
+    assert.strictEqual(fs.readFileSync(path.join(fixture.workspace, "AGENTS.md"), "utf8"), originalAgents);
+    assert.strictEqual(fs.readFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), "utf8"), originalWorkflow);
+    state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(!state.files.some((file) => file.scope === "repository" && file.path === "AGENTS.md"));
+    assert.ok(!state.files.some((file) => file.scope === "repository" && file.path === "docs/WORKFLOW.md"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("pre-existing matching global instructions remain consumer-owned across update", () => {
+  const fixture = createCliFixture(({ home, sourceRoot }) => {
+    fs.mkdirSync(path.join(home, ".codex"), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, ".codex/AGENTS.md"),
+      fs.readFileSync(path.join(sourceRoot, "AGENTS.md"))
+    );
+  });
+  try {
+    const install = fixture.run(["--kit", "coding-standard", "--tool", "codex"]);
+    assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+    let state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(!state.files.some((file) => file.scope === "codex-global" && file.path === "AGENTS.md"));
+
+    const originalGlobal = fs.readFileSync(path.join(fixture.home, ".codex/AGENTS.md"), "utf8");
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Upstream changed global instructions\n");
+    const update = fixture.run(["update", "--apply"]);
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    assert.ok(update.stdout.includes("SKIP UNKNOWN codex-global:AGENTS.md"));
+    assert.strictEqual(fs.readFileSync(path.join(fixture.home, ".codex/AGENTS.md"), "utf8"), originalGlobal);
+    state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(!state.files.some((file) => file.scope === "codex-global" && file.path === "AGENTS.md"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("pre-existing divergent protocol files remain consumer-owned across update", () => {
+  const fixture = createCliFixture(({ workspace }) => {
+    fs.writeFileSync(path.join(workspace, "AGENTS.md"), "# Consumer-owned protocol\n");
+  });
+  try {
+    const install = fixture.run(["--kit", "coding-standard", "--tool", "opencode"]);
+    assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(!state.files.some((file) => file.scope === "repository" && file.path === "AGENTS.md"));
+
+    fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), "# Upstream changed protocol\n");
+    const update = fixture.run(["update", "--apply"]);
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    assert.ok(update.stdout.includes("SKIP UNKNOWN repository:AGENTS.md"));
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, "AGENTS.md"), "utf8"),
+      "# Consumer-owned protocol\n"
+    );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("legacy installed state migrates to composable state on update", () => {
+  const fixture = createUpdateFixture("opencode");
+  try {
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    fs.writeFileSync(
+      fixture.statePath,
+      `${JSON.stringify({
+        schemaVersion: 1,
+        packageVersion: state.packageVersion,
+        kit: "coding-standard",
+        runtimes: ["opencode"],
+        skills: [],
+        files: state.files,
+      }, null, 2)}\n`
+    );
+    const update = fixture.run(["update", "--apply"]);
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    const migrated = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.strictEqual(migrated.schemaVersion, 2);
+    assert.strictEqual(migrated.core.id, "repository-driven-protocol");
+    assert.deepStrictEqual(migrated.core.runtimes, ["opencode"]);
+    assert.deepStrictEqual(migrated.addons, []);
+    assert.deepStrictEqual(migrated.kits, ["coding-standard"]);
+    assert.ok(migrated.files.length > 0);
   } finally {
     fixture.cleanup();
   }

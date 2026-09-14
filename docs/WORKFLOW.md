@@ -9,13 +9,36 @@ There is no fixed design, specification, execution, verification, or orchestrati
 ## Authority
 
 Use the smallest relevant authoritative surface.
-Apply this precedence:
+Separate intent authority, current-state evidence, and work memory.
 
-1. Approved product and domain rules describe intended externally observable behavior.
-2. Approved architecture and compatibility decisions constrain implementation choices.
-3. Code, tests, schemas, configuration, and runtime evidence describe current implemented behavior.
-4. Active plans describe work state but never override approved product or architecture authority.
-5. Evaluation and learning standards govern only their explicitly selected kits.
+Intent authority describes what behavior is intended:
+
+1. The current explicit human request is immediate intent authority for the requested delta when it clearly authorizes a behavior change.
+2. Approved product and domain rules describe durable intended externally observable behavior.
+3. Approved architecture, security, and compatibility decisions constrain implementation choices.
+
+Current-state evidence describes what exists now:
+
+- Code
+- Tests
+- Schemas
+- Configuration
+- Runtime evidence
+
+Work memory preserves execution state:
+
+- Active plans describe resumable work state but never override intent authority.
+- Completed plans preserve useful execution history but never become product authority by themselves.
+
+Evaluation and learning standards govern only their explicitly selected optional capabilities.
+
+Apply these conflict rules:
+
+- If the current explicit request clearly changes existing behavior, treat the request as authority for that requested delta.
+- If durable product or decision docs become stale because of an accepted change, update durable knowledge only when the new behavior should outlive the current task.
+- If code, tests, schemas, configuration, or runtime evidence disagree, investigate the current-state inconsistency.
+- If multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and ask the smallest necessary human question.
+- Do not turn user requests into persisted product documentation automatically.
 
 Newly accepted durable knowledge belongs in the following locations:
 
@@ -27,7 +50,7 @@ Newly accepted durable knowledge belongs in the following locations:
 | Recurring technical patterns | `docs/patterns/` |
 | Verified operating procedures | `docs/runbooks/` |
 
-Evaluation and learning artifacts are optional kit-owned namespaces:
+Evaluation and learning artifacts are optional capability-owned namespaces:
 
 - `docs/evaluation/` contains workflow evaluation standards, observations, traces, and reports.
 - `docs/learning/` contains learning standards and durable learning state.

@@ -10,8 +10,8 @@ Read only the locations relevant to the requested outcome.
 - `plans/completed/` stores useful execution history for completed complex work.
 - `patterns/` stores accepted recurring technical patterns and invariants.
 - `runbooks/` stores verified operational procedures.
-- `evaluation/` stores trace-first workflow evaluation standards, observations, session traces, and reports when the evaluation kit is selected.
-- `learning/` stores the learning constitution, standard, project context, schedule, cases, and sessions when the learning kit is selected.
+- `evaluation/` stores trace-first workflow evaluation standards, observations, session traces, and reports when the evaluation capability is installed.
+- `learning/` stores the learning constitution, standard, project context, schedule, cases, and sessions when the learning capability is installed.
 
 New repository knowledge uses the locations above.
 Resolve conflicts using the precedence and ambiguity rules in `WORKFLOW.md`.

@@ -46,16 +46,19 @@ Pi uses that protocol directly and receives no legacy extension or workflow trac
 Only selected Codex or Claude Code installs create a missing global instruction file.
 Existing global instruction files are preserved.
 
-The workflow-eval kit installs:
+The workflow-eval kit composes on top of the core protocol and installs:
   - docs/evaluation/STANDARD.md and docs/evaluation/templates/report.html
   - docs/evaluation/observations/, reports/, and session-traces/
   - workflow-evaluation and record-workflow-friction skills
 
-The learning-workflow kit installs:
+The learning-workflow kit composes on top of the core protocol and installs:
   - docs/learning/CONSTITUTION.md and docs/learning/STANDARD.md
   - docs/learning/ project and durable case state
   - learning-workflow with learning-case, learning-evidence, and learning-review helpers
   - deterministic state validators
+
+Installed state tracks the core protocol separately from optional addons.
+Running another kit later adds its capability without forgetting existing tracked surfaces.
 
 Examples:
   npx ai-workflow-init --kit coding-standard --tool codex

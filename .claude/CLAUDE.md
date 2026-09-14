@@ -9,12 +9,16 @@
 
 ## Authority
 
-- Approved product and domain rules define intended externally observable behavior.
-- Approved architecture and compatibility decisions constrain implementation choices.
-- Code, tests, schemas, configuration, and runtime evidence define current implemented behavior.
+- Intent authority defines intended behavior.
+- The current explicit human request is immediate intent authority for the requested delta when it clearly authorizes a behavior change.
+- Approved product and domain rules define durable intended externally observable behavior.
+- Approved architecture, security, and compatibility decisions constrain implementation choices.
+- Code, tests, schemas, configuration, and runtime evidence are current-state evidence.
+- Current-state evidence describes what exists now and disagreements between those sources normally require investigation before deciding what to change.
 - Active plans record work state but do not override product or architecture authority.
 - Evaluation and learning capabilities use their canonical namespaces under `docs/evaluation/` and `docs/learning/`.
-- When relevant authorities conflict, stop before behavior-changing mutation and request the smallest necessary decision.
+- When durable intent becomes stale because of an accepted current request, update durable knowledge only when the new behavior should outlive the current task.
+- When multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and request the smallest necessary decision.
 - Never invent material product, security, compatibility, or operational policy.
 
 ## Work shaping

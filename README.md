@@ -1,6 +1,6 @@
 # AI Agent Workflow
 
-A repository-driven protocol for AI coding assistants, with optional capability skills and two explicit auxiliary kits: workflow evaluation and learning.
+A repository-driven protocol for AI coding assistants, with optional capability skills and two additive capabilities: workflow evaluation and learning.
 
 ## Design
 
@@ -25,11 +25,12 @@ docs/
 ├── plans/               # active and completed durable working memory
 ├── patterns/            # accepted recurring technical patterns
 ├── runbooks/            # verified operating procedures
-├── evaluation/          # optional workflow evaluation kit
-└── learning/            # optional learning kit
+├── evaluation/          # optional workflow evaluation capability
+└── learning/            # optional learning capability
 ```
 
-`docs/evaluation/` and `docs/learning/` are independent optional namespaces. They are not product authority and are not loaded by ordinary coding work.
+`docs/evaluation/` and `docs/learning/` are independent optional namespaces.
+They are not product authority and are not loaded by ordinary coding work.
 
 ## Install
 
@@ -65,7 +66,7 @@ Supported tools: Codex, Claude Code, Google Antigravity, Pi, and OpenCode.
 - Pi uses the repository protocol directly and receives no workflow extension.
 - Existing project and global instruction files are preserved.
 
-## Optional kits
+## Optional Capabilities
 
 ### Workflow evaluation
 
@@ -73,7 +74,7 @@ Supported tools: Codex, Claude Code, Google Antigravity, Pi, and OpenCode.
 npx ai-workflow-init --kit workflow-eval --tool codex
 ```
 
-Installs `workflow-evaluation` and `record-workflow-friction`, plus:
+Installs the core repository protocol when it is not already tracked, then adds `workflow-evaluation` and `record-workflow-friction`, plus:
 
 - `docs/evaluation/STANDARD.md`
 - `docs/evaluation/templates/report.html`
@@ -89,7 +90,7 @@ Evaluation is trace-first when runtime history exists and artifact-first only wh
 npx ai-workflow-init --kit learning-workflow --tool codex
 ```
 
-Installs the learning coordinator and focused helpers, plus:
+Installs the core repository protocol when it is not already tracked, then adds the learning coordinator and focused helpers, plus:
 
 - `docs/learning/CONSTITUTION.md`
 - `docs/learning/STANDARD.md`
@@ -98,7 +99,7 @@ Installs the learning coordinator and focused helpers, plus:
 - `docs/learning/cases/`
 - `docs/learning/sessions/`
 
-The learning kit is separate from ordinary coding execution and supports Codex, Claude Code, and Google Antigravity.
+The learning capability is separate from ordinary coding execution and supports Codex, Claude Code, and Google Antigravity.
 
 ## CLI
 
@@ -125,7 +126,10 @@ npx ai-workflow-init update
 npx ai-workflow-init update --apply
 ```
 
-The updater records hashes in `.ai-workflow/installed.json`, updates only unchanged managed files, preserves local and unknown collisions, and keeps pre-hard-cut legacy files in place rather than deleting consumer history automatically.
+The updater records explicit ownership in `.ai-workflow/installed.json`.
+The state tracks the core repository protocol separately from installed addons such as evaluation and learning.
+Updates apply to all tracked core and addon surfaces, update only unchanged managed files, preserve local and unknown collisions, and keep pre-hard-cut legacy files in place rather than deleting consumer history automatically.
+Pre-existing files are not adopted merely because their bytes match the installer source.
 
 ## Development checks
 
