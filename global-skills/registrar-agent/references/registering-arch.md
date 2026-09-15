@@ -1,6 +1,6 @@
 # Đăng ký quyết định kiến trúc và nợ có chủ ý
 
-Đọc file này khi thao tác trên `docs/ai/knowledge/architecture/decisions.md`.
+Đọc file này khi thao tác trên `docs/decisions/decisions.md`.
 Không đọc cùng lúc với `registering-br.md`.
 
 ## Cuốn sổ này chứa gì
@@ -14,9 +14,9 @@ Không đọc cùng lúc với `registering-br.md`.
 Không chứa: thư viện đang dùng, version, cấu trúc thư mục, signature, pattern hiện có.
 Tất cả những thứ đó đọc code là biết, và chép vào sổ chỉ tạo nợ đồng bộ.
 
-**Ràng buộc phải tuân theo khi viết code không nằm ở đây.**
-Chúng thuộc `CLAUDE.md` của repo, vì chỗ đó tự nạp mỗi lượt còn file này thì không.
-Người dùng đề nghị thêm một ràng buộc kiểu `MUST`/`NEVER` thì nói rõ chỗ đúng của nó là `CLAUDE.md`, và không tự sửa file đó.
+Durable architecture, security, and compatibility constraints belong here with their accepted rationale.
+Agent process rules belong in the repository's existing instruction file.
+Classify by meaning rather than imperative wording.
 
 ## Phép thử trước khi ghi một quyết định
 
@@ -27,9 +27,11 @@ Từ chối ghi, và nói với người dùng là thiếu vế `Đã loại`.
 
 ## Cấu trúc file
 
-Một file duy nhất: `docs/ai/knowledge/architecture/decisions.md`, hai phần.
+Reuse the repository's existing decision layout and IDs, including separate decision files when established.
+For a new registry without an existing layout, use `docs/decisions/decisions.md` with the two sections below.
+Preserve existing README content when adding an index; do not replace it with the empty template.
 
-`decisions.md` **không mang bộ đếm id**; bộ đếm chỉ nằm ở dòng đầu `docs/ai/knowledge/architecture/README.md`.
+`decisions.md` **không mang bộ đếm id**; bộ đếm chỉ nằm ở dòng đầu `docs/decisions/README.md`.
 
 Append-only: mục mới luôn thêm xuống cuối phần tương ứng, không chèn giữa, không sắp xếp lại.
 "Append-only" ở đây nghĩa là **nội dung một mục không bao giờ được sửa**; chỉ trường `Trạng thái` được đổi.
@@ -84,7 +86,7 @@ Mục nợ được cần **đúng lúc agent đang sửa file đó**, mà lúc 
 
 Nên mỗi mục nợ phải có hai nửa:
 
-- **Ở code**: một dòng comment — `// DEBT-004: cố ý, xem docs/ai/knowledge/architecture/decisions.md`
+- **Ở code**: một dòng comment — `// DEBT-004: cố ý, xem docs/decisions/decisions.md`
 - **Ở sổ**: toàn bộ lý do
 
 Bạn không tự sửa code.
@@ -92,7 +94,7 @@ Ghi xong mục nợ thì **in ra dòng comment cần thêm và đường dẫn c
 
 ## Cấp id
 
-Đọc bộ đếm ở dòng đầu `docs/ai/knowledge/architecture/README.md`, cấp id, tăng bộ đếm ngay.
+Đọc bộ đếm ở dòng đầu `docs/decisions/README.md`, cấp id, tăng bộ đếm ngay.
 Hai chuỗi id độc lập: `DEC-` và `DEBT-`.
 Id không bao giờ tái sử dụng.
 
@@ -109,7 +111,7 @@ Không sửa chính tả, không viết lại câu chữ, không "làm rõ" mộ
 
 ## Index
 
-Mỗi mục một dòng trong `docs/ai/knowledge/architecture/README.md`:
+Mỗi mục một dòng trong `docs/decisions/README.md`:
 
 ```markdown
 - DEC-007 · active · Trạng thái đơn giữ ở server, không cache ở FE
@@ -129,7 +131,7 @@ Cập nhật index trong cùng lượt với việc ghi mục, không để sang
 Index của mọi quyết định kiến trúc và nợ có chủ ý trong repo này.
 Registrar giữ file này đồng bộ với `decisions.md`.
 
-Ràng buộc phải tuân theo khi viết code **không** nằm ở đây — chúng nằm trong `CLAUDE.md` để tự nạp mỗi lượt.
+Durable architecture, security, and compatibility constraints belong here; agent process rules belong in the repository instruction file.
 Sổ này chỉ giữ thứ code không nói được: lý do, phương án đã loại, và chỗ xấu có chủ ý.
 
 Mỗi dòng: `id · status · tóm tắt`.

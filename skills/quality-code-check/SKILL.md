@@ -8,6 +8,17 @@ description: Use when the task involves linting, type checking, build verificati
 ## Purpose
 Establish consistent code quality standards through automated validation tools, ensuring code reliability, maintainability, and consistency.
 
+## Scope And Authority
+
+Follow repository instructions, existing scripts, configuration, and the requested scope.
+For check, review, or diagnosis requests, use non-mutating validation and report findings.
+Apply fixes only when implementation or repair is authorized.
+Preserve existing edits and distinguish regressions caused by the change from pre-existing or environment failures.
+Do not change compiler strictness, warning thresholds, dependencies, or unrelated formatting as part of ordinary validation.
+Choose the cheapest reliable checks for affected behavior and consumers.
+Lint, types, and builds supplement behavioral proof; they do not establish that a feature works.
+Do not create a plan or validation artifact for bounded work unless requested.
+
 ---
 
 ## Core Principle
@@ -36,8 +47,8 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 
 **Approach:**
 - Run linting on all modified files
-- Auto-fix warnings when possible
-- Fix remaining errors manually
+- When fixes are authorized, scope auto-fixes to affected code and review their diff
+- Repair remaining in-scope errors when authorized; otherwise report them
 - Minimize warnings to project standards
 
 ---
@@ -58,10 +69,10 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 - **Java**: Compiler (built-in)
 
 **Approach:**
-- Enable strict type checking when available
+- Use the repository's existing type-check configuration
 - Run on all modified code
-- Fix type errors before proceeding
-- Use type annotations for function signatures
+- Repair in-scope type errors when authorized; otherwise report them
+- Follow existing annotation conventions
 
 ---
 
@@ -81,9 +92,9 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 - **Java**: Maven (`mvn compile`), Gradle (`gradle build`)
 
 **Approach:**
-- Run full build after all changes complete
-- Use production build configuration when available
-- All build steps must succeed without errors
+- Run a build when the affected boundary or repository requirements make it relevant
+- Use the existing build configuration and the smallest reliable package or project scope
+- Report failing or unavailable build steps honestly
 
 ---
 
@@ -201,17 +212,17 @@ mvn compile
 
 2. **Run linting** (scoped to changed files when possible)
    - Execute appropriate commands
-   - Fix auto-fixable issues first (--fix flag)
-   - Manually fix remaining violations
+   - Use non-mutating mode for review requests
+   - Repair in-scope violations only when fixes are authorized
    - Target: Meet project's warning standards
 
 3. **Run type checks**
    - Execute appropriate commands
-   - Fix all type errors
+   - Distinguish in-scope regressions from pre-existing failures
    - Validate type consistency across modules
    - Target: No type errors
 
-4. **Run build** (full build, production config when available)
+4. **Run build when relevant or required** (use repository configuration)
    - Execute appropriate commands
    - Ensure all code compiles
    - Validate all imports resolve
@@ -222,9 +233,9 @@ mvn compile
 
 **If quality checks fail:**
 1. **Analyze errors** - Identify root causes
-2. **Fix issues** - Make minimal changes to resolve
+2. **Fix issues when authorized** - Make minimal in-scope corrections; otherwise report
 3. **Re-run checks** - Execute same commands again
-4. **Repeat** - Continue until checks pass
+4. **Repeat only with new evidence or a meaningful correction** - Do not rerun unchanged failures indefinitely
 
 **If unable to fix:**
 - Document the issue and root cause
@@ -240,7 +251,7 @@ mvn compile
 2. **Only checking one file** - Changes can break type checking across others
    → Check all modified files and dependencies
 3. **Skipping the build step** - Code might lint/type-check but fail to compile
-   → Always verify full build
+   → Build when compilation, packaging, entry points, or repository rules require it
 4. **Accepting auto-fixes blindly** - Auto-fixes might hide real issues
    → Review each auto-fix before committing
 5. **Not checking package.json scripts** - Projects often define custom commands
@@ -253,6 +264,10 @@ mvn compile
 ## Validation Checklist
 
 Before considering quality checks complete:
+
+Apply only the checks relevant to the requested scope or required by the repository.
+Report each selected check as passed, failed, or unavailable, including commands actually run.
+Do not present skipped checks as passed or suppress errors to obtain a clean result.
 - [ ] Code is stable enough to validate
 - [ ] Linting tool runs successfully on changed files
 - [ ] Lint warnings minimized to project-acceptable levels

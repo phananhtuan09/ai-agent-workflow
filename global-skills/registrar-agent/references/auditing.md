@@ -34,7 +34,7 @@ Quyết định (`DEC`) không audit được: nó nói về lý do, không nói
 
 ## Tìm code để đọc
 
-Tra `docs/ai/knowledge/domain/trace.json`.
+Tra `docs/product/trace.json`.
 
 - Có `files` thì **bắt đầu** từ những file đó và đi theo tham chiếu khi cần. Danh sách đó là điểm vào, không phải ranh giới: code có thể đã chuyển chỗ hoặc mọc thêm đường đi mới kể từ lúc trace được ghi.
 - Một file trong `files` không còn tồn tại thì trace đã stale. Kết luận `không đọc được`, báo người dùng cập nhật trace, **không** kết luận `khớp`.
@@ -71,6 +71,9 @@ Không chỉ ra được chỗ nào thì đó là `không đọc được`, khô
 
 ## Ghi kết quả
 
+For a read-only audit request, return findings in the conversation.
+Write the snapshot and logs below only when the user requests a persisted audit or has authorized registry-state maintenance.
+
 Ghi đè toàn bộ `.registrar/drift.md`, không append.
 File này là ảnh chụp lần audit gần nhất, không phải lịch sử.
 
@@ -106,6 +109,7 @@ Khớp 1
 Chỉ liệt kê `nghi lệch` và `không đọc được`.
 `khớp` là số đếm.
 
-Kết thúc bằng đúng một câu hỏi: code sai hay luật sai.
+Ask whether code or intent should change only when an unresolved discrepancy requires that decision.
+Do not ask a closing question when no discrepancy exists or the current request already resolves the intended behavior.
 Người dùng trả lời "code sai" thì chỉ họ sang Foreman; bạn không tạo task.
 Người dùng trả lời "luật sai" thì đi theo trình tự deprecate trong reference đăng ký tương ứng.

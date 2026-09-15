@@ -1,6 +1,6 @@
 # Đăng ký luật nghiệp vụ (BR)
 
-Đọc file này khi thao tác trên `docs/ai/knowledge/domain/`.
+Đọc file này khi thao tác trên `docs/product/`.
 Không đọc cùng lúc với `registering-arch.md`.
 
 ## Luật viết
@@ -67,7 +67,7 @@ Người dùng không nói lý do thì hỏi đúng một câu; họ không tr�
 | Status | Nghĩa | Ai đặt |
 | --- | --- | --- |
 | `draft` | đang bàn, chưa chốt | bạn, khi người dùng nói |
-| `approved` | người dùng đã chốt, chưa có code | người dùng duyệt |
+| `approved` | ý định đã chốt, implementation chưa được xác nhận trong sổ | người dùng duyệt |
 | `implemented` | đã có trong code, audit được | người dùng xác nhận dòng inbox |
 | `deprecated` | không còn đúng, giữ lại vì lý do lịch sử | người dùng duyệt |
 
@@ -78,14 +78,20 @@ Không có trạng thái `implementing`.
 
 ## Cấp id
 
-Đọc bộ đếm ở dòng đầu `docs/ai/knowledge/domain/README.md`, cấp id đó, tăng bộ đếm ngay.
+Đọc bộ đếm ở dòng đầu `docs/product/README.md`, cấp id đó, tăng bộ đếm ngay.
 
 Id không bao giờ được tái sử dụng, kể cả khi luật bị xoá lúc còn `draft`.
 
 ## Đăng ký luật mới
 
+Follow the repository layout and record format resolved in `SKILL.md`.
+The registry template below is a default for new registries, not a requirement to replace existing product documentation.
+If the current request explicitly approves a durable rule, record it as approved in the same operation.
+Use draft for proposals that have not been accepted.
+Do not ask for approval already present in the conversation.
+
 1. Xác định capability. Chưa có file thì tạo file mới và báo người dùng biết đã mở capability mới.
-2. Cấp id, ghi luật với `Status: draft`.
+2. Cấp id nếu repo dùng registry; ghi `draft` hoặc `approved` theo authority đã có.
 3. Thêm dòng index, tăng bộ đếm.
 4. In lại luật vừa ghi theo output chuẩn để người dùng duyệt.
 
@@ -106,8 +112,8 @@ Người dùng dán cả một danh sách thì đi theo mục `Nhận cả lô` 
 Người dùng yêu cầu đổi hành vi thì:
 
 1. Đăng ký luật mới `draft` mang hành vi mới.
-2. Đề xuất deprecate luật cũ, chờ người dùng duyệt.
-3. Không đụng luật cũ cho tới khi được duyệt.
+2. Preserve the old rule and identify the replacement.
+3. If the request explicitly accepts the replacement, approve it and deprecate the old rule in the same operation; otherwise keep the proposal pending approval.
 
 Sửa lỗi chính tả hoặc làm rõ câu chữ mà **không đổi nghĩa** thì được, và phải nói rõ với người dùng là đã sửa gì.
 

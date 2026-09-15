@@ -9,6 +9,22 @@ Skill mô tả *phải làm gì*; file này giữ *vì sao*, vì cái "vì sao" 
 
 ## Một câu
 
+### Current repository-driven alignment — 2026-09-15
+
+The accepted repository workflow and the current `SKILL.md` govern the alignment described here.
+Earlier rationale and dated entries below preserve history; the following updates supersede conflicting legacy requirements.
+
+- Use `docs/product/` and `docs/decisions/` by default while respecting established repository layouts and preserving legacy records until migration is authorized.
+- Reuse existing document formats and cite paths with IDs or sections; an ID-based registry is not a prerequisite for answering from approved documents.
+- Explicit human acceptance in the current request is approval, so applying it does not require another approval turn.
+- Preserve superseded intent and require evidence for implementation status; `approved` means implementation is not yet verified in the registry, not that code is absent.
+- Keep read-only startup, questions, and audits free of automatic file creation, index repair, and log writes.
+- Store durable architecture, security, and compatibility constraints in decisions; classify agent process rules separately by meaning, not by imperative wording.
+- Registrar remains a knowledge-maintenance capability, not a mandatory gate for authorized coding agents updating durable knowledge.
+- Repository source updates do not automatically authorize replacing machine-wide installed copies.
+
+These changes preserve human intent as authority, source citations, historical records, and the separation between knowledge maintenance and production implementation.
+
 Registrar là **người giữ sổ**: nó trông hai cuốn sổ durable ghi thứ code không bao giờ tự nói ra được, trả lời có trích dẫn, và báo lệch mà không phán ai đúng.
 
 Nó không phải project manager, không phải người enforce, không phải người review, và không phải người làm.
@@ -38,7 +54,7 @@ Vì vậy `gap` là loại friction quan trọng nhất: nó đo sổ đang th�
 
 ### 3. Hai cuốn sổ có luật ngược nhau, và không bao giờ được trộn
 
-| | BR — `docs/ai/knowledge/domain/` | Kiến trúc — `decisions.md` |
+| | BR — `docs/product/` | Kiến trúc — `decisions.md` |
 | --- | --- | --- |
 | Nhắc path code | **cấm** | **bắt buộc** với mục nợ |
 | Sửa nội dung | được khi còn `draft` | **không bao giờ** |
@@ -111,8 +127,8 @@ Gần như mọi đề xuất làm hỏng Registrar đều bắt đầu bằng v
 
 | Loại tri thức | Chỗ đúng | Vì sao |
 | --- | --- | --- |
-| hệ thống làm gì, hành vi quan sát được từ ngoài | `docs/ai/knowledge/domain/` | người dùng cần đọc và quyết trên đó |
-| vì sao code như hiện tại, đã loại phương án nào | `docs/ai/knowledge/architecture/decisions.md` | code không bao giờ nói được |
+| hệ thống làm gì, hành vi quan sát được từ ngoài | `docs/product/` | người dùng cần đọc và quyết trên đó |
+| vì sao code như hiện tại, đã loại phương án nào | `docs/decisions/decisions.md` | code không bao giờ nói được |
 | chỗ xấu có chủ ý | `decisions.md` **và** một dòng comment tại code | agent cần biết đúng lúc nó đang sửa file đó, mà lúc đó nó không có lý do gì mở sổ |
 | ràng buộc phải tuân khi viết code (`MUST`, `NEVER`) | `CLAUDE.md` của repo | chỗ đó tự nạp mỗi lượt, sổ thì không |
 | thư viện, version, cấu trúc thư mục, signature | không ghi ở đâu cả | đọc code là biết; chép vào sổ chỉ tạo nợ đồng bộ |
@@ -166,7 +182,7 @@ Trượt một câu là dừng, không phải là "thêm luật phụ để bù"
 Sau khi sửa, còn hai việc bắt buộc:
 
 - Soát mâu thuẫn ngược: luật mới thường va vào luật cũ ở reference khác, đặc biệt là bảng trạng thái và bảng loại friction. Sửa cả hai chỗ.
-- Sync `SKILL.md` + `references/` sang `~/.claude/skills/registrar-agent/` rồi `diff` lại.
+- When an installed-skill update is requested, sync `SKILL.md` and `references/` to `~/.claude/skills/registrar-agent/` and compare them afterward.
   `~/.agents/skills/registrar-agent/SKILL.md` chỉ là pointer, không sửa nội dung ở đó.
   Copy **từng file, không `cp -r`** — `DNA.md` phải ở lại repo.
 

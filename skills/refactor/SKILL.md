@@ -7,6 +7,10 @@ description: Use when the user asks to refactor, restructure, clean up, or impro
 
 Improve code structure without changing observable behavior. Refactoring without a baseline is rewriting.
 
+Follow repository authority and surrounding conventions.
+Search for existing equivalents before introducing helpers or abstractions.
+Create a durable plan only when the repository's durable-memory conditions apply, not merely because multiple files are touched.
+
 ## Inputs
 
 - Target scope: file, module, function, or layer to refactor
@@ -24,16 +28,18 @@ Improve code structure without changing observable behavior. Refactoring without
 
 ### 1. Clarify scope
 
-If any is unclear, ask before touching code:
+Inspect the request, target code, callers, tests, and configuration to establish:
 
 - What code is being refactored (file, module, function, layer)?
 - What is the primary motivation?
 - Are there external contracts (API, public interface, DB schema) that must not change?
 - Is there an existing test suite? Can it be run?
 
+Ask only when scope, contracts, or a material risk decision remain unresolved after inspection.
+
 ### 2. Establish baseline
 
-**Before touching any code**, document:
+Before editing, establish a concise baseline in the conversation or an existing plan:
 
 - **Current behavior**: what does this code do from the caller's perspective?
 - **Public contract**: inputs, outputs, side effects, events emitted
@@ -66,9 +72,12 @@ Check before any edit:
 - [ ] Do they cover main paths and key edge cases?
 - [ ] If coverage is thin: add tests first, or document the manual verification plan.
 
-If no safety net and code is non-trivial: stop and add tests first, or confirm the user accepts the risk.
-
-If user proceeds without tests: mark output as `Behavior parity: UNVERIFIED — no automated safety net`. Do not claim parity was confirmed.
+Use focused tests, integration checks, runtime observations, or a repeatable manual comparison appropriate to the affected behavior.
+Run the relevant baseline check before editing when feasible.
+If coverage is insufficient, add meaningful characterization tests or use another reliable comparison.
+Missing automated tests alone do not require approval or mean parity cannot be checked.
+If no reliable comparison is possible, explain the limitation and resolve any material risk decision before a risky transformation.
+Never claim parity beyond the observed evidence.
 
 ### 5. Define safe boundaries
 
@@ -76,17 +85,17 @@ State these constraints before writing code:
 
 - **External contract is frozen**: listed interfaces, exports, API endpoints must not change.
 - **No behavior change**: if a behavioral change is discovered as necessary, it must become a separate task.
-- **No mixed concerns**: do not fix bugs or add features inline. Note them and create follow-up tasks.
-- **Incremental if large**: if the refactor touches more than ~5 files or multiple layers, define the steps before starting.
+- **No mixed concerns**: report unrelated bugs or features without silently implementing them or creating backlog artifacts.
+- **Incremental if needed**: choose coherent boundaries for transformations that affect multiple contracts or dependencies.
 
 ### 6. Implement
 
-One atomic transformation at a time (e.g., extract function, then rename, then move file — each is a separate step).
+Use coherent, reviewable transformations and group dependent edits needed to keep the code valid.
 
-For each atomic transformation:
+At meaningful transformation boundaries:
 1. Apply the change with the runtime's precise file editing tools
-2. Run tests or build to catch regressions
-3. If a transformation introduces a bug: revert it, do not push forward
+2. Run checks that can detect regressions in the affected behavior
+3. Correct regressions introduced by the transformation while preserving existing user edits
 
 Rules:
 - Do not reformat unrelated code.
@@ -96,7 +105,7 @@ Rules:
 
 After all transformations:
 
-- Run the full test suite.
+- Run focused checks and repository-required validation; use the full suite when the change's reach justifies it.
 - Manually verify the public contract matches the baseline from Step 2.
 - If behavior changed unintentionally: this is a regression — fix before marking done.
 
@@ -140,7 +149,7 @@ For small refactors (≤2 files, single transformation): provide a brief summary
   5. (if no tests) manual verification steps taken
 
 **Safety net**: [tests coverage before/after or manual plan]
-**Behavior parity**: confirmed / UNVERIFIED — no automated safety net
+**Behavior parity**: observed within [checked scope] / UNVERIFIED — [missing evidence]
 
 **Trade-offs**:
   - [what was gained vs any added complexity]
@@ -154,12 +163,12 @@ For small refactors (≤2 files, single transformation): provide a brief summary
 Ask only when:
 - The public contract or scope boundary is ambiguous
 - A behavior change is unavoidable and user must decide whether to proceed or split into a separate task
-- Test coverage is absent and the risk decision belongs to the user
+- No reliable comparison is available and a material risk decision belongs to the user
 
 ## Quality Bar
 
 - Never start without a documented baseline
 - Never mix bugfix, feature, or behavior change into a refactor task
-- Incremental atomic transformations only — one logical change at a time
+- Keep transformations coherent and checks proportional to the affected contracts
 - Behavior parity must be verified or explicitly marked UNVERIFIED
 - Follow-ups must be listed, never silently dropped

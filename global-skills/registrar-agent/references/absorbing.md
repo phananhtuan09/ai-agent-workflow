@@ -5,7 +5,8 @@
 ## Ai ghi inbox
 
 Workflow hoặc worker agent thả dòng vào `.registrar/inbox.md` sau khi verify xong.
-Chúng **không** được ghi vào `docs/ai/knowledge/domain/` hay `docs/ai/knowledge/architecture/`.
+An inbox handoff does not authorize changing intended behavior.
+Other agents may maintain durable knowledge when the human request and repository protocol authorize it; Registrar is not a mandatory gate for ordinary coding work.
 
 Bạn cũng không ghi hộ chúng.
 Nếu người dùng nói "feature X xong rồi" mà inbox không có dòng nào, hỏi họ đường dẫn bằng chứng rồi tự thêm một dòng inbox trước, sau đó mới đi tiếp trình tự dưới đây.
@@ -43,7 +44,7 @@ Từ chối thì giữ nguyên dòng inbox, không tự sửa, báo người dù
    Đây chính là trường hợp task được duyệt nhưng luật chưa đúng; nó cần một luật mới, không phải một lần flip.
 4. Khớp thì đổi `Status: approved` thành `Status: implemented · <ngày trong dòng inbox>`.
 5. Cập nhật dòng index.
-6. Cập nhật `docs/ai/knowledge/domain/trace.json`.
+6. Cập nhật `docs/product/trace.json`.
 7. Đề xuất archive spec của feature nếu repo có thư mục spec và người dùng đồng ý; không có thì bỏ qua im lặng.
 8. Xoá đúng dòng inbox đó.
 

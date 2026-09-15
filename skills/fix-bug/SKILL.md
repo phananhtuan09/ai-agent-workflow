@@ -5,7 +5,11 @@ description: Use when the user asks to fix a bug, investigate a broken behavior,
 
 # Fix Bug
 
-Fix the reported bug with strict scope control. Reproduce first, isolate root cause at all three layers, apply minimal fix, prevent regression.
+Fix the reported bug with strict scope control and repository-appropriate proof.
+For diagnosis-only requests, investigate and report without implementing a fix.
+An explicit fix request authorizes necessary scoped implementation; do not ask for the same permission again.
+Follow repository authority and reuse existing implementation and verification patterns.
+Do not require a workflow artifact or durable plan for bounded work.
 
 ## Inputs
 
@@ -24,7 +28,7 @@ Fix the reported bug with strict scope control. Reproduce first, isolate root ca
 
 ### 1. Clarify bug shape
 
-Before reading any code, ensure these are known:
+Use the request, code, tests, configuration, and available logs to establish:
 
 - **Expected behavior**: what should happen?
 - **Actual behavior**: what happens instead?
@@ -32,22 +36,27 @@ Before reading any code, ensure these are known:
 - **Reproduction path**: can it be reproduced reliably?
 - **Environment**: which OS, runtime version, config, or deployment environment? Does it occur in all environments or only specific ones?
 
-If any is missing and a wrong assumption would change the fix, ask the user.
+Inspect available evidence before asking for facts the repository can provide.
+Ask only when missing information materially changes the intended correction or prevents further useful investigation.
 
 ### 2. Reproduce
 
 Attempt to reproduce using the provided trigger condition.
+Prefer an existing E2E path when it exercises the failure and its environment is available.
+If E2E is unavailable, state the constraint and choose focused integration, unit, or runtime evidence.
 
 - **Reproduced**: document exact steps and continue.
 - **Not reproduced**:
-  1. State `Confidence: Low — bug not reproduced`.
-  2. Ask the user: stop for more evidence, or proceed speculatively?
-  3. If **stop**: request logs / repro steps / environment details.
-  4. If **proceed**: prefix every finding with `⚠ Speculative (not reproduced)`. Never present analysis as fact.
+  1. State what was attempted and that the original failure remains unverified.
+  2. Continue safe investigation using available code, logs, tests, and configuration.
+  3. Distinguish hypotheses from established facts.
+  4. Implement only when evidence supports a concrete defect and intended correction within the authorized scope.
+  5. Otherwise request the smallest missing evidence or decision; do not ask for blanket permission to speculate.
 
 ### 3. Isolate root cause
 
-Trace the issue layer by layer. All three must be stated before proposing a fix:
+Trace the issue from its first divergence.
+Use the following distinctions when they clarify the cause; a simple defect does not require three separate labels:
 
 | Layer | Description |
 |-------|-------------|
@@ -65,7 +74,7 @@ Select the most minimal strategy that addresses the underlying cause:
 
 1. **Minimal safe fix** — targeted change, no behavior change outside bug scope *(prefer)*
 2. **Slightly broader fix** — only if minimal fix treats a symptom rather than the cause
-3. **Refactor-level fix** — only if the root cause is structural; stop and confirm with user before proceeding
+3. **Structural fix** — include necessary local restructuring when it remains within the authorized bug scope; ask only if material behavior or scope decisions remain unresolved
 
 Do not change behavior outside bug scope unless explicitly justified.
 
@@ -87,6 +96,11 @@ Before closing, verify:
 - [ ] Should logging be added at the failure point?
 
 ### 7. Output summary
+
+For small fixes, report the cause, correction, observed before/after evidence, and material limitations briefly.
+Use the template below only when the change's complexity warrants it.
+Repeat the original failing scenario after the fix when feasible, and check adjacent paths when the cause or correction is shared.
+Passing general checks alone does not prove an unreproduced bug is resolved.
 
 ```
 ## Bug Fix Summary
@@ -122,7 +136,7 @@ Before closing, verify:
 
 Ask only when:
 - Reproduction path is missing and speculation would change the fix
-- Strategy 3 (refactor-level fix) is required
+- Necessary restructuring would materially expand the authorized behavior or scope
 - Multiple conflicting hypotheses exist and evidence cannot distinguish them
 
 ## Quality Bar
@@ -130,4 +144,4 @@ Ask only when:
 - Do not turn a bugfix into a refactor
 - Do not change behavior outside the confirmed bug scope
 - If not reproduced, state confidence explicitly — never present speculative analysis as fact
-- Residual risks and follow-ups must be explicitly listed, not omitted
+- Report material residual risks and follow-ups without adding empty report sections
