@@ -212,15 +212,15 @@ test("learning-workflow resolves the coordinator and focused helpers", () => {
 
 test("repeatable --skill flags are parsed", () => {
   assert.deepStrictEqual(
-    getCliSelectedSkills(["--skill", "refactor", "--skill", "frontend-design-fundamentals"]),
-    ["refactor", "frontend-design-fundamentals"]
+    getCliSelectedSkills(["--skill", "refactor", "--skill", "api-design"]),
+    ["refactor", "api-design"]
   );
 });
 
 test("repeatable --bundle flags are parsed", () => {
   assert.deepStrictEqual(
-    getCliSelectedBundles(["--bundle", "frontend", "--bundle", "backend", "--bundle", "frontend"]),
-    ["frontend", "backend"]
+    getCliSelectedBundles(["--bundle", "core", "--bundle", "backend", "--bundle", "core"]),
+    ["core", "backend"]
   );
 });
 
@@ -242,10 +242,10 @@ test("bundle skills are expanded and deduplicated", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
-    extraBundles: ["frontend"],
+    extraBundles: ["backend"],
   });
-  assert.ok(skillIds.includes("frontend-design-fundamentals"));
-  assert.ok(skillIds.includes("react-best-practices"));
+  assert.ok(skillIds.includes("api-design"));
+  assert.ok(skillIds.includes("swagger-docs"));
   assert.strictEqual(new Set(skillIds).size, skillIds.length);
 });
 
@@ -945,6 +945,55 @@ test("workflow-eval installs Claude review agents", () => {
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(fs.existsSync(path.join(result.workspace, ".claude/agents/review-pr.md")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("design kit installs unfilled context seeds under docs", () => {
+  const result = runCli(["--kit", "design", "--tool", "claude"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const productPath = path.join(result.workspace, "docs/PRODUCT.md");
+    const designPath = path.join(result.workspace, "docs/DESIGN.md");
+    assert.ok(fs.existsSync(productPath));
+    assert.ok(fs.existsSync(designPath));
+
+    const product = fs.readFileSync(productPath, "utf8");
+    const design = fs.readFileSync(designPath, "utf8");
+    assert.ok(product.includes("Unfilled seed"));
+    assert.ok(design.includes("Unfilled seed"));
+    // The engine reads this marker to require colors and typography only.
+    assert.ok(design.includes("<!-- SEED:"));
+    // A parsed value here would be read as the platform itself.
+    assert.ok(/## Platform\n\n## Users/.test(product));
+
+    // The engine is a per-machine prerequisite the installer never installs.
+    assert.ok(result.stdout.includes("npx impeccable install"));
+
+    // Seeds must not land where they would outrank docs/.
+    assert.ok(!fs.existsSync(path.join(result.workspace, "PRODUCT.md")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".agents/context/PRODUCT.md")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("design kit preserves a filled product record across reinstall", () => {
+  const result = runCli(["--kit", "design", "--tool", "claude"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const productPath = path.join(result.workspace, "docs/PRODUCT.md");
+    const filled = "# Product\n\n## Platform\n\nweb\n\n## Users\n\nLocally preserved product record.\n";
+    fs.writeFileSync(productPath, filled);
+
+    const reinstall = spawnSync(
+      process.execPath,
+      [path.join(SOURCE_ROOT, "cli.js"), "--kit", "design", "--tool", "claude"],
+      { cwd: result.workspace, env: { ...process.env, HOME: result.home }, encoding: "utf8" }
+    );
+    assert.strictEqual(reinstall.status, 0, reinstall.stderr || reinstall.stdout);
+    assert.strictEqual(fs.readFileSync(productPath, "utf8"), filled);
   } finally {
     result.cleanup();
   }

@@ -30,7 +30,7 @@ Work memory preserves execution state:
 - Active plans describe resumable work state but never override intent authority.
 - Completed plans preserve useful execution history but never become product authority by themselves.
 
-Evaluation and learning standards govern only their explicitly selected optional capabilities.
+Evaluation, learning, and design standards govern only their explicitly selected optional capabilities.
 
 Apply these conflict rules:
 
@@ -38,10 +38,12 @@ Apply these conflict rules:
 - If durable product or decision docs become stale because of an accepted change, update durable knowledge only when the new behavior should outlive the current task.
 - If code, tests, schemas, configuration, or runtime evidence disagree, investigate the current-state inconsistency.
 - If multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and ask the smallest necessary human question.
+- If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/product/` or `docs/decisions/`, treat the durable location as authority and correct the derived file.
 - Do not turn user requests into persisted product documentation automatically.
 
 Newly accepted durable knowledge belongs in the following locations:
 
+| Knowledge | Location |
 | --- | --- |
 | Product and domain rules | `docs/product/` |
 | Architecture and compatibility decisions | `docs/decisions/` |
@@ -50,12 +52,21 @@ Newly accepted durable knowledge belongs in the following locations:
 | Recurring technical patterns | `docs/patterns/` |
 | Verified operating procedures | `docs/runbooks/` |
 
-Evaluation and learning artifacts are optional capability-owned namespaces:
+Evaluation, learning, and design artifacts are optional capability-owned namespaces:
 
 - `docs/evaluation/` contains workflow evaluation standards, observations, traces, and reports.
 - `docs/learning/` contains learning standards and durable learning state.
+- `docs/PRODUCT.md` and `docs/DESIGN.md` contain the design capability's product brief and visual system record.
 
-These namespaces are independent of repository product authority and must not be silently merged into it.
+The evaluation and learning namespaces are independent of repository product authority and must not be silently merged into it.
+
+The design namespace is subordinate rather than independent:
+
+- `docs/PRODUCT.md` is a derived summary written in an external capability's fixed schema and is never durable product authority.
+- `docs/DESIGN.md` is authority for the accepted visual system and remains constrained by `docs/decisions/`.
+- Both files keep these exact names directly under `docs/` because an external capability resolves them by path, so they must not be renamed, nested, or moved.
+- Do not create a repository-root `PRODUCT.md` or `DESIGN.md`, or the same names under `.agents/context/`.
+  Either location silently takes precedence over `docs/` and strands the reviewed files.
 
 ## Work shapes
 

@@ -13,6 +13,9 @@ Read only the locations relevant to the requested outcome.
 - `other/` stores preserved historical workflow documents that are not part of the active protocol.
 - `evaluation/` stores trace-first workflow evaluation standards, observations, session traces, and reports when the evaluation capability is installed.
 - `learning/` stores the learning constitution, standard, project context, schedule, cases, and sessions when the learning capability is installed.
+- `PRODUCT.md` stores a derived one-page product brief in the fixed schema read by the design capability when that capability is installed.
+- `DESIGN.md` stores the accepted visual system record when the design capability is installed.
 
 New repository knowledge uses the locations above.
+`PRODUCT.md` and `DESIGN.md` keep these exact names at this exact level because an external capability resolves them by path.
 Resolve conflicts using the precedence and ambiguity rules in `WORKFLOW.md`.

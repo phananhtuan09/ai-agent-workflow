@@ -18,13 +18,6 @@
       "refactor",
       "fix-bug"
     ],
-    "frontend": [
-      "frontend-design-fundamentals",
-      "frontend-design-responsive",
-      "frontend-design-theme-factory",
-      "ux-feedback-patterns",
-      "react-best-practices"
-    ],
     "backend": [
       "api-design",
       "auth-patterns",
@@ -47,6 +40,7 @@
   "kits": {
     "coding-standard": [],
     "workflow-eval": ["evaluation"],
-    "learning-workflow": ["learning"]
+    "learning-workflow": ["learning"],
+    "design": []
   }
 }

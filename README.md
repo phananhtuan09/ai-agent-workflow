@@ -54,7 +54,6 @@ The default `coding-standard` kit installs the repository protocol and no skills
 
 ```bash
 npx ai-workflow-init --tool codex --skill refactor --skill quality-code-check
-npx ai-workflow-init --tool codex --bundle frontend
 npx ai-workflow-init --tool claude --bundle backend
 ```
 

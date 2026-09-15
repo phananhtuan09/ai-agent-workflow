@@ -51,6 +51,15 @@ The workflow-eval kit composes on top of the core protocol and installs:
   - docs/evaluation/observations/, reports/, and session-traces/
   - workflow-evaluation and record-workflow-friction skills
 
+The design kit composes on top of the core protocol and installs:
+  - docs/PRODUCT.md and docs/DESIGN.md as unfilled seeds
+  - no skills of its own
+
+It seeds context for an external design engine that is installed once per machine
+with: npx impeccable install --scope=global --no-hooks
+Seeding these two files keeps that engine from creating a competing PRODUCT.md at
+the repository root, which would silently outrank docs/.
+
 The learning-workflow kit composes on top of the core protocol and installs:
   - docs/learning/CONSTITUTION.md and docs/learning/STANDARD.md
   - docs/learning/ project and durable case state
@@ -64,9 +73,10 @@ Examples:
   npx ai-workflow-init --kit coding-standard --tool codex
   npx ai-workflow-init --kit learning-workflow --tool codex
   npx ai-workflow-init --kit workflow-eval --tool codex
+  npx ai-workflow-init --kit design --tool claude
   npx ai-workflow-init --tool pi
   npx ai-workflow-init --tool opencode
-  npx ai-workflow-init --tool codex --bundle frontend
+  npx ai-workflow-init --tool codex --bundle backend
   npx ai-workflow-init update
   npx ai-workflow-init update --apply
 `);
