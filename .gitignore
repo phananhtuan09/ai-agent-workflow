@@ -33,3 +33,7 @@ __pycache__/
 .vscode/
 .idea/
 *.swp
+
+# Extracted session traces (normalized transcripts, evidence only)
+docs/evaluation/session-traces/*
+!docs/evaluation/session-traces/README.md
