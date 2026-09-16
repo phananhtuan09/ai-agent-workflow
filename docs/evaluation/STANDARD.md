@@ -437,7 +437,6 @@ Observation do skill `record-workflow-friction` tao ra chi co evidence status `a
 Uu tien scan:
 
 - `docs/evaluation/observations/*.md`
-- `docs/evaluation/observations/*.md`
 
 Observation co the thuoc:
 

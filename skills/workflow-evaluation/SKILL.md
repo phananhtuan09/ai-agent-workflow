@@ -19,7 +19,6 @@ Read when relevant:
 - `docs/learning/CONSTITUTION.md` when evaluating a learning workflow
 - normalized session traces
 - observations in `docs/evaluation/observations/`
-- observations in `docs/evaluation/`
 - the workflow artifact under review, but only after the blind behavioral pass for trace-first evaluations
 - existing reports in `docs/evaluation/reports/`
 

@@ -1026,6 +1026,9 @@ def main():
             if runtime is None:
                 raise ValueError("--runtime is required when using --latest.")
             input_path = find_latest_transcript(runtime, args.project)
+            if input_path is None:
+                scope = f" for project {args.project}" if args.project else ""
+                raise FileNotFoundError(f"No {runtime} transcript found{scope}.")
 
         if input_path is None:
             raise ValueError("Provide --input or use --latest.")
@@ -1043,7 +1046,7 @@ def main():
         artifact["session"]["id"] = input_path.stem
         artifact["extraction_notes"].append("Session id was inferred from the transcript file name.")
 
-    default_output = Path.cwd() / "docs" / "ai" / "session-traces" / runtime / sanitize_file_name(artifact["session"]["id"])
+    default_output = Path.cwd() / "docs" / "evaluation" / "session-traces" / runtime / sanitize_file_name(artifact["session"]["id"])
     output_dir = Path(os.path.expanduser(args.output_dir)).resolve() if args.output_dir else default_output
 
     write_artifact_set(artifact, output_dir)
