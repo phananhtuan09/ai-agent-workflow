@@ -76,7 +76,7 @@ Examples:
   npx ai-workflow-init --kit design --tool claude
   npx ai-workflow-init --tool pi
   npx ai-workflow-init --tool opencode
-  npx ai-workflow-init --tool codex --bundle backend
+  npx ai-workflow-init --tool codex --skill property-based-testing
   npx ai-workflow-init update
   npx ai-workflow-init update --apply
 `);

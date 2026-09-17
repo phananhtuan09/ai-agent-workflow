@@ -180,10 +180,10 @@ test("extra skills are deduplicated and appended", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
-    extraSkills: ["refactor", "refactor", "quality-code-check"],
+    extraSkills: ["refactor", "refactor", "property-based-testing"],
   });
   assert.strictEqual(skillIds.filter((id) => id === "refactor").length, 1);
-  assert.strictEqual(skillIds[skillIds.length - 1], "quality-code-check");
+  assert.strictEqual(skillIds[skillIds.length - 1], "property-based-testing");
 });
 
 test("workflow-eval resolves both evaluation skills", () => {
@@ -212,15 +212,15 @@ test("learning-workflow resolves the coordinator and focused helpers", () => {
 
 test("repeatable --skill flags are parsed", () => {
   assert.deepStrictEqual(
-    getCliSelectedSkills(["--skill", "refactor", "--skill", "api-design"]),
-    ["refactor", "api-design"]
+    getCliSelectedSkills(["--skill", "refactor", "--skill", "property-based-testing"]),
+    ["refactor", "property-based-testing"]
   );
 });
 
 test("repeatable --bundle flags are parsed", () => {
   assert.deepStrictEqual(
-    getCliSelectedBundles(["--bundle", "core", "--bundle", "backend", "--bundle", "core"]),
-    ["core", "backend"]
+    getCliSelectedBundles(["--bundle", "core", "--bundle", "testing", "--bundle", "core"]),
+    ["core", "testing"]
   );
 });
 
@@ -238,15 +238,13 @@ test("CLI help describes direct protocol and optional kits", () => {
   }
 });
 
-test("bundle skills are expanded and deduplicated", () => {
+test("testing bundle registers property-based-testing", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
-    extraBundles: ["backend"],
+    extraBundles: ["testing"],
   });
-  assert.ok(skillIds.includes("api-design"));
-  assert.ok(skillIds.includes("swagger-docs"));
-  assert.strictEqual(new Set(skillIds).size, skillIds.length);
+  assert.deepStrictEqual(skillIds, ["property-based-testing"]);
 });
 
 test("canonical skills have required entrypoints", () => {
@@ -380,6 +378,30 @@ test("Codex default installs direct instructions without optional skills", () =>
     assert.ok(!result.stdout.includes("✓ .agents/skills"));
     assert.ok(!fs.existsSync(path.join(result.workspace, ".agents/roles")));
     assert.ok(!fs.existsSync(path.join(result.workspace, ".codex/agents")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("Codex installs the testing bundle with property-based-testing support files", () => {
+  const result = runCli([
+    "--kit",
+    "coding-standard",
+    "--tool",
+    "codex",
+    "--bundle",
+    "testing",
+  ]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const installedRoot = path.join(
+      result.workspace,
+      ".agents/skills/property-based-testing"
+    );
+    assert.ok(fs.existsSync(path.join(installedRoot, "SKILL.md")));
+    assert.ok(fs.existsSync(path.join(installedRoot, "references/generating.md")));
+    assert.ok(fs.existsSync(path.join(installedRoot, "assets/trail-of-bits-mark.svg")));
+    assert.ok(fs.existsSync(path.join(installedRoot, "LICENSE")));
   } finally {
     result.cleanup();
   }

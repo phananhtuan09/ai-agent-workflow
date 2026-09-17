@@ -61,7 +61,7 @@ Add only capabilities that materially help:
 
 ```bash
 npx ai-workflow-init@latest --kit coding-standard --tool codex --skill refactor --skill quality-code-check
-npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle backend
+npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle testing
 ```
 
 Supported tools: Codex, Claude Code, Google Antigravity, Pi, and OpenCode.

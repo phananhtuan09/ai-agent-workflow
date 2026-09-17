@@ -20,13 +20,8 @@
       "refactor",
       "fix-bug"
     ],
-    "backend": [
-      "api-design",
-      "auth-patterns",
-      "db-schema",
-      "be-security-check",
-      "be-performance-check",
-      "swagger-docs"
+    "testing": [
+      "property-based-testing"
     ],
     "evaluation": [
       "workflow-evaluation",
