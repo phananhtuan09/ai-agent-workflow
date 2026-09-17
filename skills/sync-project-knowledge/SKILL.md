@@ -122,5 +122,8 @@ Run only checks relevant to changed documentation or the procedure being verifie
 ## Handoff
 
 Report the documents changed and why, actual verification performed, material coverage limits, and unresolved questions or code/document discrepancies.
+When this run changes project instructions such as `AGENTS.md` or `.claude/CLAUDE.md`, briefly explain that locally customized managed files are preserved as `SKIP LOCAL` by the workflow updater and require manual comparison to receive future upstream protocol changes.
+Identify the affected files and clarify that other unchanged managed files can still update normally.
+Do not change installer ownership or hashes to bypass this protection.
 Distinguish completed updates from deferred knowledge so partial onboarding is not presented as complete.
 If no update is justified, say so without creating an artifact to mark the run.

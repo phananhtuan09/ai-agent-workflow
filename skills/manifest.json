@@ -10,7 +10,8 @@
     "core": [
       "brainstorm-partner",
       "review-pr",
-      "prompt-leverage"
+      "prompt-leverage",
+      "sync-project-knowledge"
     ],
     "common-review": [
       "quality-code-check",
