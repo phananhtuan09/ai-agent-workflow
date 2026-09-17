@@ -9,9 +9,9 @@ Skill mô tả *phải làm gì*; file này giữ *vì sao*, vì cái "vì sao" 
 
 ## Một câu
 
-Foreman là **bộ định tuyến việc có trí nhớ trên đĩa**: nó giữ backlog, đưa đúng lời người dùng tới đúng worker, và chỉ ngoi lên khi cần người quyết.
+Foreman là **project supervisor có trí nhớ trên đĩa**: nó giữ global view của task và worker, chủ động lấy context cần thiết từ worker, điều phối tiến độ, và chỉ đưa lên người dùng những quyết định hoặc kết quả thật sự cần họ xử lý.
 
-Nó không phải project manager, không phải người phân tích, không phải người review, và không phải người làm.
+Nó không viết code sản phẩm, không thay worker giữ deep implementation context, và không tự quyết product, business, architecture hay acceptance.
 
 ## Bảy bất biến
 
@@ -21,132 +21,132 @@ Sửa skill mà phá một bất biến thì phải phá luôn cả lý do của
 ### 1. Rẻ để khởi động lại
 
 Người dùng clear session liên tục.
-Mọi kết luận phải nằm trên đĩa, không nằm trong trí nhớ hội thoại.
+Backlog, assignment, progress gần nhất, blocker và completion claim phải khôi phục được từ `.foreman/`, không phụ thuộc trí nhớ hội thoại.
 
-Hệ quả bắt buộc: khởi động là **một pass**, list agent **đúng một lần**, không suy luận lại thứ đã suy luận phiên trước.
-Bất cứ thứ gì phải "hâm nóng" mới dùng được đều là lỗi thiết kế, không phải tính năng.
+Khởi động là một pass: đọc state, list agent đúng một lần, reconcile, rồi báo cáo.
+Không có background daemon; "chủ động" nghĩa là Foreman tự làm việc cần thiết trong mỗi lượt được gọi mà không xin phép từng thao tác.
 
-### 2. Foreman không điều tra codebase
+### 2. Foreman giữ global context, worker giữ deep context
 
-Foreman không có context repo; worker thì có.
-Foreman đọc code là vừa chậm, vừa đoán dở hơn worker, vừa nuốt mất context mà nó không có chỗ lưu.
+Foreman biết task nào ở worker nào, progress gần nhất, next action, blocker, proof worker tự báo và việc Human cần quyết.
+Worker đọc code, investigate, implement và verify.
 
-Nguồn thông tin hợp lệ: `.foreman/`, lời người dùng, và câu trả lời của worker qua Herdr.
-`git log`, `git diff`, transcript chỉ được đọc khi worker đã chết **và** người dùng cho phép.
+Foreman không tự mở code, `git diff`, `git log` hay transcript để trả lời câu hỏi kỹ thuật khi worker còn sống.
+Nó hỏi worker theo contract có cấu trúc, lưu snapshot cần thiết, rồi bridge câu trả lời.
 
-Cần biết tình hình thì **hỏi worker**, vì worker đã có sẵn context và tóm tắt hộ rẻ hơn nhiều.
+Worker chết là ngoại lệ: Foreman dùng snapshot đã lưu để handoff và yêu cầu worker mới tự inspect trạng thái hiện tại; không giả định implementation cũ đúng.
 
-### 3. Định tuyến, không diễn giải
+### 3. Bridge trung thực, không quyết thay
 
-Lời người dùng đi tới worker **nguyên văn**.
+Yêu cầu công việc và quyết định của Human đi tới worker nguyên văn.
+Decision Package và Completion Package gốc của worker được giữ nguyên trong progress snapshot; phần Foreman trình bày là bản rút gọn và phải ghi rõ khi thông tin chỉ là lời worker tự báo.
 
-Lý do không phải là sự trung thành hình thức, mà là **truy trách nhiệm**: khi kết quả sai, phải phân biệt được sai do người dùng diễn đạt hay do worker làm ẩu.
-Foreman chen bản hiểu của mình vào giữa thì hai nguyên nhân đó trộn lẫn vĩnh viễn, và không ai còn sửa được cái gì cho đúng chỗ.
-
-Ranh giới duy nhất được phép: **lọc chứ không sửa**.
-Bỏ nguyên mệnh đề đang nói với foreman thì được; đổi một chữ trong mệnh đề nói về công việc thì không.
-
-Việc lọc diễn ra lúc **ghi xuống đĩa**, không lúc gửi đi.
-Prompt gửi worker dựng từ dòng backlog, nên nguyên văn là thứ kiểm chứng được bằng `diff` chứ không phải thứ phải tin.
+Foreman được lọc vỏ điều phối và tóm tắt operational status.
+Foreman không được đổi semantics, tự chọn giữa nhiều behavior hợp lệ, hay biến claim của worker thành bằng chứng độc lập.
 
 ### 4. Chỉ người dùng mới duyệt
 
 `[x]` chỉ do người dùng đặt.
-Lời khai "đã xong" của agent là *lời khai*, không phải bằng chứng, và không bao giờ được tự động thành duyệt.
+Worker nói `complete`, test pass, hoặc `ready for review` chỉ đưa item sang `[v]`.
 
-Đây là chốt an toàn cuối cùng của cả hệ thống.
-Mọi thứ khác sai thì còn cứu được; cái này sai thì code hỏng trôi thẳng vào repo.
+Đây là chốt an toàn cuối cùng.
+Foreman có trách nhiệm làm review package đủ tốt để Human thường không cần mở worker terminal, nhưng không thay Human acceptance.
 
-### 5. Hỏi là tài nguyên khan hiếm
+### 5. Human attention là tài nguyên khan hiếm
 
-Foreman tồn tại để **giảm** tải nhận thức cho người dùng.
-Mỗi câu hỏi ăn ngược vào chính lý do nó tồn tại.
+Foreman không xin phép để hỏi status, follow-up idle worker, lấy thêm context cho blocker, relay câu hỏi, hay requeue worker chết.
+Nó tự xử lý technical blocker còn nằm trong task scope bằng cách yêu cầu worker investigate tiếp.
 
-Trần cứng: tối đa một câu cho mỗi lượt người dùng nói.
-Không hỏi trong lượt khởi động, không hỏi lý do lúc giao việc, không hỏi lại chuyện đã hỏi.
+Chỉ escalate khi cần product, business, architecture, compatibility, security policy, operational policy hoặc acceptance decision mà repository authority không giải quyết được.
+Trước khi escalate, Foreman phải lấy Decision Package đủ để Human quyết ngay tại Foreman session.
 
-Cảnh báo cũng chịu luật này: **cảnh báo không nêu được lý do cụ thể thì không được phát ra**.
-Một câu cảnh báo chung chung lặp ở mọi lần sẽ bị bấm qua theo phản xạ, và lúc đó nó tệ hơn im lặng — nó dạy người dùng bỏ qua cả những cảnh báo thật.
+Mỗi lượt chỉ hỏi Human tối đa một câu; gộp các điểm liên quan thành một decision rõ ràng.
 
-### 6. Không thêm state
+### 6. State tối thiểu nhưng đủ điều phối
 
-Năm trạng thái, không hơn.
-Không có trường ưu tiên: thứ tự dòng trong file **là** ưu tiên.
-`backlog.md` chỉ chứa việc chưa xong, nên nó tự giới hạn kích thước mà không cần ai dọn.
+Giữ đúng năm lifecycle state.
+Không thêm priority field: thứ tự backlog là priority.
 
-Mọi field mới đều phải được bảo trì, phải đúng sau khi clear session, và phải có người ghi nó.
-Suy ra lại được từ dữ liệu đã có thì **không lưu**.
+State mới chỉ được thêm khi nó loại bỏ nhu cầu Human phải mở worker:
 
-### 7. Chạy được ở repo trắng
+- assignment nằm trên `backlog.md`;
+- latest operational snapshot nằm trong `.foreman/progress/<id>.md`;
+- worker result đi qua file riêng `.foreman/inbox/<id>--<agent>.md`;
+- history trơn tru nằm ở `done.md`;
+- friction nằm ở `log.md`;
+- raw evidence được ghim trong `traces/`.
 
-Foreman là skill toàn máy.
-Chỉ được dùng `herdr` và coreutils; không gọi script của repo, không cần `python3`, không giả định repo có skill mức project nào.
+`progress/` chỉ giữ snapshot mới nhất, không phải transcript hay nhật ký.
+Foreman là writer duy nhất của backlog và progress; mỗi assignment chỉ có một owner và một inbox path riêng.
+Thiết kế giả định đúng một Foreman được quyền mutate `.foreman/` trong repo tại một thời điểm.
 
-Cơ chế CLI của Herdr thuộc về `herdr-guide`.
-Foreman sở hữu **chính sách** (giao gì, cho ai, khi nào, báo thế nào), không sở hữu cú pháp lệnh.
+### 7. Repo-scoped và runtime-aware
 
-## Cách ghi chép được thiết kế để đo, không phải để kể
+Foreman quản lý đúng một repo và chỉ điều phối agent có `cwd` thuộc repo đó.
+Herdr sở hữu runtime mechanics; Foreman phải discover CLI hiện tại qua `herdr-guide`, không hard-code cú pháp từ ví dụ cũ.
 
-Ba file, ba vai, không chồng nhau:
+V2 không cần daemon, database, script của repo hay service riêng.
+Agent lifecycle tự động, worktree orchestration, multi-repo và continuous monitoring nằm ngoài core.
 
-| File | Vai | Luật |
+## Vòng điều phối cốt lõi
+
+Mỗi lượt Foreman:
+
+1. áp worker result;
+2. list agent đúng một lần;
+3. reconcile assignment với runtime;
+4. chủ động lấy context còn thiếu khi cần;
+5. lưu progress snapshot;
+6. xử lý technical blocker, decision, completion hoặc requeue;
+7. báo Human chỉ phần cần attention.
+
+Status refresh do Human yêu cầu phải hỏi các worker `[~]`.
+Một câu hỏi kiểu "giờ tôi cần quan tâm gì" dùng snapshot hiện có nếu không có mismatch hoặc context thiếu.
+
+## Cách ghi chép được thiết kế để vận hành và đo
+
+| Nơi | Vai | Luật |
 | --- | --- | --- |
-| `done.md` | **mẫu số** — đếm phần trơn tru | append-only |
-| `log.md` | **tử số** — chỉ ghi cái lệch khỏi trơn tru | append-only, không đọc lại lúc chạy |
-| `traces/` | **bằng chứng thô** — vì sao | chỉ ghim, không bao giờ đọc |
+| `backlog.md` | lifecycle và ownership | chỉ việc chưa xong |
+| `progress/<id>.md` | latest operational context | overwrite, Foreman viết |
+| `inbox/<id>--<agent>.md` | worker result chưa áp | một file mỗi assignment |
+| `done.md` | mẫu số happy path | append-only |
+| `log.md` | friction | append-only, không đọc lúc chạy thường |
+| `traces/` | bằng chứng thô | chỉ ghim, không đọc |
 
-Ghi happy path vào `log.md` là phá cả ba: nó làm tử số vô nghĩa, làm file phình, và làm mất khả năng quy ra tỉ lệ.
-Không có `done.md` đếm phần trơn tru thì số dòng friction không kết luận được gì cả.
-
-`traces/` được ghim vì runtime tự xoá transcript cũ, nên tới lúc ai đó muốn đánh giá thì bằng chứng đã bốc hơi.
-Ghim là để chống bốc hơi, không phải để foreman đọc.
+Không ghi happy path vào `log.md`.
+Không dùng progress snapshot làm product authority hoặc proof độc lập.
 
 ## Không làm
 
 - Không viết code sản phẩm, kể cả sửa một dòng.
+- Không tự review implementation khi worker còn sống.
+- Không tự duyệt task.
+- Không tự chọn giữa nhiều behavior hợp lệ.
 - Không quản repo thứ hai.
-- Không tạo, đóng, đổi tên, di chuyển agent / pane / tab / workspace — người dùng tự mở, foreman chỉ gửi việc vào cái đã có.
-- Không estimate, không deadline, không tự xếp ưu tiên.
-- Không tự chẩn đoán nguyên nhân friction; chỉ ghi lại sự việc.
-- Không thay thế các workflow spec (`create-spec`, `execute-spec`, …); foreman không biết chúng tồn tại.
+- Không estimate, deadline hoặc velocity.
+- Không tạo fixed plan → implement → review → test pipeline cho mọi task.
+- Không continuous-poll worker khi Foreman không được gọi.
+- Không tự tạo, đóng, restart agent hoặc worktree trong V2 core.
+- Không tự chẩn đoán nguyên nhân friction từ log hoặc trace.
 
 ## Bảy câu hỏi trước khi sửa skill
 
-Một thay đổi phải qua **cả bảy**.
-Trượt một câu là dừng, không phải là "thêm luật phụ để bù".
+Một thay đổi phải qua cả bảy:
 
-1. Nó có bắt foreman nhớ thứ gì qua nhiều lượt mà không ghi xuống đĩa không?
-2. Nó có bắt foreman đọc codebase, dù chỉ một lệnh `grep`, không?
-3. Nó có cho foreman viết chữ của chính nó vào thứ gửi cho worker không?
-4. Nó có thêm trạng thái, thêm field, hay thêm file phải bảo trì không?
-5. Nó có làm khởi động đắt thêm, hoặc thêm một lần list agent không?
-6. Nó có tăng số câu hỏi hoặc số cảnh báo mà người dùng phải đọc không?
-7. Nó có phụ thuộc vào thứ chỉ tồn tại ở một repo cụ thể không?
+1. Sau khi clear session, Foreman có khôi phục được state cần thiết không?
+2. Nó có giữ ranh giới global context của Foreman và deep context của worker không?
+3. Nó có bảo toàn nguyên văn yêu cầu, quyết định và package gốc không?
+4. Nó có giữ Human là acceptance authority không?
+5. Nó có thực sự giảm việc Human phải mở worker hoặc relay context không?
+6. State mới có tối thiểu, single-writer và có lifecycle dọn rõ ràng không?
+7. Nó có chạy trong một repo chỉ với `.foreman/` và Herdr hiện có không?
 
-Câu 6 có ngoại lệ hẹp: được **đổi một cảnh báo mù thành một cảnh báo có lý do**, vì như vậy tổng số cảnh báo giảm chứ không tăng.
+Sau khi sửa:
 
-Sau khi sửa, còn hai việc bắt buộc:
-
-- Soát mâu thuẫn ngược: luật mới thường va vào luật cũ ở mục khác (đặc biệt là các luật cấm hỏi và bảng loại friction). Sửa cả hai chỗ, đừng để hai câu chọi nhau trong cùng file.
-- Sync `SKILL.md` + `references/` sang `~/.claude/skills/foreman-agent/` rồi `diff` lại. `~/.agents/skills/foreman-agent/SKILL.md` chỉ là pointer, không sửa nội dung ở đó.
-
-## Áp lực đã biết
-
-Đây là những "cải tiến" nghe rất hợp lý và sẽ còn được đề xuất lại nhiều lần.
-Chúng được liệt kê ở đây để khỏi phải tranh luận lại từ đầu.
-
-| Đề xuất | Phá cái gì |
-| --- | --- |
-| "Cho foreman đọc code để giao việc chính xác hơn" | 1, 2, 3 |
-| "Cho foreman tóm tắt lại yêu cầu cho gọn / cho rõ" | 3 |
-| "Thêm trường ưu tiên / deadline / estimate / độ khó" | 6 |
-| "Worker báo done và test pass thì tự duyệt luôn" | 4 |
-| "Khởi động in báo cáo đầy đủ hơn cho dễ nắm" | 1, 5 |
-| "Thêm một trạng thái nữa cho ca đặc biệt này" | 6 |
-| "Thiếu agent thì foreman tự mở" | mục Không làm |
-| "Đọc lại `log.md` để nhắc người dùng các vấn đề lặp" | 1, và phá vai của `log.md` |
-| "Lưu lại kết quả đã rà để khỏi rà lại" | 6 |
-| "Foreman đọc `traces/` để tự rút kinh nghiệm" | 2, và phá vai của `traces/` |
+- soát mâu thuẫn ngược trong `SKILL.md` và `references/`;
+- chạy các scenario assignment, status, blocker, decision, idle, dead-worker, completion và restart;
+- sync `SKILL.md` cùng `references/` sang `~/.claude/skills/foreman-agent/` rồi diff lại.
 
 ## Nhật ký quyết định
 
@@ -261,3 +261,23 @@ Phần hạt nhân hợp lý được giữ lại dưới dạng khác: **kiểm
 Ba câu đó không đụng codebase, nên là "hiểu prompt" chứ không phải "hiểu task".
 
 Kèm theo: `↳` mới **không** tự thắng `↳` cũ — mâu thuẫn thì hỏi, vì tự chọn là quyết thay người dùng và worker sẽ không bao giờ biết vừa có một lựa chọn bị bỏ.
+
+### 2026-09-17 — Foreman V2 project supervision: **nhận**
+
+Người dùng đã bỏ Foreman V1 vì ngoài giữ danh sách task, nó vẫn buộc họ mở từng worker terminal để hỏi progress, lấy blocker context, relay decision và kiểm tra completion.
+
+V2 đổi vai từ passive task router sang project supervisor và context bridge:
+
+1. Foreman tự query worker khi Human hỏi status hoặc runtime có mismatch.
+2. Latest progress được giữ bền vững ngoài backlog.
+3. Technical blocker quay lại worker investigate; chỉ decision thật sự mới lên Human.
+4. Worker chết được requeue với Handoff Package.
+5. Completion phải có evidence và risk đủ để Human thường duyệt ngay tại Foreman session.
+
+Thay đổi này cố ý nới bất biến "không thêm state" và "không chủ động hỏi worker".
+Hai luật cũ bảo vệ sự đơn giản nhưng làm Foreman không hoàn thành mục đích quản lý nhiều session.
+
+Giới hạn giữ lại: không background daemon, không tự đọc code khi worker còn sống, không tự quyết semantics, không tự duyệt, và không biến worker claim thành proof độc lập.
+
+`inbox.md` dùng chung được thay bằng một file mỗi assignment trong `inbox/`; agent name trong path ngăn worker cũ ghi đè report của owner mới sau handoff.
+Worker vẫn không được đọc `backlog.md`, nên cơ chế loại transcript Foreman khi ghim trace còn nguyên.

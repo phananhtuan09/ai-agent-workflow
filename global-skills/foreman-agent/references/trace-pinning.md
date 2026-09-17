@@ -29,7 +29,7 @@ Dấu cách đó phân biệt `T-1` với `T-10`.
 
 Điều kiện `grep -q "backlog\.md"` loại **transcript của chính bạn** ra.
 Bạn in lại nguyên prompt đã gửi cho người dùng xem, nên chuỗi `TASK: <id>` cũng nằm trong phiên của bạn.
-Worker bị cấm đụng `.foreman/` ngoài `inbox.md`, còn bạn luôn đọc `backlog.md`, nên đó là dấu hiệu phân biệt chắc chắn.
+Worker bị cấm đọc `backlog.md` và chỉ được ghi đúng `.foreman/inbox/<id>--<agent>.md`, còn Foreman luôn đọc `backlog.md`, nên đó là dấu hiệu phân biệt chắc chắn.
 
 Copy **hết** các transcript khớp, không chọn cái mới nhất.
 Item đi qua nhiều agent thì mỗi agent một file, và cả chuỗi đó mới là dấu vết của lần rework.
