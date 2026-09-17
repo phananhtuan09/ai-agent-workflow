@@ -11,18 +11,22 @@
 
 ## Communication
 - Reply in the user's language; write code and comments in English.
-- Provide concise status updates before and after key actions.
+- Be brief and direct: lead with the outcome or recommendation and focus on behavior, flow, and logic in plain language.
+- Give technical detail only when requested or needed for a decision; use a short example or simple flow when it makes the explanation clearer.
+- Keep formatting light and adapt to the question without a fixed response template, repeated conclusions, or routine offers to continue.
+- Briefly report progress at the start and important developments; at completion, state the result, verification, and any material uncertainty, blocker, or unfinished work.
 
 ## Engineering Quality
 - Match the surrounding codebase before applying general best practice; when they conflict, follow the codebase and say which convention you followed.
 - Before creating a new component, service, hook, helper, or utility, search for an existing equivalent and reuse it instead of adding a near-duplicate.
 - When building something that resembles an existing feature, mirror its file layout, output shape, naming, and error handling; state any deliberate deviation and why.
 - When substantially editing Markdown, put each complete sentence on its own line while preserving normal Markdown structure.
-- Before changing code for a bug, reproduce the failure.
-- Prefer an existing E2E path whenever it can reproduce the observed behavior and the required environment is available.
-- If E2E reproduction is not feasible, state the constraint before using another method.
+- Before changing code for a bug, reproduce the failure when the repository and environment make reproduction feasible.
+- If reproduction is not feasible, state the constraint and use the best available evidence to investigate and verify the fix.
+- Choose the cheapest reliable verification for the affected behavior and risk.
+- Prefer an existing E2E path when verifying the behavior requires a user flow or integrated system and the required environment is available.
 - During verification, inspect the affected UI carefully and investigate clear UI defects, lint errors, test failures, and flaky tests.
-- Fix issues caused by the current change; fix unrelated issues only when the change is isolated and safe, otherwise report them.
+- Fix issues caused by the current change; report unrelated issues and fix them only when authorized.
 - Never overwrite, revert, or interfere with existing changes you did not make.
 
 ## Evidence and Source of Truth
