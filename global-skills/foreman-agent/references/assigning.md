@@ -2,11 +2,12 @@
 
 File tham chiếu của `foreman-agent`.
 Đọc file này trước khi gửi bất cứ prompt nào cho worker agent.
-Luật phụ thuộc và luật ghi friction nằm trong `SKILL.md`, không lặp lại ở đây.
+File này sở hữu: dựng prompt, chọn agent, soát lời người dùng, rà phụ thuộc, và tự giao việc tiếp.
+Luật ghi friction nằm ở `bookkeeping.md`; luật lấy response nằm ở `worker-io.md`.
 
 ## Trình tự
 
-1. Chọn item, rà dependency và overlap với `[~]` theo `SKILL.md`.
+1. Chọn item, rà dependency và overlap với `[~]` theo `## Điều phối phụ thuộc` ở cuối file này.
 2. Tách nội dung khỏi địa chỉ, append nội dung mới vào backlog rồi lưu.
 3. Dùng agent list đã lấy trong supervision cycle; chỉ list nếu lượt hiện tại chưa có snapshot runtime.
 4. Chọn agent:
@@ -103,7 +104,7 @@ Dòng `↳` mới hơn **không** tự động thắng dòng cũ.
 Tự chọn cái mới là bạn đang quyết thay người dùng, và worker sẽ không bao giờ biết là vừa có một lựa chọn bị bỏ đi.
 
 Ba câu này là phần **chặn gửi**.
-Những thứ soát ra mà không chặn — sai chính tả, trùng item — thuộc `## Soát lời người dùng` ở `SKILL.md`: nêu một dòng rồi vẫn gửi bình thường.
+Những thứ soát ra mà không chặn — sai chính tả, trùng item — thuộc `## Soát lời người dùng` ở cuối file này: nêu một dòng rồi vẫn gửi bình thường.
 
 Ba câu này thay cho việc bạn tự đọc hiểu task.
 Bạn không có context repo còn worker thì có, nên hiểu task là việc của worker, và mẫu prompt đã mở sẵn cửa cho nó dừng lại báo `blocked` khi yêu cầu không đủ rõ.
@@ -112,8 +113,10 @@ Bạn không có context repo còn worker thì có, nên hiểu task là việc 
 
 Chép mô tả và mọi dòng `↳` chứa lời Human hoặc decision **nguyên văn**.
 Không đưa progress, friction hoặc lời Foreman suy diễn vào `YÊU CẦU`.
-Khối `Foreman ghi chú` chỉ chứa con trỏ đã có nguồn trên đĩa.
 Thay mọi id, agent name và report path trong mẫu bằng assignment thật.
+
+Mẫu này đã nén: `LUẬT` và `REPORT` giống hệt nhau ở mọi lần giao, nên chúng viết ở mức ngắn nhất còn đủ nghĩa.
+Không nở chúng ra thành câu đầy đủ hay thêm placeholder mô tả cho từng field; tên field đã đủ rõ với một coding agent.
 
 ```text
 TASK: T-14 · report file: .foreman/inbox/T-14--codex-1.md
@@ -122,65 +125,53 @@ YÊU CẦU (nguyên văn của Human, không diễn giải lại)
 > Thêm rate limit cho /orders
 > dùng redis, 100 req/phút theo user
 
-Foreman ghi chú (chỉ là con trỏ, không phải yêu cầu)
+Foreman ghi chú (con trỏ, không phải yêu cầu)
 - middleware hiện có: lib/http/limit.js
 
-TRÁCH NHIỆM
-Giữ deep implementation context của task này.
-Investigate, implement và chạy proof phù hợp với thay đổi.
-Tự giải quyết technical issue nằm trong task scope và không đổi intended behavior.
-Nếu có nhiều behavior hợp lệ hoặc thiếu product/business/architecture/security/compatibility authority, báo blocker cho Foreman; không hỏi Human trực tiếp.
-Khi Foreman hỏi, trả progress hoặc evidence có cấu trúc và ngắn gọn.
-
-KHÔNG LÀM
+LUẬT
+Giữ deep context của task: investigate, implement, chạy proof phù hợp với thay đổi.
+Tự xử lý technical issue nằm trong scope và không đổi intended behavior; sửa thứ hỏng do chính thay đổi của bạn vẫn trong scope.
+Nhiều behavior hợp lệ, hoặc thiếu product/business/architecture/security/compatibility authority → báo blocker cho Foreman, không hỏi Human trực tiếp.
+Yêu cầu mơ hồ thì investigate phần xác định được rồi báo blocker, không tự chọn semantics.
+Không mở rộng ngoài YÊU CẦU, không tự đổi lifecycle, không tự duyệt task.
 Không đọc hay sửa `.foreman/`, ngoài việc ghi đè đúng file `.foreman/inbox/T-14--codex-1.md`.
-Không mở rộng ngoài yêu cầu; sửa thứ hỏng do chính thay đổi của bạn vẫn nằm trong scope.
-Không tự đổi lifecycle hoặc tự duyệt task.
-Không tự ý commit hay push, trừ khi YÊU CẦU nói làm. Khi được phép, chỉ stage đúng file bạn sửa; không dùng `git add -A` hoặc `git add .`.
+Không commit hay push trừ khi YÊU CẦU nói làm; được phép thì chỉ stage đúng file bạn sửa, cấm `git add -A` và `git add .`.
 Không đẩy task sang agent Herdr khác; sub-agent nội bộ trong phiên được phép.
-Yêu cầu mơ hồ thì investigate phần có thể xác định, sau đó báo blocker thay vì tự chọn semantics.
+Foreman hỏi thì trả lời ngắn, có cấu trúc, kèm evidence.
 
-BÁO CÁO DURABLE
-Khi complete hoặc blocked, ghi đè toàn bộ `.foreman/inbox/T-14--codex-1.md` bằng đúng một package.
-
-Complete:
-TASK: T-14
-AGENT: @codex-1
-TYPE: done
-CHANGES: <đã thay đổi gì>
-OBSERVABLE RESULT: <behavior đạt được>
-VERIFICATION: <lệnh/scenario và kết quả; ghi rõ chưa chạy>
-AFFECTED FILES: <paths>
-PUBLIC CONTRACT IMPACT: <none or exact API/schema/behavior impact>
-KNOWN RISKS: <rủi ro còn lại hoặc none>
-COMPLETION STATE: complete
-
-Blocked:
-TASK: T-14
-AGENT: @codex-1
-TYPE: blocked
-BLOCKER: <không thể tiếp tục vì gì>
-INVESTIGATION: <đã kiểm tra gì>
-CAN RESOLVE WITHIN SCOPE: yes | no
-WHY HUMAN DECISION IS REQUIRED: <lý do hoặc none>
-OPTIONS: <các option nếu có>
-IMPACT: <impact từng option nếu có>
-EVIDENCE: <code/behavior liên quan>
-RECOMMENDATION: <nếu có>
-COMPLETION STATE: blocked
-
+REPORT
+Khi complete hoặc blocked, ghi đè toàn bộ file report trên bằng đúng một package, mở đầu bằng TASK / AGENT / TYPE:
+done    → CHANGES, OBSERVABLE RESULT, VERIFICATION (ghi rõ cái chưa chạy), AFFECTED FILES, PUBLIC CONTRACT IMPACT, KNOWN RISKS, COMPLETION STATE
+blocked → BLOCKER, INVESTIGATION, CAN RESOLVE WITHIN SCOPE, WHY HUMAN DECISION IS REQUIRED, OPTIONS, IMPACT, EVIDENCE, RECOMMENDATION, COMPLETION STATE
 Không append vào file dùng chung. Không ghi report thiếu TASK, AGENT hoặc TYPE.
 ```
 
 Prompt tự chứa; worker không cần đọc backlog hoặc progress.
-`YÊU CẦU` thắng nếu chọi với mặc định trong `KHÔNG LÀM`.
+`YÊU CẦU` thắng nếu chọi với mặc định trong `LUẬT`.
 Dòng `TASK: <id> ` mở đầu là bắt buộc để ghim transcript.
 
+### Foreman ghi chú
+
+Khối này chỉ chứa **con trỏ**: một dòng nói cho worker biết tự tìm chi tiết ở đâu.
+Tối đa ba dòng, mỗi dòng một câu.
+
+Con trỏ đúng là đường dẫn file, id của task liên quan, hoặc một decision đã chốt.
+Không phải con trỏ: chép lại findings, danh sách gap, hay bất cứ đoạn nào của một package mà chính worker đã tự viết ra.
+
+Người nhận vừa là tác giả của thông tin đó thì càng phải trỏ chứ không chép.
+Giao một task tiếp nối T-35 cho đúng agent đã làm T-35 thì viết:
+
+```text
+- tiếp nối T-35 bạn vừa làm; findings nằm trong Completion Package của chính bạn
+```
+
+Không có con trỏ thật thì bỏ hẳn khối, đừng để lại một khối rỗng hay một dòng chung chung.
+
 ## Operational requests
-Các request dưới đây không đổi requirement. Status, triage, clarification, question, decision và handoff không tăng `↻N` hay ghi `followup`; rejection áp đúng luật `rejected` trong `SKILL.md`.
+Các request dưới đây không đổi requirement. Status, triage, clarification, question, decision và handoff không tăng `↻N` hay ghi `followup`; rejection áp đúng luật `rejected` trong `bookkeeping.md`.
 
 Worker trả lời các request này **inline** trong phiên của nó, không ghi vào `.foreman/inbox/`.
-Foreman đọc response và xử lý ca chưa trả lời theo `## Lấy response của worker` trong `SKILL.md`.
+Foreman đọc response và xử lý ca chưa trả lời theo `worker-io.md`.
 
 ### Progress
 
@@ -269,3 +260,146 @@ Có migrate data cũ. Viết migration script kèm rollback.
 
 Requirement follow-up tăng `↻N` và ghi `followup`.
 Decision relay, status request, blocker triage, completion clarification, Human question và handoff không tăng `↻N`.
+
+## Soát lời người dùng
+
+Người dùng gõ nhanh vì đang bận nghĩ việc khác, nên lỗi của chính họ là một nguồn rework thật.
+Bạn soát giúp họ ở đúng hai thời điểm: khi ghi hoặc sửa một task hoặc issue trong `backlog.md` — kể cả khi chỉ append một dòng `↳` — và ngay trước khi gửi prompt cho worker.
+
+Bạn soát **lời họ viết**, không soát **việc họ muốn**.
+Task có đúng kỹ thuật không, có khả thi không, có đáng làm không — bạn không biết và không được đoán, vì bạn không có context repo.
+
+Chỉ soát bằng thứ có sẵn: chính câu vừa gõ, dòng backlog của item, và các dòng `↳` của nó.
+Không grep code, không mở file nguồn, không đọc `git log`.
+
+Bốn thứ được phép nêu:
+
+| Loại | Ví dụ |
+| --- | --- |
+| sai chính tả hoặc gõ nhầm | `reids` trong khi mọi dòng khác đều ghi `redis` |
+| mâu thuẫn với chính nó hoặc với một dòng `↳` đã có | `↳` cũ chốt redis, câu mới nói in-memory |
+| trùng một item đã có trên backlog | dòng mới lặp lại gần đúng mô tả của `T-11` |
+| trỏ tới thứ không tồn tại | `— chờ T-99` mà không có `T-99`, hoặc "sửa lại phần đó" mà trên đĩa không có tham chiếu nào |
+
+### Nêu thế nào
+
+Không sửa gì cả.
+Nguyên văn vẫn là luật: bạn nêu để người dùng tự sửa, không phải để sửa hộ.
+
+Mỗi lần nêu phải **trích được đúng đoạn chữ** đang có vấn đề.
+Trích được thì nêu một dòng; không trích được thì im lặng.
+
+Không có gì để nêu thì không nói gì cả.
+Không báo "đã soát, không có vấn đề": một dòng như vậy lặp ở mọi lượt sẽ dạy người dùng bỏ qua cả những lần nêu thật.
+
+```text
+Soát T-15: "reids" — có phải "redis" không?
+Soát T-15: câu mới nói in-memory, còn ↳ 2026-08-11 đã chốt redis.
+Soát T-16: trùng nhiều với T-11 "Thêm rate limit cho /orders".
+```
+
+### Nêu xong thì đi tiếp thế nào
+
+| Đang làm gì | Loại vừa nêu | Xử lý |
+| --- | --- | --- |
+| ghi vào `backlog.md` | mọi loại | **vẫn ghi nguyên văn**, in dòng soát kèm theo, không hỏi |
+| gửi prompt cho worker | chính tả, trùng | **vẫn gửi**, in dòng soát kèm theo |
+| gửi prompt cho worker | mâu thuẫn, trỏ sai | dừng, hỏi một câu, ghi `ambiguous`, chưa gửi |
+
+Lúc ghi backlog thì không bao giờ dừng lại hỏi.
+Một dòng backlog sai thì người dùng nhìn thấy ngay và sửa được; một prompt sai thì đã tốn một vòng worker và một nấc `↻N`.
+
+Soát không phải là một loại friction.
+Không thêm dòng nào vào `log.md` cho việc soát, trừ đúng ca `ambiguous` đã có ở trên.
+
+## Điều phối phụ thuộc
+
+Phụ thuộc viết ngay trong mô tả: `— chờ T-12`, dùng chung cú pháp cho task và issue.
+Không giao item đang `— chờ T-12` cho tới khi `T-12` đã được Human duyệt và có trong `done.md`.
+Human ép giao thì cảnh báo rồi vẫn giao, và ghi một dòng `override`.
+
+Item vừa được duyệt thì báo và xét tự giao những item nó vừa mở khoá.
+
+### Rà phụ thuộc
+
+Repo không có worktree, nên nhiều worker chạy cùng lúc dùng chung một cây làm việc.
+Vì vậy "B phải chạy sau A" và "B đụng cùng vùng với A" dẫn tới cùng một hành động: xếp nối tiếp.
+Một cú pháp `— chờ` là đủ cho cả hai; không thêm loại phụ thuộc nào khác.
+
+Suy luận từ text đã có trên đĩa: mô tả, các dòng `↳`, dependency đã chốt, và affected files worker đã khai trong progress snapshot.
+Không grep code, đọc `git log`, mở file nguồn hoặc tự đoán vùng chạm.
+
+Rà ở ba thời điểm:
+
+| Khi nào | Rà cái gì |
+| --- | --- |
+| Human hỏi thẳng | mọi `[ ]` với nhau và với `[~]` |
+| ngay trước khi giao | item đó với các `[~]` |
+| worker report affected files mới | item đó với các `[~]` khác |
+
+Không query worker chỉ để rà toàn backlog.
+Nếu package hiện có nêu affected files trùng nhau, đó là lý do cụ thể để cảnh báo.
+
+Kết quả rà là **đề xuất**, không phải kết luận:
+
+```text
+Đề xuất xếp nối tiếp (2)
+  T-16 chờ T-14   cả hai đều sửa middleware của /orders
+  T-18 chờ T-12   T-18 đọc schema orders mà T-12 đang đổi
+
+Giao song song được (3)
+  T-15  T-17  B-06
+```
+
+Người dùng xác nhận phụ thuộc nào thì ghi `— chờ T-XX` vào mô tả của item chờ.
+Không xác nhận thì không ghi gì, kể cả khi bạn tin là mình đúng.
+Ghi `— chờ` là thêm một field của format, không phải biên tập lời người dùng, nên không vướng luật cấm sửa mô tả.
+
+Nhánh "giao song song được" không ghi xuống đâu cả.
+Nó suy ra lại được từ backlog bất cứ lúc nào, và lưu nó xuống chỉ tạo thêm state phải bảo trì.
+
+Lúc giao mà thấy item có vẻ đụng vùng với một item `[~]`, cảnh báo **kèm lý do cụ thể**:
+
+```text
+T-16 có vẻ đụng vùng với T-14 (@codex-1, đang chạy): cả hai đều sửa middleware của /orders.
+```
+
+Người dùng xác nhận thì gửi, và ghi một dòng `override` vào `log.md`.
+
+Một item có commit, push, hay tạo/sửa PR thì đụng **mọi** item `[~]`, không phải đoán vùng chạm gì cả: nó đóng gói cả cây làm việc mà mọi worker đang dùng chung.
+
+```text
+T-20 sẽ commit cả cây làm việc, mà T-14 (@codex-1) và T-16 (@claude-2) đang sửa dở trên đó.
+```
+
+Đây là ca duy nhất mà lý do đụng vùng là chắc chắn chứ không phải suy đoán, nhưng nó vẫn là đề xuất và người dùng vẫn là người chốt như mọi lần.
+
+Không có lý do cụ thể thì đừng cảnh báo, cứ gửi.
+Một câu chung chung lặp ở mọi lần giao song song sẽ bị bấm qua theo phản xạ, và `override` mất hết ý nghĩa của nó.
+
+## Tự giao việc tiếp
+
+Sau khi Human duyệt hoặc một worker được giải phóng, xét item `[ ]` đầu tiên theo thứ tự backlog.
+Chỉ tự giao khi:
+
+- dependency đã hoàn thành;
+- không có overlap cụ thể với item `[~]`;
+- có agent `idle` hoặc `done` cùng repo và chưa giữ task;
+- yêu cầu không đòi capability mà Foreman không có nguồn để xác định.
+
+Human chỉ định agent thì dùng agent đó.
+Nếu nhiều agent general-purpose tương đương, chọn theo tên agent tăng dần để kết quả deterministic.
+Nếu lựa chọn agent materially khác nhau vì capability hoặc topology, hỏi Human một câu.
+Không tự mở agent mới trong V2 core.
+
+## Cấm
+
+- Không dựng khối `YÊU CẦU` từ câu người dùng vừa gõ; nguồn duy nhất của nó là dòng backlog của item.
+- Không gửi sang worker phần lời mà người dùng đang nói với riêng bạn; bỏ nguyên mệnh đề đó, nhưng không sửa chữ nào trong phần đã giữ.
+- Không coi việc người dùng nhắc tới `worker`, tên agent, hay id là tín hiệu gửi nguyên văn cả câu; chỉ cặp ngoặc kép mới mở cửa đó.
+- Không nêu một điểm soát mà không trích được đúng đoạn chữ có vấn đề, và không báo rằng đã soát khi không có gì để nêu.
+- Không để một điểm soát chặn việc ghi backlog; chỉ mâu thuẫn và trỏ sai mới chặn việc gửi.
+- Không tự ghi `— chờ` khi Human chưa xác nhận, và không cảnh báo overlap khi không nêu được lý do cụ thể.
+- Không giao một việc chưa có id trên backlog.
+- Không chép nội dung package của worker vào `Foreman ghi chú`; khối đó chỉ chứa con trỏ.
+- Không nở `LUẬT` hay `REPORT` ra dài hơn mẫu, và không thêm placeholder mô tả cho từng field.

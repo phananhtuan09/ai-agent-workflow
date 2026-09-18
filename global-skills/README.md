@@ -25,14 +25,13 @@ Every other runtime gets a short pointer file that tells the agent to read the C
 
 ```
 ~/.claude/skills/foreman-agent/SKILL.md                     full content
-~/.claude/skills/foreman-agent/references/assigning.md      loaded on demand
-~/.claude/skills/foreman-agent/references/trace-pinning.md  loaded on demand
+~/.claude/skills/foreman-agent/references/*.md              6 playbooks, loaded on demand
 ~/.claude/skills/herdr-guide/SKILL.md                       full content
 ~/.agents/skills/foreman-agent/SKILL.md                     pointer stub
 ~/.agents/skills/herdr-guide/SKILL.md                       pointer stub
 ```
 
-`foreman-agent` keeps rarely-needed procedure in `references/` and loads a file only when the matching operation happens.
+`foreman-agent` is a thin router: `SKILL.md` holds what every turn needs and dispatches to a playbook in `references/` for everything else, loading a file only when the matching operation happens.
 The stub sends every other runtime to the Claude copy, so `SKILL.md` always names references by their full path rather than a relative one.
 
 `~/.agents/skills/` is the documented user-scope path for Codex and is also read by OpenCode, so one stub location serves both.
@@ -53,7 +52,7 @@ for skill in foreman-agent herdr-guide; do
 done
 
 mkdir -p "$HOME/.claude/skills/foreman-agent/references"
-for ref in assigning trace-pinning; do
+for ref in assigning worker-io blockers reporting bookkeeping trace-pinning; do
   curl -fsSL "$BASE/foreman-agent/references/$ref.md" \
     -o "$HOME/.claude/skills/foreman-agent/references/$ref.md"
 done
@@ -118,7 +117,7 @@ ls ~/.claude/skills/foreman-agent/references/
 find ~/.claude/skills ~/.agents/skills -name SKILL.md -type l
 ```
 
-The `ls` must list `assigning.md` and `trace-pinning.md`.
+The `ls` must list `assigning.md`, `worker-io.md`, `blockers.md`, `reporting.md`, `bookkeeping.md` and `trace-pinning.md`.
 
 The `find` must print nothing; any output means a symlink slipped in.
 

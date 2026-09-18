@@ -278,6 +278,78 @@ Kèm theo, dọn một mâu thuẫn: `## Áp inbox` nhận `TYPE: progress` tron
 Chốt progress đi inline, `inbox/` chỉ giữ report durable — hợp với lý do `inbox/` tồn tại là sống sót qua clear session, mà progress thì đã có `progress/<id>.md` lo.
 Vẫn áp file `progress` nếu worker cũ gửi, để không biến một file vô hại thành `bad-inbox`.
 
+### 2026-09-18 — Mặc định ngắn, chi tiết đi theo câu hỏi: **nhận**
+
+Người dùng chạy thật và thấy Foreman nói quá dài.
+Nguyên nhân gần nhất là `### Review package` thêm hôm trước: nó in ngay khi item vào `[v]`, kể cả cho item người dùng không hỏi tới, và mỗi field bê gần nguyên văn Completion Package nên một field thành năm dòng.
+Một câu hỏi "kết quả của koken-1 thế nào" trả về hai package đầy đủ, cộng bốn nhóm báo cáo trong đó ba nhóm `(0)`.
+
+Đây là một bug của bất biến 5, không phải chuyện thẩm mỹ.
+Human attention là tài nguyên khan hiếm, mà output dài đúng là cách tiêu nó nhanh nhất; một bản tóm tắt dài bằng transcript worker thì Human quay lại mở worker terminal cho nhanh, tức phá luôn mục đích của V2.
+
+Ba luật mới trong `## Độ dài và mức chi tiết`:
+
+1. Cái đã pass thì đếm, cái chưa pass hoặc còn hở thì kể.
+2. Chi tiết đi theo câu hỏi, không đi theo sự kiện — item vừa xong chỉ chiếm một dòng cho tới khi Human hỏi tới đúng nó.
+3. Không tường thuật việc nhà: `done.md`, snapshot, trace, requeue là thao tác của Foreman, không phải tin tức của Human.
+
+Luật 1 cho phép Foreman rút gọn khi trình bày, nghe như nới bất biến 3.
+Không phải: bất biến 3 buộc giữ **nguyên văn package gốc**, và nó vẫn nằm đủ trong `progress/<id>.md`.
+Phần Foreman nói ra vốn đã được định nghĩa là bản rút gọn ngay từ đầu; chỗ hỏng là skill chưa bao giờ nói rút tới đâu.
+Ranh giới giữ lại: không rút option, impact hay recommendation trong Decision Package, vì đó đúng là thứ Human đọc để quyết.
+
+Bỏ luật "nhóm rỗng vẫn in `(0)`" đặt hôm trước.
+Nó sai vì bốn dòng `(0)` không thêm thông tin nào so với dòng đếm cuối, mà lại đẩy phần có nội dung xuống dưới màn hình.
+
+### 2026-09-18 — Thin router + lazy-loaded playbook: **nhận**
+
+`SKILL.md` lên 770 dòng và mỗi lần thêm luật lại phải chen vào một file đang gánh mọi thứ.
+Cắt thành một router cộng sáu playbook, cắt **theo loại lượt** chứ không theo chủ đề.
+
+Đường cắt là câu hỏi "lượt rẻ nhất cần gì".
+Lượt rẻ nhất là `có gì cần tôi không`: đọc backlog, list agent một lần, reconcile, báo cáo.
+Thứ nó cần ở lại router; phần còn lại xuống playbook.
+
+Kết quả: router 310 dòng, playbook nạp tối đa hai file mỗi lượt.
+Con số hai là ràng buộc thiết kế, không phải quan sát: nạp tới file thứ ba nghĩa là đường cắt sai hoặc lượt đó đang làm quá một việc.
+
+Ba thứ phải ở lại router dù có vẻ chi tiết:
+
+1. **Backlog format và năm trạng thái.** Mọi lượt đều đọc hoặc ghi backlog.
+2. **Luật độ dài.** Nó áp cho output của mọi playbook, nên nạp lười là mất tác dụng ở đúng file chưa nạp.
+3. **Cấm lõi.** Một điều cấm chỉ có hiệu lực khi nó đã được nạp.
+   Cấm gắn với một thao tác cụ thể thì xuống playbook của thao tác đó, vì playbook luôn được nạp trước khi thao tác chạy.
+
+Rủi ro thật của lazy-load là agent không nạp rồi tự chế.
+Hai guard: mỗi playbook có dòng "nạp khi" đủ cụ thể để nhận ra tại chỗ, và bảng playbook nói rõ **không đọc được thì làm gì** cho từng file — `assigning`, `worker-io`, `blockers`, `bookkeeping` thì dừng và báo; `reporting` thì xuống luật độ dài; `trace-pinning` thì bỏ qua im lặng.
+Ba mức đó khác nhau theo giá của việc làm sai: gửi prompt tự chế thì hỏng hợp đồng với worker, còn không ghim được trace thì chỉ mất bằng chứng về sau.
+
+Không thay đổi hành vi nào.
+Đối chiếu từng dòng luật của bản cũ với bộ file mới, 61 dòng lệch thì 59 là diễn đạt lại hoặc cố ý bỏ, 2 dòng rơi thật đã vá lại.
+
+### 2026-09-18 — Nén mẫu prompt, siết `Foreman ghi chú` về đúng con trỏ: **nhận**
+
+Người dùng thấy prompt giao việc dài.
+Đếm một prompt thật: 55 dòng, trong đó 43 dòng byte giống hệt nhau ở mọi lần giao — `TRÁCH NHIỆM`, `KHÔNG LÀM`, và hai schema report đầy đủ kèm placeholder từng field.
+Phần duy nhất thay đổi giữa các task là `TASK:`, `YÊU CẦU` và `Foreman ghi chú`.
+
+Nén tại chỗ xuống 20 dòng: gộp `TRÁCH NHIỆM` + `KHÔNG LÀM` thành `LUẬT`, bỏ placeholder `<mô tả>`, gộp hai schema report trùng header thành hai dòng `done →` và `blocked →`.
+Không bỏ field nào, không bỏ luật nào.
+
+Đã cân nhắc và **bác** phương án triệt để hơn: đẩy `LUẬT` + `REPORT` vào `.foreman/worker-contract.md`, prompt chỉ còn 6 dòng trỏ tới nó.
+Lý do bác: worker phải tự ghi report có cấu trúc lúc xong **mà không cần ai hỏi** — đó là thứ giữ cho bất biến 1 đứng vững khi Foreman không chạy.
+Đưa vào file riêng là đổi một đảm bảo lấy một xác suất, và còn buộc nới luật "worker không đọc `.foreman/`" — luật đang gánh cơ chế lọc transcript của `trace-pinning.md`.
+Đổi 14 dòng lấy hai rủi ro cấu trúc là giá sai.
+
+Phần thứ hai là một bug thật, không phải chuyện độ dài: `Foreman ghi chú` bị dùng để chép lại gần trọn Completion Package của task trước, gửi cho đúng con agent đã tự viết ra nó.
+Luật cũ "chỉ chứa con trỏ đã có nguồn trên đĩa" quá mỏng để chặn.
+Siết lại: tối đa ba dòng; con trỏ là đường dẫn, id task, hoặc decision đã chốt; chép findings hay danh sách gap thì không phải con trỏ; người nhận là tác giả thì càng phải trỏ chứ không chép.
+
+Đây là bất biến 2 áp cho chiều ngược: Foreman không giữ deep context, nên nó cũng không có tư cách kể lại deep context cho worker nghe.
+
+Ghi chú cho người đọc nhật ký cũ: hai entry ngày 2026-08-17 nói về khối `KHÔNG LÀM` — khối đó nay là nửa sau của `LUẬT`.
+Luật chịu lực của chúng không đổi: `YÊU CẦU` vẫn thắng khi chọi với mặc định, và dòng cấm worker đọc `.foreman/` vẫn nguyên.
+
 ### 2026-08-14 — Foreman "hiểu task" trước khi giao: **từ chối**
 
 Đề xuất: foreman phân tích task rồi mới gửi cho worker, để worker đỡ confuse.
