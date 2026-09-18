@@ -1,6 +1,6 @@
 # Global Skills
 
-These are machine-wide skills for agent coordination and durable repository governance.
+These are machine-wide skills for agent coordination.
 They are intentionally separate from the project-scoped canonical skills in `skills/` and are not installed by the default coding workflow kit.
 
 Use the runtime's global skill installation mechanism for these packages.
@@ -14,13 +14,9 @@ Hand this file to an agent and ask it to install them; it fetches the content st
 | --- | --- |
 | `foreman-agent` | Owns a repository's task and issue backlog in `.foreman/`, assigns work to worker agents through Herdr, reports only what needs a human decision. |
 | `herdr-guide` | Owns Herdr CLI mechanics. `foreman-agent` loads it, so the two must be installed together. |
-| `registrar-agent` | Owns a repository's durable business rules in `docs/product/` and architecture rules in `docs/decisions/`, answers questions about system logic with cited rule ids, and reports drift between rules and code. Standalone; loads no other skill. |
 
 These are user-scope on purpose.
-Each skill is machine-wide while its state stays inside the repository it is run in — `.foreman/` for the Foreman, `docs/product/` and `docs/decisions/` plus optional `.registrar/` state for the Registrar — so both work in repositories that never ran the installer.
-
-`foreman-agent` owns work in flight; `registrar-agent` owns durable intent.
-They share no files and never write to each other's state.
+`foreman-agent` is machine-wide while its state stays inside the repository it is run in — `.foreman/` — so it works in repositories that never ran the installer.
 
 ## Layout
 
@@ -32,14 +28,11 @@ Every other runtime gets a short pointer file that tells the agent to read the C
 ~/.claude/skills/foreman-agent/references/assigning.md      loaded on demand
 ~/.claude/skills/foreman-agent/references/trace-pinning.md  loaded on demand
 ~/.claude/skills/herdr-guide/SKILL.md                       full content
-~/.claude/skills/registrar-agent/SKILL.md                   full content
-~/.claude/skills/registrar-agent/references/*.md            four files, loaded on demand
 ~/.agents/skills/foreman-agent/SKILL.md                     pointer stub
 ~/.agents/skills/herdr-guide/SKILL.md                       pointer stub
-~/.agents/skills/registrar-agent/SKILL.md                   pointer stub
 ```
 
-`foreman-agent` and `registrar-agent` keep rarely-needed procedure in `references/` and load a file only when the matching operation happens.
+`foreman-agent` keeps rarely-needed procedure in `references/` and loads a file only when the matching operation happens.
 The stub sends every other runtime to the Claude copy, so `SKILL.md` always names references by their full path rather than a relative one.
 
 `~/.agents/skills/` is the documented user-scope path for Codex and is also read by OpenCode, so one stub location serves both.
@@ -48,14 +41,13 @@ The stub sends every other runtime to the Claude copy, so `SKILL.md` always name
 
 Run every command below.
 `foreman-agent` and `herdr-guide` must be installed together; installing only one leaves `foreman-agent` pointing at a skill that does not exist.
-`registrar-agent` has no such pairing, but the commands below install all three at once.
 
 ### 1. Full content into the Claude scope
 
 ```bash
 BASE=https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/global-skills
 
-for skill in foreman-agent herdr-guide registrar-agent; do
+for skill in foreman-agent herdr-guide; do
   mkdir -p "$HOME/.claude/skills/$skill"
   curl -fsSL "$BASE/$skill/SKILL.md" -o "$HOME/.claude/skills/$skill/SKILL.md"
 done
@@ -65,15 +57,9 @@ for ref in assigning trace-pinning; do
   curl -fsSL "$BASE/foreman-agent/references/$ref.md" \
     -o "$HOME/.claude/skills/foreman-agent/references/$ref.md"
 done
-
-mkdir -p "$HOME/.claude/skills/registrar-agent/references"
-for ref in registering-br registering-arch absorbing auditing; do
-  curl -fsSL "$BASE/registrar-agent/references/$ref.md" \
-    -o "$HOME/.claude/skills/registrar-agent/references/$ref.md"
-done
 ```
 
-Both agents stop and report when a reference they need is missing, so a partial install is visible rather than silent.
+`foreman-agent` stops and reports when a reference it needs is missing, so a partial install is visible rather than silent.
 
 ### 2. Pointer stubs into the agents scope
 
@@ -81,7 +67,7 @@ Each stub keeps its own frontmatter, because `description` is what makes a runti
 Only the body is replaced by the pointer.
 
 ```bash
-for skill in foreman-agent herdr-guide registrar-agent; do
+for skill in foreman-agent herdr-guide; do
   src="$HOME/.claude/skills/$skill/SKILL.md"
   mkdir -p "$HOME/.agents/skills/$skill"
   {
@@ -124,25 +110,22 @@ These were established by testing against real runtimes; violating them fails si
 ## Verify
 
 ```bash
-for skill in foreman-agent herdr-guide registrar-agent; do
+for skill in foreman-agent herdr-guide; do
   head -2 ~/.claude/skills/$skill/SKILL.md
   head -2 ~/.agents/skills/$skill/SKILL.md
 done
 ls ~/.claude/skills/foreman-agent/references/
-ls ~/.claude/skills/registrar-agent/references/
 find ~/.claude/skills ~/.agents/skills -name SKILL.md -type l
 ```
 
-The first `ls` must list `assigning.md` and `trace-pinning.md`.
-
-The second must list `absorbing.md`, `auditing.md`, `registering-arch.md`, and `registering-br.md`.
+The `ls` must list `assigning.md` and `trace-pinning.md`.
 
 The `find` must print nothing; any output means a symlink slipped in.
 
-Then confirm each runtime actually sees the skills:
+Then confirm each runtime actually sees the skill:
 
-- Claude Code: `/foreman-agent` and `/registrar-agent`
-- Codex: `codex exec "Do you have skills named foreman-agent and registrar-agent?"`
+- Claude Code: `/foreman-agent`
+- Codex: `codex exec "Do you have a skill named foreman-agent?"`
 - OpenCode: ask the same question in a session
 
 ## Update
