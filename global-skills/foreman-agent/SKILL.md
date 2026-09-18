@@ -183,7 +183,7 @@ Chạy đúng trình tự này khi được gọi:
 3. áp mọi file trong `inbox/` và migration `inbox.md` nếu có;
 4. nếu trong Herdr, nạp `herdr-guide` và list agent đúng một lần;
 5. reconcile từng item đã giao với runtime;
-6. thực hiện follow-up bắt buộc do mismatch, blocker hoặc câu hỏi hiện tại;
+6. thực hiện follow-up bắt buộc do mismatch, blocker hoặc câu hỏi hiện tại, và lấy response theo `## Lấy response của worker`;
 7. ghi progress và lifecycle trước khi báo cáo;
 8. báo Human chỉ thứ cần duyệt, quyết hoặc biết vì bất thường.
 
@@ -200,12 +200,22 @@ Cần bạn duyệt (1)
 Cần bạn quyết (1)
   T-23  Security auth   chọn reuse hay rotate refresh token
 
+Đang tự xử lý (1)
+  T-21  Payment retry   fixture cũ không khớp schema; worker đã xác định nguyên nhân và đang tự sửa
+
 Bất thường (0)
 
 Đang chạy 1 · Chờ giao 2
 ```
 
 Không in toàn bộ backlog.
+
+`Đang tự xử lý` liệt kê item `[~]` mà snapshot gần nhất có `BLOCKER: tự xử lý — …`.
+Nhóm này không cần Human làm gì; nó tồn tại để Human không bất ngờ khi thấy một task chạy lâu hơn thường.
+Một dòng mỗi item, nêu đúng blocker và việc worker đang làm để gỡ.
+Item rời nhóm ngay khi snapshot kế tiếp không còn `tự xử lý`; không cần thông báo việc rời nhóm.
+
+Nhóm rỗng thì vẫn in `(0)` như các nhóm khác.
 
 Status refresh đầy đủ in một dòng hoặc một khối ngắn mỗi item:
 
@@ -217,8 +227,10 @@ T-21 · @codex-1 · đang chạy
   PROOF: reproduction ✓; regression chưa chạy
 ```
 
+Item `[v]` trong một status refresh in review package ở `## Output chuẩn`, không in khối trên.
+
 Luôn kèm thời điểm snapshot; không trình progress cũ như response vừa lấy.
-Mục không cần Human chỉ hiện bằng số đếm, trừ khi họ yêu cầu status đầy đủ.
+Mục không cần Human chỉ hiện bằng số đếm, trừ hai ngoại lệ: `Đang tự xử lý` và `Bất thường` luôn in dòng kèm lý do, vì một con số trần trụi ở hai nhóm đó chỉ làm Human phải hỏi thêm một lượt.
 
 ## Áp inbox
 
@@ -228,9 +240,9 @@ File có format:
 ```text
 TASK: T-22
 AGENT: @codex-2
-TYPE: progress | blocked | done
+TYPE: blocked | done
 
-<Progress, Decision hoặc Completion Package nguyên văn>
+<Decision hoặc Completion Package nguyên văn>
 ```
 
 Áp một file theo thứ tự:
@@ -240,13 +252,70 @@ TYPE: progress | blocked | done
 3. cập nhật lifecycle theo luật dưới;
 4. chỉ sau khi cả hai bước ghi thành công mới xoá inbox file.
 
-`progress` giữ `[~]`.
+`TYPE: progress` không nằm trong contract của worker, vì progress đi inline theo `## Lấy response của worker`.
+File như vậy vẫn áp được: ghi snapshot, giữ `[~]`, không báo `bad-inbox`.
 `done` chỉ đưa sang `[v]` khi Completion Package có changes, verification, affected files, public contract impact và known risks; thiếu field thì hỏi worker bổ sung và giữ `[~]`.
 `blocked` không tự động thành `[?]`: áp `## Triage blocker`.
 Không bao giờ đặt `[x]` từ inbox.
 
 File sai format, id không tồn tại hoặc agent không còn là owner không được áp: báo `Bất thường`, ghi một dòng `bad-inbox`, rồi xoá file để sự kiện không lặp và không chặn report hợp lệ.
 Nếu current owner còn sống, yêu cầu nó ghi lại package đầy đủ vào expected path.
+
+## Lấy response của worker
+
+Gửi một operational request mới là nửa việc.
+Request không được đọc về và ghi xuống đĩa thì lượt đó coi như chưa hỏi.
+
+Một vòng lấy response gồm bốn bước, làm gọn trong đúng lượt hiện tại:
+
+1. gửi request qua Herdr;
+2. đợi agent chuyển sang trạng thái đã trả lời xong;
+3. đọc output của agent;
+4. parse thành package và ghi `.foreman/progress/<id>.md`.
+
+Lệnh cho bước 2 và 3 lấy từ `herdr-guide`; đừng dựng từ trí nhớ.
+
+Hỏi nhiều worker thì **gửi hết request trước, rồi mới đợi lần lượt**.
+Gửi–đợi–gửi–đợi làm thời gian cộng dồn, và Human đang chờ đúng một lượt.
+
+### Trần đợi
+
+Đợi đúng một lần mỗi worker mỗi lượt, trần khoảng hai phút.
+Agent đang `working` sẽ xử lý request sau khi xong turn hiện tại, nên chạm trần là ca thường gặp, không phải sự cố.
+
+Chạm trần thì dừng đợi và đi tiếp:
+
+- giữ nguyên lifecycle và giữ nguyên `UPDATED` của snapshot cũ;
+- không gửi lại request thứ hai trong cùng lượt;
+- không tăng `↻N`, không ghi dòng nào vào `log.md`;
+- **không kết luận worker chết và không requeue** — chậm trả lời và mất session là hai thứ khác nhau, chỉ bảng `## Đối chiếu thực tế` mới kết luận được điều thứ hai.
+
+Lượt sau Human hỏi lại thì hỏi lại worker, vẫn một lần.
+
+### Output không parse được
+
+Đọc được output nhưng không dựng được package hợp lệ thì xử lý y như chạm trần, và nêu thêm là output không đúng mẫu.
+Không tự suy ra field còn thiếu từ chữ trong transcript.
+
+### Báo Human thế nào
+
+Không bao giờ trình snapshot cũ như response vừa lấy.
+Item chưa có response mới trong lượt này phải nói rõ cả hai mốc thời gian:
+
+```text
+T-21 · @codex-1 · đang chạy
+  Đã hỏi 15:42, worker chưa trả lời trong lượt này.
+  Dưới đây là snapshot 14:20:
+  LAST: agent tự báo đã reproduce duplicate callback
+  CURRENT/NEXT: implement idempotency → regression tests
+```
+
+Mọi item trong một status refresh đều chưa trả lời thì nói thẳng là chưa lấy được gì mới, đừng gói snapshot cũ thành một bản tóm tắt nghe như vừa cập nhật.
+
+### Progress về đường nào
+
+Progress trả lời **inline** qua output của agent; Foreman đọc rồi tự ghi snapshot.
+`.foreman/inbox/` chỉ dành cho report durable lúc `done` hoặc `blocked`, đúng như contract trong mẫu prompt.
 
 ## Đối chiếu thực tế
 
@@ -433,8 +502,12 @@ Nếu worker xác định giải pháp nằm trong task scope và không đổi 
 
 1. giữ `[~]`;
 2. yêu cầu worker tự xử lý và tiếp tục;
-3. cập nhật snapshot;
+3. cập nhật snapshot với `BLOCKER: tự xử lý — <blocker và cách gỡ, một câu>`;
 4. không hỏi Human và không ghi `blocked`.
+
+Dòng `tự xử lý` là thứ duy nhất đưa item vào nhóm `Đang tự xử lý` của báo cáo.
+Không có nó thì blocker biến mất khỏi mọi report, và Human chỉ thấy một task tự dưng chạy lâu.
+Snapshot kế tiếp không còn blocker thì bỏ hẳn tiền tố, không giữ lại như lịch sử.
 
 Nếu có từ hai behavior hợp lệ trở lên hoặc thiếu product, business, architecture, security, compatibility hay operational authority:
 
@@ -580,6 +653,8 @@ Không đoán nội dung mẫu, không gửi prompt tự chế.
 
 Khi Human hỏi về đúng một item, dùng snapshot mới nhất; thiếu field họ cần thì query worker trước.
 
+Item đang chạy:
+
 ```text
 STATUS: đang chạy — @codex-1, cập nhật 2026-09-17 14:20
 LAST: agent tự báo đã reproduce duplicate callback
@@ -593,10 +668,36 @@ SUMMARY: task đang tiến triển bình thường, chưa cần Human.
 - Mỗi field tối đa một câu.
 - Không biết thì ghi `-`, không suy đoán.
 - Claim từ worker phải có `agent tự báo`.
-- `BLOCKER` chỉ ghi decision cụ thể hoặc `không`.
+- `BLOCKER` ghi `không`, một decision cụ thể, hoặc `tự xử lý — …`.
 - `PROOF` phân biệt đã chạy, chưa chạy và remaining risk.
 - `SUMMARY` tối đa hai câu và nói Human có cần làm gì không.
 - Chỉ in khối, không thêm chữ trước hoặc sau.
+
+### Review package
+
+Item vào `[v]` thì in khối này, không phải dòng tóm tắt một dòng của báo cáo mặc định.
+In ở ba lúc: ngay khi item chuyển sang `[v]`, khi Human hỏi về item đó, và khi Human yêu cầu status đầy đủ.
+
+```text
+CHỜ DUYỆT: T-22 Export CSV — @codex-2, báo complete 2026-09-17 15:40
+THAY ĐỔI: agent tự báo đã thêm CSV endpoint và export service
+KẾT QUẢ: agent tự báo export ra đúng định dạng UTF-8 có BOM
+VERIFICATION: agent tự báo unit ✓ integration ✓; chưa chạy load test
+FILE ẢNH HƯỞNG: lib/export/csv.js, routes/export.js
+PUBLIC CONTRACT: thêm GET /export/csv; không đổi endpoint cũ
+RỦI RO CÒN LẠI: chưa test dataset >100k rows
+DUYỆT: nói "duyệt T-22", hoặc nêu lý do không nhận.
+```
+
+`CHỜ DUYỆT` dựng từ backlog và header snapshot; sáu field giữa lấy thẳng từ Completion Package, mỗi field tối đa một câu.
+Không có Completion Package đủ field thì item chưa được vào `[v]`, nên không có ca phải đoán.
+
+- Claim của worker phải có `agent tự báo`; Foreman không tự xác minh gì ở đây.
+- `VERIFICATION` phải phân biệt đã chạy và chưa chạy, không gộp thành "đã test".
+- `RỦI RO CÒN LẠI` ghi `không` khi worker khai `none`; không tự nghĩ thêm rủi ro.
+- Không thêm đánh giá, khuyến nghị duyệt hay nhận xét chất lượng của Foreman.
+
+Khối này là thứ thay cho việc Human mở worker terminal, nên nó phải trả lời được câu "đã làm gì, đã chứng minh tới đâu, còn hở chỗ nào" mà không cần hỏi thêm.
 
 ## Cấm
 
@@ -619,6 +720,10 @@ SUMMARY: task đang tiến triển bình thường, chưa cần Human.
 - Không đọc `.foreman/traces/`, và không copy transcript ngoài lúc duyệt hoặc từ chối.
 - Không gọi script hay binary của repo; skill phải chạy được ở repo trắng.
 - Không continuous-poll sau khi lượt Foreman kết thúc.
+- Không gửi lại cùng một operational request lần thứ hai trong một lượt.
+- Không coi worker chưa trả lời kịp trong lượt là worker chết, và không requeue vì chạm trần đợi.
+- Không trình snapshot cũ mà không nói rõ là chưa có response mới trong lượt này.
+- Không rút review package của item `[v]` xuống một dòng khi Human hỏi về chính item đó.
 - Không tự tạo, đóng hoặc restart agent/worktree trong V2 core.
 - Không tự chẩn đoán nguyên nhân friction.
 - Không viết code sản phẩm, kể cả sửa một dòng.

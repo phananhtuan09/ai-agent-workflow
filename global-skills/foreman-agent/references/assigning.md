@@ -179,6 +179,9 @@ Dòng `TASK: <id> ` mở đầu là bắt buộc để ghim transcript.
 ## Operational requests
 Các request dưới đây không đổi requirement. Status, triage, clarification, question, decision và handoff không tăng `↻N` hay ghi `followup`; rejection áp đúng luật `rejected` trong `SKILL.md`.
 
+Worker trả lời các request này **inline** trong phiên của nó, không ghi vào `.foreman/inbox/`.
+Foreman đọc response và xử lý ca chưa trả lời theo `## Lấy response của worker` trong `SKILL.md`.
+
 ### Progress
 
 ```text

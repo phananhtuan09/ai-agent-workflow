@@ -249,6 +249,35 @@ Nới thêm dòng phạm vi: sửa thứ hỏng do chính thay đổi của work
 Nó chịu lực cho `trace-pinning.md`: lệnh ghim dùng `grep -q "backlog\.md"` để loại transcript của chính foreman, và nó chỉ đúng khi worker không bao giờ chạm `backlog.md`.
 Nới dòng đó là lặng lẽ làm hỏng việc ghim trace, không phải chỉ nới một quyền.
 
+### 2026-09-18 — Vá ba chỗ hở của V2: **nhận**
+
+Đối chiếu skill với 14 scenario kỳ vọng cho thấy V2 mô tả đúng *phải làm gì* nhưng hụt ba chỗ ở *làm ra output nào*.
+
+1. **Vòng lấy response không tồn tại.**
+   Skill bảo "chủ động query worker" và có mẫu prompt, nhưng không có bước đọc về.
+   Mọi scenario status, triage và follow-up đều đứng trên bước này, nên thiếu nó thì Foreman tự chế cách đợi.
+   Luật mới: gửi hết rồi mới đợi, một lần mỗi worker mỗi lượt, trần hai phút.
+   Ca chạm trần được định nghĩa hẳn hoi vì nó là ca **thường gặp** — agent `working` chỉ đọc request sau khi xong turn.
+   Điểm chịu lực: chạm trần **không** được kết luận worker chết. Gộp hai thứ đó lại sẽ requeue một task đang chạy tốt và phá nguyên bất biến 2.
+
+2. **`[v]` không có format output.**
+   Bất biến 4 giao cho Foreman trách nhiệm làm review package đủ tốt để Human không mở worker terminal, nhưng `SKILL.md` chỉ có block STATUS cho item đang chạy.
+   Item chờ duyệt rơi xuống một dòng tóm tắt, tức là đúng lúc Human cần nhiều thông tin nhất thì lại nhận ít nhất.
+   Dữ liệu đã có sẵn trong Completion Package; chỉ thiếu mẫu in ra, nên đây là vá output chứ không thêm state (câu 6).
+
+3. **Blocker worker tự xử lý bị nuốt.**
+   Triage đúng là không escalate, nhưng luật báo cáo "mục không cần Human chỉ hiện bằng số đếm" làm nó biến mất khỏi mọi report.
+   Human thấy một task tự dưng chạy lâu mà không biết vì sao.
+   Thêm nhóm `Đang tự xử lý`, gắn với tiền tố `BLOCKER: tự xử lý — …` trong snapshot.
+
+Nhóm thứ ba là chỗ duy nhất có nguy cơ phá bất biến 5, vì nó thêm một loại dòng mà Human không phải hành động gì.
+Chấp nhận được nhờ hai ràng buộc: dòng bắt buộc nêu blocker cụ thể và cách gỡ, và item tự rời nhóm ở snapshot kế tiếp.
+Nó không đẻ ra được cảnh báo mù, đúng luật "cảnh báo phải có lý do cụ thể".
+
+Kèm theo, dọn một mâu thuẫn: `## Áp inbox` nhận `TYPE: progress` trong khi mẫu prompt chỉ bảo worker ghi inbox lúc `done` hoặc `blocked`.
+Chốt progress đi inline, `inbox/` chỉ giữ report durable — hợp với lý do `inbox/` tồn tại là sống sót qua clear session, mà progress thì đã có `progress/<id>.md` lo.
+Vẫn áp file `progress` nếu worker cũ gửi, để không biến một file vô hại thành `bad-inbox`.
+
 ### 2026-08-14 — Foreman "hiểu task" trước khi giao: **từ chối**
 
 Đề xuất: foreman phân tích task rồi mới gửi cho worker, để worker đỡ confuse.
