@@ -112,6 +112,19 @@ Keep runtime versions, available verification tools, and starting application fi
 
 ## Optional Capabilities
 
+### Durable knowledge management
+
+```bash
+npx ai-workflow-init@latest --kit coding-standard --tool codex --skill manage-project-knowledge
+```
+
+The `manage-project-knowledge` skill finds and explains durable repository knowledge without requiring the human to know its file location, and creates or updates artifacts only when explicitly requested.
+It discovers eligible artifact namespaces through `docs/README.md` and follows each namespace's local `README.md` contract instead of carrying fixed artifact templates.
+The current protocol defines contracts for `docs/product/`, `docs/decisions/`, `docs/patterns/`, and `docs/runbooks/`; a future namespace becomes usable after the workflow classifies it as durable repository knowledge, indexes it, and gives it a local contract.
+Humans can ask direct questions such as what behavior is accepted, why a decision was made, which pattern applies, or how to run and recover an operation.
+Explanation requests are read-only and return direct answers with artifact paths and section citations, including conflicts, status, exceptions, and safety conditions when relevant.
+Ordinary implementation tasks do not invoke artifact mutation automatically.
+
 ### Workflow evaluation
 
 ```bash

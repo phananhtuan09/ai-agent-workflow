@@ -12,7 +12,7 @@
       "review-pr",
       "prompt-leverage",
       "smart-commits",
-      "sync-project-knowledge"
+      "manage-project-knowledge"
     ],
     "common-review": [
       "quality-code-check",

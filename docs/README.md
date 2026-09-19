@@ -18,4 +18,7 @@ Read only the locations relevant to the requested outcome.
 
 New repository knowledge uses the locations above.
 `PRODUCT.md` and `DESIGN.md` keep these exact names at this exact level because an external capability resolves them by path.
+
+Each durable artifact namespace governed by this protocol owns its admission criteria, filename convention, document structure, and writing rules in its local `README.md`.
+Capabilities managing durable repository knowledge must discover eligible namespaces through this index and follow the target namespace's current `README.md` instead of embedding type-specific templates.
 Resolve conflicts using the precedence and ambiguity rules in `WORKFLOW.md`.
