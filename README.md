@@ -1,6 +1,6 @@
 # AI Agent Workflow
 
-A repository-driven protocol for AI coding assistants, with optional capability skills and two additive capabilities: workflow evaluation and learning.
+A repository-driven protocol for AI coding assistants, with optional testing, workflow-evaluation, and learning capabilities.
 
 ## Design
 
@@ -25,11 +25,12 @@ docs/
 ├── plans/               # active and completed durable working memory
 ├── patterns/            # accepted recurring technical patterns
 ├── runbooks/            # verified operating procedures
+├── testing/             # optional durable runtime E2E plans and evidence
 ├── evaluation/          # optional workflow evaluation capability
 └── learning/            # optional learning capability
 ```
 
-`docs/evaluation/` and `docs/learning/` are independent optional namespaces.
+`docs/testing/`, `docs/evaluation/`, and `docs/learning/` are independent optional namespaces.
 They are not product authority and are not loaded by ordinary coding work.
 
 ## Install
@@ -125,6 +126,20 @@ Humans can ask direct questions such as what behavior is accepted, why a decisio
 Explanation requests are read-only and return direct answers with artifact paths and section citations, including conflicts, status, exceptions, and safety conditions when relevant.
 Ordinary implementation tasks do not invoke artifact mutation automatically.
 
+### Runtime E2E test plans
+
+```bash
+npx ai-workflow-init@latest --kit coding-standard --tool codex --bundle testing
+```
+
+The testing bundle installs `runtime-e2e-test-plan` and `property-based-testing`. The runtime E2E capability adds `docs/testing/` for one-file plans that combine executable cases, an evidence ledger, cleanup state, summary counts, and human sign-off. Its validator rejects a `PASS` without a matching declared runtime path and concrete observed evidence; unit, widget, mocked, build, and source checks remain supporting proof.
+
+After installation, complete
+`<runtime-skill-root>/runtime-e2e-test-plan/references/project-runtime.md` for the
+target project. It records project-specific service commands, readiness checks,
+environment variable names, authentication, fixtures, evidence paths, cleanup,
+and safety limits without storing secret values.
+
 ### Workflow evaluation
 
 ```bash
@@ -167,11 +182,11 @@ npx ai-workflow-init@latest --list-kits
 npx ai-workflow-init@latest --list-bundles
 ```
 
-Skills are maintained canonically under `skills/`.
-Runtime copies for Codex and Claude Code are generated adapters:
+Skills are maintained only under `skills/`. Runtime-specific skill directories are
+created in the target repository during installation; this kit checkout does not
+generate `.agents/skills/` or `.claude/skills/` mirrors.
 
 ```bash
-npm run sync-skills
 npm run check-skills
 ```
 

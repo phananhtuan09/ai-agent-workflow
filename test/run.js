@@ -66,6 +66,7 @@ function createUpdateFixture(tool = "opencode") {
     "skills",
     "docs/evaluation",
     "docs/learning",
+    "docs/testing",
     ".agents",
     ".claude",
     ".codex",
@@ -108,6 +109,7 @@ function createCliFixture(setup) {
     "skills",
     "docs/evaluation",
     "docs/learning",
+    "docs/testing",
     ".agents",
     ".claude",
     ".codex",
@@ -238,13 +240,16 @@ test("CLI help describes direct protocol and optional kits", () => {
   }
 });
 
-test("testing bundle registers property-based-testing", () => {
+test("testing bundle registers runtime E2E and property-based skills", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
     extraBundles: ["testing"],
   });
-  assert.deepStrictEqual(skillIds, ["property-based-testing"]);
+  assert.deepStrictEqual(skillIds, [
+    "runtime-e2e-test-plan",
+    "property-based-testing",
+  ]);
 });
 
 test("canonical skills have required entrypoints", () => {
@@ -383,7 +388,7 @@ test("Codex default installs direct instructions without optional skills", () =>
   }
 });
 
-test("Codex installs the testing bundle with property-based-testing support files", () => {
+test("Codex installs the testing bundle and runtime E2E namespace", () => {
   const result = runCli([
     "--kit",
     "coding-standard",
@@ -394,16 +399,122 @@ test("Codex installs the testing bundle with property-based-testing support file
   ]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    const installedRoot = path.join(
+    const propertyRoot = path.join(
       result.workspace,
       ".agents/skills/property-based-testing"
     );
-    assert.ok(fs.existsSync(path.join(installedRoot, "SKILL.md")));
-    assert.ok(fs.existsSync(path.join(installedRoot, "references/generating.md")));
-    assert.ok(fs.existsSync(path.join(installedRoot, "assets/trail-of-bits-mark.svg")));
-    assert.ok(fs.existsSync(path.join(installedRoot, "LICENSE")));
+    assert.ok(fs.existsSync(path.join(propertyRoot, "SKILL.md")));
+    assert.ok(fs.existsSync(path.join(propertyRoot, "references/generating.md")));
+    assert.ok(fs.existsSync(path.join(propertyRoot, "assets/trail-of-bits-mark.svg")));
+    assert.ok(fs.existsSync(path.join(propertyRoot, "LICENSE")));
+
+    const runtimeRoot = path.join(
+      result.workspace,
+      ".agents/skills/runtime-e2e-test-plan"
+    );
+    const installedRuntimeSkill = fs.readFileSync(
+      path.join(runtimeRoot, "SKILL.md"),
+      "utf8"
+    );
+    assert.ok(
+      installedRuntimeSkill.includes(
+        ".agents/skills/runtime-e2e-test-plan/references/project-runtime.md"
+      )
+    );
+    assert.ok(fs.existsSync(path.join(runtimeRoot, "validate_test_plan.py")));
+    const runtimeReference = path.join(runtimeRoot, "references/project-runtime.md");
+    assert.ok(fs.existsSync(runtimeReference));
+    assert.ok(fs.readFileSync(runtimeReference, "utf8").includes("- Status: UNCONFIGURED"));
+    assert.ok(fs.existsSync(path.join(result.workspace, "docs/testing/README.md")));
+    assert.ok(fs.existsSync(path.join(result.workspace, "docs/testing/active/README.md")));
+    assert.ok(fs.existsSync(path.join(result.workspace, "docs/testing/completed/README.md")));
   } finally {
     result.cleanup();
+  }
+});
+
+test("runtime E2E validator rejects PASS through a different production path", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-plan-"));
+  const planPath = path.join(directory, "settled-order.md");
+  const validator = path.join(
+    SOURCE_ROOT,
+    "skills/runtime-e2e-test-plan/validate_test_plan.py"
+  );
+  const validPlan = `# Runtime E2E Test Plan: Settled order
+
+- Status: COMPLETED
+- Run ID: run-2026-01
+- Environment: local browser and API
+- Tested revisions: web@abc api@def
+- Last updated: 2026-01-01T00:00:00Z
+
+## Run summary
+
+- Total: 1
+- PASS: 1
+- FAIL: 0
+- BLOCKED: 0
+- NOT_RUN: 0
+- INVALIDATED: 0
+- Release-blocking PASS: 1/1
+
+## Human sign-off
+
+- Decision: ACCEPTED
+- Reviewer: owner
+- Date: 2026-01-01
+- Notes: Reviewed.
+
+## Case D2 — Assign staff while editing a settled order
+
+- Priority: RELEASE_BLOCKING
+- Human judgment: NO
+
+### Runtime path
+
+Order List → Edit → select staff → Save adjustment; observe POST /settled-corrections.
+
+### Expected
+
+The allocation persists after reload without changing totals.
+
+### Execution
+
+- Result: PASS
+- Actual path: Order List → Edit → Save adjustment; POST /settled-corrections returned 200.
+- Path match: YES
+- Observed: Allocation persisted after browser reload; totals were unchanged.
+- Evidence: artifacts/d2-after-reload.png; request POST /settled-corrections 200.
+- Cleanup: NOT_REQUIRED
+`;
+
+  try {
+    fs.writeFileSync(planPath, validPlan);
+    const valid = spawnSync(
+      "python3",
+      [validator, planPath, "--mode", "completion"],
+      { encoding: "utf8" }
+    );
+    assert.strictEqual(valid.status, 0, valid.stderr || valid.stdout);
+
+    fs.writeFileSync(
+      planPath,
+      validPlan
+        .replace(
+          "Order List → Edit → Save adjustment; POST /settled-corrections returned 200.",
+          "Direct PUT /lines/123/staff-allocations returned 200."
+        )
+        .replace("- Path match: YES", "- Path match: NO")
+    );
+    const invalid = spawnSync(
+      "python3",
+      [validator, planPath, "--mode", "completion"],
+      { encoding: "utf8" }
+    );
+    assert.strictEqual(invalid.status, 1, invalid.stderr || invalid.stdout);
+    assert.ok(invalid.stderr.includes("PASS requires Path match: YES"));
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
   }
 });
 

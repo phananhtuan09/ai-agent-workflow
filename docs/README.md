@@ -11,6 +11,7 @@ Read only the locations relevant to the requested outcome.
 - `patterns/` stores accepted recurring technical patterns and invariants.
 - `runbooks/` stores verified operational procedures.
 - `other/` stores preserved historical workflow documents that are not part of the active protocol.
+- `testing/` stores durable runtime end-to-end plans, execution evidence, cleanup state, and human sign-off when the runtime E2E capability is installed.
 - `evaluation/` stores trace-first workflow evaluation standards, observations, session traces, and reports when the evaluation capability is installed.
 - `learning/` stores the learning constitution, standard, project context, schedule, cases, and sessions when the learning capability is installed.
 - `PRODUCT.md` stores a derived one-page product brief in the fixed schema read by the design capability when that capability is installed.

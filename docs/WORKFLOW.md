@@ -134,6 +134,7 @@ Use focused unit proof for pure local logic, integration proof for boundaries, r
 For a regression bug, reproduce the failure before the fix and confirm the same scenario after the fix when feasible.
 For migration or recovery-sensitive behavior, exercise a dry run or recovery scenario.
 Repository-wide checks supplement focused proof but do not replace it.
+For multi-case runtime E2E work that must survive sessions or support later audit, use the installed runtime E2E capability and its namespace contract. A runtime case passes only through its declared production path and observable result; unit, widget, mocked, build, and source checks remain supporting proof.
 
 ## Completion
 

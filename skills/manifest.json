@@ -21,6 +21,7 @@
       "fix-bug"
     ],
     "testing": [
+      "runtime-e2e-test-plan",
       "property-based-testing"
     ],
     "evaluation": [
