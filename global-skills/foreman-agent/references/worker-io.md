@@ -46,12 +46,12 @@ Không tự suy ra field còn thiếu từ chữ trong transcript.
 Không bao giờ trình snapshot cũ như response vừa lấy.
 Item chưa có response mới trong lượt này phải nói rõ cả hai mốc thời gian:
 
-```text
-T-21 · @codex-1 · đang chạy
-  Đã hỏi 15:42, worker chưa trả lời trong lượt này.
-  Dưới đây là snapshot 14:20:
-  LAST: agent tự báo đã reproduce duplicate callback
-  CURRENT/NEXT: implement idempotency → regression tests
+```markdown
+`T-21` · Đang chạy · @codex-1
+
+Chưa có cập nhật mới: đã hỏi lúc 15:42 nhưng worker chưa trả lời trong lượt này.
+Snapshot gần nhất: 14:20.
+Theo @codex-1: đã tái hiện callback trùng; đang thêm idempotency guard; tiếp theo chạy regression test.
 ```
 
 Mọi item trong một status refresh đều chưa trả lời thì nói thẳng là chưa lấy được gì mới, đừng gói snapshot cũ thành một bản tóm tắt nghe như vừa cập nhật.

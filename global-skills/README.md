@@ -26,6 +26,7 @@ Every other runtime gets a short pointer file that tells the agent to read the C
 ```
 ~/.claude/skills/foreman-agent/SKILL.md                     full content
 ~/.claude/skills/foreman-agent/references/*.md              6 playbooks, loaded on demand
+~/.claude/skills/foreman-agent/scripts/observe.sh           zero-token runtime event bridge
 ~/.claude/skills/herdr-guide/SKILL.md                       full content
 ~/.agents/skills/foreman-agent/SKILL.md                     pointer stub
 ~/.agents/skills/herdr-guide/SKILL.md                       pointer stub
@@ -56,6 +57,10 @@ for ref in assigning worker-io blockers reporting bookkeeping trace-pinning; do
   curl -fsSL "$BASE/foreman-agent/references/$ref.md" \
     -o "$HOME/.claude/skills/foreman-agent/references/$ref.md"
 done
+
+mkdir -p "$HOME/.claude/skills/foreman-agent/scripts"
+curl -fsSL "$BASE/foreman-agent/scripts/observe.sh" \
+  -o "$HOME/.claude/skills/foreman-agent/scripts/observe.sh"
 ```
 
 `foreman-agent` stops and reports when a reference it needs is missing, so a partial install is visible rather than silent.
@@ -114,10 +119,12 @@ for skill in foreman-agent herdr-guide; do
   head -2 ~/.agents/skills/$skill/SKILL.md
 done
 ls ~/.claude/skills/foreman-agent/references/
+test -f ~/.claude/skills/foreman-agent/scripts/observe.sh
 find ~/.claude/skills ~/.agents/skills -name SKILL.md -type l
 ```
 
 The `ls` must list `assigning.md`, `worker-io.md`, `blockers.md`, `reporting.md`, `bookkeeping.md` and `trace-pinning.md`.
+`test -f ~/.claude/skills/foreman-agent/scripts/observe.sh` must succeed.
 
 The `find` must print nothing; any output means a symlink slipped in.
 
@@ -129,7 +136,7 @@ Then confirm each runtime actually sees the skill:
 
 ## Update
 
-Re-run step 1 to refresh the content, including every file under `references/`.
+Re-run step 1 to refresh the content, including every file under `references/` and `scripts/`.
 Step 2 is only needed when a skill's `description` changes, since that line is the one thing a stub duplicates.
 
 A new reference file means adding its name to the `for ref in …` list, so re-running step 1 keeps picking it up.

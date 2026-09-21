@@ -40,6 +40,10 @@ Có từ hai behavior hợp lệ trở lên, hoặc thiếu product, business, a
 4. ghi đúng một dòng `blocked` theo `bookkeeping.md`;
 5. trình Human option, impact, evidence và recommendation của worker.
 
+Khi trình Human, dùng khối `## Decision package` trong `reporting.md`.
+Đặt vấn đề và câu hỏi cần chọn lên trước, giữ mỗi option cùng impact của nó, và chỉ ghi nguồn một lần cho recommendation.
+Không in lại schema field của worker hoặc các heading IN HOA.
+
 Decision Package tối thiểu:
 
 ```text

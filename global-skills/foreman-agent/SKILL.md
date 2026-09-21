@@ -27,7 +27,7 @@ Chỉ một Foreman session được mutate `.foreman/` trong repo tại một t
 Nếu phát hiện một Foreman khác đang quản lý cùng repo, không ghi state và báo Human chọn một owner.
 
 Không tự đóng, di chuyển, hay restart workspace, tab, pane, session, agent hoặc worktree.
-V2 core điều phối agent đã có; chỉ khởi tạo agent khi người dùng yêu cầu rõ.
+V3 core được phép chạy event observer không dùng LLM để đánh thức Foreman; chỉ khởi tạo agent khi người dùng yêu cầu rõ.
 
 ## Herdr
 
@@ -78,12 +78,14 @@ Mọi state nằm trong `.foreman/` ở gốc repo.
 | `backlog.md` | lifecycle, priority và assignment của việc chưa xong | đọc mọi lượt; Foreman viết |
 | `progress/<id>.md` | snapshot operational mới nhất | đọc khi báo cáo hoặc handoff; Foreman viết |
 | `inbox/<id>--<agent>.md` | result chưa áp của đúng một assignment | đọc mọi lượt; worker ghi, Foreman xoá sau khi áp |
+| `events/*.md` | runtime event chưa reconcile | observer ghi; Foreman xoá sau khi đã xử lý và lưu state |
+| `runtime/` | observer lock, pid và wake deduplication | observer quản lý; Foreman không dùng làm product evidence |
 | `done.md` | lưu trữ và mẫu số audit | append-only; đọc khi hỏi việc cũ hoặc resolve dependency |
 | `log.md` | friction | append-only; không đọc lúc chạy bình thường |
 | `traces/` | transcript thô | chỉ ghim lúc duyệt hoặc từ chối; không đọc |
 | `*.md` khác ở ngay `.foreman/` | luật bổ sung của repo | đọc khi khởi động |
 
-Thiếu `.foreman/` thì tạo `backlog.md`, `done.md`, `log.md`, hai thư mục `inbox/`, `progress/`, và `.foreman/.gitignore` chứa đúng một dòng `*`.
+Thiếu `.foreman/` thì tạo `backlog.md`, `done.md`, `log.md`, các thư mục `inbox/`, `progress/`, `events/`, `runtime/`, và `.foreman/.gitignore` chứa đúng một dòng `*`.
 Không tạo sẵn `traces/`; nó xuất hiện ở lần dump đầu tiên.
 Thư mục tự loại mình khỏi git, không đụng `.gitignore` của repo.
 
@@ -176,16 +178,49 @@ Ba luật, áp cho mọi output của skill này và của mọi playbook:
    Ghi `done.md`, xoá snapshot, ghim trace, gỡ `— chờ`, tìm agent kế tiếp là việc của bạn, không phải tin tức của Human.
    Làm xong thì im lặng; chỉ mở miệng khi nó đổi thứ Human phải làm.
 
+Bốn luật trình bày:
+
+1. **Kết luận và việc Human cần làm nằm trước.**
+   Không bắt Human đọc chronology, transcript hay danh sách kỹ thuật để tìm action.
+2. **Mỗi item chỉ có một representation trong một response.**
+   Item đã có khối chi tiết thì không lặp lại trong digest, footer hay báo cáo mặc định cùng lượt.
+3. **Dùng tiếng Việt tự nhiên, sentence case và Markdown nhẹ.**
+   Không dùng các khối nhãn IN HOA kiểu log; mỗi ý trọn vẹn nằm trên một dòng để dễ quét trong terminal.
+4. **Đường dẫn và thuật ngữ nội bộ chỉ hiện khi giúp Human hành động.**
+   Không in raw prompt, snapshot path, inbox path, observer event hay worker protocol trừ khi Human hỏi đúng thứ đó.
+
 Mỗi dòng item tối đa một câu.
 Mỗi field trong một khối tối đa một câu và không xuống dòng giữa chừng.
+Nếu một bullet dài tới mức thành đoạn quấn nhiều dòng trong terminal, giữ dòng đầu là trạng thái hoặc action và đưa gap quan trọng xuống tối đa hai dòng con.
 
 Worker khai dài hơn thì bạn rút gọn lúc trình bày.
 Việc đó không phá luật nguyên văn: package gốc nằm nguyên trong `progress/<id>.md`, và Human hỏi thì bạn mở ra được.
+
+Trong mỗi item, ghi nguồn đúng một lần bằng `Theo @agent:` khi kết luận chỉ dựa trên worker report.
+Không lặp `tự báo` ở từng dòng và không trộn claim của worker với xác minh độc lập của Foreman.
 
 Rút gọn chỉ áp cho phần operational.
 Không rút gọn option, impact hay recommendation trong Decision Package, vì đó đúng là thứ Human dùng để quyết.
 
 ## Khởi động và supervision cycle
+
+### Event observer
+
+Khi trong Herdr và backlog có item `[~]`, Foreman phải có một agent name ổn định, duy nhất trong runtime.
+Nếu `runtime/foreman-agent` đã có tên thì dùng lại tên đó cho session mới; nếu chưa có thì đặt tên cho agent hiện tại theo `herdr-guide`.
+Sau đó khởi động observer:
+
+```bash
+bash ~/.claude/skills/foreman-agent/scripts/observe.sh start "$PWD" "<foreman-agent-name>"
+```
+
+Observer chỉ quan sát assignment `[~]`, Herdr status và `inbox/`.
+Nó ghi event bền vững rồi gửi đúng doorbell `FOREMAN_WAKE`; nó không đổi backlog, progress hay lifecycle và tự dừng khi không còn việc đang chạy.
+
+`FOREMAN_WAKE` là supervision trigger, không phải yêu cầu của Human.
+Khi nhận nó, áp `inbox/`, reconcile tất cả event đang có, ghi lifecycle và snapshot trước, rồi xoá event đã xử lý.
+Event cũ hoặc owner không còn khớp thì xoá sau khi đối chiếu; không dùng event làm proof.
+Sau mỗi lần tạo assignment `[~]`, chạy lệnh `start` trên; lệnh idempotent nên observer đang chạy sẽ không bị nhân đôi.
 
 Chạy đúng trình tự này khi được gọi:
 
@@ -193,35 +228,40 @@ Chạy đúng trình tự này khi được gọi:
 2. đọc `backlog.md`;
 3. `inbox/` có file hoặc còn `inbox.md` cũ thì nạp `worker-io.md` và áp;
 4. nếu trong Herdr, nạp `herdr-guide` và list agent đúng một lần;
-5. reconcile từng item đã giao với runtime theo `## Đối chiếu thực tế`;
+5. reconcile từng item đã giao với runtime theo `## Đối chiếu thực tế`, kể cả item được event đánh thức;
 6. thực hiện follow-up bắt buộc do mismatch, blocker hoặc câu hỏi hiện tại, nạp playbook tương ứng;
-7. ghi progress và lifecycle trước khi báo cáo;
-8. báo Human chỉ thứ cần duyệt, quyết hoặc biết vì bất thường.
+7. ghi progress và lifecycle, rồi xoá event đã xử lý;
+8. nếu còn item `[~]`, bảo đảm observer đang chạy;
+9. báo Human chỉ thứ cần duyệt, quyết hoặc biết vì bất thường.
 
 Không list agent lại cho từng item.
 Nếu cần hỏi nhiều worker, dùng cùng snapshot agent đã list và gửi các status request độc lập.
-Không continuous-poll sau khi lượt hiện tại kết thúc.
+Foreman không continuous-poll bằng LLM sau khi lượt hiện tại kết thúc; event observer sở hữu việc chờ runtime transition.
 
 ### Báo cáo mặc định
 
 Bốn nhóm — `Cần bạn duyệt`, `Cần bạn quyết`, `Đang tự xử lý`, `Bất thường` — cộng một dòng đếm cuối:
 
-```text
-Cần bạn duyệt (2)
-  T-34  Monitor cron jobs   @koken-1 tự báo: 10/10 job PASS, 0 bug
-  T-35  Sign-off 9 slice    @koken-2 tự báo: 7/9 slice đủ chứng cứ; 2 slice thiếu banner ký, kèm 2 điểm cần bạn chốt
+```markdown
+### Cần bạn duyệt
 
-Đang chạy 0 · Chờ giao 0
+- `T-34` Monitor cron jobs — Theo @koken-1: 10/10 job pass, không còn rủi ro mở.
+- `T-35` Sign-off 9 slice — Theo @koken-2: 7/9 slice đủ chứng cứ; 2 slice còn thiếu xác nhận domain.
+
+Đang chạy: 0 · Chờ giao: 0
 ```
 
-**Nhóm rỗng thì bỏ hẳn, không in `(0)`.**
+**Nhóm rỗng thì bỏ hẳn.**
 Bốn dòng `(0)` liên tiếp không nói gì hơn dòng đếm cuối, mà lại đẩy phần có nội dung xuống dưới màn hình.
 Cả bốn nhóm đều rỗng thì in đúng `Không có gì cần bạn.` rồi tới dòng đếm.
 
-Mỗi item đúng một dòng: id, tên ngắn, agent, một câu nêu điều Human cần biết để quyết.
+Mỗi item đúng một bullet: id, tên ngắn và một câu ngắn nêu điều Human cần biết để quyết.
 Không in khối chi tiết nào trong báo cáo mặc định, kể cả item `[v]` vừa vào.
 Không thêm câu dẫn trước khối và không thêm đoạn bình luận sau khối.
 Không in toàn bộ backlog.
+
+Nếu cùng lượt đã trình bày chi tiết một item theo câu hỏi của Human, loại item đó khỏi báo cáo mặc định ở cuối lượt.
+Item khác vừa cần attention trong lúc xử lý thì thêm vào đúng nhóm của nó, không dùng câu dẫn kiểu `Thêm một việc vừa vào`.
 
 `Đang tự xử lý` liệt kê item `[~]` mà snapshot gần nhất có `BLOCKER: tự xử lý — …`.
 Nhóm này không cần Human làm gì; nó tồn tại để Human không bất ngờ khi thấy một task chạy lâu hơn thường.
@@ -307,8 +347,8 @@ Mỗi playbook có thêm phần cấm riêng cho thao tác của nó.
 - Không đoán cú pháp `herdr`; nạp `herdr-guide` hoặc đọc command group.
 - Không đọc `log.md` trong lúc chạy bình thường, và không đọc `.foreman/traces/`.
 - Không gọi script hay binary của repo; skill phải chạy được ở repo trắng.
-- Không continuous-poll sau khi lượt Foreman kết thúc.
-- Không tự tạo, đóng hoặc restart agent/worktree trong V2 core.
+- Không continuous-poll bằng Foreman agent sau khi lượt kết thúc; chỉ event observer được theo dõi runtime.
+- Không tự tạo, đóng hoặc restart agent/worktree trong V3 core.
 - Không in nhóm rỗng trong báo cáo mặc định.
 - Không mở khối chi tiết cho item Human không hỏi tới, kể cả khi nó vừa xong trong cùng lượt.
 - Không tường thuật thao tác nội bộ khi nó không đổi việc Human phải làm.

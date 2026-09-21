@@ -24,7 +24,8 @@ Người dùng clear session liên tục.
 Backlog, assignment, progress gần nhất, blocker và completion claim phải khôi phục được từ `.foreman/`, không phụ thuộc trí nhớ hội thoại.
 
 Khởi động là một pass: đọc state, list agent đúng một lần, reconcile, rồi báo cáo.
-Không có background daemon; "chủ động" nghĩa là Foreman tự làm việc cần thiết trong mỗi lượt được gọi mà không xin phép từng thao tác.
+Không có background reasoning.
+Một event observer không dùng LLM được phép quan sát Herdr và inbox, ghi event bền vững, rồi đánh thức Foreman khi có việc cần reconcile.
 
 ### 2. Foreman giữ global context, worker giữ deep context
 
@@ -72,6 +73,7 @@ State mới chỉ được thêm khi nó loại bỏ nhu cầu Human phải mở
 - assignment nằm trên `backlog.md`;
 - latest operational snapshot nằm trong `.foreman/progress/<id>.md`;
 - worker result đi qua file riêng `.foreman/inbox/<id>--<agent>.md`;
+- runtime transition chưa reconcile nằm trong `.foreman/events/`;
 - history trơn tru nằm ở `done.md`;
 - friction nằm ở `log.md`;
 - raw evidence được ghim trong `traces/`.
@@ -85,8 +87,9 @@ Thiết kế giả định đúng một Foreman được quyền mutate `.forema
 Foreman quản lý đúng một repo và chỉ điều phối agent có `cwd` thuộc repo đó.
 Herdr sở hữu runtime mechanics; Foreman phải discover CLI hiện tại qua `herdr-guide`, không hard-code cú pháp từ ví dụ cũ.
 
-V2 không cần daemon, database, script của repo hay service riêng.
-Agent lifecycle tự động, worktree orchestration, multi-repo và continuous monitoring nằm ngoài core.
+V3 không cần database, script của repo hay service suy luận riêng.
+Event observer nằm trong global skill, chỉ là runtime bridge và không có policy authority.
+Agent lifecycle tự động, worktree orchestration, multi-repo và background reasoning vẫn nằm ngoài core.
 
 ## Vòng điều phối cốt lõi
 
@@ -110,6 +113,8 @@ Một câu hỏi kiểu "giờ tôi cần quan tâm gì" dùng snapshot hiện c
 | `backlog.md` | lifecycle và ownership | chỉ việc chưa xong |
 | `progress/<id>.md` | latest operational context | overwrite, Foreman viết |
 | `inbox/<id>--<agent>.md` | worker result chưa áp | một file mỗi assignment |
+| `events/*.md` | runtime transition chưa reconcile | observer ghi, Foreman xoá sau khi xử lý |
+| `runtime/` | observer identity, lock và wake deduplication | observer quản lý |
 | `done.md` | mẫu số happy path | append-only |
 | `log.md` | friction | append-only, không đọc lúc chạy thường |
 | `traces/` | bằng chứng thô | chỉ ghim, không đọc |
@@ -126,8 +131,9 @@ Không dùng progress snapshot làm product authority hoặc proof độc lập.
 - Không quản repo thứ hai.
 - Không estimate, deadline hoặc velocity.
 - Không tạo fixed plan → implement → review → test pipeline cho mọi task.
-- Không continuous-poll worker khi Foreman không được gọi.
-- Không tự tạo, đóng, restart agent hoặc worktree trong V2 core.
+- Không continuous-poll worker bằng LLM khi Foreman không được gọi.
+- Event observer không được đổi backlog, progress, lifecycle hay tự ra quyết định.
+- Không tự tạo, đóng, restart agent hoặc worktree trong V3 core.
 - Không tự chẩn đoán nguyên nhân friction từ log hoặc trace.
 
 ## Bảy câu hỏi trước khi sửa skill
@@ -152,6 +158,29 @@ Sau khi sửa:
 
 Chỉ ghi quyết định có tính ràng buộc về sau, kèm lý do.
 Thêm dòng khi sửa skill, không xoá dòng cũ.
+
+### 2026-09-21 — Outcome-first Human communication: **nhận**
+
+Hai report thực tế cho cùng một task đã lặp item ở khối chi tiết và digest, dùng nhiều nhãn IN HOA, kể chronology, và đặt kết luận sau transcript kỹ thuật.
+Human phải đọc gần toàn màn hình để tìm hai thứ duy nhất quan trọng: kết luận là gì và họ cần làm gì.
+
+Nhận một contract trình bày chung cho mọi playbook: action và kết luận đi trước, mỗi item chỉ có một representation trong một response, claim của worker được ghi nguồn một lần, và field không giúp Human hành động thì bỏ.
+Default report dùng heading cùng bullet ngắn; detail chỉ mở theo câu hỏi; raw prompt và state nội bộ không còn được in mặc định.
+Decision package vẫn giữ đủ option, impact và recommendation vì phần đó không phải noise mà là authority input cho Human.
+
+Thay đổi này không giảm evidence hay làm Foreman tự quyết.
+Package gốc vẫn nằm nguyên trên đĩa; chỉ lớp trình bày cho Human được nén và sắp lại theo attention cost.
+
+### 2026-09-21 — Proactive supervision event bridge: **nhận**
+
+Mục tiêu của Foreman là Human chỉ nói chuyện với một Foreman session.
+V2 chỉ reconcile khi Human gọi, nên Human vẫn phải hỏi worker đã xong hay blocked chưa; behavior này không đạt mục tiêu supervisor.
+
+Nhận một event observer không dùng LLM, chỉ quan sát assignment `[~]`, Herdr status và durable inbox.
+Observer ghi event xuống đĩa trước khi wake, deduplicate theo runtime transition, không chỉnh lifecycle và không tự xử lý blocker.
+Foreman vẫn là owner duy nhất của backlog và progress; khi được wake, nó chạy supervision cycle cũ rồi chủ động báo Human chỉ khi có approval, decision hoặc bất thường.
+
+Thay đổi này cố ý nới bất biến "không background daemon", nhưng giữ nguyên lý do của nó: không tốn token khi chờ, không background judgment, restart không mất event, và Human không bị kéo sang worker session.
 
 ### 2026-08-14 — Rà phụ thuộc: **nhận**
 

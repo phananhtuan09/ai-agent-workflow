@@ -15,12 +15,12 @@ Luật ghi friction nằm ở `bookkeeping.md`; luật lấy response nằm ở 
    - không chỉ định thì lấy agent cùng repo, `idle` hoặc `done`, chưa giữ task;
    - nhiều agent general-purpose tương đương thì chọn tên tăng dần;
    - capability tạo khác biệt mà không có nguồn xác định thì hỏi Human một câu;
-   - không có agent thì để `[ ]` và báo, không tự mở trong V2 core.
+   - không có agent thì để `[ ]` và báo, không tự mở trong V3 core.
 5. Agent chưa có tên thì đặt tên trước khi lưu assignment.
 6. Dựng prompt từ backlog theo mẫu dưới và chạy `## Kiểm trước khi gửi`.
 7. Gửi thẳng qua Herdr; không đi qua file trung gian.
 8. Xác nhận agent nhận prompt rồi mới đổi `[~]`, ghi `@agent · YYYY-MM-DD HH:MM`, và tạo snapshot ban đầu; handoff thì đổi `AGENT/UPDATED` nhưng giữ last known progress đến response mới.
-9. In nguyên prompt đã gửi.
+9. Xác nhận việc giao bằng một dòng theo `reporting.md`; chỉ in raw prompt khi Human yêu cầu xem prompt.
 
 Agent `working` chỉ nhận task mới khi Human yêu cầu override.
 Agent `blocked` chỉ nhận câu hỏi, context hoặc decision cho task nó đang giữ.
@@ -342,13 +342,13 @@ Nếu package hiện có nêu affected files trùng nhau, đó là lý do cụ t
 
 Kết quả rà là **đề xuất**, không phải kết luận:
 
-```text
-Đề xuất xếp nối tiếp (2)
-  T-16 chờ T-14   cả hai đều sửa middleware của /orders
-  T-18 chờ T-12   T-18 đọc schema orders mà T-12 đang đổi
+```markdown
+### Đề xuất xếp nối tiếp
 
-Giao song song được (3)
-  T-15  T-17  B-06
+- `T-16` chờ `T-14` — Cả hai đều sửa middleware của `/orders`.
+- `T-18` chờ `T-12` — `T-18` đọc schema orders mà `T-12` đang đổi.
+
+Giao song song được: `T-15`, `T-17`, `B-06`.
 ```
 
 Người dùng xác nhận phụ thuộc nào thì ghi `— chờ T-XX` vào mô tả của item chờ.
@@ -390,7 +390,7 @@ Chỉ tự giao khi:
 Human chỉ định agent thì dùng agent đó.
 Nếu nhiều agent general-purpose tương đương, chọn theo tên agent tăng dần để kết quả deterministic.
 Nếu lựa chọn agent materially khác nhau vì capability hoặc topology, hỏi Human một câu.
-Không tự mở agent mới trong V2 core.
+Không tự mở agent mới trong V3 core.
 
 ## Cấm
 

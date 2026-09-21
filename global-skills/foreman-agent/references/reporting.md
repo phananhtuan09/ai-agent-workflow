@@ -3,89 +3,152 @@
 Playbook của `foreman-agent`.
 Nạp khi Human hỏi về một item cụ thể, xin status đầy đủ, hoặc ngay sau khi bạn xong một thao tác.
 
-Báo cáo mặc định bốn nhóm nằm ở `SKILL.md` và luôn có sẵn; file này sở hữu mọi khối **chi tiết hơn** nó.
+Báo cáo mặc định bốn nhóm nằm ở `SKILL.md` và luôn có sẵn; file này sở hữu mọi khối chi tiết hơn nó.
 Luật `## Độ dài và mức chi tiết` trong `SKILL.md` áp cho tất cả khối dưới đây.
+
+## Một response, một representation
+
+Mỗi item chỉ xuất hiện một lần trong cùng response.
+Nếu đã in khối chi tiết cho `T-41`, không lặp `T-41` trong digest hay báo cáo mặc định ở cuối lượt.
+
+Khi một item khác vừa cần attention trong lúc đang trả lời, đặt nó dưới heading phù hợp bằng một bullet ngắn.
+Không chen chronology như `trong lúc bạn hỏi`, vì thời điểm xuất hiện không đổi việc Human cần làm.
+
+Luôn xếp nội dung theo thứ tự:
+
+1. trạng thái hoặc action cần Human;
+2. kết luận giúp Human quyết;
+3. verification chưa hoàn tất và rủi ro còn mở;
+4. chi tiết bổ sung chỉ khi Human đã hỏi.
 
 ## Status đầy đủ
 
-Human xin status tất cả thì in một khối ngắn mỗi item `[~]`:
+Human xin status tất cả thì mỗi item `[~]` chiếm một bullet.
+Ghi nguồn một lần và kèm thời điểm snapshot.
 
-```text
-T-21 · @codex-1 · đang chạy
-  LAST: agent tự báo đã reproduce duplicate callback
-  CURRENT/NEXT: implement idempotency → regression tests
-  BLOCKER: không
-  PROOF: reproduction ✓; regression chưa chạy
+```markdown
+### Đang chạy
+
+- `T-21` · Đang chạy · cập nhật 14:20.
+  Theo @codex-1: đã tái hiện callback trùng; đang thêm idempotency guard; tiếp theo chạy regression.
 ```
 
-Luôn kèm thời điểm snapshot; không trình progress cũ như response vừa lấy.
-Item `[v]` trong cùng lượt đó in review package bên dưới, không in khối này.
+Chỉ tách item thành nhiều dòng nếu có blocker, verification gap hoặc rủi ro mà Human cần thấy ngay.
+Item `[v]` trong cùng lượt dùng review package bên dưới và không xuất hiện trong nhóm `Đang chạy`.
 
 ## Một item đang chạy
 
 Human hỏi về đúng một item thì dùng snapshot mới nhất; thiếu field họ cần thì query worker trước theo `worker-io.md`.
 
-```text
-STATUS: đang chạy — @codex-1, cập nhật 2026-09-17 14:20
-LAST: agent tự báo đã reproduce duplicate callback
-CURRENT: agent tự báo đang implement idempotency guard
-NEXT: agent tự báo sẽ chạy regression tests
-BLOCKER: không
-PROOF: agent tự báo reproduction đã quan sát; regression chưa chạy
-SUMMARY: task đang tiến triển bình thường, chưa cần Human.
+```markdown
+`T-21` · Đang chạy · @codex-1 · cập nhật 14:20
+
+Theo @codex-1: đã tái hiện callback trùng và đang thêm idempotency guard.
+Tiếp theo: chạy regression test.
+Chưa kiểm tra: regression test.
 ```
 
-- Mỗi field tối đa một câu.
-- Không biết thì ghi `-`, không suy đoán.
-- Claim từ worker phải có `agent tự báo`.
-- `BLOCKER` ghi `không`, một decision cụ thể, hoặc `tự xử lý — …`.
-- `PROOF` phân biệt đã chạy, chưa chạy và remaining risk.
-- `SUMMARY` tối đa hai câu và nói Human có cần làm gì không.
-- Chỉ in khối, không thêm chữ trước hoặc sau.
+Bỏ dòng không có giá trị thay vì in `-`, `none` hoặc lặp lại trạng thái.
+Nếu worker tự xử lý blocker, thay dòng `Cần bạn` bằng `Đang tự xử lý: <blocker và cách gỡ>`.
+Nếu claim chỉ dựa trên worker, attribution ở dòng `Theo @agent` áp cho toàn khối.
+Không thêm summary lặp lại chính các dòng phía trên.
 
 ## Review package
 
-Item `[v]` mặc định chỉ chiếm **một dòng** trong báo cáo.
+Item `[v]` mặc định chỉ chiếm một bullet trong báo cáo mặc định.
 In khối đầy đủ ở đúng hai lúc: Human hỏi về chính item đó, hoặc Human yêu cầu status đầy đủ.
 Item vừa vào `[v]` không phải là một trong hai lúc đó.
 
-```text
-CHỜ DUYỆT: T-34 Monitor cron jobs — @koken-1 tự báo, complete 09-18 09:08
-THAY ĐỔI: không sửa code; kiểm tra read-only 10 batch job trên 2 server
-KẾT QUẢ: 10/10 job của 09-17 và 09-18 đều PASS
-VERIFICATION: 5 lane đã chạy (log, DB, mail, FTP, remote check); chưa chạy test tự động
-RỦI RO CÒN LẠI: 1 lỗi lịch sử ngoài phạm vi, đã tự phục hồi và không tái diễn
+```markdown
+`T-34` · Chờ duyệt · @koken-1 · hoàn tất 09:51
+
+Kết luận: Theo @koken-1, 10/10 cron job chạy đúng trên hai server và không phát hiện bug mới.
+Đã kiểm tra: log, DB, mail, FTP và remote check.
+Chưa kiểm tra: test tự động.
+Còn mở: một lỗi lịch sử ngoài phạm vi đã tự phục hồi và chưa tái diễn.
 ```
 
 Khối này là bản rút gọn, không phải bản chép lại Completion Package.
-`CHỜ DUYỆT` dựng từ backlog và header snapshot; các field còn lại rút từ package, mỗi field **một câu, một dòng**.
+Dòng `Kết luận` phải trả lời điều Human quan tâm nhất; correction, observable result và thay đổi quan trọng được gộp vào đây thay vì tạo thêm field IN HOA.
 
-- Bỏ hẳn field không có gì đáng chú ý: `FILE ẢNH HƯỞNG` khi không sửa file nào, `PUBLIC CONTRACT: none`, `RỦI RO CÒN LẠI: không`.
-- `agent tự báo` viết đúng **một lần** ở dòng `CHỜ DUYỆT`; các field dưới thừa hưởng, không lặp lại từng dòng.
-- `VERIFICATION` đếm cái đã chạy, kể cái chưa chạy — không liệt kê từng lệnh và từng kết quả xanh.
-- `RỦI RO CÒN LẠI` giữ đúng rủi ro còn mở. Nghi vấn đã điều tra và loại trừ thì bỏ; nó không đổi quyết định duyệt.
-- Rủi ro chỉ lấy từ lời worker; không tự nghĩ thêm rủi ro worker không khai.
-- Không thêm dòng mời duyệt, không thêm đánh giá hay khuyến nghị của Foreman.
+- Bỏ hẳn thông tin không giúp duyệt, như `không sửa file`, `public contract: none` hoặc `rủi ro: không`.
+- Verification đã pass thì đếm hoặc gom; verification chưa chạy phải nói rõ.
+- Rủi ro chỉ lấy từ worker report; nghi vấn đã loại trừ thì bỏ.
+- Nhiều rủi ro cùng loại thì gộp; các decision khác nhau mà Human phải chọn thì giữ thành bullet riêng.
+- Không thêm đánh giá chất lượng hay khuyến nghị duyệt của Foreman.
 
-Worker khai nhiều nhánh rủi ro thì gộp thành một câu và nói còn bao nhiêu nhánh, đừng bê nguyên danh sách.
-Human muốn đủ chi tiết thì họ hỏi tiếp, và lúc đó bạn đọc `progress/<id>.md` ra.
+Nếu còn một lựa chọn product, business, architecture, security, compatibility hoặc operational mà Human phải chốt, item chưa sẵn sàng để duyệt.
+Trình nó bằng Decision package thay vì giấu lựa chọn dưới `Còn mở` của Review package.
+
+Human muốn đủ chi tiết thì đọc snapshot gốc và trả lời đúng phần họ hỏi, không in toàn bộ package mặc định.
+
+## Decision package
+
+Khi cần Human quyết, trình bày decision trực tiếp và giữ đủ option, impact cùng recommendation của worker.
+
+```markdown
+`T-12` · Cần bạn quyết
+
+Vấn đề: Có hai behavior hợp lệ cho refresh token và repository chưa có authority để chọn.
+
+- A — Reuse token: giữ tương thích, nhưng tiếp tục chấp nhận replay window hiện tại.
+- B — Rotate token: giảm replay window, nhưng client cũ phải xử lý token mới sau mỗi refresh.
+
+Theo @claude-2, khuyến nghị B vì phù hợp security goal đã nêu.
+Bạn chọn A hay B?
+```
+
+Không nén option, impact hoặc recommendation thành một câu nếu làm mất tradeoff.
+Trong toàn response chỉ hỏi Human một câu.
+
+## Item chi tiết cùng item mới
+
+Nếu Human đang hỏi sâu về `T-41` và `T-42` vừa cần duyệt, response có đúng hình dạng sau:
+
+```markdown
+`T-41` · Cần bạn quyết
+
+Vấn đề: Legacy đang chấp nhận hai định dạng mã và cần chốt phạm vi sửa trước khi worker tiếp tục.
+
+- A — Chỉ sửa New: ít ảnh hưởng hơn, nhưng Legacy vẫn giữ hai định dạng.
+- B — Sửa cả New và Legacy: thống nhất behavior, nhưng có thể cần rà hoặc backfill dữ liệu cũ.
+
+Theo @koken-1, khuyến nghị B để tránh tiếp tục sinh dữ liệu không đồng nhất.
+Bạn chọn A hay B?
+
+### Cần bạn duyệt
+
+- `T-42` Demo slice mask — Theo @koken-2: demo và tài liệu đã xong; cần người có domain xác nhận.
+```
+
+Không lặp `T-41` trong nhóm `Cần bạn quyết` ở cuối response.
+Không thêm câu kể rằng `T-42` xuất hiện trong lúc đang trả lời.
 
 ## Xác nhận sau thao tác
 
-Duyệt, từ chối, giao việc, relay decision và requeue đều báo đúng **một dòng**.
+Duyệt, từ chối, giao việc, relay decision và requeue đều báo đúng một dòng.
 
 ```text
-Đã duyệt T-34. @koken-1 rảnh, backlog không còn item chờ giao.
+Đã duyệt T-34; @koken-1 đang nhận T-36 tiếp theo.
 ```
 
-Thêm câu thứ hai chỉ khi thao tác đó đổi việc Human phải làm: nó mở khoá item khác, bạn vừa tự giao việc tiếp, hoặc có item mới cần duyệt.
-Không kể `done.md`, snapshot, đường dẫn trace, hay việc không có dependency nào để gỡ.
-Sau dòng đó, in lại báo cáo mặc định **chỉ khi** còn nhóm nào không rỗng.
+Ví dụ giao việc:
+
+```text
+Đã giao T-14 cho @codex-1.
+```
+
+Không in raw prompt đã gửi trừ khi Human yêu cầu xem prompt.
+Không kể `done.md`, snapshot, trace, event hay dependency không thay đổi action của Human.
+
+Sau xác nhận, chỉ thêm các item khác đang cần Human xử lý.
+Không in lại item vừa được xác nhận và không in toàn bộ báo cáo mặc định chỉ để chứng minh state đã đổi.
 
 ## Cấm
 
-- Không rút review package của item `[v]` xuống một dòng khi Human hỏi về chính item đó.
-- Không lặp `agent tự báo` ở từng dòng trong cùng một khối.
-- Không liệt kê từng bước verification đã pass; đếm chúng và chỉ kể phần chưa chạy.
-- Không in field rỗng hay field `none` chỉ để cho khối đủ dáng.
-- Không thêm đánh giá chất lượng hay khuyến nghị duyệt của Foreman vào bất cứ khối nào.
+- Không lặp cùng một item ở cả khối chi tiết và digest trong một response.
+- Không dùng nhãn IN HOA kiểu transcript cho output gửi Human.
+- Không kể chronology hoặc housekeeping không đổi action của Human.
+- Không liệt kê từng verification đã pass; đếm chúng và chỉ kể phần chưa chạy.
+- Không in field rỗng hay field `none` chỉ để khối đủ dáng.
+- Không thêm đánh giá chất lượng hay khuyến nghị duyệt của Foreman.
