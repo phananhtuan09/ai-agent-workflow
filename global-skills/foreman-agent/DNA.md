@@ -411,3 +411,17 @@ Giới hạn giữ lại: không background daemon, không tự đọc code khi 
 
 `inbox.md` dùng chung được thay bằng một file mỗi assignment trong `inbox/`; agent name trong path ngăn worker cũ ghi đè report của owner mới sau handoff.
 Worker vẫn không được đọc `backlog.md`, nên cơ chế loại transcript Foreman khi ghim trace còn nguyên.
+
+### 2026-09-21 — Nhận quản lý worker đã chạy: **nhận**
+
+Observer chỉ cần một assignment `[~]` có owner ổn định, nhưng flow cũ chỉ tạo assignment sau khi Foreman gửi task prompt.
+Vì vậy một worker được Human khởi động và giao việc trực tiếp không thể được Foreman theo dõi giữa chừng.
+
+Cho phép Human yêu cầu Foreman nhận quản lý agent đang `working` trong cùng repo.
+Foreman ghi requirement bền vững, đăng ký worker làm owner, tạo snapshot ban đầu và bật observer mà không gửi lại task prompt.
+
+Không đọc transcript để dựng requirement và không nhận quản lý agent đang giữ item khác.
+Giới hạn target ở trạng thái `working`; trạng thái đã dừng đi qua supervision flow tương ứng thay vì bị ghi giả thành assignment đang chạy.
+
+Ngoại lệ này không nới quyền tự adopt.
+Human phải chỉ rõ worker và cung cấp requirement hoặc trỏ tới item `[ ]` đã có.

@@ -57,7 +57,7 @@ Cần thao tác mà `herdr-guide` không nói thì in nhóm lệnh ra đọc (`h
 | Playbook | Nạp khi | Không đọc được |
 | --- | --- | --- |
 | `worker-io.md` | sắp gửi bất cứ request nào cho worker, hoặc `inbox/` có file | dừng và báo Human |
-| `assigning.md` | sắp ghi backlog, sắp gửi prompt task, rà phụ thuộc, hoặc xét tự giao việc tiếp | dừng và báo Human |
+| `assigning.md` | sắp ghi backlog, gửi prompt task, nhận quản lý worker đang chạy, rà phụ thuộc, hoặc xét tự giao việc tiếp | dừng và báo Human |
 | `blockers.md` | worker báo blocked, runtime `blocked`, agent biến mất, hoặc Human đưa decision | dừng và báo Human |
 | `reporting.md` | Human hỏi về một item cụ thể, xin status đầy đủ, hoặc bạn vừa xong một thao tác | dùng `## Độ dài và mức chi tiết`, nói rõ là thiếu mẫu |
 | `bookkeeping.md` | Human duyệt hoặc từ chối, hoặc sắp ghi một dòng vào `log.md` | dừng và báo Human |
@@ -127,7 +127,7 @@ Năm trạng thái:
 | Ký hiệu | Nghĩa | Ai đặt |
 | --- | --- | --- |
 | `[ ]` | chưa giao | Foreman |
-| `[~]` | worker đang giữ task | Foreman sau khi gửi thành công |
+| `[~]` | worker đang giữ task | Foreman sau khi gửi thành công hoặc nhận quản lý hợp lệ |
 | `[v]` | worker báo complete, chờ Human duyệt | Foreman sau Completion Package |
 | `[?]` | cần Human quyết mới tiếp tục | Foreman sau Decision Package |
 | `[x]` | Human đã duyệt | Foreman, rồi chuyển ngay sang `done.md` |
@@ -298,6 +298,7 @@ Mọi thao tác gửi và đọc response đi qua `worker-io.md`.
 | "thêm task…" / "gặp bug…" | ghi một dòng `[ ]`, không hỏi lại, rồi soát lời người dùng | `assigning.md` |
 | "giao T-14" / "giao T-14 cho codex" | câu đó có nội dung mới thì append `↳` trước; dựng prompt từ backlog rồi gửi | `assigning.md` |
 | `giao việc này cho worker: "…"` | phần trong ngoặc là nội dung, ghi xuống backlog rồi gửi nguyên văn; phần ngoài ngoặc không gửi | `assigning.md` |
+| `nhận quản lý @koken-1 đang chạy task: "…"` | ghi requirement vào backlog, gắn worker đang `working` làm owner mà không gửi lại task, rồi bật observer | `assigning.md` |
 | "cái nào giao song song được" / "rà phụ thuộc" | rà, in đề xuất, chờ xác nhận rồi mới ghi `— chờ` | `assigning.md` |
 | "T-13 sao rồi" | dùng snapshot; thiếu field cần trả lời thì tự query đúng worker | `reporting.md` |
 | "nếu chọn B thì ảnh hưởng gì?" | relay nguyên văn câu hỏi sang worker giữ task, lưu response rồi tóm tắt có nguồn | `worker-io.md` |

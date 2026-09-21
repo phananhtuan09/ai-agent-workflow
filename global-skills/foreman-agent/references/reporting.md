@@ -138,6 +138,12 @@ Ví dụ giao việc:
 Đã giao T-14 cho @codex-1.
 ```
 
+Ví dụ nhận quản lý worker đang chạy:
+
+```text
+Đã nhận quản lý T-14 từ @koken-1; observer đang theo dõi từ trạng thái hiện tại.
+```
+
 Không in raw prompt đã gửi trừ khi Human yêu cầu xem prompt.
 Không kể `done.md`, snapshot, trace, event hay dependency không thay đổi action của Human.
 

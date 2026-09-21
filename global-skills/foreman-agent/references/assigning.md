@@ -2,7 +2,7 @@
 
 File tham chiếu của `foreman-agent`.
 Đọc file này trước khi gửi bất cứ prompt nào cho worker agent.
-File này sở hữu: dựng prompt, chọn agent, soát lời người dùng, rà phụ thuộc, và tự giao việc tiếp.
+File này sở hữu: dựng prompt, chọn agent, nhận quản lý worker đang chạy, soát lời người dùng, rà phụ thuộc, và tự giao việc tiếp.
 Luật ghi friction nằm ở `bookkeeping.md`; luật lấy response nằm ở `worker-io.md`.
 
 ## Trình tự
@@ -25,8 +25,33 @@ Luật ghi friction nằm ở `bookkeeping.md`; luật lấy response nằm ở 
 Agent `working` chỉ nhận task mới khi Human yêu cầu override.
 Agent `blocked` chỉ nhận câu hỏi, context hoặc decision cho task nó đang giữ.
 
+Nhận quản lý không phải giao task mới và không đi qua override này.
+
 Không hỏi xác nhận trước khi gửi khi policy đã chọn được agent.
 Câu hỏi ở bước kiểm hoặc capability ambiguity giải quyết thiếu authority; nó không phải câu hỏi xác nhận.
+
+## Nhận quản lý worker đang chạy
+
+Human có thể yêu cầu Foreman nhận quản lý một agent đã bắt đầu làm việc ngoài backlog.
+Flow này chỉ áp dụng khi agent hiện là `working`; nó đăng ký ownership để observer theo dõi, không gửi lại yêu cầu công việc.
+
+1. Dùng agent list của supervision cycle và xác nhận agent tồn tại, có `cwd` thuộc repo hiện tại, đang `working`, và chưa là owner của item `[~]` hoặc `[?]` khác.
+2. Requirement phải đến từ một item `[ ]` đã có hoặc từ phần nội dung Human vừa cung cấp; nếu không có requirement đủ để lưu bền vững thì hỏi đúng một câu thay vì suy ra từ pane title hay transcript.
+3. Nếu tạo item mới, ghi nguyên văn nội dung Human xuống backlog trước và soát theo luật bình thường.
+4. Nếu agent chưa có tên, đặt tên ổn định trước khi ghi assignment.
+5. Đổi item sang `[~]`, ghi `@agent · YYYY-MM-DD HH:MM`, rồi tạo snapshot ban đầu với field chưa biết là `-`, `CURRENT` nói worker đã chạy trước khi Foreman nhận ownership, và `COMPLETION STATE: working`.
+6. Không gửi task prompt, Progress Package hay worker contract ở thời điểm nhận quản lý; worker đang làm đúng task đó và prompt mới có thể đến muộn rồi gây làm lặp.
+7. Khởi động event observer theo `SKILL.md`; khi runtime rời `working`, reconcile và lấy package theo flow bình thường.
+
+Agent khác repo, `unknown`, `blocked`, `idle` hoặc `done` không đi qua flow này.
+Nếu agent đã ngừng chạy, báo trạng thái thật và xử lý bằng supervision flow phù hợp thay vì ghi một assignment giả là đang chạy.
+Nếu agent đã giữ item khác, không đổi owner hoặc gộp hai task; báo mismatch để Human chỉ rõ task nào là đúng.
+
+Xác nhận bằng đúng một dòng:
+
+```text
+Đã nhận quản lý T-14 từ @koken-1; observer đang theo dõi từ trạng thái hiện tại.
+```
 
 ## Nguồn của khối YÊU CẦU
 
@@ -401,5 +426,6 @@ Không tự mở agent mới trong V3 core.
 - Không để một điểm soát chặn việc ghi backlog; chỉ mâu thuẫn và trỏ sai mới chặn việc gửi.
 - Không tự ghi `— chờ` khi Human chưa xác nhận, và không cảnh báo overlap khi không nêu được lý do cụ thể.
 - Không giao một việc chưa có id trên backlog.
+- Không gửi lại requirement hoặc worker contract khi nhận quản lý một worker đang `working`.
 - Không chép nội dung package của worker vào `Foreman ghi chú`; khối đó chỉ chứa con trỏ.
 - Không nở `LUẬT` hay `REPORT` ra dài hơn mẫu, và không thêm placeholder mô tả cho từng field.
