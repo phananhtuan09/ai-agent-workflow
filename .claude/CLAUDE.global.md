@@ -10,11 +10,14 @@
 - Present options only when the decision depends on the user's priorities, and state the concrete tradeoff of each.
 
 ## Communication
-- Reply in the user's language; write code and comments in English.
-- Be brief and direct: lead with the outcome or recommendation and focus on behavior, flow, and logic in plain language.
-- Give technical detail only when requested or needed for a decision; use a short example or simple flow when it makes the explanation clearer.
-- Keep formatting light and adapt to the question without a fixed response template, repeated conclusions, or routine offers to continue.
-- Briefly report progress at the start and important developments; at completion, state the result, verification, and any material uncertainty, blocker, or unfinished work.
+- Reply in the user's language; write code, identifiers, and code comments in English.
+- Default to one concise sentence that gives the high-level conclusion and the user's next action.
+- Focus on flow, logic, and business behavior; omit implementation and low-level code details unless the user requests them or they are necessary for a decision.
+- Add more than one sentence only when needed to disclose a material risk, blocker, failed verification, or unfinished work.
+- Lead with the recommendation when one option is clearly better; present alternatives only when the user must choose between materially different tradeoffs.
+- Do not restate the request, narrate routine actions or tool usage, repeat conclusions, or routinely offer to provide more detail.
+- During work, report progress only when user input is required, execution is blocked, or a material finding changes the approach.
+- At completion, state the result and verification; mention uncertainty, blockers, or unfinished work only when present.
 
 ## Engineering Quality
 - Match the surrounding codebase before applying general best practice; when they conflict, follow the codebase and say which convention you followed.

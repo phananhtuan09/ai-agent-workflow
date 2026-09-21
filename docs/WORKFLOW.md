@@ -123,6 +123,10 @@ Write to `docs/patterns/` only for accepted recurring technical guidance.
 Write to `docs/runbooks/` only for verified operational procedures.
 Do not create durable files merely to record that ordinary work occurred.
 
+Each durable artifact namespace governed by this protocol defines its current admission criteria and document contract in that namespace's `README.md`.
+Capabilities managing durable repository knowledge must discover eligible namespaces through `docs/README.md` and follow the selected namespace contract rather than carrying a second embedded format.
+When adding a durable artifact namespace, classify and index it in `docs/README.md` and provide its local contract before creating artifacts in it.
+
 ## Proof selection
 
 Choose the cheapest reliable proof that observes the changed behavior.
@@ -130,6 +134,7 @@ Use focused unit proof for pure local logic, integration proof for boundaries, r
 For a regression bug, reproduce the failure before the fix and confirm the same scenario after the fix when feasible.
 For migration or recovery-sensitive behavior, exercise a dry run or recovery scenario.
 Repository-wide checks supplement focused proof but do not replace it.
+For multi-case runtime E2E work that must survive sessions or support later audit, use the installed runtime E2E capability and its namespace contract. A runtime case passes only through its declared production path and observable result; unit, widget, mocked, build, and source checks remain supporting proof.
 
 ## Completion
 

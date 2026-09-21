@@ -27,7 +27,6 @@
   },
   "scripts": {
     "test": "node test/run.js && node test/foreman-observer.test.js",
-    "sync-skills": "node scripts/sync-skills.js",
     "check-skills": "node scripts/check-skills.js",
     "release": "node scripts/release.js",
     "release:patch": "node scripts/release.js patch",

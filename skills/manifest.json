@@ -12,7 +12,7 @@
       "review-pr",
       "prompt-leverage",
       "smart-commits",
-      "sync-project-knowledge"
+      "manage-project-knowledge"
     ],
     "common-review": [
       "quality-code-check",
@@ -21,6 +21,7 @@
       "fix-bug"
     ],
     "testing": [
+      "runtime-e2e-test-plan",
       "property-based-testing"
     ],
     "evaluation": [
