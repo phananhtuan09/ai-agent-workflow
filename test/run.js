@@ -260,6 +260,58 @@ test("canonical skills have required entrypoints", () => {
   });
 });
 
+test("review-pr installs its canonical skill and runtime reviewer", () => {
+  const cases = [
+    {
+      tool: "codex",
+      skillPath: ".agents/skills/review-pr/SKILL.md",
+      reviewerPath: ".codex/agents/review-pr.toml",
+      reviewerSource: ".codex/agents/review-pr.toml",
+      rolePath: ".agents/roles/review-pr.md",
+      roleSource: ".agents/roles/review-pr.md",
+    },
+    {
+      tool: "claude",
+      skillPath: ".claude/skills/review-pr/SKILL.md",
+      reviewerPath: ".claude/agents/review-pr.md",
+      reviewerSource: ".claude/agents/review-pr.md",
+    },
+  ];
+
+  cases.forEach(({ tool, skillPath, reviewerPath, reviewerSource, rolePath, roleSource }) => {
+    const result = runCli([
+      "--kit",
+      "coding-standard",
+      "--tool",
+      tool,
+      "--skill",
+      "review-pr",
+    ]);
+    try {
+      assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+      assert.ok(
+        fs.readFileSync(path.join(result.workspace, skillPath)).equals(
+          fs.readFileSync(path.join(SOURCE_ROOT, "skills/review-pr/SKILL.md"))
+        )
+      );
+      assert.ok(
+        fs.readFileSync(path.join(result.workspace, reviewerPath)).equals(
+          fs.readFileSync(path.join(SOURCE_ROOT, reviewerSource))
+        )
+      );
+      if (rolePath) {
+        assert.ok(
+          fs.readFileSync(path.join(result.workspace, rolePath)).equals(
+            fs.readFileSync(path.join(SOURCE_ROOT, roleSource))
+          )
+        );
+      }
+    } finally {
+      result.cleanup();
+    }
+  });
+});
+
 test("Claude project instructions use the root protocol as their source", () => {
   assert.ok(!fs.existsSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.md")));
 });

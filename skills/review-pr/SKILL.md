@@ -1,209 +1,146 @@
 ---
 name: review-pr
-description: Perform a focused, high-confidence review of a pull request, branch, commit range, or working-tree diff. Prioritize merge-blocking defects that AI-generated changes commonly introduce, with or without PR context, and avoid broad speculative review or generic best-practice advice.
+description: Review a pull request, branch, commit range, or working-tree diff against relevant repository authority and affected behavior. Report only evidence-backed merge-blocking defects or material decisions, without modifying the reviewed change.
 ---
 
 # Review PR
 
-Review a proposed code change without modifying it.
+Review a proposed change as repository-driven read-only work.
 
-The goal is not to enumerate every possible risk.
+Inspect the change directly and report a small number of concrete issues that matter before merge.
+Do not turn the review into a broad audit, a style critique, or an implementation session.
 
-The goal is to find a small number of concrete defects that are likely to matter before merge and that can be supported by reviewable evidence.
+## Boundaries
 
-## Inputs
+Do not modify reviewed code, tests, schemas, configuration, requirements, plans, or evidence.
+Run validation in non-fixing mode and do not invoke formatters, generators, migrations, or commands that intentionally rewrite the workspace.
+Return the review in the conversation unless the caller explicitly supplies an output path.
+When an output path is supplied, write only the requested review artifact.
 
-A review requires a determinable change set, such as:
+## Determine The Change Set
 
-- a PR URL or number
-- a head and base ref
-- a commit range
-- the current branch relative to its merge base
-- a staged, unstaged, or working-tree diff
+Prefer the target and base supplied by the user.
+A review target may be a PR URL or number, refs, a commit range, the current branch relative to its merge base, or a staged, unstaged, or working-tree diff.
 
-Prefer the target supplied by the user.
+If no target is supplied, infer the most reasonable local change set and state the inference.
+Ask one focused question only when multiple materially different change sets remain plausible after inspection.
+Use `Blocked` only when no reliable change set can be determined or inspected.
 
-If no target is supplied, infer the most reasonable local diff and state the inference.
+## Establish The Review Basis
 
-Ask one focused question only when multiple materially different change sets are plausible.
+Follow applicable repository instructions and inspect the smallest authoritative surface needed to judge the affected behavior.
+Keep these sources distinct:
 
-Return `Blocked` only when no reliable change set can be obtained or inspected.
+- The current explicit human request is immediate intent authority for the requested delta.
+- Relevant approved product or domain rules define durable intended behavior.
+- Relevant architecture, security, and compatibility decisions constrain the implementation.
+- Code, tests, schemas, configuration, and runtime output are current-state evidence.
+- Active plans are work memory and do not override intent authority.
 
-Use any context the user supplies, including a PR description, issue, requirements, design notes, risk area, or verification evidence.
+Use supplied PR descriptions, issues, acceptance criteria, design notes, risk areas, and verification evidence when relevant.
+Do not trust an author or implementer summary in place of inspecting the diff and underlying evidence.
 
-Context may use any location or format and is never required to perform a diff review.
+When intended-behavior sources conflict and the current request does not resolve the conflict, identify the smallest material decision needed.
+Missing context by itself is not a defect or a decision blocker.
+When the diff can still be reviewed, infer only its apparent purpose and record the unverified business-rule scope as a limitation.
+Do not invent product rules or claim that unspecified behavior is wrong.
 
-## Review Modes
+## Review The Affected Behavior
 
-Use `Context-Enriched Review` when explicit intent or requirements are available.
+Summarize the apparent outcome of the change in one or two sentences.
+Trace the changed behavior through its relevant callers, consumers, contracts, schemas, configuration, and failure paths.
+Choose review concerns from the surfaces the change actually affects rather than applying a fixed checklist.
 
-Use `Diff-Only Review` otherwise.
+Look for concrete problems such as:
 
-In `Diff-Only Review`, infer the apparent purpose only to orient the review.
+- behavior that contradicts applicable intent authority or a named acceptance criterion
+- an incorrect condition, return value, state transition, lifecycle, or error outcome on a changed path
+- a reachable null, type, exception, cleanup, transaction, or state-restoration failure introduced or exposed by the change
+- an incomplete cross-file update to a caller, consumer, API contract, schema, serialization path, migration, route, dependency, export, or configuration value
+- a technical assumption contradicted by local code, installed types, tests, or authoritative documentation
+- an unauthorized trust-boundary bypass, unsafe data mutation, secret exposure, or demonstrable loss of existing data
+- proof that does not observe the behavior it claims to verify, or a test weakened so it can pass while the changed behavior is broken
+- unrelated behavior added outside the authorized change, or durable authority left inconsistent by an accepted durable behavior change
 
-Do not invent business requirements or claim that unstated behavior is wrong.
+Check performance, concurrency, idempotency, retry behavior, timezone handling, accessibility, UX, observability, deployment, rollback, or maintainability only when the request or authority makes it relevant, or the diff directly changes it and a concrete defect can be demonstrated.
 
-State that business-rule completeness could not be verified without additional context.
-
-## Core Review Criteria
-
-Review only these five areas by default.
-
-### 1. Direct Intent Contradictions
-
-Apply this criterion only when explicit PR context or requirements are available.
-
-Look for implementation behavior that directly contradicts the stated behavior, acceptance criterion, compatibility constraint, or safety rule.
-
-Do not report behavior that is merely unspecified.
-
-### 2. Broken Changed Code Paths
-
-Trace the paths changed by the diff and look for concrete failures such as:
-
-- an incorrect condition, return value, state transition, or error outcome
-- a reachable null, undefined, type, or exception failure
-- an error being swallowed or incorrectly converted into success
-- cleanup, transaction, or state restoration missing on a changed failure path
-- a failing build, type check, focused test, or other executable validation caused by the change
-
-Do not enumerate hypothetical edge cases unless the changed code makes the failure path concrete and reachable.
-
-### 3. Incomplete Cross-File Changes
-
-Search for references to changed symbols, contracts, schemas, configuration, and data shapes.
-
-Look for incomplete updates such as:
-
-- a changed signature with stale callers
-- a backend contract that no longer matches its client or consumer
-- a renamed or removed value still referenced elsewhere
-- a schema or model change missing required serialization, migration, validation, or mapping updates
-- a new dependency, environment variable, route, export, or configuration value that is not wired into the project
-
-This criterion should rely on repository search and surrounding code rather than assumption.
-
-### 4. Invalid Technical Assumptions
-
-Check whether the change relies on an API, type, library behavior, return shape, lifecycle, or repository convention that is contradicted by local code, installed types, tests, or authoritative documentation available in the environment.
-
-Common examples include calling a nonexistent method, handling the wrong return type, assuming an async operation is synchronous, or using a framework API in the wrong lifecycle.
-
-Do not report an assumption as invalid until it has been checked against a reliable source.
-
-### 5. Clear Security Or Data-Safety Violations
-
-Apply this criterion only when the diff touches a trust boundary, authorization decision, sensitive data, persistent mutation, or migration.
-
-Report only concrete violations such as:
-
-- a required repository-standard authorization check is bypassed or removed
-- untrusted input reaches a dangerous operation without the validation used by equivalent code paths
-- a secret or sensitive value is committed or exposed
-- an update or delete operation targets broader data than the surrounding contract permits
-- a migration or changed write path demonstrably loses or corrupts existing data
-
-Do not perform a generic security checklist when the diff does not touch these surfaces.
-
-## Conditional Review
-
-Review performance, concurrency, idempotency, retry behavior, timezone handling, accessibility, UX polish, observability, deployment, rollback, or general maintainability only when at least one of these conditions is true:
-
-- the user explicitly asks for that review
-- the supplied requirements identify it as a constraint
-- the diff directly changes that behavior and a concrete defect can be demonstrated
-
-Do not report style preferences, speculative future risks, optional refactors, or generic best-practice advice during the default review.
-
-Do not report missing tests by itself.
-
-Use tests and focused commands to prove or disprove a suspected defect.
-
-Report a test defect only when the test demonstrably fails to exercise its claimed behavior, can pass while the changed behavior is broken, or was weakened by the PR.
-
-## Review Procedure
-
-1. Read applicable repository instructions and determine the target, base, and review mode.
-2. Inspect the exact diff and summarize its apparent purpose in one or two sentences.
-3. Read only the surrounding code needed to trace the changed paths.
-4. Search the repository for changed symbols, callers, contracts, schemas, and configuration.
-5. Run the smallest relevant build, type, lint, or focused test commands that can validate concrete concerns.
-6. Report only findings that meet the finding bar below.
-
-Stop expanding the review once all five core criteria have been evaluated for the changed surfaces.
-
+Do not report style preferences, speculative future risks, optional refactors, generic best-practice advice, or missing tests by themselves.
 Do not widen the review into unrelated pre-existing code.
+Report a pre-existing problem only when the proposed change makes it newly reachable, materially worse, or directly claims to resolve it but does not.
+
+## Validate Concerns
+
+Use repository search and surrounding code to prove or disprove suspected defects.
+Choose the cheapest reliable proof for the affected behavior:
+
+- focused unit proof for pure local logic
+- integration proof for boundaries and contracts
+- runtime or browser proof for externally visible behavior
+- measurement for performance claims
+- dry-run or recovery evidence for migration and recovery-sensitive behavior
+
+Lint, type checks, builds, and broad suites may supplement focused proof but do not replace it.
+Run only checks that materially improve confidence in a concrete concern or the reviewed outcome.
+Record commands actually run and distinguish observed evidence from checks that remain unavailable or require human judgment.
 
 ## Finding Bar
 
 Report a defect only when all of the following can be stated:
 
-- the exact changed or affected code location
-- the concrete input, state, or code path that triggers the problem
+- the exact changed or affected location
+- the concrete input, state, or path that triggers the problem
 - the incorrect observable outcome
-- evidence from code, requirements, repository search, types, documentation, or command output
-- the condition required to resolve the problem
+- supporting evidence from authority, code, repository search, types, documentation, or command output
+- the condition required to correct the problem
 
-If the trigger or impact cannot be stated concretely, do not report the issue as a finding.
-
-Do not use vague claims such as "might fail", "could be improved", "consider adding", or "may be a problem".
-
-Use `Must fix` only for a defect established by direct evidence or a complete static reasoning chain.
-
-Use `Human decision` only when missing intent prevents determining whether a material changed behavior is correct.
-
+If the trigger, outcome, or evidence cannot be stated concretely, record the uncertainty as a limitation rather than a finding.
 Do not convert uncertainty into a defect.
 
-## Final Status
+Use `Must fix` only for a defect established by direct evidence or a complete static reasoning chain.
+Use `Human decision` only when conflicting or missing authority leaves materially different product, security, compatibility, or operational outcomes unresolved.
 
-- `Needs Fix`: one or more `Must fix` findings remain.
-- `Needs Human Decision`: no established defect remains, but missing intent prevents a material merge decision.
-- `Ready for Human PR Approval`: no blocking defect or material unresolved decision was found within the reviewed scope.
+## Status
+
+Choose one status using this precedence:
+
 - `Blocked`: the change set cannot be reliably determined or inspected.
+- `Needs Changes`: one or more `Must fix` findings remain.
+- `Needs Decision`: no established defect takes precedence, but a material `Human decision` remains.
+- `No Blocking Findings`: no defect or unresolved decision met the reporting bar within the reviewed scope.
 
-`Ready for Human PR Approval` does not prove the absence of defects.
-
-It means the focused review found no issue meeting the reporting bar.
+`No Blocking Findings` is not approval and does not prove the absence of defects.
+It reports only the result of the inspected scope and observed evidence.
 
 ## Output
 
-For a standalone invocation, return the review in the conversation and do not create a file unless requested.
-
-When the user or an orchestrated workflow supplies an output path, write the review there.
-
-Use Vietnamese unless the user requests another language.
-
+Use the user's language unless requested otherwise.
 Preserve identifiers, paths, commands, and canonical status labels in English when useful for traceability.
-
 Present findings first and order them by impact.
-
-Use this structure:
+Omit empty sections other than `Findings`.
 
 ```markdown
-# PR Review — {target}
+# Review — {target}
 
 ## Findings
-- [High] PR-01 — `Must fix`
+- PR-01 — `Must fix`
   - Location: ...
   - Trigger: ...
   - Outcome: ...
   - Evidence: ...
-  - Required condition: ...
+  - Required correction: ...
 
-## Human Decisions
+## Decision Needed
 - PR-02 — `Human decision`
-  - Missing intent: ...
-  - Why it affects merge readiness: ...
+  - Conflicting or missing authority: ...
+  - Material alternatives: ...
 
-## Review Scope
-- Status: Needs Fix | Needs Human Decision | Ready for Human PR Approval | Blocked
-- Mode: Context-Enriched Review | Diff-Only Review
-- Target, base, and diff source: ...
-- Commands run: ...
-- Context used: ...
+## Review Basis
+- Status: Needs Changes | Needs Decision | No Blocking Findings | Blocked
+- Target and base: ...
+- Intent authority used: ...
+- Evidence inspected and commands run: ...
 - Limitations: ...
 ```
 
-If no findings exist, write `Không phát hiện lỗi nào đạt ngưỡng báo cáo.`
-
+If no findings exist, write `Không phát hiện blocking defect nào trong phạm vi đã review.` when responding in Vietnamese.
 Do not add non-blocking suggestions unless the user explicitly requests them.
