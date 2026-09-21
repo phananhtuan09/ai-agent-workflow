@@ -38,17 +38,17 @@ Coding workflow tồn tại để:
 
 ## Kiến Trúc Cốt Lõi
 
-Workflow coding có ba phase:
+Workflow coding có bốn phase:
 
 ```text
-Plan → Implement → Validate
+Plan → Implement → Validate → Sign Off
 ```
 
-Ba phase thể hiện sự chuyển giao trách nhiệm chính giữa human và AI.
+Bốn phase thể hiện các ranh giới trách nhiệm chính giữa human và AI.
 
 Mỗi project có thể dùng số lượng step, skill, tool, agent, test và artifact khác nhau bên trong từng phase.
 
-Ba phase là ranh giới trách nhiệm, không phải yêu cầu về artifact.
+Bốn phase là ranh giới trách nhiệm, không phải yêu cầu về artifact.
 
 Công việc nhỏ có thể thỏa mãn một phase mà không sinh ra artifact nào.
 
@@ -58,7 +58,7 @@ Không tạo thêm phase nếu boundary mới không thay đổi responsibility,
 
 Quyết định một việc có đáng làm hay không nằm trước Plan và thuộc về human.
 
-Ba phase chỉ áp dụng cho công việc đã được quyết định là sẽ làm.
+Bốn phase chỉ áp dụng cho công việc đã được quyết định là sẽ làm.
 
 ### Plan
 
@@ -83,31 +83,45 @@ Implement không chỉ bao gồm việc viết production code.
 Tùy theo project và risk thực tế, Implement có thể bao gồm:
 
 - thay đổi production code
-- viết và thực thi unit test, integration test hoặc end-to-end test phù hợp
-- chạy lint, typecheck, build, migration check hoặc project-native validation
-- kiểm tra runtime behavior có thể tự động hóa
-- phát hiện và sửa các lỗi mà AI có thể tìm thấy bằng code inspection, test, tool hoặc runtime evidence
-- đối chiếu implementation với spec ban đầu
+- viết hoặc cập nhật unit test, integration test hoặc end-to-end test phù hợp
+- cập nhật schema, configuration, migration hoặc tài liệu cần thiết để hoàn thành scope
+- thực hiện các technical change khác cần thiết để tạo ra output đã được Plan chốt
 
-Không phải project nào cũng cần mọi loại test hoặc check.
+Không phải project nào cũng cần mọi loại thay đổi hoặc test.
 
-AI phải chọn tập kiểm tra phù hợp với project và behavior đã thay đổi thay vì chạy test chỉ để hoàn thành ceremony.
+AI phải chọn implementation phù hợp với project và behavior đã được chốt thay vì thêm thay đổi chỉ để hoàn thành ceremony.
 
 AI được tự chọn cách chia nhỏ công việc, dùng tool, skill hoặc agent và lặp lại implementation khi vẫn tạo ra tiến triển hữu ích.
 
 Human không nên phải tham gia vào phase Implement trừ khi AI gặp blocker cần authority mới hoặc phát hiện một quyết định quan trọng chưa được chốt trong Plan.
 
-Mọi kiểm chứng mà AI có thể tự chạy đều thuộc Implement, kể cả khi workflow tổ chức chúng thành step riêng sau khi code đã viết xong.
-
-Validate chỉ bắt đầu khi output đã được bàn giao cho human.
-
-Implement hoàn thành khi AI đã thực hiện scope, tự kiểm tra kết quả theo khả năng của project và chuẩn bị output đủ rõ để human review.
+Implement hoàn thành khi AI đã thực hiện scope và output đã sẵn sàng để được kiểm chứng trong phase Validate.
 
 ### Validate
 
-Validate là phase do human chịu trách nhiệm chính.
+Validate là phase do AI chịu trách nhiệm kiểm chứng implementation trước khi bàn giao cho human.
 
-Human review output và kết quả mà AI đã bàn giao để quyết định công việc có đúng yêu cầu và đạt kỳ vọng hay chưa.
+Tùy theo project và risk thực tế, Validate có thể bao gồm:
+
+- thực thi unit test, integration test hoặc end-to-end test phù hợp
+- chạy lint, typecheck, build, migration check hoặc project-native validation
+- kiểm tra runtime behavior có thể tự động hóa
+- đối chiếu implementation với spec và acceptance criteria ban đầu
+- phát hiện và sửa các lỗi mà AI có thể tìm thấy bằng code inspection, test, tool hoặc runtime evidence
+
+Không phải project nào cũng cần mọi loại test hoặc check.
+
+AI phải chọn tập kiểm tra phù hợp với project và behavior đã thay đổi thay vì chạy test chỉ để hoàn thành ceremony.
+
+Mọi kiểm chứng mà AI có thể tự chạy đều thuộc Validate, kể cả khi việc sửa lỗi khiến AI phải lặp lại một phần Implement rồi Validate lại.
+
+Validate hoàn thành khi AI đã chạy các kiểm tra phù hợp, xử lý các lỗi tìm thấy và chuẩn bị output, evidence, uncertainty cùng phần chưa hoàn thành đủ rõ để human review.
+
+### Sign Off
+
+Sign Off là phase cuối cùng và do human chịu trách nhiệm chính.
+
+Human review output và evidence mà AI đã bàn giao để quyết định công việc có đúng yêu cầu, đạt kỳ vọng và được chấp nhận hay chưa.
 
 Human có thể dựa trên spec, implementation summary, test evidence, runtime evidence, checklist hoặc trực tiếp trải nghiệm sản phẩm tùy theo project.
 
@@ -117,11 +131,13 @@ Evidence do AI cung cấp hỗ trợ quyết định của human nhưng không t
 
 Human tập trung vào những phần AI khó tự xác nhận đầy đủ như product fit, UX quality, business correctness, risk acceptance và mức độ đáp ứng intent ban đầu.
 
-Implement được thực hiện càng đầy đủ thì Validate càng nhanh và human càng ít phải yêu cầu sửa hoặc chạy lại.
+Validate được thực hiện càng đầy đủ thì Sign Off càng nhanh và human càng ít phải yêu cầu sửa hoặc chạy lại.
 
 Khi human không chấp nhận kết quả, công việc quay lại đúng phase đã sinh ra vấn đề.
 
-Sai sót nằm trong phạm vi đã chốt thì quay lại Implement.
+Sai sót trong implementation thì quay lại Implement rồi Validate lại.
+
+Thiếu sót trong evidence hoặc kiểm chứng thì quay lại Validate.
 
 Intent sai, scope thay đổi hoặc xuất hiện một quyết định quan trọng chưa được chốt thì quay lại Plan.
 
@@ -140,7 +156,7 @@ Human sở hữu:
 - product intent và material decisions
 - thay đổi scope có ý nghĩa
 - risk acceptance và high-impact authorization
-- final acceptance trong phase Validate
+- final acceptance trong phase Sign Off
 - subjective judgment không thể chứng minh đầy đủ bằng tool evidence
 
 AI sở hữu:
@@ -148,7 +164,7 @@ AI sở hữu:
 - codebase discovery và technical decisions không thay đổi approved behavior
 - lựa chọn tool, skill, agent và internal task breakdown
 - toàn bộ implementation trong phạm vi đã chốt
-- testing, debugging và self-verification phù hợp với project
+- toàn bộ Validate, bao gồm testing, debugging và self-verification phù hợp với project
 - trình bày output, evidence, uncertainty và phần chưa hoàn thành
 
 Human không nên phải approve từng technical step.
@@ -225,9 +241,10 @@ Project được quyền thay đổi step, skill, tool, agent, parallelism, test
 Project không được làm mất các nguyên tắc sau:
 
 - Plan làm rõ intent và chốt các quyết định quan trọng trước implementation
-- Implement do AI thực hiện và bao gồm testing, debugging và self-verification phù hợp
+- Implement do AI thực hiện toàn bộ trong phạm vi đã chốt
 - AI không bàn giao chỉ dựa trên confidence hoặc việc code đã được viết
-- Validate để human review output và quyết định kết quả có đúng yêu cầu hay không
+- Validate do AI thực hiện và bao gồm testing, debugging cùng self-verification phù hợp
+- Sign Off để human review output và quyết định final acceptance
 - phần chưa được chứng minh phải được hiển thị rõ
 
 Khi các mục tiêu xung đột, ưu tiên theo thứ tự:
@@ -265,7 +282,7 @@ Hiến pháp chỉ thay đổi bằng quyết định rõ ràng của human.
 
 Hiến pháp chứa hai loại nội dung với ngưỡng thay đổi khác nhau.
 
-Nguyên tắc nền tảng gồm North Star, ý nghĩa ba phase và ranh giới authority giữa human và AI; chỉ cập nhật khi triết lý thực sự thay đổi.
+Nguyên tắc nền tảng gồm North Star, ý nghĩa bốn phase và ranh giới authority giữa human và AI; chỉ cập nhật khi triết lý thực sự thay đổi.
 
 Quy ước bắt buộc là các ràng buộc chung áp cho mọi coding workflow; được tinh chỉnh khi có bằng chứng thực tế cho thấy quy ước hiện tại gây sai sót hoặc chi phí không cần thiết.
 
