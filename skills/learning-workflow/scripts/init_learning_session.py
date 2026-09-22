@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,16 +20,11 @@ from validate_learning_state import (
     validate_session,
 )
 
+from state_io import learning_state_lock, snapshot_paths, write_files_atomic
 
 def now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
-
-def write_json_atomic(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary_path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary_path.replace(path)
 
 
 def main() -> int:
@@ -60,6 +54,7 @@ def main() -> int:
         if args.session.exists():
             raise ValidationError(f"session already exists: {args.session}")
 
+        originals = snapshot_paths([args.session, args.profile])
         timestamp = now()
         if args.profile.exists():
             profile = load_json(args.profile)
@@ -183,13 +178,22 @@ def main() -> int:
         profile["updated_at"] = timestamp
         validate_profile(profile)
         validate_session(session, case, args.case, profile, project, schedule)
-        write_json_atomic(args.session, session)
-        try:
-            write_json_atomic(args.profile, profile)
-        except OSError:
-            args.session.unlink(missing_ok=True)
-            raise
-    except ValidationError as error:
+        with learning_state_lock([
+            args.case,
+            args.project,
+            args.schedule,
+            args.profile,
+            args.session,
+        ]) as root:
+            write_files_atomic(
+                {
+                    args.session: json.dumps(session, ensure_ascii=False, indent=2) + "\n",
+                    args.profile: json.dumps(profile, ensure_ascii=False, indent=2) + "\n",
+                },
+                originals=originals,
+                root=root,
+            )
+    except (OSError, ValidationError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
 

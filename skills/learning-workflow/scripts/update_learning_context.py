@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from state_io import learning_state_lock, snapshot_paths, write_files_atomic
 from validate_learning_state import ValidationError, load_json, validate_project, validate_schedule
 
 
@@ -127,27 +127,6 @@ def recalibrate_schedule(
     })
 
 
-def write_pair_atomic(project_path: Path, project: dict[str, Any], schedule_path: Path, schedule: dict[str, Any]) -> None:
-    values = {
-        project_path: json.dumps(project, ensure_ascii=False, indent=2) + "\n",
-        schedule_path: json.dumps(schedule, ensure_ascii=False, indent=2) + "\n",
-    }
-    previous = {path: path.read_bytes() for path in values}
-    temporary = {
-        path: path.with_name(f".{path.name}.{os.getpid()}.tmp")
-        for path in values
-    }
-    for path, text in values.items():
-        temporary[path].write_text(text, encoding="utf-8")
-    try:
-        for path in values:
-            temporary[path].replace(path)
-    except OSError:
-        for path, content in previous.items():
-            path.write_bytes(content)
-        for path in temporary.values():
-            path.unlink(missing_ok=True)
-        raise
 
 
 def main() -> int:
@@ -159,27 +138,36 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        project = load_json(args.project)
-        schedule = load_json(args.schedule)
-        validate_project(project)
-        validate_schedule(schedule, project)
-        payload = load_json(args.payload) if args.payload else {}
-        timestamp = now()
-        if args.operation == "accept":
-            if args.payload is not None:
-                raise ValidationError("accept does not use --payload")
-            accept_context(project, schedule, timestamp)
-        elif args.operation == "record-project-evolution":
-            if args.payload is None:
-                raise ValidationError("record-project-evolution requires --payload")
-            record_project_evolution(project, schedule, payload, timestamp)
-        else:
-            if args.payload is None:
-                raise ValidationError("recalibrate-schedule requires --payload")
-            recalibrate_schedule(project, schedule, payload, timestamp)
-        validate_project(project)
-        validate_schedule(schedule, project)
-        write_pair_atomic(args.project, project, args.schedule, schedule)
+        with learning_state_lock([args.project, args.schedule]) as root:
+            originals = snapshot_paths([args.project, args.schedule])
+            project = load_json(args.project)
+            schedule = load_json(args.schedule)
+            validate_project(project)
+            validate_schedule(schedule, project)
+            payload = load_json(args.payload) if args.payload else {}
+            timestamp = now()
+            if args.operation == "accept":
+                if args.payload is not None:
+                    raise ValidationError("accept does not use --payload")
+                accept_context(project, schedule, timestamp)
+            elif args.operation == "record-project-evolution":
+                if args.payload is None:
+                    raise ValidationError("record-project-evolution requires --payload")
+                record_project_evolution(project, schedule, payload, timestamp)
+            else:
+                if args.payload is None:
+                    raise ValidationError("recalibrate-schedule requires --payload")
+                recalibrate_schedule(project, schedule, payload, timestamp)
+            validate_project(project)
+            validate_schedule(schedule, project)
+            write_files_atomic(
+                {
+                    args.project: json.dumps(project, ensure_ascii=False, indent=2) + "\n",
+                    args.schedule: json.dumps(schedule, ensure_ascii=False, indent=2) + "\n",
+                },
+                originals=originals,
+                root=root,
+            )
     except (OSError, ValidationError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1

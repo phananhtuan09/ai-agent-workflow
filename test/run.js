@@ -1833,6 +1833,125 @@ test("learning state tooling rejects first attempts after material assistance", 
   }
 });
 
+test("learning namespace defines the coding handoff and promotion boundary", () => {
+  const namespacePath = path.join(SOURCE_ROOT, "docs/learning/README.md");
+  const evidenceSkillPath = path.join(SOURCE_ROOT, "skills/learning-evidence/SKILL.md");
+  const namespace = fs.readFileSync(namespacePath, "utf8");
+  const evidenceSkill = fs.readFileSync(evidenceSkillPath, "utf8");
+  assert.ok(namespace.includes("production deliverable"));
+  assert.ok(namespace.includes("isolated worktree or temporary directory"));
+  assert.ok(namespace.includes("not repository product intent"));
+  assert.ok(evidenceSkill.includes("do not require a separate named coding constitution"));
+  assert.ok(evidenceSkill.includes("Route a production deliverable through the repository's normal coding workflow"));
+});
+
+test("learning state rejects stale snapshots and recovers interrupted commits", () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "learning-state-safety-"));
+  const learningRoot = path.join(temporaryRoot, "docs/learning");
+  fs.mkdirSync(learningRoot, { recursive: true });
+  const script = `
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+from state_io import StateConflictError, learning_state_lock, snapshot_paths, write_files_atomic
+
+root = Path(sys.argv[1])
+first = root / "first.json"
+second = root / "second.json"
+old_first = b'{"state":"old-first"}\\\\n'
+old_second = b'{"state":"old-second"}\\\\n'
+new_first = b'{"state":"new-first"}\\\\n'
+new_second = b'{"state":"new-second"}\\\\n'
+first.write_bytes(old_first)
+second.write_bytes(old_second)
+originals = snapshot_paths([first, second])
+first.write_bytes(b'{"state":"external"}\\\\n')
+try:
+    write_files_atomic(
+        {first: new_first.decode(), second: new_second.decode()},
+        originals=originals,
+        root=root,
+    )
+except StateConflictError:
+    pass
+else:
+    raise SystemExit("stale snapshot was accepted")
+if first.read_bytes() != b'{"state":"external"}\\\\n' or second.read_bytes() != old_second:
+    raise SystemExit("stale write changed newer state")
+
+first.write_bytes(old_first)
+second.write_bytes(old_second)
+transaction = root / ".learning-tx-test"
+transaction.mkdir()
+(transaction / "old-0").write_bytes(old_first)
+(transaction / "old-1").write_bytes(old_second)
+(transaction / "new-0").write_bytes(new_first)
+(transaction / "new-1").write_bytes(new_second)
+manifest = {
+    "version": 1,
+    "transaction_dir": transaction.name,
+    "entries": [
+        {
+            "path": "first.json",
+            "stage": "new-0",
+            "backup": "old-0",
+            "original_exists": True,
+            "original_sha256": hashlib.sha256(old_first).hexdigest(),
+            "new_exists": True,
+            "new_sha256": hashlib.sha256(new_first).hexdigest(),
+        },
+        {
+            "path": "second.json",
+            "stage": "new-1",
+            "backup": "old-1",
+            "original_exists": True,
+            "original_sha256": hashlib.sha256(old_second).hexdigest(),
+            "new_exists": True,
+            "new_sha256": hashlib.sha256(new_second).hexdigest(),
+        },
+    ],
+}
+(root / ".learning-workflow-transaction.json").write_text(json.dumps(manifest), encoding="utf-8")
+first.write_bytes(new_first)
+with learning_state_lock([first, second]):
+    pass
+if first.read_bytes() != old_first or second.read_bytes() != old_second:
+    raise SystemExit("interrupted commit was not rolled back")
+if (root / ".learning-workflow-transaction.json").exists() or transaction.exists():
+    raise SystemExit("recovery artifacts were not cleaned")
+`;
+  try {
+    const result = spawnSync("python3", ["-c", script, learningRoot], {
+      cwd: SOURCE_ROOT,
+      env: {
+        ...process.env,
+        PYTHONPATH: path.join(SOURCE_ROOT, "skills/learning-workflow/scripts"),
+      },
+      encoding: "utf8",
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("installed learning workflow includes state safety runtime", () => {
+  const result = runCli(["--kit", "learning-workflow", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(
+      fs.existsSync(
+        path.join(result.workspace, ".agents/skills/learning-workflow/scripts/state_io.py")
+      )
+    );
+    assert.ok(fs.existsSync(path.join(result.workspace, "docs/learning/README.md")));
+  } finally {
+    result.cleanup();
+  }
+});
+
 test("temporary package workspace can be created", () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-test-"));
   assert.ok(fs.existsSync(workspace));

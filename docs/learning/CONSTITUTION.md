@@ -20,7 +20,7 @@ Tài liệu này không thay thế các nguyên tắc safety, correctness và va
 
 Khi một hành động vừa phục vụ learning vừa tạo software delivery, hiến pháp learning quyết định protected judgment nào human phải sở hữu và kết quả được attribution thế nào.
 
-Sau khi hành động được learning workflow cho phép, hiến pháp coding quyết định cách implementation được thực hiện và kiểm chứng an toàn.
+Sau khi hành động được learning workflow cho phép, coding authority của repository được resolve từ `AGENTS.md`, `docs/WORKFLOW.md` và các product, decision, safety, validation rule liên quan. Không yêu cầu một coding constitution, standard hoặc execution-skill chain riêng ngoài authority hiện có của repository.
 
 Learning workflow không được hạ thấp safety hoặc correctness của coding workflow.
 

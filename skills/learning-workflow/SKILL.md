@@ -35,6 +35,21 @@ Read `references/state-transitions.md` before applying the first state transitio
 
 Read `references/learning-context.md` when project or schedule artifacts are draft or need an approved update.
 
+## Integration With Repository Coding
+
+Learning is an optional capability layered on top of the repository-driven workflow; it is not a replacement execution chain for ordinary software delivery.
+
+When a learning activity creates or changes software:
+
+1. Declare the active competency, protected judgment, authorized scope, and attribution boundary before implementation.
+2. Route production changes through `AGENTS.md`, `docs/WORKFLOW.md`, and the applicable product, decision, safety, validation, and completion rules.
+3. Use an isolated worktree or temporary directory for disposable spikes, benchmarks, simulations, and generated fixtures unless the coding workflow explicitly authorizes a target-tree change.
+4. Let the coding workflow own implementation and safety validation. Learning records bounded system evidence and keeps human interpretation protected when required.
+5. If learning and coding boundaries conflict, stop before mutation and ask for the smallest human decision; an already-authorized safety or incident response may continue under its existing boundary and must record the learning interruption.
+
+Only this coordinator owns the end-to-end learning conversation. Helpers return bounded results and do not mutate learning state outside coordinator-routed transitions. The state scripts serialize mutations under the shared learning lock and reject stale snapshots; retry a conflict from freshly loaded state instead of overwriting newer records.
+
+
 ## Human Interface
 
 The visible flow has only three phases:
@@ -164,8 +179,8 @@ After receiving its result:
 8. Keep exactly one recommended next action: revisit prerequisite, retry similar, transfer context, increase difficulty, or change competency.
 9. Let the state script update `profile.current_gaps`, `profile.competencies` and one concise `profile.progress_history` entry.
 10. Let the state script record the session under the current schedule week and advance the week only when the standard permits.
-11. Ask whether accepted decisions should update the durable project state.
-12. Record explicitly accepted project evolution with `update_learning_context.py record-project-evolution`.
+11. Ask whether accepted decisions should update the durable learning-project state.
+12. Record explicitly accepted learning-project evolution with `update_learning_context.py record-project-evolution`. This never promotes a case decision into repository product authority, architecture decisions, risk acceptance, production code, or production configuration.
 13. Validate state.
 14. Ask the human whether to accept the recommendation, continue unfinished evidence work, or choose another direction.
 
@@ -203,6 +218,8 @@ Do not hand-edit profile or session state when `update_learning_state.py` suppor
 
 - Run one active session at a time.
 - Run one active project and one active schedule at a time.
+- Serialize overlapping production, configuration, schema, migration, and learning-state writers; read-only work may run concurrently when it does not depend on a mutable snapshot.
+- Use isolated worktrees or temporary directories for disposable evidence work.
 - Do not add a scheduler, database, mastery score, dashboard, or multi-agent roles.
 - Use `learning-case` transfer mode instead of a separate transfer skill.
 - Keep progression updates in this coordinator using the accepted `learning-review` result.

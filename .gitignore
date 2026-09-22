@@ -29,6 +29,10 @@ docs/ai/features/design-runtime/
 # Python
 __pycache__/
 
+# Learning workflow transaction recovery state
+docs/learning/.learning-workflow-transaction.json
+docs/learning/.learning-tx-*/
+
 # Editor/IDE
 .vscode/
 .idea/

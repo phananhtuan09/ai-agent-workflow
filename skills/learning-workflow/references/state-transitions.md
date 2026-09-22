@@ -18,6 +18,15 @@ python3 {skill_root}/scripts/update_learning_state.py {operation} \
 
 All other operations require a JSON object payload.
 
+## Mutation Safety
+
+All state-transition commands acquire the shared lock for the `docs/learning/` namespace before loading state. They validate the loaded snapshot, apply one transition, validate the result, and commit session/profile/schedule together through the recoverable transaction writer.
+
+If another writer changed any input after the command loaded it, the command fails with a stale-snapshot error. Reload the current state and decide whether the transition is still valid; do not overwrite the newer state.
+
+If a process stops during a multi-file commit, the next locked mutation recovers the journal by completing an all-new commit or restoring the all-original snapshot before loading state.
+
+
 ## Explore
 
 `disclose-facts`:

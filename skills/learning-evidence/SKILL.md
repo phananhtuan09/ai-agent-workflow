@@ -1,6 +1,6 @@
 ---
 name: learning-evidence
-description: Execute an explicitly authorized research, spike, test, simulation, benchmark, model, or failure-injection request for an active learning case and return bounded system evidence with limitations. Use internally from learning-workflow or directly for a recorded evidence request. Do not choose protected evidence for the human or assess competency.
+description: Execute an explicitly authorized research, spike, test, simulation, benchmark, model, or failure-injection request for an active learning case and return bounded system evidence with limitations. Use internally from learning-workflow or directly for a recorded evidence request. For software changes, follow the target repository's coding authority and workflow; do not choose protected evidence for the human or assess competency.
 ---
 
 # Learning Evidence
@@ -32,10 +32,12 @@ Do not convert a vague request such as “prove this design scales” into a bro
 1. Confirm the method can answer the stated evidence question.
 2. State assumptions, environment, stopping condition, and material limitations before expensive or mutating work.
 3. Perform only authorized mechanical work.
-4. When the experiment creates a software deliverable, require the applicable coding constitution, standard and execution skills to exist before implementation.
-5. Return `blocked` before implementation when required authority or a coding-workflow dependency is unavailable.
-6. Preserve raw commands, results, logs, and artifact references needed to audit the claim.
-7. Separate observed result from interpretation.
+4. When the experiment creates or changes software, read `AGENTS.md`, `docs/WORKFLOW.md`, and the applicable product, decision, safety, and validation authority. Route a production deliverable through the repository's normal coding workflow; do not require a separate named coding constitution, standard, or execution-skill chain.
+5. Learning approval does not replace production intent, implementation authority, validation, or human sign-off. Do not mutate production source, configuration, schema, or migration files unless the coding workflow has authorized that scope.
+6. For a disposable spike, benchmark, or simulation, use an isolated worktree or temporary directory. Do not leave generated source, fixtures, binaries, or other temporary output in the target worktree unless a downstream reader explicitly requires it.
+7. Return `blocked` before implementation when the required repository authority, isolation, or coding-workflow dependency is unavailable.
+8. Preserve raw commands, results, logs, and artifact references needed to audit the claim, subject to the retention rules below.
+9. Separate observed result from interpretation.
 
 ## Evidence Package
 
@@ -64,6 +66,12 @@ Return one package per method:
 Set `interpretation_withheld=true` when the human must interpret the result as part of the active competency.
 
 Do not claim production scale, reliability, security, or cost capability beyond the tested method and environment.
+
+## Coding Handoff And Retention
+
+- A production implementation is owned by the repository coding workflow. This helper may prepare an authorized evidence request and package the resulting system evidence, but it must not bypass the repository's Plan, Implement, Validate, or Sign Off boundaries.
+- A spike may run concurrently with unrelated read-only work, but it must not share mutable source or configuration with another writer. Serialize any overlapping production or learning-state mutation.
+- Keep concise result summaries, limitations, stable references, checksums, timestamps, and raw output only when a later assessment, audit, or reproducible claim has a reader. Remove disposable fixtures, binaries, isolated worktrees, and logs without a downstream reader.
 
 ## Boundaries
 

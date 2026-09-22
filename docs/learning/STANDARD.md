@@ -103,17 +103,19 @@ Không được cung cấp level 6 trước khi judgment ở trạng thái `asse
 
 ## Evidence Record
 
-Evidence work phải bắt đầu từ một evidence request đã được human chấp thuận.
+Evidence work must begin from an evidence request that the human has approved.
 
-Evidence request phải ghi decision hoặc assumption đang được kiểm tra, exact question, method, scope và liệu interpretation còn là protected judgment hay không.
+The evidence request must record the decision or assumption being tested, the exact question, method, scope, and whether interpretation remains protected.
 
-System evidence phải ghi method, environment, assumptions, observable result, raw references, limitations, confidence và ranh giới claim.
+System evidence must record method, environment, assumptions, observable result, raw references, limitations, confidence, and claim boundaries.
 
-Nếu interpretation là protected, human interpretation phải được ghi riêng trước khi evidence được dùng để xác nhận competency.
+If interpretation is protected, the human interpretation must be recorded separately before evidence is used to confirm competency.
 
-Evidence tạo software deliverable chỉ được thực hiện khi coding workflow tương ứng có sẵn và authority đã rõ.
+When evidence creates or changes a production software deliverable, the repository-driven coding workflow owns implementation, safety validation, and human sign-off. Learning approval does not replace product intent or production authority.
 
-Nếu dependency đó không có, evidence request phải dừng ở trạng thái `blocked` thay vì tự implement ngoài workflow.
+When evidence creates a disposable spike, benchmark, or simulation, it must run in an isolated worktree or temporary directory unless the coding workflow explicitly authorizes a target-tree change. If the required authority or isolation is unavailable, the evidence request must stop at `blocked` instead of implementing outside the workflow.
+
+Raw commands and logs are retained only when a later assessment, audit, or reproducible claim has a reader. Disposable fixtures, binaries, isolated worktrees, and logs without a downstream reader must be removed after proof.
 
 ## Assessment
 

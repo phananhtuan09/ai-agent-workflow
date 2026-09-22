@@ -75,6 +75,9 @@ Do not copy future weeks into the current public brief.
 
 Validate the file with the validator in the sibling `learning-workflow` skill before returning it.
 
+Case creation is a learning-namespace mutation. Acquire the shared `docs/learning/` lock while checking the project context, validate the case with the sibling `learning-workflow` validator, and commit the new case through its recoverable writer. Never replace a case after a session checksum binds to it.
+
+
 ### Discover
 
 Input:

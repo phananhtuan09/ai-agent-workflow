@@ -56,6 +56,9 @@ python3 {skill_root}/scripts/update_learning_context.py record-project-evolution
 
 Do not promote an exercise decision into project state without explicit human approval.
 
+Learning-project evolution remains inside `docs/learning/project.json`. It is not repository product intent, an architecture decision, risk acceptance, source-code authority, or production configuration. Promotion requires a separate explicit human-authorized request evaluated under `docs/WORKFLOW.md` and the target durable namespace contract.
+
+
 ## Recalibrate Future Weeks
 
 Use this only after presenting the evidence-based reason and receiving human approval.
@@ -83,3 +86,5 @@ python3 {skill_root}/scripts/update_learning_context.py recalibrate-schedule \
 ```
 
 Completed weeks are immutable.
+
+All project and schedule mutations use the shared learning-state lock and compare the loaded snapshot before commit. A stale-snapshot error must be retried from freshly loaded state, never resolved by overwriting the newer artifact.

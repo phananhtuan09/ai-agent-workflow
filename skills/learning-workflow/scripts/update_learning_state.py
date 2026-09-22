@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 from copy import deepcopy
@@ -22,7 +21,7 @@ from validate_learning_state import (
     validate_schedule,
     validate_session,
 )
-
+from state_io import learning_state_lock, snapshot_paths, write_files_atomic
 
 def now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -420,33 +419,6 @@ TRANSITIONS = {
 }
 
 
-def write_state_atomic(
-    session_path: Path,
-    session: dict[str, Any],
-    profile_path: Path,
-    profile: dict[str, Any],
-    schedule_path: Path,
-    schedule: dict[str, Any],
-) -> None:
-    values = {
-        session_path: json.dumps(session, ensure_ascii=False, indent=2) + "\n",
-        profile_path: json.dumps(profile, ensure_ascii=False, indent=2) + "\n",
-        schedule_path: json.dumps(schedule, ensure_ascii=False, indent=2) + "\n",
-    }
-    previous = {path: path.read_bytes() for path in values}
-    temporary = {path: path.with_name(f".{path.name}.{os.getpid()}.tmp") for path in values}
-    for path, text in values.items():
-        temporary[path].write_text(text, encoding="utf-8")
-    try:
-        for path in values:
-            temporary[path].replace(path)
-    except OSError:
-        for path, content in previous.items():
-            path.write_bytes(content)
-        for path in temporary.values():
-            path.unlink(missing_ok=True)
-        raise
-
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -460,25 +432,41 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        session = load_json(args.session)
-        case = load_json(args.case)
-        profile = load_json(args.profile)
-        project = load_json(args.project)
-        schedule = load_json(args.schedule)
-        validate_case(case)
-        validate_profile(profile)
-        validate_project(project)
-        validate_schedule(schedule, project)
-        validate_session(session, case, args.case, profile, project, schedule)
-        payload = {} if args.payload is None else require_payload(args)
-        if args.operation not in {"accept-boundary", "complete-session"} and args.payload is None:
-            raise ValidationError(f"{args.operation} requires --payload")
-        timestamp = now()
-        TRANSITIONS[args.operation](session, profile, schedule, payload, timestamp)
-        validate_profile(profile)
-        validate_schedule(schedule, project)
-        validate_session(session, case, args.case, profile, project, schedule)
-        write_state_atomic(args.session, session, args.profile, profile, args.schedule, schedule)
+        with learning_state_lock([
+            args.session,
+            args.profile,
+            args.schedule,
+            args.project,
+            args.case,
+        ]) as root:
+            originals = snapshot_paths([args.session, args.profile, args.schedule])
+            session = load_json(args.session)
+            case = load_json(args.case)
+            profile = load_json(args.profile)
+            project = load_json(args.project)
+            schedule = load_json(args.schedule)
+            validate_case(case)
+            validate_profile(profile)
+            validate_project(project)
+            validate_schedule(schedule, project)
+            validate_session(session, case, args.case, profile, project, schedule)
+            payload = {} if args.payload is None else require_payload(args)
+            if args.operation not in {"accept-boundary", "complete-session"} and args.payload is None:
+                raise ValidationError(f"{args.operation} requires --payload")
+            timestamp = now()
+            TRANSITIONS[args.operation](session, profile, schedule, payload, timestamp)
+            validate_profile(profile)
+            validate_schedule(schedule, project)
+            validate_session(session, case, args.case, profile, project, schedule)
+            write_files_atomic(
+                {
+                    args.session: json.dumps(session, ensure_ascii=False, indent=2) + "\n",
+                    args.profile: json.dumps(profile, ensure_ascii=False, indent=2) + "\n",
+                    args.schedule: json.dumps(schedule, ensure_ascii=False, indent=2) + "\n",
+                },
+                originals=originals,
+                root=root,
+            )
     except (OSError, ValidationError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
