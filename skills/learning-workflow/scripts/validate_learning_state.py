@@ -44,6 +44,118 @@ DISPUTE_CATEGORIES = {"fact", "rubric-mapping", "attribution", "interpretation"}
 PROJECT_STATUSES = {"draft", "active", "completed"}
 SCHEDULE_STATUSES = {"draft", "active", "completed"}
 WEEK_STATUSES = {"planned", "in-progress", "completed"}
+CADENCE_MODELS = {"schedule-driven", "mini-project"}
+MINI_PROJECT_CATEGORIES = {
+    "developer-tool",
+    "web-app",
+    "backend-feature",
+    "incident",
+    "integration",
+    "cli",
+}
+MINI_PROJECT_ACTIVITIES = {"build", "debug", "integrate", "optimize", "review"}
+MINI_PROJECT_MODES = {"practice", "challenge"}
+DELIVERY_STATUSES = {"not-started", "in-progress", "shipped", "blocked"}
+
+
+def validate_mini_project(value: Any, field: str) -> dict[str, Any]:
+    mini_project = require_object(value, field)
+    require_string(mini_project.get("id"), f"{field}.id")
+    if mini_project.get("format") != "mini-project":
+        fail(f"{field}.format must equal mini-project")
+    if mini_project.get("category") not in MINI_PROJECT_CATEGORIES:
+        fail(f"{field}.category is invalid")
+    if mini_project.get("activity") not in MINI_PROJECT_ACTIVITIES:
+        fail(f"{field}.activity is invalid")
+    if mini_project.get("mode") not in MINI_PROJECT_MODES:
+        fail(f"{field}.mode is invalid")
+    duration_days = mini_project.get("duration_days")
+    if not isinstance(duration_days, int) or duration_days not in {2, 3}:
+        fail(f"{field}.duration_days must be 2 or 3")
+    daily_budget = mini_project.get("daily_time_budget_minutes")
+    if not isinstance(daily_budget, int) or daily_budget < 15 or daily_budget > 120:
+        fail(f"{field}.daily_time_budget_minutes must be between 15 and 120")
+    require_string(mini_project.get("pitch"), f"{field}.pitch")
+    require_string_list(mini_project.get("stack"), f"{field}.stack", allow_empty=False)
+    require_string(mini_project.get("deliverable"), f"{field}.deliverable")
+    require_string_list(mini_project.get("definition_of_done"), f"{field}.definition_of_done", allow_empty=False)
+    milestones = require_list(mini_project.get("milestones"), f"{field}.milestones")
+    if not milestones:
+        fail(f"{field}.milestones must not be empty")
+    milestone_days: set[int] = set()
+    for index, milestone in enumerate(milestones):
+        milestone = require_object(milestone, f"{field}.milestones[{index}]")
+        day = milestone.get("day")
+        if not isinstance(day, int) or day < 1 or day > duration_days:
+            fail(f"{field}.milestones[{index}].day must be within duration_days")
+        if day in milestone_days:
+            fail(f"{field}.milestones contains duplicate day {day}")
+        milestone_days.add(day)
+        require_string(milestone.get("goal"), f"{field}.milestones[{index}].goal")
+        require_string_list(milestone.get("scope"), f"{field}.milestones[{index}].scope", allow_empty=False)
+    return mini_project
+
+
+def validate_project_spec(value: Any, field: str) -> dict[str, Any]:
+    spec = require_object(value, field)
+    require_string(spec.get("problem"), f"{field}.problem")
+    require_string(spec.get("user"), f"{field}.user")
+    require_string_list(spec.get("functional_requirements"), f"{field}.functional_requirements", allow_empty=False)
+    require_string_list(spec.get("acceptance_criteria"), f"{field}.acceptance_criteria", allow_empty=False)
+    require_string_list(spec.get("constraints"), f"{field}.constraints", allow_empty=False)
+    require_string_list(spec.get("non_goals"), f"{field}.non_goals", allow_empty=False)
+    require_string_list(spec.get("deliverable"), f"{field}.deliverable", allow_empty=False)
+    require_string_list(spec.get("open_questions"), f"{field}.open_questions")
+    return spec
+
+
+def validate_session_mini_project(
+    value: Any,
+    case_mini_project: dict[str, Any],
+    field: str,
+) -> None:
+    mini_project = require_object(value, field)
+    if mini_project.get("case_id") != case_mini_project.get("id"):
+        fail(f"{field}.case_id must match case.mini_project.id")
+    if mini_project.get("category") != case_mini_project.get("category"):
+        fail(f"{field}.category must match the case")
+    if mini_project.get("activity") != case_mini_project.get("activity"):
+        fail(f"{field}.activity must match the case")
+    if mini_project.get("mode") not in MINI_PROJECT_MODES:
+        fail(f"{field}.mode is invalid")
+    if mini_project.get("duration_days") != case_mini_project.get("duration_days"):
+        fail(f"{field}.duration_days must match the case")
+    budget = mini_project.get("daily_time_budget_minutes")
+    case_budget = case_mini_project.get("daily_time_budget_minutes")
+    if not isinstance(budget, int) or budget < 15 or budget > case_budget:
+        fail(f"{field}.daily_time_budget_minutes must be between 15 and the case budget")
+    require_string(mini_project.get("pitch"), f"{field}.pitch")
+    require_string(mini_project.get("deliverable"), f"{field}.deliverable")
+    require_string_list(mini_project.get("definition_of_done"), f"{field}.definition_of_done", allow_empty=False)
+    if mini_project.get("definition_of_done") != case_mini_project.get("definition_of_done"):
+        fail(f"{field}.definition_of_done must match the case")
+
+
+def validate_delivery(value: Any, field: str) -> None:
+    delivery = require_object(value, field)
+    require_record_id(delivery.get("id"), f"{field}.id", "DL")
+    status = delivery.get("status")
+    if status not in DELIVERY_STATUSES:
+        fail(f"{field}.status is invalid")
+    require_string_list(delivery.get("artifact_refs"), f"{field}.artifact_refs")
+    require_string_list(delivery.get("completed_criteria"), f"{field}.completed_criteria")
+    require_string_list(delivery.get("limitations"), f"{field}.limitations")
+    if status == "not-started":
+        if delivery.get("recorded_at") is not None:
+            fail(f"{field}.recorded_at must be null before delivery starts")
+        return
+    require_string(delivery.get("summary"), f"{field}.summary")
+    require_string(delivery.get("recorded_at"), f"{field}.recorded_at")
+    if status == "shipped":
+        if not delivery.get("artifact_refs"):
+            fail(f"{field}.artifact_refs must not be empty for shipped delivery")
+        if not delivery.get("completed_criteria"):
+            fail(f"{field}.completed_criteria must not be empty for shipped delivery")
 
 
 class ValidationError(ValueError):
@@ -180,6 +292,13 @@ def validate_case(case: dict[str, Any]) -> None:
         fail("case.learning_context.schedule_weeks must contain positive integers")
     if len(schedule_weeks) != len(set(schedule_weeks)):
         fail("case.learning_context.schedule_weeks must not contain duplicates")
+    mini_project = case.get("mini_project")
+    if mini_project is not None:
+        mini_project = validate_mini_project(mini_project, "case.mini_project")
+        if mini_project["id"] != case["case_id"]:
+            fail("case.mini_project.id must match case.case_id")
+        validate_project_spec(case.get("project_spec"), "case.project_spec")
+
     competency = case.get("active_competency")
     if not isinstance(competency, dict):
         fail("case.active_competency must be an object")
@@ -196,6 +315,8 @@ def validate_case(case: dict[str, Any]) -> None:
     judgment_ids = unique_ids(judgments, "case.protected_judgments")
     if not judgment_ids:
         fail("case.protected_judgments must not be empty")
+    if mini_project is not None and len(judgment_ids) != 1:
+        fail("mini-project cases must contain exactly one protected judgment")
     for index, judgment in enumerate(judgments):
         require_string(judgment.get("title"), f"case.protected_judgments[{index}].title")
         require_string(judgment.get("prompt"), f"case.protected_judgments[{index}].prompt")
@@ -222,6 +343,8 @@ def validate_case(case: dict[str, Any]) -> None:
         require_string(event.get("trigger"), f"case.future_events[{index}].trigger")
         require_string(event.get("statement"), f"case.future_events[{index}].statement")
         require_string(event.get("purpose"), f"case.future_events[{index}].purpose")
+        if "kind" in event:
+            require_string(event.get("kind"), f"case.future_events[{index}].kind")
 
     rubric = require_list(case.get("rubric"), "case.rubric")
     unique_ids(rubric, "case.rubric")
@@ -316,6 +439,25 @@ def validate_schedule(schedule: dict[str, Any], project: dict[str, Any] | None =
     sessions_per_week = schedule.get("sessions_per_week")
     recalibration = schedule.get("recalibration_every_weeks")
     current_week = schedule.get("current_week")
+    cadence_model = schedule.get("cadence_model", "schedule-driven")
+    if cadence_model not in CADENCE_MODELS:
+        fail("schedule.cadence_model is invalid")
+    if cadence_model == "mini-project":
+        if sessions_per_week != 1:
+            fail("mini-project schedules must have one session per cycle")
+        default_duration_days = schedule.get("default_duration_days")
+        if not isinstance(default_duration_days, int) or default_duration_days not in {2, 3}:
+            fail("schedule.default_duration_days must be 2 or 3")
+        daily_budget = schedule.get("daily_time_budget_minutes")
+        if not isinstance(daily_budget, int) or daily_budget < 15 or daily_budget > 120:
+            fail("schedule.daily_time_budget_minutes must be between 15 and 120")
+        available_modes = require_string_list(
+            schedule.get("available_modes"),
+            "schedule.available_modes",
+            allow_empty=False,
+        )
+        if set(available_modes) - MINI_PROJECT_MODES:
+            fail("schedule.available_modes contains an unsupported mode")
     if not isinstance(horizon, int) or horizon < 1:
         fail("schedule.horizon_weeks must be a positive integer")
     if not isinstance(sessions_per_week, int) or sessions_per_week < 1:
@@ -337,6 +479,15 @@ def validate_schedule(schedule: dict[str, Any], project: dict[str, Any] | None =
         require_string(week.get("theme"), f"schedule.weeks[{index}].theme")
         require_string_list(week.get("competency_focus"), f"schedule.weeks[{index}].competency_focus", allow_empty=False)
         require_string(week.get("project_focus"), f"schedule.weeks[{index}].project_focus")
+        if cadence_model == "mini-project":
+            require_string_list(
+                week.get("mini_project_ids"),
+                f"schedule.weeks[{index}].mini_project_ids",
+                allow_empty=False,
+            )
+            target_duration = week.get("target_duration_days")
+            if not isinstance(target_duration, int) or target_duration not in {2, 3}:
+                fail(f"schedule.weeks[{index}].target_duration_days must be 2 or 3")
         if week.get("status") not in WEEK_STATUSES:
             fail(f"schedule.weeks[{index}].status is invalid")
         session_ids = require_string_list(week.get("completed_session_ids"), f"schedule.weeks[{index}].completed_session_ids")
@@ -448,8 +599,8 @@ def validate_profile(profile: dict[str, Any]) -> None:
         if next_action.get("type") not in NEXT_ACTIONS:
             fail("profile.next_action.type is invalid")
         require_string(next_action.get("reason"), "profile.next_action.reason")
-    if profile.get("cadence") != "schedule-driven":
-        fail("profile.cadence must equal schedule-driven for MVP")
+    if profile.get("cadence") not in CADENCE_MODELS:
+        fail("profile.cadence is invalid")
 
 
 def validate_result_summary(value: Any, field: str) -> dict[str, Any]:
@@ -518,6 +669,16 @@ def validate_session(
     aligned_weeks = require_list(case_context.get("schedule_weeks"), "case.learning_context.schedule_weeks")
     if schedule_week not in aligned_weeks:
         fail("case is not aligned with the session schedule week")
+    case_mini_project = case.get("mini_project")
+    if case_mini_project is not None:
+        validate_session_mini_project(
+            session.get("mini_project"),
+            case_mini_project,
+            "session.mini_project",
+        )
+        if learning_context.get("project_spec") != case.get("project_spec"):
+            fail("session.learning_context.project_spec must snapshot case.project_spec")
+        validate_delivery(session.get("delivery"), "session.delivery")
 
     if project is not None:
         validate_project(project)
@@ -553,8 +714,10 @@ def validate_session(
         fail("accepted boundary requires boundary.accepted_at")
     if boundary["accepted"] and session.get("status") == "boundary-pending":
         fail("accepted boundary cannot remain boundary-pending")
-    if boundary.get("scope") != "case":
-        fail("session.boundary.scope must equal case for MVP")
+    if boundary.get("scope") not in {"case", "mini-project"}:
+        fail("session.boundary.scope must equal case or mini-project")
+    if case.get("mini_project") is not None and boundary.get("scope") != "mini-project":
+        fail("mini-project sessions must use a mini-project boundary scope")
     require_string(boundary.get("ai_authority"), "session.boundary.ai_authority")
 
     case_judgments = {item["id"] for item in case["protected_judgments"]}
@@ -859,6 +1022,8 @@ def validate_session(
         | event_record_ids
         | discovery_record_ids
     )
+    if case.get("mini_project") is not None:
+        known_evidence_refs.add(session["delivery"]["id"])
     if dimensions:
         dimension_ids = unique_ids(dimensions, "session.assessment.dimensions")
         if dimension_ids - rubric_ids:
@@ -891,6 +1056,12 @@ def validate_session(
             fail("independent-success requires every rubric dimension")
 
     if session.get("status") == "completed":
+        if case.get("mini_project") is not None:
+            delivery = session.get("delivery")
+            if delivery.get("status") not in {"shipped", "blocked"}:
+                fail("completed mini-project requires shipped or blocked delivery")
+            if delivery.get("status") == "blocked" and outcome not in {"inconclusive", "needs-revisit"}:
+                fail("blocked mini-project cannot produce a success outcome")
         if outcome not in OUTCOMES:
             fail("completed session requires an assessment outcome")
         if any(item.get("status") not in TERMINAL_JUDGMENT_STATUSES for item in judgments):

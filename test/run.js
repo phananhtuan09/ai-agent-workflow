@@ -1191,6 +1191,13 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
     const skillsRoot = path.join(result.workspace, ".agents/skills");
     const casePath = path.join(result.workspace, "docs/learning/cases/inventory-reservation.json");
+    const miniProjectCaseNames = [
+      "webhook-replay-inspector.json",
+      "expiring-secret-link.json",
+      "cron-doctor.json",
+      "api-chaos-proxy.json",
+      "background-job-retry-incident.json",
+    ];
     const projectPath = path.join(result.workspace, "docs/learning/project.json");
     const schedulePath = path.join(result.workspace, "docs/learning/schedule.json");
     const standardPath = path.join(result.workspace, "docs/learning/STANDARD.md");
@@ -1202,6 +1209,14 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     const sessionPath = path.join(result.workspace, "docs/learning/sessions/inventory-reservation-001.json");
 
     assert.ok(fs.existsSync(casePath));
+    miniProjectCaseNames.forEach((caseName) => {
+      const installedPath = path.join(result.workspace, "docs/learning/cases", caseName);
+      assert.ok(fs.existsSync(installedPath));
+      assert.strictEqual(
+        JSON.parse(fs.readFileSync(installedPath, "utf8")).mini_project.format,
+        "mini-project"
+      );
+    });
     assert.ok(fs.existsSync(projectPath));
     assert.ok(fs.existsSync(schedulePath));
     assert.ok(fs.existsSync(standardPath));
@@ -1214,7 +1229,7 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     assert.ok(fs.existsSync(path.join(skillsRoot, "learning-review/SKILL.md")));
 
     const coordinator = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
-    assert.ok(coordinator.includes("Explore -> Decide -> Reflect"));
+    assert.ok(coordinator.includes("Choose -> Build -> Twist -> Ship -> Reflect"));
     assert.ok(coordinator.includes("STANDARD.md"));
     assert.ok(coordinator.includes("update_learning_state.py"));
     assert.ok(coordinator.includes("update_learning_context.py"));
@@ -1308,8 +1323,8 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     assert.strictEqual(initialized.status, 0, initialized.stderr || initialized.stdout);
 
     const initializedProfile = JSON.parse(fs.readFileSync(profilePath, "utf8"));
-    assert.strictEqual(initializedProfile.cadence, "schedule-driven");
-    assert.strictEqual(initializedProfile.project_id, "commerce-operations-platform");
+    assert.strictEqual(initializedProfile.cadence, "mini-project");
+    assert.strictEqual(initializedProfile.project_id, "mini-product-lab");
     assert.strictEqual(initializedProfile.schedule_week, 1);
     assert.deepStrictEqual(initializedProfile.current_gaps, []);
     assert.deepStrictEqual(initializedProfile.progress_history, []);
@@ -1841,7 +1856,7 @@ test("learning namespace defines the coding handoff and promotion boundary", () 
   assert.ok(namespace.includes("production deliverable"));
   assert.ok(namespace.includes("isolated worktree or temporary directory"));
   assert.ok(namespace.includes("not repository product intent"));
-  assert.ok(evidenceSkill.includes("do not require a separate named coding constitution"));
+  assert.ok(evidenceSkill.includes("does not require a separate named coding constitution"));
   assert.ok(evidenceSkill.includes("Route a production deliverable through the repository's normal coding workflow"));
 });
 

@@ -17,9 +17,9 @@
     }
   ],
   "learning_context": {
-    "project_id": "commerce-operations-platform",
+    "project_id": "mini-product-lab",
     "minimum_project_version": 1,
-    "schedule_weeks": [1, 2, 7, 8]
+    "schedule_weeks": [1]
   },
   "active_competency": {
     "id": "COMP-PARTIAL-FAILURE-001",

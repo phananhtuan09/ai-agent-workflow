@@ -83,6 +83,11 @@ Workflow phải có khả năng:
 
 Capability này cung cấp bài toán đáng luyện, không tồn tại để tạo đề bài phức tạp hoặc công nghệ thời thượng một cách tùy ý.
 
+Challenge có thể là một mini-project dài hai hoặc ba ngày với deliverable có thể chạy hoặc demo. Product brief, functional requirement và acceptance criterion là interface chính với human; hidden competency rubric chỉ là cơ chế đánh giá nội bộ.
+
+Một project context lớn chỉ được dùng làm continuity và nguồn consequence. Workflow không được khiến human hiểu rằng phải implement toàn bộ domain trước khi có thể tiến bộ.
+
+
 ### Human Reasoning Support
 
 Workflow phải có khả năng hỗ trợ human:

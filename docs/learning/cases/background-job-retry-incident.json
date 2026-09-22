@@ -1,0 +1,191 @@
+{
+  "schema_version": "learning-case/v1",
+  "case_id": "background-job-retry-incident",
+  "title": "Background Job Retry Incident",
+  "domain": "backend-systems",
+  "difficulty": "intermediate",
+  "provenance": {
+    "kind": "simulation",
+    "statement": "Synthetic incident and feature-fix brief created for mini-project learning.",
+    "external_sources": []
+  },
+  "assumptions": [
+    "The worker processes one logical job at a time in the demo.",
+    "The external email provider may acknowledge a request before the worker records completion."
+  ],
+  "case_history": [
+    {
+      "version": 1,
+      "change": "Created a two-day incident-fix brief for duplicate background work."
+    }
+  ],
+  "learning_context": {
+    "project_id": "mini-product-lab",
+    "minimum_project_version": 1,
+    "schedule_weeks": [5]
+  },
+  "mini_project": {
+    "id": "background-job-retry-incident",
+    "format": "mini-project",
+    "category": "incident",
+    "activity": "debug",
+    "mode": "challenge",
+    "duration_days": 2,
+    "daily_time_budget_minutes": 45,
+    "pitch": "Investigate a duplicate-email incident, reproduce the uncertain outcome, and ship a bounded worker fix.",
+    "stack": ["TypeScript", "Node.js"],
+    "deliverable": "A small worker change plus a reproducible scenario and a concise incident note.",
+    "definition_of_done": [
+      "The duplicate delivery scenario is reproducible in a local harness.",
+      "The worker distinguishes retryable failure from uncertain completion.",
+      "The fix does not claim exactly-once delivery without provider support.",
+      "The demo shows the changed behavior and its limitation.",
+      "The incident note names one follow-up control outside the fix scope."
+    ],
+    "milestones": [
+      {
+        "day": 1,
+        "goal": "Reproduce the incident and model the worker states.",
+        "scope": ["timeline", "failure injection", "state model"]
+      },
+      {
+        "day": 2,
+        "goal": "Ship a bounded fix, verify it, and write the incident note.",
+        "scope": ["retry policy", "dedupe boundary", "evidence"]
+      }
+    ]
+  },
+  "project_spec": {
+    "problem": "A worker sends the same email twice when the provider accepts the request but the connection drops before acknowledgement is stored.",
+    "user": "An engineering team responsible for a background email worker.",
+    "functional_requirements": [
+      "Process a send-email job.",
+      "Record enough state to investigate a job attempt.",
+      "Retry a failure that is known to happen before provider acceptance.",
+      "Surface an uncertain outcome instead of silently retrying forever.",
+      "Provide an operator-visible result for manual follow-up."
+    ],
+    "acceptance_criteria": [
+      "A provider rejection before acceptance remains retryable.",
+      "A connection loss after the provider may have accepted the request is not labeled as a confirmed rejection.",
+      "The worker does not promise exactly-once delivery without an idempotency contract.",
+      "The local harness demonstrates the original duplicate behavior and the changed behavior.",
+      "The incident note separates the code fix from a provider or operational follow-up."
+    ],
+    "constraints": [
+      "Use a local fake provider; no real email is sent.",
+      "Keep the fix inside the worker boundary.",
+      "Do not introduce a queue platform or distributed lock.",
+      "The exercise must finish in two days."
+    ],
+    "non_goals": [
+      "Guaranteeing exactly-once external delivery.",
+      "Building a full incident-management system.",
+      "Replacing the provider contract."
+    ],
+    "deliverable": [
+      "A runnable local worker harness.",
+      "A test or scenario showing provider acceptance followed by lost acknowledgement.",
+      "A short incident note with limitations and next action."
+    ],
+    "open_questions": [
+      "Which provider outcomes are safe to retry automatically?",
+      "What identity can the provider use for deduplication?",
+      "What should an operator do with an uncertain outcome?"
+    ]
+  },
+  "active_competency": {
+    "id": "COMP-RETRY-001",
+    "name": "Reasoning về retry và side effect trong incident",
+    "description": "Phân biệt failure đã biết với kết quả không xác định, sửa behavior trong boundary hợp lý và ghi rõ phần chưa thể bảo đảm."
+  },
+  "public_brief": {
+    "business_goal": "Giảm duplicate side effect trong background worker và giúp operator biết khi nào cần xử lý thủ công.",
+    "current_context": [
+      "Worker gọi một external email provider.",
+      "Provider có thể nhận request trước khi connection bị mất.",
+      "Team có fake provider để tái tạo incident local."
+    ],
+    "initial_question": "Hãy điều tra incident từ spec, tạo reproduction, rồi ship một fix nhỏ có claim boundary rõ ràng trong hai ngày."
+  },
+  "protected_judgments": [
+    {
+      "id": "PJ-RETRY-001",
+      "title": "Retry decision",
+      "prompt": "Chọn retry policy và state cần lưu để tránh biến uncertain outcome thành duplicate side effect không được cảnh báo.",
+      "required_observations": [
+        "Timeline của provider acceptance và acknowledgement được phân biệt.",
+        "Retryable failure khác với uncertain completion.",
+        "Fix và follow-up ngoài code boundary được tách riêng."
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "F-RETRY-001",
+      "visibility": "public",
+      "statement": "Fake provider có thể nhận request rồi đóng connection trước khi gửi acknowledgement.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-RETRY-002",
+      "visibility": "public",
+      "statement": "Worker phải tạo operator-visible result cho uncertain outcome.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-RETRY-003",
+      "visibility": "discoverable",
+      "statement": "Provider hỗ trợ idempotency key nhưng contract hiện tại chưa truyền key từ worker.",
+      "discovery_paths": ["Hỏi provider có cơ chế dedupe nào"]
+    },
+    {
+      "id": "F-RETRY-004",
+      "visibility": "discoverable",
+      "statement": "Một connection error trước khi request rời worker có thể retry khác với connection error sau khi provider đã nhận request.",
+      "discovery_paths": ["Hỏi timeline chính xác của failure injection"]
+    }
+  ],
+  "future_events": [
+    {
+      "id": "EV-RETRY-001",
+      "kind": "change-request",
+      "trigger": "Sau khi learner có reproduction và first attempt về retry policy.",
+      "statement": "Operator yêu cầu dashboard phân biệt retryable, sent, và outcome-unknown.",
+      "purpose": "Kiểm tra việc biến reasoning thành behavior vận hành hữu ích."
+    }
+  ],
+  "rubric": [
+    {
+      "id": "RUB-RETRY-001",
+      "name": "Failure timeline",
+      "required_judgment_ids": ["PJ-RETRY-001"],
+      "observable_signals": [
+        "Reproduction chỉ ra thời điểm request có thể đã tạo side effect.",
+        "Known rejection không bị gộp với lost acknowledgement."
+      ]
+    },
+    {
+      "id": "RUB-RETRY-002",
+      "name": "Bounded fix",
+      "required_judgment_ids": ["PJ-RETRY-001"],
+      "observable_signals": [
+        "Fix nằm trong worker boundary và thay đổi behavior quan sát được.",
+        "Không claim exactly-once khi provider contract chưa đủ."
+      ]
+    },
+    {
+      "id": "RUB-RETRY-003",
+      "name": "Operational follow-up",
+      "required_judgment_ids": ["PJ-RETRY-001"],
+      "observable_signals": [
+        "Operator-visible states hỗ trợ hành động tiếp theo.",
+        "Incident note tách code fix, evidence và follow-up ngoài scope."
+      ]
+    }
+  ],
+  "transfer": {
+    "prompt": "Áp dụng retry reasoning sang job cập nhật inventory với external provider khác.",
+    "same_principle": "Không retry mù khi side effect có thể đã xảy ra; cần state, evidence và thao tác recovery phù hợp."
+  }
+}

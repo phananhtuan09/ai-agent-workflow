@@ -1,0 +1,204 @@
+{
+  "schema_version": "learning-case/v1",
+  "case_id": "webhook-replay-inspector",
+  "title": "Webhook Replay Inspector",
+  "domain": "developer-tools",
+  "difficulty": "intermediate",
+  "provenance": {
+    "kind": "simulation",
+    "statement": "Synthetic developer-tool product brief created for mini-project learning.",
+    "external_sources": []
+  },
+  "assumptions": [
+    "The tool runs locally for one developer at a time.",
+    "The downstream endpoint is controlled by the developer during the exercise."
+  ],
+  "case_history": [
+    {
+      "version": 1,
+      "change": "Created a three-day local webhook debugging tool brief."
+    }
+  ],
+  "learning_context": {
+    "project_id": "mini-product-lab",
+    "minimum_project_version": 1,
+    "schedule_weeks": [1]
+  },
+  "mini_project": {
+    "id": "webhook-replay-inspector",
+    "format": "mini-project",
+    "category": "developer-tool",
+    "activity": "build",
+    "mode": "challenge",
+    "duration_days": 3,
+    "daily_time_budget_minutes": 45,
+    "pitch": "Build a local tool that makes webhook integration failures visible and replayable.",
+    "stack": ["TypeScript", "Node.js"],
+    "deliverable": "A local command or web interface that inspects, verifies, and replays a webhook.",
+    "definition_of_done": [
+      "A developer can inspect a received webhook payload and headers.",
+      "The tool can report whether the signature is valid.",
+      "The tool distinguishes a new event, a duplicate event, and a conflicting payload.",
+      "A replay shows status, duration, and a useful outcome classification.",
+      "The demo does not expose the configured secret."
+    ],
+    "milestones": [
+      {
+        "day": 1,
+        "goal": "Clarify the brief and ship receive plus signature verification.",
+        "scope": ["request capture", "payload display", "signature result"]
+      },
+      {
+        "day": 2,
+        "goal": "Ship duplicate detection and local replay.",
+        "scope": ["event identity", "replay request", "result classification"]
+      },
+      {
+        "day": 3,
+        "goal": "Handle a retry change request and demo the finished tool.",
+        "scope": ["unknown outcome", "explicit confirmation", "final demo"]
+      }
+    ]
+  },
+  "project_spec": {
+    "problem": "Developers currently copy webhook payloads into curl by hand and cannot tell whether a failed replay was rejected before or after the downstream service handled it.",
+    "user": "A backend developer debugging a local payment or fulfillment integration.",
+    "functional_requirements": [
+      "Receive a webhook payload and its headers.",
+      "Display the payload in a readable form.",
+      "Verify an HMAC-SHA256 signature from X-Webhook-Signature.",
+      "Identify whether an event_id is new, duplicated, or associated with a different payload.",
+      "Replay a valid event to a local target endpoint.",
+      "Show the response status, response body, duration, and an outcome classification."
+    ],
+    "acceptance_criteria": [
+      "A modified raw payload does not pass verification with the original signature.",
+      "A repeated event_id with the same payload is visible as a duplicate.",
+      "A repeated event_id with a different payload is visible as a conflict.",
+      "HTTP error, connection failure, and timeout are not collapsed into one success or failure label.",
+      "A target outside localhost or 127.0.0.1 is rejected.",
+      "The configured secret never appears in the user-facing output."
+    ],
+    "constraints": [
+      "Run locally with no production deployment.",
+      "Use in-memory state; restart persistence is not required.",
+      "Do not add authentication or multi-provider configuration.",
+      "Do not automatically retry a replay."
+    ],
+    "non_goals": [
+      "Guaranteeing that a replay is safe for every downstream system.",
+      "Building a production webhook gateway.",
+      "Supporting every signature format used by payment providers."
+    ],
+    "deliverable": [
+      "A runnable local command or web interface.",
+      "A short demo covering valid, duplicate, conflict, HTTP error, and timeout scenarios."
+    ],
+    "open_questions": [
+      "Does the downstream service support idempotency keys?",
+      "Should a timeout permit a one-click replay or require explicit confirmation?",
+      "Which response details help a developer diagnose a replay without leaking secrets?"
+    ]
+  },
+  "active_competency": {
+    "id": "COMP-WEBHOOK-001",
+    "name": "Thiết kế feature theo spec và xử lý kết quả không xác định",
+    "description": "Chuyển yêu cầu sản phẩm thành behavior rõ ràng, phân loại outcome và giới hạn claim khi hệ thống không biết downstream đã xử lý hay chưa."
+  },
+  "public_brief": {
+    "business_goal": "Giúp developer debug webhook integration nhanh hơn mà không vô tình che giấu hoặc nhân đôi side effect của downstream.",
+    "current_context": [
+      "Provider gửi webhook đến local tool để developer kiểm tra.",
+      "Mỗi payload có event_id và chữ ký HMAC.",
+      "Downstream target chỉ là một endpoint local trong mini-project này."
+    ],
+    "initial_question": "Hãy làm rõ spec, đề xuất behavior chính, rồi xây và demo tool trong ba ngày ngắn."
+  },
+  "protected_judgments": [
+    {
+      "id": "PJ-WEBHOOK-001",
+      "title": "Replay semantics",
+      "prompt": "Chọn và bảo vệ behavior của tool khi replay trả về lỗi, timeout hoặc kết quả không xác định.",
+      "required_observations": [
+        "Liên kết acceptance criteria với behavior người dùng có thể quan sát.",
+        "Phân biệt không nhận được response với bằng chứng downstream chưa xử lý.",
+        "Nêu điều kiện khiến việc replay lại cần cảnh báo hoặc xác nhận rõ ràng."
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "F-WEBHOOK-001",
+      "visibility": "public",
+      "statement": "Provider gửi event_id trong payload và dùng X-Webhook-Signature cho HMAC-SHA256.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-WEBHOOK-002",
+      "visibility": "public",
+      "statement": "Phiên bản mini-project chỉ cho phép replay đến localhost hoặc 127.0.0.1.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-WEBHOOK-003",
+      "visibility": "discoverable",
+      "statement": "Provider có thể gửi lại webhook nếu không nhận được phản hồi 2xx trong thời gian chờ.",
+      "discovery_paths": ["Hỏi stakeholder về retry khi downstream timeout"]
+    },
+    {
+      "id": "F-WEBHOOK-004",
+      "visibility": "discoverable",
+      "statement": "Tool không thể biết chắc downstream đã xử lý request nếu connection bị ngắt sau khi request được gửi.",
+      "discovery_paths": ["Hỏi stakeholder điều tool biết được sau một timeout"]
+    }
+  ],
+  "future_events": [
+    {
+      "id": "EV-WEBHOOK-001",
+      "kind": "change-request",
+      "trigger": "Sau khi learner có first attempt về replay timeout và đã có bản receive/replay đầu tiên.",
+      "statement": "Provider retry sau timeout; downstream đã xử lý request đầu tiên nhưng response bị mất.",
+      "purpose": "Kiểm tra việc sửa spec và UI mà không tuyên bố replay lại là an toàn tuyệt đối."
+    },
+    {
+      "id": "EV-WEBHOOK-002",
+      "kind": "evidence-result",
+      "trigger": "Sau khi learner chạy demo có timeout và diễn giải outcome.",
+      "statement": "Fake downstream ghi nhận request trước khi cố ý đóng connection mà không trả response.",
+      "purpose": "Kiểm tra giới hạn của evidence khi client chỉ quan sát được timeout."
+    }
+  ],
+  "rubric": [
+    {
+      "id": "RUB-WEBHOOK-001",
+      "name": "Spec-to-behavior reasoning",
+      "required_judgment_ids": ["PJ-WEBHOOK-001"],
+      "observable_signals": [
+        "Behavior được gắn với functional requirement hoặc acceptance criterion.",
+        "Outcome classification đủ rõ để user hành động tiếp."
+      ]
+    },
+    {
+      "id": "RUB-WEBHOOK-002",
+      "name": "Uncertainty handling",
+      "required_judgment_ids": ["PJ-WEBHOOK-001"],
+      "observable_signals": [
+        "Timeout không bị diễn giải thành downstream chắc chắn chưa xử lý.",
+        "Change request tạo ra warning hoặc confirmation phù hợp với giới hạn hệ thống."
+      ]
+    },
+    {
+      "id": "RUB-WEBHOOK-003",
+      "name": "Shipped behavior",
+      "required_judgment_ids": ["PJ-WEBHOOK-001"],
+      "observable_signals": [
+        "Demo chạy qua valid, duplicate, conflict và ít nhất một failure outcome.",
+        "Secret và target boundary được bảo vệ trong output quan sát được."
+      ]
+    }
+  ],
+  "transfer": {
+    "prompt": "Áp dụng nguyên lý xử lý kết quả không xác định sang worker gửi email có thể crash sau khi provider đã nhận request.",
+    "same_principle": "Phân biệt delivery uncertainty với business outcome và thiết kế thao tác tiếp theo có cảnh báo."
+  }
+}

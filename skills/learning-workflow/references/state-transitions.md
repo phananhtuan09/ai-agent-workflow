@@ -27,7 +27,7 @@ If another writer changed any input after the command loaded it, the command fai
 If a process stops during a multi-file commit, the next locked mutation recovers the journal by completing an all-new commit or restoring the all-original snapshot before loading state.
 
 
-## Explore
+## Build And Discover
 
 `disclose-facts`:
 
@@ -39,7 +39,7 @@ If a process stops during a multi-file commit, the next locked mutation recovers
 }
 ```
 
-## Decide
+## Build And Ship
 
 `record-attempt`:
 
@@ -58,6 +58,22 @@ If a process stops during a multi-file commit, the next locked mutation recovers
 ```
 
 At least one observation array must be non-empty.
+
+`record-deliverable`:
+
+```json
+{
+  "id": "DL-001",
+  "status": "in-progress | shipped | blocked",
+  "summary": "Observable delivery state",
+  "artifact_refs": ["relative/path-or-stable-reference"],
+  "completed_criteria": ["Definition-of-done item"],
+  "limitations": ["Untested or blocked boundary"]
+}
+```
+
+Use `shipped` only after the relevant demo or validation and after every protected judgment has a first attempt in `challenge` mode. In `practice` mode, the delivery may ship after the product criteria are met; assessment still records any assistance and cannot call the result independent. Use `blocked` when a real dependency or evidence gap prevents delivery; record the blocker in `limitations`.
+
 
 `record-revision`:
 
@@ -85,6 +101,8 @@ At least one observation array must be non-empty.
 ```
 
 Omit `material_reason` only when `material` is false.
+
+## Twist
 
 `release-event`:
 

@@ -1,0 +1,202 @@
+{
+  "schema_version": "learning-case/v1",
+  "case_id": "api-chaos-proxy",
+  "title": "API Chaos Proxy",
+  "domain": "developer-tools",
+  "difficulty": "intermediate",
+  "provenance": {
+    "kind": "simulation",
+    "statement": "Synthetic integration-tool brief created for mini-project learning.",
+    "external_sources": []
+  },
+  "assumptions": [
+    "The proxy is used on a local development machine.",
+    "The learner may choose a small HTTP framework or standard library."
+  ],
+  "case_history": [
+    {
+      "version": 1,
+      "change": "Created a three-day proxy tool brief for bounded failure experiments."
+    }
+  ],
+  "learning_context": {
+    "project_id": "mini-product-lab",
+    "minimum_project_version": 1,
+    "schedule_weeks": [4]
+  },
+  "mini_project": {
+    "id": "api-chaos-proxy",
+    "format": "mini-project",
+    "category": "developer-tool",
+    "activity": "integrate",
+    "mode": "challenge",
+    "duration_days": 3,
+    "daily_time_budget_minutes": 45,
+    "pitch": "Build a local proxy that lets a developer reproduce latency, timeout, and selected upstream failures.",
+    "stack": ["TypeScript", "Node.js", "HTTP"],
+    "deliverable": "A local proxy command with a small configuration surface and a demo client.",
+    "definition_of_done": [
+      "A request can be forwarded to a configured upstream.",
+      "The proxy can add a bounded delay.",
+      "The proxy can force a timeout or selected HTTP status for a matching request.",
+      "The output distinguishes proxy-generated behavior from upstream response behavior.",
+      "The README or help output states which HTTP features are not supported."
+    ],
+    "milestones": [
+      {
+        "day": 1,
+        "goal": "Define matching and forwarding behavior, then ship the happy path.",
+        "scope": ["route matching", "forwarding", "basic logs"]
+      },
+      {
+        "day": 2,
+        "goal": "Add delay and failure modes with a small demo client.",
+        "scope": ["delay", "timeout", "forced status"]
+      },
+      {
+        "day": 3,
+        "goal": "Test boundaries and explain evidence limitations.",
+        "scope": ["streaming boundary", "classification", "demo"]
+      }
+    ]
+  },
+  "project_spec": {
+    "problem": "Client teams need to test how their code behaves when an upstream API is slow or unavailable, but reproducing those conditions manually is inconsistent.",
+    "user": "A developer testing an HTTP client on a local machine.",
+    "functional_requirements": [
+      "Forward a configured request to an upstream endpoint.",
+      "Add a configurable delay for matching requests.",
+      "Simulate a timeout or selected HTTP status for matching requests.",
+      "Log enough metadata to understand what the proxy did without logging secrets.",
+      "Provide a simple client or curl examples for the demo."
+    ],
+    "acceptance_criteria": [
+      "A request not matching a chaos rule is forwarded normally.",
+      "A matching delay is observable by the client.",
+      "A simulated timeout is distinguishable from an upstream 504 response.",
+      "The proxy does not claim that a local test proves production reliability.",
+      "The tool documents unsupported streaming, upgrade, or authentication behavior."
+    ],
+    "constraints": [
+      "Local HTTP only.",
+      "No distributed deployment or service mesh is required.",
+      "Rules must be small enough to explain in the demo.",
+      "Do not silently mutate request bodies or authorization headers."
+    ],
+    "non_goals": [
+      "Replacing a production proxy.",
+      "Implementing every HTTP protocol feature.",
+      "Generating a production capacity claim from the demo."
+    ],
+    "deliverable": [
+      "A runnable local proxy.",
+      "A demo covering pass-through, delay, timeout, and forced status."
+    ],
+    "open_questions": [
+      "Should a chaos rule match by path, method, header, or all three?",
+      "How should the tool label a timeout created by the proxy?",
+      "Which request metadata is safe and useful to log?"
+    ]
+  },
+  "active_competency": {
+    "id": "COMP-CHAOS-001",
+    "name": "Thiết kế integration boundary và đọc evidence đúng giới hạn",
+    "description": "Tạo một tool có boundary rõ ràng giữa proxy và upstream, rồi diễn giải đúng điều demo local có và không thể chứng minh."
+  },
+  "public_brief": {
+    "business_goal": "Giúp developer tái tạo failure của upstream một cách nhanh và có thể giải thích được.",
+    "current_context": [
+      "Proxy chạy local giữa client và một HTTP upstream.",
+      "Một số request cần được delay hoặc fail theo rule.",
+      "Tool phục vụ test và debug, không phải production gateway."
+    ],
+    "initial_question": "Hãy chọn rule contract nhỏ, ship proxy có demo, rồi nói rõ evidence của demo không chứng minh điều gì."
+  },
+  "protected_judgments": [
+    {
+      "id": "PJ-CHAOS-001",
+      "title": "Failure boundary and evidence",
+      "prompt": "Chọn cách phân biệt upstream behavior với proxy-injected behavior và diễn giải giới hạn của test local.",
+      "required_observations": [
+        "Rule matching không mở rộng thành một proxy production không cần thiết.",
+        "Timeout và HTTP error có semantics phân biệt.",
+        "Claim về reliability bị giới hạn bởi method và môi trường test."
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "F-CHAOS-001",
+      "visibility": "public",
+      "statement": "Tool chỉ chạy local và dùng cho developer test.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-CHAOS-002",
+      "visibility": "public",
+      "statement": "Rule có thể tạo delay, timeout hoặc selected HTTP status.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-CHAOS-003",
+      "visibility": "discoverable",
+      "statement": "Một response 504 từ upstream khác với việc proxy tự đóng connection trước khi có response.",
+      "discovery_paths": ["Hỏi cách phân loại upstream response và proxy timeout"]
+    },
+    {
+      "id": "F-CHAOS-004",
+      "visibility": "discoverable",
+      "statement": "Demo local không mô phỏng được mọi behavior của network hoặc production load.",
+      "discovery_paths": ["Hỏi giới hạn claim của method test"]
+    }
+  ],
+  "future_events": [
+    {
+      "id": "EV-CHAOS-001",
+      "kind": "change-request",
+      "trigger": "Sau khi learner có pass-through và một failure mode chạy được.",
+      "statement": "Client team yêu cầu giữ nguyên response headers để debug retry policy.",
+      "purpose": "Kiểm tra boundary khi thêm requirement vào integration tool."
+    },
+    {
+      "id": "EV-CHAOS-002",
+      "kind": "evidence-result",
+      "trigger": "Sau khi learner chọn test cho timeout behavior.",
+      "statement": "Demo chứng minh client nhận timeout dưới rule hiện tại nhưng chưa test streaming body hoặc concurrent load.",
+      "purpose": "Kiểm tra claim boundary của system evidence."
+    }
+  ],
+  "rubric": [
+    {
+      "id": "RUB-CHAOS-001",
+      "name": "Boundary design",
+      "required_judgment_ids": ["PJ-CHAOS-001"],
+      "observable_signals": [
+        "Rule contract và unsupported features được nói rõ.",
+        "Proxy behavior không bị nhầm với upstream behavior."
+      ]
+    },
+    {
+      "id": "RUB-CHAOS-002",
+      "name": "Failure classification",
+      "required_judgment_ids": ["PJ-CHAOS-001"],
+      "observable_signals": [
+        "Timeout, forced status và upstream error có output phân biệt.",
+        "Client-facing result không che mất nguồn failure."
+      ]
+    },
+    {
+      "id": "RUB-CHAOS-003",
+      "name": "Evidence limitation",
+      "required_judgment_ids": ["PJ-CHAOS-001"],
+      "observable_signals": [
+        "Learner nêu điều demo đã chứng minh và chưa chứng minh.",
+        "Không suy diễn production reliability từ local scenario."
+      ]
+    }
+  ],
+  "transfer": {
+    "prompt": "Áp dụng boundary và evidence reasoning sang một local database failure injector.",
+    "same_principle": "Tạo failure có chủ đích nhưng phân biệt rõ simulated behavior với hệ thống thật."
+  }
+}

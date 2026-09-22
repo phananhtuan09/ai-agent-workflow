@@ -9,9 +9,7 @@ Read this reference when project or schedule artifacts are missing, draft, or ne
 
 The installed artifacts are proposals until the human approves them.
 
-Present only the project goal, domain, architecture baseline, schedule horizon, weekly cadence and current week focus before requesting approval.
-
-Do not expose future case events or hidden constraints while presenting the project.
+Present only the current project context, season cadence, current cycle, daily time budget, and current mini-project choices before requesting approval. Do not expose future case events or hidden constraints while presenting the project.
 
 ## Accept Initial Context
 
@@ -39,11 +37,11 @@ Use this after the human explicitly accepts project decisions or state changes p
 
 ```json
 {
-  "session_id": "inventory-reservation-001",
-  "summary": "Accepted delayed-payment reconciliation as part of the project state.",
-  "decisions": ["Late successful payment enters reconciliation instead of confirming an expired reservation."],
+  "session_id": "webhook-replay-001",
+  "summary": "Accepted duplicate-delivery handling as part of the project state.",
+  "decisions": ["Conflicting payloads for one event ID require an explicit conflict outcome."],
   "delivered_capabilities": [],
-  "active_constraints": ["Reservation expiry may precede a delayed payment callback."]
+  "active_constraints": ["A provider may retry after a webhook timeout with unknown outcome."]
 }
 ```
 

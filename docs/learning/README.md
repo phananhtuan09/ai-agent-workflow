@@ -6,9 +6,9 @@ This namespace stores the durable state of the optional learning capability. It 
 
 - `CONSTITUTION.md` is the highest-level authority for learning principles, human ownership, case integrity, and evaluation integrity.
 - `STANDARD.md` defines the executable learning contracts and artifact invariants.
-- `project.json` and `schedule.json` are learning-program context. Draft values are proposals; accepted values remain learning state, not repository product intent.
-- `cases/` stores checksum-bound durable learning cases.
-- `sessions/` stores the single durable record for each learning session.
+- `project.json` and `schedule.json` are learning-program context. Draft values are proposals; accepted values remain learning state, not repository product intent. The default schedule uses short mini-project cycles rather than a large implementation backlog.
+- `cases/` stores checksum-bound durable mini-project cases.
+- `sessions/` stores the single durable record for each learning session, including delivery state and artifact references.
 - `profile.json` stores the learning profile and progression state.
 
 Do not create a second learning constitution or silently promote learning artifacts into `docs/product/`, `docs/decisions/`, source code, or production configuration.

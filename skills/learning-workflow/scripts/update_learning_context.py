@@ -119,6 +119,16 @@ def recalibrate_schedule(
                 raise ValidationError("updated competency_focus must not be empty")
         if "project_focus" in update:
             week["project_focus"] = require_string(update, "project_focus")
+        if "mini_project_ids" in update:
+            mini_project_ids = require_string_list(update, "mini_project_ids")
+            if not mini_project_ids:
+                raise ValidationError("updated mini_project_ids must not be empty")
+            week["mini_project_ids"] = mini_project_ids
+        if "target_duration_days" in update:
+            target_duration_days = update["target_duration_days"]
+            if target_duration_days not in {2, 3}:
+                raise ValidationError("updated target_duration_days must be 2 or 3")
+            week["target_duration_days"] = target_duration_days
     schedule["revision_history"].append({
         "reason": require_string(payload, "reason"),
         "effective_week": effective_week,

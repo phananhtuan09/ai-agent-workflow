@@ -1,0 +1,190 @@
+{
+  "schema_version": "learning-case/v1",
+  "case_id": "cron-doctor",
+  "title": "Cron Doctor",
+  "domain": "developer-tools",
+  "difficulty": "intermediate",
+  "provenance": {
+    "kind": "simulation",
+    "statement": "Synthetic CLI product brief created for mini-project learning.",
+    "external_sources": []
+  },
+  "assumptions": [
+    "Input is a small local configuration file.",
+    "The tool reports possible problems but does not edit the user's schedule automatically."
+  ],
+  "case_history": [
+    {
+      "version": 1,
+      "change": "Created a two-day CLI diagnostic brief for scheduled jobs."
+    }
+  ],
+  "learning_context": {
+    "project_id": "mini-product-lab",
+    "minimum_project_version": 1,
+    "schedule_weeks": [3]
+  },
+  "mini_project": {
+    "id": "cron-doctor",
+    "format": "mini-project",
+    "category": "cli",
+    "activity": "build",
+    "mode": "challenge",
+    "duration_days": 2,
+    "daily_time_budget_minutes": 45,
+    "pitch": "Build a CLI that explains when scheduled jobs run and warns about likely overlaps.",
+    "stack": ["TypeScript", "Node.js"],
+    "deliverable": "A CLI that reads a small schedule file and prints next runs, warnings, and actionable errors.",
+    "definition_of_done": [
+      "A valid schedule produces the next expected run times.",
+      "Malformed entries identify the entry and the reason they are invalid.",
+      "Potential overlapping jobs are visible with enough context to investigate.",
+      "Timezone behavior is stated and demonstrated.",
+      "The command exits with useful status codes for valid and invalid input."
+    ],
+    "milestones": [
+      {
+        "day": 1,
+        "goal": "Define the input contract and ship parsing plus next-run output.",
+        "scope": ["config parsing", "validation", "next run"]
+      },
+      {
+        "day": 2,
+        "goal": "Ship overlap warnings, timezone handling, and a useful error experience.",
+        "scope": ["overlap detection", "timezone", "exit codes"]
+      }
+    ]
+  },
+  "project_spec": {
+    "problem": "Developers discover scheduled-job mistakes only after jobs run at the wrong time or overlap in production.",
+    "user": "A developer or operator reviewing a local schedule before deploying it.",
+    "functional_requirements": [
+      "Read a documented local schedule format.",
+      "Show the next run time for each valid job.",
+      "Report malformed expressions with a useful location and reason.",
+      "Warn when two jobs may overlap.",
+      "Accept an explicit timezone setting for the analysis."
+    ],
+    "acceptance_criteria": [
+      "The same input produces the same output when the timezone is explicit.",
+      "An invalid entry does not prevent the user from seeing which other entries are valid.",
+      "An overlap warning names both jobs and the relevant time window.",
+      "The CLI uses a non-zero exit code when the input cannot be analyzed safely.",
+      "The tool does not silently rewrite the schedule."
+    ],
+    "constraints": [
+      "Use a small documented subset of cron syntax.",
+      "No daemon or background scheduler is required.",
+      "No remote service or database is required.",
+      "The tool must remain useful on a terminal without color support."
+    ],
+    "non_goals": [
+      "Implementing every cron dialect.",
+      "Replacing an operating system scheduler.",
+      "Automatically fixing ambiguous schedules."
+    ],
+    "deliverable": [
+      "A runnable CLI with help text.",
+      "Fixtures covering valid input, invalid input, overlap, and timezone behavior."
+    ],
+    "open_questions": [
+      "Should a warning affect the exit code or only an error?",
+      "How much future should the tool inspect for overlap?",
+      "What should happen when a schedule omits its timezone?"
+    ]
+  },
+  "active_competency": {
+    "id": "COMP-CRON-001",
+    "name": "Thiết kế input contract và error semantics cho CLI",
+    "description": "Tạo một command có behavior dự đoán được, lỗi hữu ích và boundary rõ ràng thay vì cố hỗ trợ quá nhiều syntax."
+  },
+  "public_brief": {
+    "business_goal": "Giúp developer phát hiện lỗi trong scheduled jobs trước khi chúng tạo incident.",
+    "current_context": [
+      "Input là một schedule file local.",
+      "Tool chỉ phân tích và cảnh báo, không tự sửa file.",
+      "Người dùng cần chỉ định timezone để kết quả có ý nghĩa."
+    ],
+    "initial_question": "Hãy chọn input contract nhỏ nhưng hữu ích, rồi ship CLI có output và exit semantics rõ ràng trong hai ngày."
+  },
+  "protected_judgments": [
+    {
+      "id": "PJ-CRON-001",
+      "title": "CLI contract and errors",
+      "prompt": "Chọn subset input, warning/error semantics và timezone behavior phù hợp với problem thay vì overbuild parser.",
+      "required_observations": [
+        "Scope syntax được bảo vệ bằng constraint và non-goal.",
+        "Phân biệt invalid input, warning và successful analysis.",
+        "Dùng scenario để giải thích timezone hoặc overlap behavior."
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "F-CRON-001",
+      "visibility": "public",
+      "statement": "Tool không được tự động chỉnh sửa schedule file.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-CRON-002",
+      "visibility": "public",
+      "statement": "Người dùng có thể truyền timezone rõ ràng cho một lần phân tích.",
+      "discovery_paths": []
+    },
+    {
+      "id": "F-CRON-003",
+      "visibility": "discoverable",
+      "statement": "Một warning overlap vẫn có thể là kết quả phân tích thành công, khác với input không thể parse.",
+      "discovery_paths": ["Hỏi stakeholder warning có chặn command hay không"]
+    },
+    {
+      "id": "F-CRON-004",
+      "visibility": "discoverable",
+      "statement": "Timezone mặc định của máy chạy tool không ổn định giữa các môi trường.",
+      "discovery_paths": ["Hỏi behavior khi input không có timezone"]
+    }
+  ],
+  "future_events": [
+    {
+      "id": "EV-CRON-001",
+      "kind": "change-request",
+      "trigger": "Sau khi learner có CLI chạy được và đã chọn policy cho warning.",
+      "statement": "Operator báo rằng một job chạy đúng UTC nhưng bị hiểu sai trong dashboard hiển thị giờ địa phương.",
+      "purpose": "Kiểm tra việc sửa output và documentation mà không đổi ngầm semantics."
+    }
+  ],
+  "rubric": [
+    {
+      "id": "RUB-CRON-001",
+      "name": "Input scope",
+      "required_judgment_ids": ["PJ-CRON-001"],
+      "observable_signals": [
+        "Subset syntax và non-goals phù hợp với thời gian và problem.",
+        "Input contract được document bằng ví dụ chạy được."
+      ]
+    },
+    {
+      "id": "RUB-CRON-002",
+      "name": "Error semantics",
+      "required_judgment_ids": ["PJ-CRON-001"],
+      "observable_signals": [
+        "Warning, invalid input và successful analysis có output/exit behavior khác nhau.",
+        "User nhận được thông tin đủ để sửa input hoặc điều tra overlap."
+      ]
+    },
+    {
+      "id": "RUB-CRON-003",
+      "name": "Timezone reasoning",
+      "required_judgment_ids": ["PJ-CRON-001"],
+      "observable_signals": [
+        "Timezone được nói rõ trong output hoặc help.",
+        "Change request không làm thay đổi semantics âm thầm."
+      ]
+    }
+  ],
+  "transfer": {
+    "prompt": "Áp dụng input và error semantics reasoning sang CLI migrate dữ liệu có dry-run.",
+    "same_principle": "Giới hạn input, phân loại cảnh báo/lỗi và làm cho thao tác nguy hiểm có behavior dự đoán được."
+  }
+}

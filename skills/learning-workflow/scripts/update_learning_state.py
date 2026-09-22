@@ -123,6 +123,41 @@ def record_attempt(session: dict[str, Any], payload: dict[str, Any], timestamp: 
     }
     judgment["status"] = "first-attempt-recorded"
     append_history(session, timestamp, "first-attempt-recorded", f"Recorded independent attempt for {judgment['id']}.")
+def record_deliverable(session: dict[str, Any], payload: dict[str, Any], timestamp: str) -> None:
+    require_accepted_boundary(session)
+    if session.get("mini_project") is None or "delivery" not in session:
+        raise ValidationError("record-deliverable requires a mini-project session")
+    status = payload.get("status")
+    if status not in {"in-progress", "shipped", "blocked"}:
+        raise ValidationError("payload.status must be in-progress, shipped, or blocked")
+    current_status = session["delivery"]["status"]
+    if current_status == "shipped" and status != "shipped":
+        raise ValidationError("a shipped deliverable cannot move backwards")
+    completed_criteria = require_string_list(payload, "completed_criteria")
+    artifact_refs = require_string_list(payload, "artifact_refs")
+    limitations = require_string_list(payload, "limitations")
+    if status == "shipped":
+        if not artifact_refs:
+            raise ValidationError("shipped delivery requires at least one artifact reference")
+        if not completed_criteria:
+            raise ValidationError("shipped delivery requires completed criteria")
+        if session["mini_project"].get("mode") == "challenge" and any(
+            item["first_attempt"] is None for item in session["protected_judgments"]
+        ):
+            raise ValidationError("challenge delivery requires a first attempt for every protected judgment")
+    if status == "blocked" and not limitations:
+        raise ValidationError("blocked delivery requires a limitation or blocker")
+    session["delivery"] = {
+        "id": session["delivery"]["id"],
+        "status": status,
+        "summary": require_string(payload, "summary"),
+        "artifact_refs": artifact_refs,
+        "completed_criteria": completed_criteria,
+        "limitations": limitations,
+        "recorded_at": timestamp,
+    }
+    append_history(session, timestamp, "deliverable-recorded", f"Recorded mini-project delivery as {status}.")
+
 
 
 def record_revision(session: dict[str, Any], payload: dict[str, Any], timestamp: str) -> None:
@@ -378,6 +413,7 @@ def complete_session(
             for dimension in assessment["dimensions"]
             for reference in dimension["evidence"]
         ],
+        *([session["delivery"]["id"]] if session.get("mini_project") is not None else []),
     ]))
     can_advance = (
         assessment["outcome"] in {"independent-success", "assisted-success"}
@@ -404,6 +440,7 @@ TRANSITIONS = {
     "accept-boundary": lambda session, profile, schedule, payload, timestamp: accept_boundary(session, timestamp),
     "disclose-facts": lambda session, profile, schedule, payload, timestamp: disclose_facts(session, payload, timestamp),
     "record-attempt": lambda session, profile, schedule, payload, timestamp: record_attempt(session, payload, timestamp),
+    "record-deliverable": lambda session, profile, schedule, payload, timestamp: record_deliverable(session, payload, timestamp),
     "record-revision": lambda session, profile, schedule, payload, timestamp: record_revision(session, payload, timestamp),
     "record-assistance": lambda session, profile, schedule, payload, timestamp: record_assistance(session, payload, timestamp),
     "request-evidence": lambda session, profile, schedule, payload, timestamp: request_evidence(session, payload, timestamp),

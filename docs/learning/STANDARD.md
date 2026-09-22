@@ -10,25 +10,25 @@ description: Hợp đồng MVP cho boundary, assistance, artifact, assessment v�
 
 Tài liệu này định nghĩa hợp đồng thực thi tối thiểu cho learning workflow MVP dưới `CONSTITUTION.md`.
 
-Workflow MVP dùng một active session, một active competency và một case đã được checksum-bind tại một thời điểm.
+Workflow MVP dùng một active mini-project, một active competency và một case đã được checksum-bind tại một thời điểm.
 
 Luồng human-facing duy nhất là:
 
 ```text
-Explore -> Decide -> Reflect
+Choose -> Build -> Twist -> Ship -> Reflect
 ```
 
 ## Learning Direction
 
 Profile phải lưu goal đã được human chấp thuận, baseline, current gaps, competency history và đúng một next action gần nhất.
 
-Learning program phải có một durable project và một schedule đã được human chấp thuận trước session đầu tiên.
+Learning program phải có một durable project context và một schedule đã được human chấp thuận trước session đầu tiên.
 
-Project cung cấp domain, product goal, actor, architecture baseline, business rule, constraint và evolution history xuyên suốt.
+Project cung cấp domain, product goal, actor, architecture baseline, business rule, constraint và evolution history; project không đồng nghĩa với việc learner phải implement toàn bộ domain.
 
-Schedule cung cấp horizon, cadence, competency focus và project focus ở độ mịn tuần.
+Schedule cung cấp season ngắn, cadence, competency focus và danh sách mini-project phù hợp ở độ mịn theo cycle.
 
-Cadence mặc định là chọn challenge theo tuần hiện tại rồi điều chỉnh dựa trên goal, current gaps, independence và next action gần nhất.
+Cadence mặc định là chọn mini-project theo goal, current gaps, independence, hứng thú, activity preference và time budget gần nhất.
 
 Case hoặc competency được đề xuất bởi AI nhưng chỉ có hiệu lực sau khi human chấp thuận boundary của session.
 
@@ -38,7 +38,31 @@ Transfer case được phép nằm ngoài project nhưng phải nói rõ princip
 
 Schedule là planning intent và không được dùng như bằng chứng competency.
 
-Cứ mỗi recalibration checkpoint hoặc khi learning evidence cho thấy prerequisite hay difficulty không còn phù hợp, AI phải đề xuất cập nhật các tuần chưa completed và chờ human chấp thuận.
+Cứ mỗi recalibration checkpoint hoặc khi learning evidence cho thấy prerequisite hay difficulty không còn phù hợp, AI phải đề xuất cập nhật các cycle chưa completed và chờ human chấp thuận.
+
+## Mini-Project Contract
+
+Mini-project là đơn vị học mặc định và phải có:
+
+- thời lượng hai hoặc ba ngày;
+- daily time budget rõ ràng;
+- một problem và một user cụ thể;
+- functional requirements và acceptance criteria;
+- constraints và non-goals;
+- một deliverable có thể chạy hoặc demo;
+- definition of done;
+- một active competency và thường chỉ một protected judgment;
+- tối đa một change request, incident hoặc evidence twist đã được khai báo trước.
+
+Human-facing brief phải bắt đầu bằng product spec hoặc yêu cầu chức năng. Invariant, failure mode và trade-off là điều learner khám phá từ spec, clarification, implementation và consequence; không được dùng chúng như đề bài duy nhất một cách máy móc.
+
+Mỗi mini-project chọn một mode:
+
+- `practice`: ưu tiên momentum; AI được hint sớm hơn và kết quả không được ghi là independent competency evidence;
+- `challenge`: learner giữ first attempt và key decisions để tạo learning evidence.
+
+Mini-project hoàn tất khi deliverable đạt definition of done trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
+
 
 ## Boundary
 
@@ -141,13 +165,13 @@ Next action dùng đúng một trong `revisit-prerequisite`, `retry-similar`, `t
 
 Profile phải lưu một progress history entry cho mỗi completed session và cập nhật competency record tương ứng.
 
-Completed session phải được ghi vào đúng schedule week cùng các learning evidence reference đã dùng trong assessment.
+Completed mini-project phải được ghi vào đúng schedule cycle cùng các learning evidence reference đã dùng trong assessment.
 
-Schedule week chỉ được advance khi đủ cadence đã chốt, outcome là `independent-success` hoặc `assisted-success`, và next action không yêu cầu prerequisite hay retry cùng competency.
+Schedule cycle chỉ được advance khi mini-project đã có delivery record, outcome là `independent-success` hoặc `assisted-success`, và next action không yêu cầu prerequisite hay retry cùng competency.
 
-Nếu chưa đủ điều kiện advance, schedule phải giữ nguyên tuần và ghi adjustment reason.
+Nếu chưa đủ điều kiện advance, schedule giữ nguyên cycle và ghi adjustment reason; learner không bị tạo backlog debt vì bỏ lỡ cadence.
 
-Session tiếp theo phải được chọn từ goal, current gaps, competency history và next action gần nhất.
+Session tiếp theo phải được chọn từ goal, current gaps, competency history, next action gần nhất, time budget và activity preference.
 
 `transfer-context` phải dùng domain hoặc constraint context khác và không được copy solution mechanism của case trước.
 
