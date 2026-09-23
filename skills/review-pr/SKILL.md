@@ -24,7 +24,7 @@ A review target may be a PR URL or number, refs, a commit range, the current bra
 
 If no target is supplied, infer the most reasonable local change set and state the inference.
 Ask one focused question only when multiple materially different change sets remain plausible after inspection.
-Use `Blocked` only when no reliable change set can be determined or inspected.
+Use `Không thể đánh giá` only when no reliable change set can be determined or inspected.
 
 ## Establish The Review Basis
 
@@ -96,51 +96,48 @@ Report a defect only when all of the following can be stated:
 If the trigger, outcome, or evidence cannot be stated concretely, record the uncertainty as a limitation rather than a finding.
 Do not convert uncertainty into a defect.
 
-Use `Must fix` only for a defect established by direct evidence or a complete static reasoning chain.
-Use `Human decision` only when conflicting or missing authority leaves materially different product, security, compatibility, or operational outcomes unresolved.
+Use `Cần sửa` only for a defect established by direct evidence or a complete static reasoning chain.
+Use `Cần quyết định` only when conflicting or missing authority leaves materially different product, security, compatibility, or operational outcomes unresolved.
 
 ## Status
 
 Choose one status using this precedence:
 
-- `Blocked`: the change set cannot be reliably determined or inspected.
-- `Needs Changes`: one or more `Must fix` findings remain.
-- `Needs Decision`: no established defect takes precedence, but a material `Human decision` remains.
-- `No Blocking Findings`: no defect or unresolved decision met the reporting bar within the reviewed scope.
+- `Không thể đánh giá`: the change set cannot be reliably determined or inspected.
+- `Chưa thể merge — cần sửa`: one or more `Cần sửa` findings remain.
+- `Chưa thể kết luận — cần quyết định`: no established defect takes precedence, but a material `Cần quyết định` remains.
+- `Có thể merge`: no defect or unresolved decision met the reporting bar within the reviewed scope.
 
-`No Blocking Findings` is not approval and does not prove the absence of defects.
-It reports only the result of the inspected scope and observed evidence.
+`Có thể merge` reports only the result of the inspected scope and observed evidence; it does not prove the absence of defects or replace human PR approval.
 
 ## Output
 
-Use the user's language unless requested otherwise.
-Preserve identifiers, paths, commands, and canonical status labels in English when useful for traceability.
-Present findings first and order them by impact.
-Omit empty sections other than `Findings`.
+Always write the review response in Vietnamese, including headings, status, findings, and any review artifact written to a supplied output path.
+Preserve identifiers, paths, commands, and quoted source text in their original form when needed for traceability.
+Start with a brief summary and merge status, then present findings ordered by impact.
+Use concise bullet points; include the location, trigger, outcome, evidence, and required correction for each finding without repeating context.
+Omit empty sections other than `Phát hiện`.
 
 ```markdown
-# Review — {target}
+# Review PR — {target}
 
-## Findings
-- PR-01 — `Must fix`
-  - Location: ...
-  - Trigger: ...
-  - Outcome: ...
-  - Evidence: ...
-  - Required correction: ...
+## Tóm tắt
+- Thay đổi: {mục đích chính, một câu}.
+- Trạng thái: **Có thể merge | Chưa thể merge — cần sửa | Chưa thể kết luận — cần quyết định | Không thể đánh giá**.
+- Lý do: {kết luận ngắn, nêu số lỗi cần sửa hoặc quyết định còn thiếu nếu có}.
 
-## Decision Needed
-- PR-02 — `Human decision`
-  - Conflicting or missing authority: ...
-  - Material alternatives: ...
+## Phát hiện
+- PR-01 — `Cần sửa`: {vị trí}; {điều kiện gây lỗi} → {hậu quả}. Bằng chứng: {mã nguồn hoặc kết quả kiểm tra}. Cần sửa: {điều kiện để khắc phục}.
 
-## Review Basis
-- Status: Needs Changes | Needs Decision | No Blocking Findings | Blocked
-- Target and base: ...
-- Intent authority used: ...
-- Evidence inspected and commands run: ...
-- Limitations: ...
+## Cần quyết định
+- PR-02: {quy tắc hoặc ý định còn thiếu/mâu thuẫn}; {các lựa chọn ảnh hưởng đến quyết định merge}.
+
+## Phạm vi và kiểm tra
+- So sánh: {target} với {base}; căn cứ: {nguồn yêu cầu liên quan}.
+- Đã kiểm tra: {bằng chứng và lệnh đã chạy, nếu có}.
+- Giới hạn: {phần chưa thể kiểm chứng có ảnh hưởng đến kết luận, nếu có}.
 ```
 
-If no findings exist, write `Không phát hiện blocking defect nào trong phạm vi đã review.` when responding in Vietnamese.
+If no findings exist, write `Không phát hiện lỗi cần sửa trong phạm vi đã review.` under `Phát hiện`.
+When explicit requirements are absent, briefly note that business-rule completeness was not verified; this limitation alone does not prevent `Có thể merge`.
 Do not add non-blocking suggestions unless the user explicitly requests them.
