@@ -10,6 +10,7 @@ Read only the locations relevant to the requested outcome.
 - `plans/completed/` stores useful execution history for completed complex work.
 - `patterns/` stores accepted recurring technical patterns and invariants.
 - `runbooks/` stores verified operational procedures.
+- `proposals/` stores optional proposal drafts and human approval records when the proposal capability is selected; proposals do not replace accepted product or decision authority.
 - `other/` stores preserved historical workflow documents that are not part of the active protocol.
 - `testing/` stores durable runtime end-to-end plans, execution evidence, cleanup state, and human sign-off when the runtime E2E capability is installed.
 - `evaluation/` stores trace-first workflow evaluation standards, observations, session traces, and reports when the evaluation capability is installed.

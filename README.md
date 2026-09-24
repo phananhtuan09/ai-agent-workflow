@@ -25,12 +25,13 @@ docs/
 ├── plans/               # active and completed durable working memory
 ├── patterns/            # accepted recurring technical patterns
 ├── runbooks/            # verified operating procedures
+├── proposals/           # optional proposal drafts and human decisions
 ├── testing/             # optional durable runtime E2E plans and evidence
 ├── evaluation/          # optional workflow evaluation capability
 └── learning/            # optional learning capability
 ```
 
-`docs/testing/`, `docs/evaluation/`, and `docs/learning/` are independent optional namespaces.
+`docs/proposals/`, `docs/testing/`, `docs/evaluation/`, and `docs/learning/` are independent optional namespaces.
 They are not product authority and are not loaded by ordinary coding work.
 
 ## Install
@@ -63,6 +64,7 @@ Add only capabilities that materially help:
 ```bash
 npx ai-workflow-init@latest --kit coding-standard --tool codex --skill refactor --skill quality-code-check
 npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle testing
+npx ai-workflow-init@latest --kit coding-standard --tool codex --skill proposal-designer
 ```
 
 Supported tools: Codex, Claude Code, Google Antigravity, Pi, and OpenCode.

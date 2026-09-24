@@ -20,6 +20,9 @@
       "refactor",
       "fix-bug"
     ],
+    "proposal": [
+      "proposal-designer"
+    ],
     "testing": [
       "runtime-e2e-test-plan",
       "property-based-testing"

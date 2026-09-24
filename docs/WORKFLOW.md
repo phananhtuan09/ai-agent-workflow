@@ -52,8 +52,9 @@ Newly accepted durable knowledge belongs in the following locations:
 | Recurring technical patterns | `docs/patterns/` |
 | Verified operating procedures | `docs/runbooks/` |
 
-Evaluation, learning, and design artifacts are optional capability-owned namespaces:
+Proposal, evaluation, learning, and design artifacts are optional capability-owned namespaces:
 
+- `docs/proposals/` contains optional proposal working material and human approval records when the proposal capability is selected; it does not replace accepted product or decision authority.
 - `docs/evaluation/` contains workflow evaluation standards, observations, traces, and reports.
 - `docs/learning/` contains learning standards and durable learning state.
 - `docs/PRODUCT.md` and `docs/DESIGN.md` contain the design capability's product brief and visual system record.
