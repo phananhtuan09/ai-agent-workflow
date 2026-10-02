@@ -24,7 +24,7 @@
       "proposal-designer"
     ],
     "testing": [
-      "runtime-e2e-test-plan",
+      "runtime-e2e-test",
       "property-based-testing"
     ],
     "evaluation": [
@@ -36,6 +36,9 @@
       "learning-case",
       "learning-evidence",
       "learning-review"
+    ],
+    "foreman-slp": [
+      "foreman-lead"
     ]
   },
   "kits": {

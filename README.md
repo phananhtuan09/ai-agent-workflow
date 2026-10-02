@@ -134,10 +134,13 @@ Ordinary implementation tasks do not invoke artifact mutation automatically.
 npx ai-workflow-init@latest --kit coding-standard --tool codex --bundle testing
 ```
 
-The testing bundle installs `runtime-e2e-test-plan` and `property-based-testing`. The runtime E2E capability adds `docs/testing/` for one-file plans that combine executable cases, an evidence ledger, cleanup state, summary counts, and human sign-off. Its validator rejects a `PASS` without a matching declared runtime path and concrete observed evidence; unit, widget, mocked, build, and source checks remain supporting proof.
+The testing bundle installs `runtime-e2e-test` and `property-based-testing`.
+The runtime E2E capability has two modes: `plan` writes a Markdown plan plus mapped native Playwright tests for human approval; `run` executes approved scripts against real web/HTTP API boundaries.
+Versioned evidence bundles preserve approved input snapshots, native results, structured observations, traces, retries, and cleanup for independent audit without rerunning every case.
+Screenshots alone cannot pass a case; unit, mocked, build, and source checks remain supporting proof.
 
 After installation, complete
-`<runtime-skill-root>/runtime-e2e-test-plan/references/project-runtime.md` for the
+`<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md` for the
 target project. It records project-specific service commands, readiness checks,
 environment variable names, authentication, fixtures, evidence paths, cleanup,
 and safety limits without storing secret values.

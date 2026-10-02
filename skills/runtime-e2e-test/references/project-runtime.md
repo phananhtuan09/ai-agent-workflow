@@ -35,7 +35,7 @@ existing runbook over duplicated instructions.
 
 - Full-suite command: `<command or NOT_AVAILABLE>`
 - Focused-case command/filter: `<command syntax or NOT_AVAILABLE>`
-- Browser/device harness: `<Playwright, app driver, manual browser, etc.>`
+- Browser harness: `<existing Playwright Test configuration and version>`
 - Runtime artifacts produced by the harness: `<paths>`
 
 Existing automated E2E commands may execute cases, but the plan ledger remains the
@@ -97,3 +97,28 @@ Before setting `Status: READY`, verify:
 ## Known limitations
 
 - `<Missing tooling, unsupported platform, flaky dependency, or NONE>`
+
+## Playwright execution and audit
+
+- Project root: `<directory containing the Playwright config>`
+- Test/config/helper locations: `<existing project conventions>`
+- Dependency/browser installation: `<approved command; never install implicitly>`
+- Native execution command: `<argument array ending in Playwright test; no shell operators>`
+- Evidence attachment policy: `<redaction and retention, including traces and screenshots>`
+- Persistence proof: `<fresh API read, read-only DB query, or verified server-backed UI load>`
+
+Use the skill's suite contract and evidence tool described in `playwright-contract.md`.
+Launch a separate browser per invocation rather than attaching to a shared CDP session.
+Tests must emit structured checkpoint observations, not screenshot-only proof.
+
+## Parallel execution
+
+- Isolation: `<isolated fixtures/accounts/databases OR serialized>`
+- Run marker: `<use RUNTIME_E2E_RUN_ID in fixture identifiers>`
+- Shared mutation lock: `<project-provided lock procedure or NOT_REQUIRED with reason>`
+- Ports/service ownership: `<assigned ports and which process owns shutdown>`
+- Interrupted-run recovery: `<scoped cleanup for a specific run marker>`
+
+Unknown isolation means serialize mutation runs.
+Browser contexts do not isolate database state or external side effects.
+Never reset a shared database or stop services owned by another run.

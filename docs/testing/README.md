@@ -19,6 +19,12 @@ Delete routine completed plans when their history has no future reader.
 
 Use one Markdown file for the plan, execution ledger, summary, cleanup, and human sign-off. Free-form notes are allowed around the required fields.
 
+The Markdown file is accompanied by a `suite.json` mapping and native Playwright test files.
+Read the installed `runtime-e2e-test/references/playwright-contract.md` for their contract and evidence-tool commands.
+Human approval covers the plan, suite, executable tests, local helpers, fixtures, dependency/config files, and baselines before execution.
+Any change to approved inputs requires explicit reapproval.
+The Markdown ledger summarizes generated evidence; it does not replace native results.
+
 ```markdown
 # Runtime E2E Test Plan: <name>
 
@@ -92,6 +98,9 @@ change, and no unexpected runtime error is recorded.
 
 - A case passes only through its declared runtime path and observable expected result.
 - For UI behavior, exercise the actual application in a browser or device.
+- For this capability, browser and HTTP API execution uses native Playwright scripts rather than interactive agent clicks.
+- Each expected outcome maps to an assertion and structured observation; screenshots alone cannot establish PASS.
+- Persistence claims require fresh persisted-state proof, and invariant checks capture a baseline before mutation.
 - Runtime API cases must call the running API and observe downstream state where relevant.
 - Unit, widget, mocked, static, build, and source-inspection checks are supporting evidence only and cannot set a runtime case to `PASS`.
 - An alternate endpoint or direct database mutation is not equivalent to the production path.
@@ -109,6 +118,20 @@ A `PASS` case records:
 - cleanup status when fixtures were created.
 
 Evidence references should use repository-relative paths, request route/status, timestamps, correlation IDs, resource IDs, or artifact paths. Do not store secrets.
+
+Store each run in a unique evidence directory containing approved snapshots, execution identity, native results, all attempts, structured observations, relevant traces, and cleanup outcomes.
+Browser runs launch separate browsers, not shared CDP sessions.
+Fixtures/accounts/shared databases need explicit isolation or serialized mutation with a project lock.
+Retries, missing tests, and skips cannot silently count as clean PASS.
+Follow the project's privacy policy before collecting traces; traces may contain sensitive requests or DOM content.
+
+## Independent evidence audit
+
+Agent B checks the approved snapshots against expected behavior, native results against observations, and generated reports against both.
+Run the evidence tool's integrity/recomputation checks, then inspect assertion quality and runtime path fidelity in trace or request checkpoints.
+Classify claims as `SUPPORTED`, `UNSUPPORTED`, `INCONSISTENT`, or `HUMAN_REVIEW_REQUIRED`.
+Unsupported evidence is not itself a product failure; request targeted reruns rather than replaying every valid case.
+Hashes detect inconsistencies against the approval snapshot but cannot authenticate execution against deliberate fabrication without trusted external provenance such as CI.
 
 ## Human review
 

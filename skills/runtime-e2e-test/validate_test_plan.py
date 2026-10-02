@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the minimal contract for a runtime E2E Markdown plan."""
+"""Validate the Markdown contract for a runtime E2E plan and ledger."""
 
 from __future__ import annotations
 

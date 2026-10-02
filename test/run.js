@@ -247,7 +247,7 @@ test("testing bundle registers runtime E2E and property-based skills", () => {
     extraBundles: ["testing"],
   });
   assert.deepStrictEqual(skillIds, [
-    "runtime-e2e-test-plan",
+    "runtime-e2e-test",
     "property-based-testing",
   ]);
 });
@@ -462,7 +462,7 @@ test("Codex installs the testing bundle and runtime E2E namespace", () => {
 
     const runtimeRoot = path.join(
       result.workspace,
-      ".agents/skills/runtime-e2e-test-plan"
+      ".agents/skills/runtime-e2e-test"
     );
     const installedRuntimeSkill = fs.readFileSync(
       path.join(runtimeRoot, "SKILL.md"),
@@ -470,10 +470,12 @@ test("Codex installs the testing bundle and runtime E2E namespace", () => {
     );
     assert.ok(
       installedRuntimeSkill.includes(
-        ".agents/skills/runtime-e2e-test-plan/references/project-runtime.md"
+        ".agents/skills/runtime-e2e-test/references/project-runtime.md"
       )
     );
     assert.ok(fs.existsSync(path.join(runtimeRoot, "validate_test_plan.py")));
+    assert.ok(fs.existsSync(path.join(runtimeRoot, "scripts/evidence.py")));
+    assert.ok(fs.existsSync(path.join(runtimeRoot, "references/playwright-contract.md")));
     const runtimeReference = path.join(runtimeRoot, "references/project-runtime.md");
     assert.ok(fs.existsSync(runtimeReference));
     assert.ok(fs.readFileSync(runtimeReference, "utf8").includes("- Status: UNCONFIGURED"));
@@ -490,7 +492,7 @@ test("runtime E2E validator rejects PASS through a different production path", (
   const planPath = path.join(directory, "settled-order.md");
   const validator = path.join(
     SOURCE_ROOT,
-    "skills/runtime-e2e-test-plan/validate_test_plan.py"
+    "skills/runtime-e2e-test/validate_test_plan.py"
   );
   const validPlan = `# Runtime E2E Test Plan: Settled order
 
