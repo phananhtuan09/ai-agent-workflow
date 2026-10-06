@@ -6,8 +6,6 @@
 - Do not sacrifice correctness, security, or maintainability solely to reduce implementation effort.
 - Pre-optimize only for security risks and demonstrated performance or scale requirements.
 - If requirements are materially unclear, ask focused questions in one batch.
-- Recommend directly when one option is clearly better.
-- Present options only when the decision depends on the user's priorities, and state the concrete tradeoff of each.
 
 ## Communication
 - Reply in the user's language; write code, identifiers, and code comments in English.
@@ -17,6 +15,7 @@
 - Lead with the recommendation when one option is clearly better; present alternatives only when the user must choose between materially different tradeoffs.
 - Do not restate the request, narrate routine actions or tool usage, repeat conclusions, or routinely offer to provide more detail.
 - During work, report progress only when user input is required, execution is blocked, or a material finding changes the approach.
+- On long-running work, give a short status line when a step is blocked or waiting on a permission or the user.
 - At completion, state the result and verification; mention uncertainty, blockers, or unfinished work only when present.
 
 ## Engineering Quality
