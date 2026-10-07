@@ -60,7 +60,8 @@ function describe(entry: ProviderUsage | undefined) {
   return {
     icon: levelIcon("Timer", levelOf(Math.max(...windows.map((window) => window.usedPct!)))),
     // Paseo truncates pill labels at a fixed width, so keep the label compact and put details in the tooltip.
-    label: `${entry.displayName} ${windows.map((window) => `${Math.round(window.usedPct!)}%`).join("/")}`,
+    // Personal accounts append the email to displayName, so drop any "(...)" suffix from the pill label.
+    label: `${entry.displayName.replace(/\s*\(.*\)\s*$/, "")} ${windows.map((window) => `${Math.round(window.usedPct!)}%`).join("/")}`,
     title: [
       entry.planLabel ? `${entry.displayName} (${entry.planLabel})` : entry.displayName,
       ...windows.map(
