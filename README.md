@@ -62,7 +62,7 @@ The default `coding-standard` kit installs the repository protocol and no skills
 Add only capabilities that materially help:
 
 ```bash
-npx ai-workflow-init@latest --kit coding-standard --tool codex --skill refactor --skill quality-code-check
+npx ai-workflow-init@latest --kit coding-standard --tool codex --skill quality-code-check
 npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle testing
 npx ai-workflow-init@latest --kit coding-standard --tool codex --skill proposal-designer
 ```
@@ -134,7 +134,7 @@ Ordinary implementation tasks do not invoke artifact mutation automatically.
 npx ai-workflow-init@latest --kit coding-standard --tool codex --bundle testing
 ```
 
-The testing bundle installs `runtime-e2e-test` and `property-based-testing`.
+The testing bundle installs `runtime-e2e-test`.
 The runtime E2E capability has two modes: `plan` writes a Markdown plan plus mapped native Playwright tests for human approval; `run` executes approved scripts against real web/HTTP API boundaries.
 Versioned evidence bundles preserve approved input snapshots, native results, structured observations, traces, retries, and cleanup for independent audit without rerunning every case.
 Screenshots alone cannot pass a case; unit, mocked, build, and source checks remain supporting proof.

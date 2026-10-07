@@ -182,10 +182,10 @@ test("extra skills are deduplicated and appended", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
-    extraSkills: ["refactor", "refactor", "property-based-testing"],
+    extraSkills: ["quality-code-check", "quality-code-check", "proposal-designer"],
   });
-  assert.strictEqual(skillIds.filter((id) => id === "refactor").length, 1);
-  assert.strictEqual(skillIds[skillIds.length - 1], "property-based-testing");
+  assert.strictEqual(skillIds.filter((id) => id === "quality-code-check").length, 1);
+  assert.strictEqual(skillIds[skillIds.length - 1], "proposal-designer");
 });
 
 test("workflow-eval resolves both evaluation skills", () => {
@@ -214,8 +214,8 @@ test("learning-workflow resolves the coordinator and focused helpers", () => {
 
 test("repeatable --skill flags are parsed", () => {
   assert.deepStrictEqual(
-    getCliSelectedSkills(["--skill", "refactor", "--skill", "property-based-testing"]),
-    ["refactor", "property-based-testing"]
+    getCliSelectedSkills(["--skill", "quality-code-check", "--skill", "proposal-designer"]),
+    ["quality-code-check", "proposal-designer"]
   );
 });
 
@@ -240,16 +240,13 @@ test("CLI help describes direct protocol and optional kits", () => {
   }
 });
 
-test("testing bundle registers runtime E2E and property-based skills", () => {
+test("testing bundle registers the runtime E2E skill", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
     extraBundles: ["testing"],
   });
-  assert.deepStrictEqual(skillIds, [
-    "runtime-e2e-test",
-    "property-based-testing",
-  ]);
+  assert.deepStrictEqual(skillIds, ["runtime-e2e-test"]);
 });
 
 test("canonical skills have required entrypoints", () => {
@@ -356,11 +353,11 @@ test("coding-standard preserves an existing project protocol file", () => {
   }
 });
 test("installer preserves an existing selected skill directory", () => {
-  const customSkill = "# Consumer-owned refactor skill\n";
+  const customSkill = "# Consumer-owned quality-code-check skill\n";
   const result = runCli(
-    ["--kit", "coding-standard", "--tool", "codex", "--skill", "refactor"],
+    ["--kit", "coding-standard", "--tool", "codex", "--skill", "quality-code-check"],
     ({ workspace }) => {
-      const skillPath = path.join(workspace, ".agents/skills/refactor/SKILL.md");
+      const skillPath = path.join(workspace, ".agents/skills/quality-code-check/SKILL.md");
       fs.mkdirSync(path.dirname(skillPath), { recursive: true });
       fs.writeFileSync(skillPath, customSkill);
     }
@@ -368,7 +365,7 @@ test("installer preserves an existing selected skill directory", () => {
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.strictEqual(
-      fs.readFileSync(path.join(result.workspace, ".agents/skills/refactor/SKILL.md"), "utf8"),
+      fs.readFileSync(path.join(result.workspace, ".agents/skills/quality-code-check/SKILL.md"), "utf8"),
       customSkill
     );
     assert.ok(result.stdout.includes("Preserving existing skill directory"));
@@ -451,15 +448,6 @@ test("Codex installs the testing bundle and runtime E2E namespace", () => {
   ]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    const propertyRoot = path.join(
-      result.workspace,
-      ".agents/skills/property-based-testing"
-    );
-    assert.ok(fs.existsSync(path.join(propertyRoot, "SKILL.md")));
-    assert.ok(fs.existsSync(path.join(propertyRoot, "references/generating.md")));
-    assert.ok(fs.existsSync(path.join(propertyRoot, "assets/trail-of-bits-mark.svg")));
-    assert.ok(fs.existsSync(path.join(propertyRoot, "LICENSE")));
-
     const runtimeRoot = path.join(
       result.workspace,
       ".agents/skills/runtime-e2e-test"

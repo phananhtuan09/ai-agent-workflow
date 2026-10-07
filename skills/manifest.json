@@ -16,16 +16,13 @@
     ],
     "common-review": [
       "quality-code-check",
-      "review-pr",
-      "refactor",
-      "fix-bug"
+      "review-pr"
     ],
     "proposal": [
       "proposal-designer"
     ],
     "testing": [
-      "runtime-e2e-test",
-      "property-based-testing"
+      "runtime-e2e-test"
     ],
     "evaluation": [
       "workflow-evaluation",
@@ -36,9 +33,6 @@
       "learning-case",
       "learning-evidence",
       "learning-review"
-    ],
-    "foreman-slp": [
-      "foreman-lead"
     ]
   },
   "kits": {
