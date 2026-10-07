@@ -10,7 +10,6 @@
     "core": [
       "brainstorm-partner",
       "review-pr",
-      "prompt-leverage",
       "smart-commits",
       "manage-project-knowledge"
     ],
