@@ -52,6 +52,7 @@ Use a skill only when it is installed; otherwise apply `docs/WORKFLOW.md` direct
 1. Run the project's native checks for the affected area and the cheapest focused proof that observes the changed behavior.
 2. Spawn the `review-pr` subagent with the Agent tool.
    Give it the original request and acceptance criteria, the changed surfaces, and the checks you ran; do not give it your conclusions.
+   Run it in the foreground and wait for its report; never hand off while a review is still running.
 3. Fix every `Cần sửa` finding, re-run the affected checks, and request a fresh review.
    Allow at most two correction cycles; after that, stop with a `BLOCKED` handoff carrying the evidence.
 4. Bring any `Cần quyết định` finding to the human as a decision.

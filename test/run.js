@@ -417,6 +417,9 @@ test("coder hooks inject the contract and gate stops on unreported changes", () 
   };
   try {
     git("init", "-q");
+    fs.writeFileSync(path.join(repo, "tracked.txt"), "v1\n");
+    git("add", "tracked.txt");
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
     fs.writeFileSync(path.join(repo, "existing.txt"), "pre-existing work\n");
 
     const started = hook("session-start.js", {});
@@ -439,7 +442,11 @@ test("coder hooks inject the contract and gate stops on unreported changes", () 
     );
     assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "follow-up answer" }), null);
 
-    fs.appendFileSync(path.join(repo, "change.txt"), "another edit\n");
+    // A growing untracked file, such as a log, is tracked by path only.
+    fs.appendFileSync(path.join(repo, "change.txt"), "log line\n");
+    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "answer" }), null);
+
+    fs.writeFileSync(path.join(repo, "tracked.txt"), "v2\n");
     assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "done" }).decision, "block");
 
     const outside = spawnSync(process.execPath, [path.join(scripts, "stop-gate.js")], {

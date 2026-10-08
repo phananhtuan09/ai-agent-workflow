@@ -7,9 +7,6 @@ const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
-const MAX_UNTRACKED_FILES = 500;
-const MAX_HASHED_BYTES = 1024 * 1024;
-
 function git(cwd, args) {
   const result = spawnSync("git", args, { cwd, encoding: "buffer", maxBuffer: 64 * 1024 * 1024 });
   if (result.error || result.status !== 0) return null;
@@ -22,36 +19,15 @@ function treeFingerprint(cwd) {
   const status = git(cwd, ["status", "--porcelain=v1", "-uall"]);
   const unstaged = git(cwd, ["diff", "--no-ext-diff", "--binary"]);
   const staged = git(cwd, ["diff", "--no-ext-diff", "--binary", "--cached"]);
-  const untracked = git(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]);
-  const root = git(cwd, ["rev-parse", "--show-toplevel"]);
-  if ([status, unstaged, staged, untracked, root].includes(null)) return null;
+  if ([status, unstaged, staged].includes(null)) return null;
 
   const statusText = status.toString("utf8");
   if (statusText.trim() === "") return { clean: true, hash: "clean" };
 
+  // Untracked files count by path only (status lists them), so a log that keeps
+  // growing in the tree does not look like a new change on every stop.
   const hash = crypto.createHash("sha256");
   hash.update(statusText).update(unstaged).update(staged);
-
-  const topLevel = root.toString("utf8").trim();
-  untracked
-    .toString("utf8")
-    .split("\0")
-    .filter(Boolean)
-    .slice(0, MAX_UNTRACKED_FILES)
-    .forEach((relativePath) => {
-      hash.update(relativePath);
-      try {
-        const filePath = path.join(topLevel, relativePath);
-        const stat = fs.statSync(filePath);
-        if (stat.isFile() && stat.size <= MAX_HASHED_BYTES) {
-          hash.update(fs.readFileSync(filePath));
-        } else {
-          hash.update(`${stat.size}:${stat.mtimeMs}`);
-        }
-      } catch (_) {
-        // A file can disappear between listing and reading; its path is enough.
-      }
-    });
 
   return { clean: false, hash: hash.digest("hex") };
 }
