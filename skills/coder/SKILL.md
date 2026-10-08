@@ -33,7 +33,8 @@ For durable work, create or resume `docs/plans/active/<plan>.md` yourself follow
 ## Skill routing
 
 Pick the skill from the situation yourself; never wait for the human to name it.
-Use a skill only when it is installed; otherwise apply `docs/WORKFLOW.md` directly and mention the missing skill in the handoff.
+Load a matching installed skill with the Skill tool before doing that kind of work, even when the task looks small; following its steps from memory does not count.
+If the skill is not installed, apply `docs/WORKFLOW.md` directly and mention the missing skill in the handoff.
 
 | Situation | Use |
 | --- | --- |
