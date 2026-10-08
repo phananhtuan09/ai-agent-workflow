@@ -312,6 +312,148 @@ test("review-pr installs its canonical skill and runtime reviewer", () => {
   });
 });
 
+test("coder-agent bundle installs the coder contract and its Claude hooks", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--bundle", "coder-agent"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    ["SKILL.md", "scripts/session-start.js", "scripts/stop-gate.js", "scripts/gate-state.js"].forEach(
+      (relativePath) => {
+        assert.ok(fs.existsSync(path.join(result.workspace, ".claude/skills/coder", relativePath)), relativePath);
+      }
+    );
+    assert.ok(fs.existsSync(path.join(result.workspace, ".claude/agents/review-pr.md")));
+
+    const settings = JSON.parse(
+      fs.readFileSync(path.join(result.workspace, ".claude/settings.json"), "utf8")
+    );
+    const commands = (event) => settings.hooks[event].flatMap((entry) => entry.hooks.map((hook) => hook.command));
+    assert.deepStrictEqual(commands("SessionStart"), [
+      'node "$CLAUDE_PROJECT_DIR/.claude/skills/coder/scripts/session-start.js"',
+    ]);
+    assert.deepStrictEqual(commands("Stop"), [
+      'node "$CLAUDE_PROJECT_DIR/.claude/skills/coder/scripts/stop-gate.js"',
+    ]);
+    assert.deepStrictEqual(
+      settings.permissions,
+      JSON.parse(fs.readFileSync(path.join(SOURCE_ROOT, ".claude/settings.json"), "utf8")).permissions
+    );
+
+    const update = spawnSync(process.execPath, [path.join(SOURCE_ROOT, "cli.js"), "update"], {
+      cwd: result.workspace,
+      env: { ...process.env, HOME: result.home },
+      encoding: "utf8",
+    });
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    assert.ok(update.stdout.includes("UNCHANGED repository:.claude/settings.json"), update.stdout);
+    assert.ok(!update.stdout.includes("UPDATE repository:"), update.stdout);
+    assert.ok(!update.stdout.includes("ADD repository:"), update.stdout);
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("Claude settings stay byte-identical to source without the coder skill", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--skill", "review-pr"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(
+      fs.readFileSync(path.join(result.workspace, ".claude/settings.json")).equals(
+        fs.readFileSync(path.join(SOURCE_ROOT, ".claude/settings.json"))
+      )
+    );
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".claude/skills/coder")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("coder preserves existing Claude settings and prints the hooks to merge", () => {
+  const existing = '{ "model": "project-owned" }\n';
+  const result = runCli(
+    ["--kit", "coding-standard", "--tool", "claude", "--bundle", "coder-agent"],
+    ({ workspace }) => {
+      fs.mkdirSync(path.join(workspace, ".claude"), { recursive: true });
+      fs.writeFileSync(path.join(workspace, ".claude/settings.json"), existing);
+    }
+  );
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(fs.readFileSync(path.join(result.workspace, ".claude/settings.json"), "utf8"), existing);
+    assert.ok(result.stdout.includes("coder is inactive until these hooks are merged"), result.stdout);
+    assert.ok(result.stdout.includes("stop-gate.js"), result.stdout);
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("non-coding kits do not install coder files", () => {
+  const result = runCli(["--kit", "workflow-eval", "--tool", "claude"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".claude/skills/coder")));
+    const settings = JSON.parse(fs.readFileSync(path.join(result.workspace, ".claude/settings.json"), "utf8"));
+    assert.ok(!JSON.stringify(settings.hooks || {}).includes("coder"));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("coder hooks inject the contract and gate stops on unreported changes", () => {
+  const scripts = path.join(SOURCE_ROOT, "skills/coder/scripts");
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-coder-gate-"));
+  const sessionId = `test-${process.pid}-${Date.now()}`;
+  const hook = (script, input) => {
+    const run = spawnSync(process.execPath, [path.join(scripts, script)], {
+      cwd: repo,
+      input: JSON.stringify({ session_id: sessionId, cwd: repo, ...input }),
+      encoding: "utf8",
+    });
+    assert.strictEqual(run.status, 0, run.stderr);
+    return run.stdout.trim() ? JSON.parse(run.stdout) : null;
+  };
+  const git = (...args) => {
+    const run = spawnSync("git", args, { cwd: repo, encoding: "utf8" });
+    assert.strictEqual(run.status, 0, run.stderr);
+  };
+  try {
+    git("init", "-q");
+    fs.writeFileSync(path.join(repo, "existing.txt"), "pre-existing work\n");
+
+    const started = hook("session-start.js", {});
+    assert.strictEqual(started.hookSpecificOutput.hookEventName, "SessionStart");
+    assert.ok(started.hookSpecificOutput.additionalContext.startsWith("# Coder"));
+    assert.ok(started.hookSpecificOutput.additionalContext.includes("Status: HANDOFF"));
+
+    // Uncommitted work that predates the session never blocks a stop.
+    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "answer" }), null);
+
+    fs.writeFileSync(path.join(repo, "change.txt"), "agent edit\n");
+    const blocked = hook("stop-gate.js", { last_assistant_message: "done" });
+    assert.strictEqual(blocked.decision, "block");
+    assert.ok(blocked.reason.includes("Status: HANDOFF"));
+
+    assert.strictEqual(hook("stop-gate.js", { stop_hook_active: true }), null);
+    assert.strictEqual(
+      hook("stop-gate.js", { last_assistant_message: "Status: DECISION NEEDED\n- Result: draft" }),
+      null
+    );
+    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "follow-up answer" }), null);
+
+    fs.appendFileSync(path.join(repo, "change.txt"), "another edit\n");
+    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "done" }).decision, "block");
+
+    const outside = spawnSync(process.execPath, [path.join(scripts, "stop-gate.js")], {
+      cwd: os.tmpdir(),
+      input: JSON.stringify({ session_id: sessionId, cwd: path.parse(repo).root }),
+      encoding: "utf8",
+    });
+    assert.strictEqual(outside.stdout, "");
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
+    fs.rmSync(path.join(os.tmpdir(), "claude-coder-gate", sessionId), { force: true });
+  }
+});
+
 test("Claude project instructions use the root protocol as their source", () => {
   assert.ok(!fs.existsSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.md")));
 });

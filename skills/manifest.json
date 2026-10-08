@@ -39,6 +39,14 @@
     ],
     "foreman-slp": [
       "foreman-lead"
+    ],
+    "coder-agent": [
+      "coder",
+      "review-pr",
+      "quality-code-check",
+      "fix-bug",
+      "smart-commits",
+      "manage-project-knowledge"
     ]
   },
   "kits": {
