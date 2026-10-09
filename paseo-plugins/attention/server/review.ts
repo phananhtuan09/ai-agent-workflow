@@ -1,12 +1,13 @@
 import type { AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import type { PaseoApi } from "@getpaseo/client";
-import { REVIEW_KIND, REVIEW_VERSION, type ReviewData } from "../shared/review";
+import type { RpcInput, RpcOutput } from "@getpaseo/plugin";
+import { REVIEW_KIND, REVIEW_VERSION, type ReviewData, reviewLatest } from "../shared/review";
 
-export const REVIEWER_TITLE = "attention-reviewer";
+const REVIEWER_TITLE = "attention-reviewer";
 const REVIEWER_PROVIDER = "claude/claude-haiku-5-5";
 
-// Shorter answers are quick to read yourself.
-const MIN_CHARS = 600;
+// Enough tail entries to reach back past a long turn's tool calls.
+const TIMELINE_LIMIT = 200;
 const MAX_CHARS = 40_000;
 const REVIEW_TIMEOUT_MS = 60_000;
 
@@ -22,17 +23,13 @@ Reply {"items":[]} when nothing needs the developer.
 Never use tools.`;
 
 // The assistant text of the latest turn: everything after the last user message.
-export function latestAnswer(timeline: readonly AgentTimelineItem[]): string {
+function latestAnswer(timeline: readonly AgentTimelineItem[]): string {
   const lastUser = timeline.map((item) => item.type).lastIndexOf("user_message");
   return timeline
     .slice(lastUser + 1)
     .flatMap((item) => (item.type === "assistant_message" ? [item.text] : []))
     .join("")
     .trim();
-}
-
-export function isWorthReviewing(answer: string): boolean {
-  return answer.length >= MIN_CHARS;
 }
 
 function parseItems(text: string): ReviewData {
@@ -60,7 +57,7 @@ async function publish(paseo: PaseoApi, agentId: string, rowId: string, data: Re
   });
 }
 
-export async function reviewAnswer(
+async function reviewAnswer(
   paseo: PaseoApi,
   agent: { id: string; cwd: string },
   rowId: string,
@@ -91,4 +88,20 @@ export async function reviewAnswer(
     const reason = error instanceof Error ? error.message : "review failed";
     return publish(paseo, agent.id, rowId, { status: "failed", items: [], reason });
   }
+}
+
+// Reads the agent's latest answer and reviews it in the background.
+export async function startReview(
+  { agentId, cwd }: RpcInput<typeof reviewLatest>,
+  { paseo }: { paseo: PaseoApi },
+): Promise<RpcOutput<typeof reviewLatest>> {
+  const page = await paseo.agents
+    .ref(agentId)
+    .timeline.refetch({ direction: "tail", limit: TIMELINE_LIMIT });
+  const answer = latestAnswer(page.entries.map((entry) => entry.item));
+  if (!answer) throw new Error("No answer to review yet");
+  const turnId = page.entries.findLast((entry) => entry.item.type === "assistant_message")?.turnId;
+  // Not awaited: the command returns at once while Haiku reads the answer.
+  void reviewAnswer(paseo, { id: agentId, cwd }, `attention-${turnId ?? Date.now()}`, answer);
+  return {};
 }

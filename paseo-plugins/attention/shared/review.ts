@@ -1,3 +1,4 @@
+import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
 export const REVIEW_KIND = "attention-review";
@@ -12,3 +13,10 @@ export const reviewDataSchema = z.object({
 });
 
 export type ReviewData = z.infer<typeof reviewDataSchema>;
+
+// Starts a review of the agent's latest answer; the result arrives as a timeline row.
+export const reviewLatest = defineRpc({
+  name: "attention.review",
+  input: z.object({ agentId: z.string(), cwd: z.string() }),
+  output: z.object({}),
+});
