@@ -318,7 +318,7 @@ test("coder-agent bundle installs the coder contract and its Claude hooks", () =
         assert.ok(fs.existsSync(path.join(result.workspace, ".claude/skills/coder", relativePath)), relativePath);
       }
     );
-    assert.ok(fs.existsSync(path.join(result.workspace, ".claude/agents/review-pr.md")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, ".claude/agents/review-pr.md")));
 
     const settings = JSON.parse(
       fs.readFileSync(path.join(result.workspace, ".claude/settings.json"), "utf8")
@@ -438,6 +438,27 @@ test("coder hooks inject the contract and gate stops on unreported changes", () 
       null
     );
     assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "follow-up answer" }), null);
+
+    // A JSON report set by the assigning prompt, such as a Foreman Paseo worker, also passes the gate.
+    fs.writeFileSync(path.join(repo, "json.txt"), "json edit\n");
+    assert.strictEqual(
+      hook("stop-gate.js", { last_assistant_message: '{"status":"done","summary":"ok"}' }),
+      null
+    );
+    // Herdr workers report through Foreman's own stop hook.
+    fs.writeFileSync(path.join(repo, "herdr.txt"), "herdr edit\n");
+    const herdr = spawnSync(process.execPath, [path.join(scripts, "stop-gate.js")], {
+      cwd: repo,
+      input: JSON.stringify({ session_id: sessionId, cwd: repo, last_assistant_message: "done" }),
+      env: { ...process.env, FOREMAN_ROOT: "/foreman", HERDR_PANE_ID: "pane-1" },
+      encoding: "utf8",
+    });
+    assert.strictEqual(herdr.stdout, "");
+    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "done" }).decision, "block");
+    assert.strictEqual(
+      hook("stop-gate.js", { last_assistant_message: "Status: HANDOFF\n- Result: ok" }),
+      null
+    );
 
     // A growing untracked file, such as a log, is tracked by path only.
     fs.appendFileSync(path.join(repo, "change.txt"), "log line\n");

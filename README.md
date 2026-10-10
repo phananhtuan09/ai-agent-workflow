@@ -134,8 +134,9 @@ Ordinary implementation tasks do not invoke artifact mutation automatically.
 npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle coder-agent
 ```
 
-The `coder-agent` bundle installs the `coder` contract with `review-pr`, `quality-code-check`, `smart-commits`, and `manage-project-knowledge`.
-It turns every Claude Code session in the project into a coder: the human steers intent, material decisions, and sign-off; the session picks skills, validates with an independent `review-pr` subagent, proposes durable knowledge updates for approval, and ends each change with a `Status:` handoff and a suggested next step.
+The `coder-agent` bundle installs the `coder` contract with `quality-code-check`, `smart-commits`, and `manage-project-knowledge`.
+It turns every Claude Code session in the project into a coder: the human steers intent, material decisions, and sign-off; the session picks skills, validates with the project's own checks, proposes durable knowledge updates for approval, and ends each change with a `Status:` handoff and a suggested next step.
+When the assigning prompt specifies a report format, as Foreman worker prompts do, the coder reports in that format instead.
 It commits or pushes only when the human asks.
 
 Two project hooks in `.claude/settings.json` enforce this: SessionStart injects the contract (also after resume and compaction), and Stop asks for the handoff once when files changed since the last one.

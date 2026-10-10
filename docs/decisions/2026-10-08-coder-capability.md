@@ -16,7 +16,7 @@ SessionStart hooks can add context without replacing that prompt and re-run on r
 
 ## Decision
 
-1. Add the canonical skill `skills/coder/` as an experimental coder contract: plan gate, skill routing, validation with an independent `review-pr` subagent and at most two correction cycles, knowledge proposals, git restraint, and a fixed handoff whose first line is `Status: HANDOFF | DECISION NEEDED | BLOCKED`.
+1. Add the canonical skill `skills/coder/` as an experimental coder contract: plan gate, skill routing, validation with the project's own checks (no automatic review subagent), knowledge proposals, git restraint, and a default handoff whose first line is `Status: HANDOFF | DECISION NEEDED | BLOCKED`, replaced by the report format the assigning prompt specifies (for example a Foreman worker prompt); the Stop gate also accepts a JSON report and skips Herdr workers.
 2. Enable it by default per project through `.claude/settings.json` hooks, not the `agent` setting:
    - a SessionStart hook injects the contract body and records the starting working tree;
    - a Stop hook blocks once when the working tree changed since the last accepted stop and the final message lacks the status line.
@@ -37,8 +37,8 @@ SessionStart hooks can add context without replacing that prompt and re-run on r
 
 - Positive: skill choice, validation, review, knowledge proposals, and next-step suggestions no longer depend on the human prompting for them.
 - Positive: the contract survives long sessions because it is re-injected after compaction.
-- Negative: every session in an opted-in project pays the contract's context cost and may spend extra turns on review.
-- Negative: the Stop gate checks only that a handoff was given, not that its evidence is true; review and human Sign Off still judge correctness.
+- Negative: every session in an opted-in project pays the contract's context cost.
+- Negative: the Stop gate checks only that a handoff was given, not that its evidence is true; human Sign Off still judges correctness.
 - Negative: projects with their own settings must merge the hooks manually to activate the capability.
 
 ## Alternatives considered

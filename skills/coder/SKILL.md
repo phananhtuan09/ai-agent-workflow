@@ -42,22 +42,16 @@ If the skill is not installed, apply `docs/WORKFLOW.md` directly and mention the
 | Lint, type, build, or validation failures | `quality-code-check` |
 | Multi-case user flows or HTTP API acceptance that must stay re-runnable | `runtime-e2e-test` |
 | A vague product idea that needs framing before anyone builds it | `proposal-designer` |
-| Independent review before handoff | `review-pr` subagent (see Validate) |
 | Durable knowledge changes the human approved | `manage-project-knowledge` |
 | The human asks to commit or push | `smart-commits` |
 
 ## Validate before every handoff that follows a change
 
 1. Run the project's native checks for the affected area and the cheapest focused proof that observes the changed behavior.
-2. Spawn the `review-pr` subagent with the Agent tool.
-   Give it the original request and acceptance criteria, the changed surfaces, and the checks you ran; do not give it your conclusions.
-   Run it in the foreground and wait for its report; never hand off while a review is still running.
-3. Fix every `Cần sửa` finding, re-run the affected checks, and request a fresh review.
-   Allow at most two correction cycles; after that, stop with a `BLOCKED` handoff carrying the evidence.
-4. Bring any `Cần quyết định` finding to the human as a decision.
+2. Fix any failure your change caused, then re-run the affected checks.
+3. Do not spawn a review subagent on your own; run one only when the human or the assigning prompt asks for it.
 
-If the subagent is unavailable, review the diff yourself with the `review-pr` skill and label it "self-review, not independent" in the handoff.
-Skip the review only for read-only work or changes with no behavioral effect, and say so.
+Skip validation only for read-only work or changes with no behavioral effect, and say so.
 
 ## Durable knowledge
 
@@ -72,14 +66,15 @@ One request covers only that request; ask again next time.
 
 ## Handoff
 
-End every turn that changed files, or that needs the human, with this handoff in the human's language.
-The first line must be exactly one status line; the session's Stop hook looks for it.
+If the prompt that assigned the work specifies a report format, such as a worker prompt from an orchestrator like Foreman, report exactly in that format and add nothing outside it.
+Otherwise end every turn that changed files, or that needs the human, with the default handoff below, in the human's language.
+The first line of the default handoff must be exactly one status line; the session's Stop hook looks for it.
 
 ```markdown
 Status: HANDOFF | DECISION NEEDED | BLOCKED
 
 - Result: what now works, in behavior terms.
-- Evidence: checks and reviews actually run, with outcomes.
+- Evidence: checks actually run, with outcomes.
 - Not verified: what still needs human judgment or could not run.
 - Needs your decision: open decisions and knowledge proposals, each with a recommendation.
 - Next step: the single most useful next action you suggest.

@@ -4,17 +4,22 @@
 
 const { readAccepted, readStdinJson, treeFingerprint, writeAccepted } = require("./gate-state");
 
+const JSON_REPORT = /^\s*(```(?:json)?\s*)?\{[\s\S]*\}\s*(```)?\s*$/;
 const STATUS_LINE = /^[\s>*_`]*Status:\s*(HANDOFF|DECISION NEEDED|BLOCKED)\b/im;
 
 function main() {
   const input = readStdinJson();
   if (input.stop_hook_active || !input.session_id) return;
+  // A Herdr worker is told how to report by Foreman's own stop hook.
+  if (process.env.FOREMAN_ROOT && process.env.HERDR_PANE_ID) return;
 
   const fingerprint = treeFingerprint(input.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd());
   if (!fingerprint || fingerprint.clean) return;
   if (readAccepted(input.session_id) === fingerprint.hash) return;
 
-  if (STATUS_LINE.test(String(input.last_assistant_message || ""))) {
+  // A structured JSON report means the assigning prompt set its own format.
+  const message = String(input.last_assistant_message || "");
+  if (STATUS_LINE.test(message) || JSON_REPORT.test(message)) {
     writeAccepted(input.session_id, fingerprint.hash);
     return;
   }
@@ -24,7 +29,7 @@ function main() {
       decision: "block",
       reason:
         "Files changed since the last coder handoff. Finish validation per the coder contract " +
-        "(project checks, focused proof, review-pr subagent), then end the turn with the handoff " +
+        "(project checks and focused proof), then end the turn with the handoff " +
         "starting with `Status: HANDOFF`, `Status: DECISION NEEDED`, or `Status: BLOCKED`.",
     })
   );
