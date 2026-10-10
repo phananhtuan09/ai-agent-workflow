@@ -32,6 +32,13 @@
       "learning-case",
       "learning-evidence",
       "learning-review"
+    ],
+    "coder-agent": [
+      "coder",
+      "review-pr",
+      "quality-code-check",
+      "smart-commits",
+      "manage-project-knowledge"
     ]
   },
   "kits": {

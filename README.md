@@ -128,6 +128,21 @@ Humans can ask direct questions such as what behavior is accepted, why a decisio
 Explanation requests are read-only and return direct answers with artifact paths and section citations, including conflicts, status, exceptions, and safety conditions when relevant.
 Ordinary implementation tasks do not invoke artifact mutation automatically.
 
+### Coder (experimental, Claude Code)
+
+```bash
+npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle coder-agent
+```
+
+The `coder-agent` bundle installs the `coder` contract with `review-pr`, `quality-code-check`, `smart-commits`, and `manage-project-knowledge`.
+It turns every Claude Code session in the project into a coder: the human steers intent, material decisions, and sign-off; the session picks skills, validates with an independent `review-pr` subagent, proposes durable knowledge updates for approval, and ends each change with a `Status:` handoff and a suggested next step.
+It commits or pushes only when the human asks.
+
+Two project hooks in `.claude/settings.json` enforce this: SessionStart injects the contract (also after resume and compaction), and Stop asks for the handoff once when files changed since the last one.
+An existing `.claude/settings.json` is preserved; the installer prints the hooks to merge manually.
+Remove those hooks to turn the capability off.
+See the [decision record](docs/decisions/2026-10-08-coder-capability.md) for scope and the A/B criteria that decide whether it stays.
+
 ### Runtime E2E test plans
 
 ```bash
