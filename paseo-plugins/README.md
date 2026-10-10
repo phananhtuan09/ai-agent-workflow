@@ -5,6 +5,7 @@ Each directory name matches the plugin `id` in its `paseo-plugin.json`.
 
 | Plugin | Description |
 | --- | --- |
+| [`attention`](attention) | After a long agent answer, a Haiku 5.5 reviewer adds a timeline note listing what needs your action, risk, or todo. |
 | [`usage-pill`](usage-pill) | Composer pills showing the agent provider's plan usage (session/weekly %) and the agent's context-window use. |
 
 ## Prerequisites

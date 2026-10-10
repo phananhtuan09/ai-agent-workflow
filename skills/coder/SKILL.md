@@ -38,12 +38,10 @@ If the skill is not installed, apply `docs/WORKFLOW.md` directly and mention the
 
 | Situation | Use |
 | --- | --- |
-| A reported or discovered bug or regression | `fix-bug` (reproduce first) |
+| A reported or discovered bug or regression | No skill; reproduce the failure first, then fix and prove it |
 | Lint, type, build, or validation failures | `quality-code-check` |
 | Multi-case user flows or HTTP API acceptance that must stay re-runnable | `runtime-e2e-test` |
-| Logic that should hold for a whole input domain (parsers, serializers, validators, comparators) | `property-based-testing` |
 | A vague product idea that needs framing before anyone builds it | `proposal-designer` |
-| The request itself is a refactor | `refactor`; never refactor unrequested code |
 | Independent review before handoff | `review-pr` subagent (see Validate) |
 | Durable knowledge changes the human approved | `manage-project-knowledge` |
 | The human asks to commit or push | `smart-commits` |
