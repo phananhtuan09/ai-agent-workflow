@@ -76,8 +76,20 @@ Tiếp theo:
    `docs/WORKFLOW.md` yêu cầu có dùng lặp lại thật trước khi thêm skill mới.
 6. Planner nằm trong bundle `core` hay bundle riêng, và có đặt `disable-model-invocation: true` để chỉ kích hoạt bằng tay không?
 
+## Chốt khi viết bản v1 (2026-10-16)
+
+- Gõ `/planner` chỉ bật mode, không tự đọc trạng thái repo.
+- Bước tiếp theo dựa vào bản đồ workflow: biết việc đang ở chặng nào để gợi ý chặng kế.
+- Prompt mơ hồ: tìm bằng chứng trong repo trước; đoán sai mà rẻ thì đoán, làm và ghi giả định; đoán sai mà đắt thì đưa các cách hiểu làm lựa chọn.
+- Mặc định v1, chỉnh sau khi dùng thử:
+  - không có dòng `Mục tiêu:`, chỉ ghi giả định khi thật sự đoán;
+  - thứ tự ★: rủi ro, hoàn thành mục tiêu, đưa code ra ngoài, lưu kiến thức;
+  - đổi UI nhìn thấy nhưng không đổi logic hay dữ liệu được tính là rẻ;
+  - gõ số khi không có danh sách gợi ý được xử lý như prompt thường;
+  - than phiền về agent chỉ được gợi ý `record-workflow-friction`, không tự ghi;
+  - bundle riêng `planner-mode`, `disable-model-invocation: true`.
+
 ## Bước tiếp theo
 
-Các câu hỏi mới phát sinh là chi tiết implement, tạm hoãn.
-Trước đó, kiểm tra intent qua [bản giả lập output 21 case](2026-10-16-planner-simulation.md).
-Sau khi intent khớp mới viết bản nháp `skills/planner/SKILL.md` và kế hoạch xóa `coder`.
+Bản v1 nằm ở `skills/planner/SKILL.md`, `coder` đã bị gỡ, quyết định ghi ở [decision record](../decisions/2026-10-16-planner-capability.md).
+Dùng thử trên phiên thật, đếm số lần human chọn ★, chọn lựa chọn khác, hoặc tự gõ yêu cầu khác, rồi chỉnh các mặc định.
