@@ -10,7 +10,7 @@ jobs:
   claude:
     if: >-
       github.event.comment.user.login == 'phananhtuan09' &&
-      contains(github.event.comment.body, '@claude') &&
+      contains(github.event.comment.body, '@claude-ci') &&
       (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request)
     runs-on: ubuntu-latest
     permissions:
@@ -25,4 +25,5 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          trigger_phrase: "@claude-ci"
           claude_args: --model claude-haiku-5-5 --max-turns 8
