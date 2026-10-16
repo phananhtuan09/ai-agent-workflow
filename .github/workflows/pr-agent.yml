@@ -2,13 +2,18 @@ name: pr-agent
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review]
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+
 jobs:
   pr_agent:
-    if: github.event.sender.type != 'Bot'
+    if: >-
+      github.event.sender.type != 'Bot' &&
+      (github.event_name == 'pull_request' || github.event.comment.user.login == 'phananhtuan09')
     runs-on: ubuntu-latest
     permissions:
       contents: read
