@@ -78,4 +78,6 @@ Tiếp theo:
 
 ## Bước tiếp theo
 
-Trả lời các câu hỏi mới phát sinh, rồi viết bản nháp `skills/planner/SKILL.md` và kế hoạch xóa `coder`.
+Các câu hỏi mới phát sinh là chi tiết implement, tạm hoãn.
+Trước đó, kiểm tra intent qua [bản giả lập output 21 case](2026-10-16-planner-simulation.md).
+Sau khi intent khớp mới viết bản nháp `skills/planner/SKILL.md` và kế hoạch xóa `coder`.
