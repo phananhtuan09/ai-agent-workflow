@@ -18,9 +18,10 @@ jobs:
       - uses: the-pr-agent/pr-agent@8e5a9295973b24af4b70cafd0b660a230811ef9e # v0.47.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          config.model: gemini/gemini-3.5-flash-lite
-          config.fallback_models: '["gemini/gemini-3.1-flash-lite"]'
+          openrouter__key: ${{ secrets.OPENROUTER_KEY }}
+          config.model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+          config.custom_model_max_tokens: "100000"
+          config.fallback_models: '["openrouter/google/gemma-4-31b-it:free", "openrouter/poolside/laguna-s-2.1:free"]'
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "false"
           github_action_config.auto_improve: "false"
