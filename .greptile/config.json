@@ -1,0 +1,58 @@
+{
+  "rules": [
+    {
+      "id": "no-runtime-skill-mirrors",
+      "rule": "Skills live only under skills/. Never add or commit .agents/skills/ or .claude/skills/ in this repository; runtime copies are created only while installing into a target repository.",
+      "scope": [".agents/**", ".claude/**"],
+      "severity": "high"
+    },
+    {
+      "id": "skill-registration",
+      "rule": "Every directory under skills/ must contain SKILL.md and be listed in at least one bundle in skills/manifest.json. A skill added, renamed, or removed without the matching manifest.json change must be flagged.",
+      "scope": ["skills/**"],
+      "severity": "high"
+    },
+    {
+      "id": "design-doc-locations",
+      "rule": "PRODUCT.md and DESIGN.md must exist only directly under docs/. Flag any PRODUCT.md or DESIGN.md at the repository root or under .agents/context/, because it silently takes precedence over docs/.",
+      "scope": ["**/PRODUCT.md", "**/DESIGN.md"],
+      "severity": "high"
+    },
+    {
+      "id": "durable-docs-namespace",
+      "rule": "A new durable artifact namespace under docs/ must be indexed in docs/README.md and provide its own local README.md contract before it contains artifacts. Do not treat docs/PRODUCT.md as product authority; durable product rules belong in docs/product/ and decisions in docs/decisions/.",
+      "scope": ["docs/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "markdown-sentence-per-line",
+      "rule": "In Markdown files under docs/ and skills/, each complete sentence should be on its own line. Flag newly added paragraphs that put several sentences on one line.",
+      "scope": ["docs/**/*.md", "skills/**/*.md"],
+      "severity": "low"
+    },
+    {
+      "id": "node-14-compatible-installer",
+      "rule": "cli.js and lib/** must run on Node >=14, the engines.node value in package.json. Flag newer syntax or APIs such as ??=, ||=, Array.prototype.at, Object.hasOwn, structuredClone, or the node: import prefix.",
+      "scope": ["cli.js", "lib/**"],
+      "severity": "high"
+    },
+    {
+      "id": "installer-never-overwrites-user-files",
+      "rule": "Installer and update code must not overwrite or delete files in the target repository that the user may have customized without an explicit managed-file check. Flag writes or removals that bypass lib/managed-files.js or ignore existing files.",
+      "scope": ["lib/install.js", "lib/update.js", "lib/fs-utils.js", "install.sh", "install.ps1"],
+      "severity": "high"
+    },
+    {
+      "id": "published-files-whitelist",
+      "rule": "If a new top-level file or directory must ship to users, it must be added to the files array in package.json; otherwise it will be missing from the installed package.",
+      "scope": ["package.json"],
+      "severity": "medium"
+    },
+    {
+      "id": "workflow-least-privilege",
+      "rule": "GitHub Actions workflows must declare top-level permissions with the minimum scope (default contents: read), set persist-credentials: false on actions/checkout unless the job pushes, and must not use pull_request_target with a checkout of PR code.",
+      "scope": [".github/workflows/**"],
+      "severity": "high"
+    }
+  ]
+}
