@@ -128,21 +128,18 @@ Humans can ask direct questions such as what behavior is accepted, why a decisio
 Explanation requests are read-only and return direct answers with artifact paths and section citations, including conflicts, status, exceptions, and safety conditions when relevant.
 Ordinary implementation tasks do not invoke artifact mutation automatically.
 
-### Coder (experimental, Claude Code)
+### Planner mode
 
 ```bash
-npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle coder-agent
+npx ai-workflow-init@latest --kit coding-standard --tool claude --bundle planner-mode
 ```
 
-The `coder-agent` bundle installs the `coder` contract with `quality-code-check`, `smart-commits`, and `manage-project-knowledge`.
-It turns every Claude Code session in the project into a coder: the human steers intent, material decisions, and sign-off; the session picks skills, validates with the project's own checks, proposes durable knowledge updates for approval, and ends each change with a `Status:` handoff and a suggested next step.
-When the assigning prompt specifies a report format, as Foreman worker prompts do, the coder reports in that format instead.
-It commits or pushes only when the human asks.
-
-Two project hooks in `.claude/settings.json` enforce this: SessionStart injects the contract (also after resume and compaction), and Stop asks for the handoff once when files changed since the last one.
-An existing `.claude/settings.json` is preserved; the installer prints the hooks to merge manually.
-Remove those hooks to turn the capability off.
-See the [decision record](docs/decisions/2026-10-08-coder-capability.md) for scope and the A/B criteria that decide whether it stays.
+The `planner-mode` bundle installs the `planner` skill with `quality-code-check`, `smart-commits`, and `manage-project-knowledge`; Codex and Antigravity receive the same skill.
+Type `/planner` to turn it on for the rest of the conversation.
+For each prompt the agent picks the fitting workflow step or skill, does it, and ends with two or three numbered next steps; reply `1`, `2`, or `3` to continue.
+It asks first before git actions, outward actions such as PR comments, and unresolved product decisions, and choosing an option that names one of those actions approves it.
+It is plain instructions with no hooks, so nothing changes until a session invokes it.
+See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for scope.
 
 ### Runtime E2E test plans
 

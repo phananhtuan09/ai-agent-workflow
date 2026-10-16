@@ -33,8 +33,8 @@
       "learning-evidence",
       "learning-review"
     ],
-    "coder-agent": [
-      "coder",
+    "planner-mode": [
+      "planner",
       "quality-code-check",
       "smart-commits",
       "manage-project-knowledge"
