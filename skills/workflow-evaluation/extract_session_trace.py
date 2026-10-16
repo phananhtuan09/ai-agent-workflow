@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -43,15 +44,6 @@ def read_jsonl(file_path: Path):
     return records
 
 
-def read_first_jsonl(file_path: Path):
-    with file_path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            stripped = line.strip()
-            if stripped:
-                return json.loads(stripped)
-    return None
-
-
 def list_jsonl_files(root_dir: Path):
     if not root_dir.exists():
         return []
@@ -78,32 +70,118 @@ def pick_latest_file(files):
 
 
 def find_latest_transcript(runtime: str, project_path: Optional[str]):
-    home = Path.home()
-    normalized_project = os.path.abspath(os.path.expanduser(project_path)) if project_path else None
+    sessions, issues = discover_transcripts(runtime, project_path)
+    for issue in issues:
+        print(json.dumps(issue), file=sys.stderr)
+    return pick_latest_file([Path(item["transcript_path"]) for item in sessions])
 
+
+def local_root(variable, default):
+    return Path(os.environ.get(variable) or default).expanduser().resolve()
+
+
+def canonical_path(value):
+    return str(Path(value).expanduser().resolve()) if value else None
+
+
+def transcript_roots(runtime):
     if runtime == "claude":
-        files = list_jsonl_files(home / ".claude" / "projects")
-        if normalized_project:
-            project_key = project_path_to_claude_key(normalized_project)
-            files = [path for path in files if project_key in path.as_posix()]
-        return pick_latest_file(files)
-
+        return [local_root("CLAUDE_CONFIG_DIR", "~/.claude") / "projects"]
     if runtime == "codex":
-        files = list_jsonl_files(home / ".codex" / "sessions")
-        if normalized_project:
-            filtered = []
-            for file_path in files:
-                try:
-                    first_record = read_first_jsonl(file_path) or {}
-                except Exception:
-                    continue
-                payload = first_record.get("payload") or {}
-                if payload.get("cwd") == normalized_project:
-                    filtered.append(file_path)
-            files = filtered
-        return pick_latest_file(files)
+        root = local_root("CODEX_HOME", "~/.codex")
+        return [root / "sessions", root / "archived_sessions"]
+    raise ValueError(f"Unsupported transcript runtime: {runtime}")
 
-    raise ValueError(f"Unsupported runtime for --latest: {runtime}")
+
+def discover_transcripts(runtime, project_path=None):
+    """Inventory metadata only; do not normalize or write session contents."""
+    project = canonical_path(project_path)
+    sessions, issues = [], []
+    for root in transcript_roots(runtime):
+        if not root.exists():
+            issues.append({"path": str(root), "reason": "source_directory_missing"})
+        for path in sorted(list_jsonl_files(root)):
+            try:
+                session_id, cwd, started_at = None, None, None
+                subagent = "subagents" in path.relative_to(root).parts
+                # Claude may start with queue metadata before the first message.
+                with path.open(encoding="utf-8") as handle:
+                    for line in handle:
+                        if not line.strip():
+                            continue
+                        record = json.loads(line)
+                        payload = record.get("payload") or {}
+                        meta = payload if runtime == "codex" else record
+                        source = meta.get("source")
+                        subagent = subagent or bool(record.get("isSidechain")) or (
+                            isinstance(source, dict) and "subagent" in source
+                        )
+                        if runtime == "claude":
+                            session_id = session_id or meta.get("sessionId")
+                        elif record.get("type") == "session_meta":
+                            session_id = meta.get("session_id") or meta.get("id")
+                        cwd = cwd or meta.get("cwd")
+                        started_at = started_at or record.get("timestamp")
+                        if cwd and session_id:
+                            break
+                if not cwd:
+                    issues.append({"path": str(path), "reason": "project_metadata_missing"})
+                    continue
+                if project and canonical_path(cwd) != project:
+                    continue
+                sessions.append({
+                    "runtime": runtime,
+                    "session_id": session_id or path.stem,
+                    "project": canonical_path(cwd),
+                    "transcript_path": str(path),
+                    "started_at": started_at,
+                    "modified_at": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(),
+                    "archived": root.name == "archived_sessions",
+                    "subagent": subagent,
+                    "status": "unknown",
+                })
+            except (OSError, ValueError, AttributeError, TypeError) as exc:
+                issues.append({"path": str(path), "reason": type(exc).__name__})
+    return sessions, issues
+
+
+def discover_paseo(project_path):
+    """Resolve local Paseo agent metadata to provider-owned transcripts."""
+    root = local_root("PASEO_HOME", "~/.paseo") / "agents"
+    sessions, issues, provider_sessions = [], [], {}
+    if not root.exists():
+        issues.append({"path": str(root), "reason": "source_directory_missing"})
+    for path in sorted(root.rglob("*.json")):
+        try:
+            agent = json.loads(path.read_text(encoding="utf-8"))
+            if canonical_path(agent.get("cwd")) != canonical_path(project_path):
+                continue
+            runtime = agent.get("provider")
+            persistence = agent.get("persistence") or {}
+            session_id = persistence.get("sessionId") or (agent.get("runtimeInfo") or {}).get("sessionId")
+            if runtime in {"claude", "codex"} and runtime not in provider_sessions:
+                found, errors = discover_transcripts(runtime, project_path)
+                provider_sessions[runtime] = found
+                issues.extend(errors)
+            matches = [item for item in provider_sessions.get(runtime, []) if item["session_id"] == session_id]
+            entry = dict(matches[0]) if len(matches) == 1 else {
+                "runtime": runtime, "session_id": session_id,
+                "project": canonical_path(project_path), "transcript_path": None,
+            }
+            entry["paseo"] = {
+                "agent_id": agent.get("id"), "metadata_path": str(path),
+                "workspace_id": agent.get("workspaceId"),
+                "status": agent.get("lastStatus", "unknown"),
+                "archived_at": agent.get("archivedAt"),
+            }
+            entry["status"] = agent.get("lastStatus", "unknown")
+            entry["available"] = len(matches) == 1
+            if not entry["available"]:
+                entry["unavailable_reason"] = "ambiguous_transcript" if matches else "provider_transcript_not_found"
+            sessions.append(entry)
+        except (OSError, ValueError, AttributeError, TypeError) as exc:
+            issues.append({"path": str(path), "reason": type(exc).__name__})
+    return sessions, issues
 
 
 def ensure_dir(dir_path: Path):
@@ -242,6 +320,14 @@ def parse_claude_transcript(records, transcript_path: Path):
         record_type = record.get("type")
         if record_type in {"user", "assistant"}:
             message = record.get("message") or {}
+            if message.get("model"):
+                artifact["session"]["model"] = message["model"]
+            if message.get("usage"):
+                artifact["session_trace"]["artifact_trail"].append({
+                    "index": index, "timestamp": timestamp,
+                    "type": "message_usage", "message_id": message.get("id"),
+                    "usage": message["usage"],
+                })
             role = message.get("role") or record_type
             content = message.get("content")
 
@@ -516,6 +602,7 @@ def parse_codex_transcript(records, transcript_path: Path):
                         "timestamp": timestamp,
                         "runtime": "codex",
                         "role": payload.get("role"),
+                        "phase": payload.get("phase"),
                         "text": text,
                     })
                     push_normalized_event(artifact, {
@@ -525,9 +612,10 @@ def parse_codex_transcript(records, transcript_path: Path):
                         "role": payload.get("role"),
                         "text": text,
                     })
-            elif payload_type == "function_call":
+            elif payload_type in {"function_call", "custom_tool_call"}:
                 call_id = payload.get("call_id")
-                input_value = safe_json_parse(payload.get("arguments"))
+                input_value = (payload.get("input") if payload_type == "custom_tool_call"
+                               else safe_json_parse(payload.get("arguments")))
                 tool_call = {
                     "index": index,
                     "timestamp": timestamp,
@@ -535,6 +623,7 @@ def parse_codex_transcript(records, transcript_path: Path):
                     "direction": "call",
                     "call_id": call_id,
                     "tool_name": payload.get("name"),
+                    "source_type": payload_type,
                     "input": input_value,
                 }
                 artifact["session_trace"]["tool_call_trace"].append(tool_call)
@@ -549,7 +638,7 @@ def parse_codex_transcript(records, transcript_path: Path):
                         "index": index,
                         "timestamp": timestamp,
                         "runtime": "codex",
-                        "source": "function_call",
+                        "source": payload_type,
                         "call_id": call_id,
                         "tool_name": payload.get("name"),
                         "command": command_value,
@@ -564,7 +653,7 @@ def parse_codex_transcript(records, transcript_path: Path):
                     "call_id": call_id,
                     "command": command_value,
                 })
-            elif payload_type == "function_call_output":
+            elif payload_type in {"function_call_output", "custom_tool_call_output"}:
                 call_id = payload.get("call_id")
                 prior_call = tool_calls.get(call_id, {})
                 tool_name = prior_call.get("tool_name")
@@ -575,13 +664,14 @@ def parse_codex_transcript(records, transcript_path: Path):
                     "direction": "result",
                     "call_id": call_id,
                     "tool_name": tool_name,
+                    "source_type": payload_type,
                     "output": payload.get("output"),
                 })
                 artifact["session_trace"]["command_transcript"].append({
                     "index": index,
                     "timestamp": timestamp,
                     "runtime": "codex",
-                    "source": "function_call_output",
+                    "source": payload_type,
                     "call_id": call_id,
                     "tool_name": tool_name,
                     "output": payload.get("output"),
@@ -594,7 +684,13 @@ def parse_codex_transcript(records, transcript_path: Path):
                     "tool_name": tool_name,
                     "call_id": call_id,
                 })
-            elif payload_type == "reasoning":
+            if payload_type == "message" and payload.get("phase") == "final":
+                artifact["session_trace"]["handoff_notes"].append({
+                    "index": index, "timestamp": timestamp, "runtime": "codex",
+                    "source": "response_item", "phase": "final",
+                    "message": "\n".join(extract_codex_text(payload.get("content"))),
+                })
+            if payload_type == "reasoning":
                 artifact["session_trace"]["decision_log"].append({
                     "index": index,
                     "timestamp": timestamp,
@@ -654,6 +750,12 @@ def parse_codex_transcript(records, transcript_path: Path):
                 "kind": "event",
                 "role": None,
                 "subtype": payload_type,
+            })
+
+        elif record_type == "token_usage_record":
+            artifact["session_trace"]["artifact_trail"].append({
+                "index": index, "timestamp": timestamp, "runtime": "codex",
+                "type": "token_usage_record", "payload": payload,
             })
 
         elif record_type == "world_state":
@@ -980,6 +1082,79 @@ def extract_opencode(args, input_path: Optional[Path]):
         connection.close()
 
 
+def assess_coverage(artifact, records):
+    """Compare observable source tool events with the normalized trace, not agent claims."""
+    raw_calls, raw_results, media = [], [], []
+    compactions = []
+    for index, record in enumerate(records):
+        payload = record.get("payload") or {}
+        if artifact["runtime"] == "codex":
+            if record.get("type") == "response_item":
+                kind = payload.get("type")
+                if kind in {"function_call", "custom_tool_call"}:
+                    raw_calls.append((index, payload.get("call_id")))
+                elif kind in {"function_call_output", "custom_tool_call_output"}:
+                    raw_results.append((index, payload.get("call_id")))
+            blocks = payload.get("content") or []
+        else:
+            blocks = (record.get("message") or {}).get("content") or []
+            if isinstance(blocks, list):
+                for block in blocks:
+                    if block.get("type") == "tool_use":
+                        raw_calls.append((index, block.get("id")))
+                    elif block.get("type") == "tool_result":
+                        raw_results.append((index, block.get("tool_use_id")))
+        if isinstance(blocks, list) and any(
+            block.get("type") in {"image", "input_image", "audio", "input_audio", "document"}
+            for block in blocks
+        ):
+            media.append(index)
+        if "compact" in str(record.get("type", "")) or "compact" in str(record.get("subtype", "")):
+            compactions.append(index)
+
+    trace = artifact["session_trace"]["tool_call_trace"]
+    calls = {(entry["index"], entry.get("call_id")) for entry in trace if entry["direction"] == "call"}
+    results = {(entry["index"], entry.get("call_id")) for entry in trace if entry["direction"] == "result"}
+    call_ids = {call_id for _, call_id in raw_calls if call_id}
+    result_ids = {call_id for _, call_id in raw_results if call_id}
+    represented = {event["index"] for event in artifact["normalized_events"]}
+    for entries in artifact["session_trace"].values():
+        represented.update(entry["index"] for entry in entries if "index" in entry)
+    unrepresented = {}
+    for index, record in enumerate(records):
+        if index not in represented:
+            kind = record.get("type", "unknown")
+            if kind == "response_item":
+                kind += "/" + str((record.get("payload") or {}).get("type"))
+            increment_counter(unrepresented, kind)
+    truncated = sorted({
+        entry["index"] for entry in trace if entry["direction"] == "result"
+        and re.search(r"Warning: truncated output|Output truncated to \d+|\d+ (?:tokens|characters) truncated",
+                      json.dumps(entry.get("output"), ensure_ascii=False))
+    })
+    artifact["coverage"] = {
+        "scope": "stored_observable_events_not_full_model_context",
+        "source_records": len(records),
+        "raw_tool_calls": len(raw_calls), "raw_tool_results": len(raw_results),
+        "preserved_tool_calls": sum(item in calls for item in raw_calls),
+        "preserved_tool_results": sum(item in results for item in raw_results),
+        "missing_tool_event_indices": sorted({index for index, call_id in raw_calls if (index, call_id) not in calls}
+                                             | {index for index, call_id in raw_results if (index, call_id) not in results}),
+        "calls_without_results": sorted(call_ids - result_ids),
+        "results_without_calls": sorted(result_ids - call_ids),
+        "truncation_marker_indices": truncated,
+        "omitted_media_indices": media,
+        "compaction_indices": compactions,
+        "records_without_trace_entries": unrepresented,
+        "session_completion": "unknown",
+    }
+    artifact["extraction_notes"].append(
+        "Coverage compares stored tool events only. Paired calls do not prove task completion; ended_at is the last recorded timestamp. "
+        "Truncation markers are candidates for inspection, not a semantic verdict. Original instructions, media, compaction context, "
+        "and omitted record types may require the raw source. Do not sum message/token usage snapshots blindly."
+    )
+
+
 def write_artifact_set(artifact, output_dir: Path):
     ensure_dir(output_dir)
     write_json(output_dir / "session-trace.json", artifact)
@@ -989,6 +1164,7 @@ def write_artifact_set(artifact, output_dir: Path):
         "source": artifact["source"],
         "session": artifact["session"],
         "stats": artifact["stats"],
+        "coverage": artifact.get("coverage"),
         "extraction_notes": artifact["extraction_notes"],
     })
     write_ndjson(output_dir / "chat-history.ndjson", artifact["session_trace"]["chat_history"])
@@ -1001,21 +1177,47 @@ def write_artifact_set(artifact, output_dir: Path):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Normalize Claude Code, Codex, or Opencode session history for workflow evaluation.")
+    parser = argparse.ArgumentParser(description="Discover project sessions and normalize local history for independent workflow evaluation.")
     parser.add_argument("--input", help="Raw local transcript path, or the opencode database path.")
-    parser.add_argument("--runtime", choices=["claude", "codex", "opencode"], help="Runtime name.")
-    parser.add_argument("--session-id", help="Opencode session id. Required for the opencode runtime unless --latest is used.")
+    parser.add_argument("--runtime", choices=["claude", "codex", "opencode", "paseo"], help="Runtime or local Paseo source.")
+    parser.add_argument("--session-id", help="Opencode session ID, or exact Paseo agent ID when --runtime paseo.")
+    parser.add_argument("--list", action="store_true", help="Print project session inventory as JSON without writing files (Claude, Codex, Paseo).")
     parser.add_argument("--latest", action="store_true", help="Pick the latest transcript or session for the runtime.")
-    parser.add_argument("--project", help="Filter latest transcript or session by project/cwd path.")
+    parser.add_argument("--project", help="Exact project/cwd path; required for --list and Paseo resolution.")
     parser.add_argument("--output-dir", help="Target output directory.")
     parser.add_argument("--stdout", action="store_true", help="Print session-trace.json to stdout.")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.list:
+        if not args.project or args.runtime not in {"claude", "codex", "paseo"}:
+            parser.error("--list requires --project and --runtime claude, codex, or paseo.")
+        if args.input or args.latest or args.session_id or args.output_dir or args.stdout:
+            parser.error("--list cannot be combined with extraction options.")
+    if args.runtime == "paseo" and not args.list:
+        if not args.project or not args.session_id or args.input or args.latest:
+            parser.error("Paseo extraction requires --project and --session-id, without --input or --latest.")
+    return args
 
 
 def main():
     args = parse_args()
+    if args.list:
+        sessions, issues = (discover_paseo(args.project) if args.runtime == "paseo"
+                            else discover_transcripts(args.runtime, args.project))
+        print(json.dumps({"project": canonical_path(args.project), "source": args.runtime,
+                          "sessions": sessions, "issues": issues}, indent=2))
+        return
     input_path = Path(os.path.expanduser(args.input)).resolve() if args.input else None
     runtime = args.runtime or detect_runtime(input_path)
+    paseo_source = None
+    if runtime == "paseo":
+        sessions, issues = discover_paseo(args.project)
+        matches = [item for item in sessions if item["paseo"]["agent_id"] == args.session_id]
+        if len(matches) != 1 or not matches[0]["available"]:
+            raise ValueError("No unique local provider transcript for this Paseo agent/project; inspect --list issues and unavailable_reason.")
+        selected = matches[0]
+        paseo_source = selected["paseo"]
+        input_path = Path(selected["transcript_path"])
+        runtime = selected["runtime"]
     if runtime is None and args.session_id:
         runtime = "opencode"
 
@@ -1041,6 +1243,10 @@ def main():
 
         records = read_jsonl(input_path)
         artifact = parse_claude_transcript(records, input_path) if runtime == "claude" else parse_codex_transcript(records, input_path)
+        assess_coverage(artifact, records)
+
+    if paseo_source:
+        artifact["source"]["paseo"] = paseo_source
 
     if artifact["session"]["id"] is None:
         artifact["session"]["id"] = input_path.stem
@@ -1058,6 +1264,7 @@ def main():
         "session_id": artifact["session"]["id"],
         "cwd": artifact["session"]["cwd"],
         "started_at": artifact["session"]["started_at"],
+        "coverage": artifact.get("coverage"),
         "counts": {
             "chat_history": len(artifact["session_trace"]["chat_history"]),
             "command_transcript": len(artifact["session_trace"]["command_transcript"]),
