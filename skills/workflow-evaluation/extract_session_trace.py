@@ -1146,6 +1146,7 @@ def assess_coverage(artifact, records):
         "preserved_tool_results": sum(item in results for item in raw_results),
         "missing_tool_event_indices": sorted({index for index, call_id in raw_calls if (index, call_id) not in calls}
                                              | {index for index, call_id in raw_results if (index, call_id) not in results}),
+        "tool_events_without_call_id": sorted({index for index, call_id in raw_calls + raw_results if not call_id}),
         "calls_without_results": sorted(call_ids - result_ids),
         "results_without_calls": sorted(result_ids - call_ids),
         "truncation_marker_indices": truncated,

@@ -152,14 +152,16 @@ class SessionTraceTests(unittest.TestCase):
         records = [
             {"type": "session_meta", "payload": {"id": "s", "cwd": str(self.project)}},
             {"type": "event_msg", "payload": {"type": "web_search_call", "call_id": "search", "query": "q"}},
+            {"type": "event_msg", "payload": {"type": "web_search_call", "query": "no id"}},
         ]
         source = self.write(self.root / "input.jsonl", records)
         result = subprocess.run([sys.executable, "-B", str(SCRIPT), "--runtime", "codex", "--input", str(source),
                                  "--output-dir", str(self.root / "output")], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         coverage = json.loads((self.root / "output/session-trace.json").read_text())["coverage"]
-        self.assertEqual(coverage["raw_tool_calls"], 1)
+        self.assertEqual(coverage["raw_tool_calls"], 2)
         self.assertEqual(coverage["calls_without_results"], ["search"])
+        self.assertEqual(coverage["tool_events_without_call_id"], [2])
 
     def test_claude_preserves_errors_model_and_usage_without_claiming_completion(self):
         records = [

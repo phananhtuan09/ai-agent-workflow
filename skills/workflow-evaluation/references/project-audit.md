@@ -43,6 +43,8 @@ For remote sources, use read-only tools on the owning daemon or an explicitly su
 Deduplicate by owning host, provider, and provider session ID, retaining all Paseo agent references.
 Do not count the Paseo wrapper and its provider transcript as separate sessions.
 Keep subagent sessions identifiable; include them only when needed to reconstruct the parent task and do not inflate the task denominator.
+Subagent detection relies on transcript path and record metadata, so a transcript that fails mid-read may be missing from discovery or misclassified; check the reported discovery issues.
+Tool events without a `call_id` cannot be paired and are listed in `tool_events_without_call_id` rather than treated as complete.
 
 ## Extract the selected corpus
 
