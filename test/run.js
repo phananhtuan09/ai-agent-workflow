@@ -1264,6 +1264,14 @@ test("coding-standard does not install optional OpenCode subagents by default", 
   }
 });
 
+test("workflow session extraction preserves evidence and project boundaries", () => {
+  const result = spawnSync("python3", ["-B", path.join(SOURCE_ROOT, "test/session_trace_test.py")], {
+    cwd: SOURCE_ROOT,
+    encoding: "utf8",
+  });
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+});
+
 test("workflow-eval installs canonical evaluation files", () => {
   const result = runCli(["--kit", "workflow-eval", "--tool", "codex"]);
   try {
