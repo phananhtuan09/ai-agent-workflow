@@ -1,0 +1,8 @@
+{
+  "files": [
+    { "path": "AGENTS.md", "description": "Repository protocol and authority rules" },
+    { "path": "docs/WORKFLOW.md", "description": "Authority, work shapes, durable-memory and proof rules" },
+    { "path": "docs/README.md", "description": "Index of durable documentation namespaces" },
+    { "path": "skills/manifest.json", "description": "Skill bundles and runtime mapping validated by scripts/check-skills.js" }
+  ]
+}
