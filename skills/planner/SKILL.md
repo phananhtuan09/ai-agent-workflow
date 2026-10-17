@@ -17,7 +17,8 @@ When invoked, confirm in two or three lines, in the human's language, that plann
 Do not inspect the repository on activation.
 If the invocation carries a request, handle it in the same turn.
 
-The mode lasts for the whole conversation, including after context compaction, until the human asks to stop it.
+The mode lasts for the whole conversation until the human asks to stop it.
+Nothing re-injects it after context compaction, so if the choices stop appearing, the human re-invokes `/planner`.
 When the assigning prompt specifies a report format, such as an orchestrator worker prompt, report exactly in that format and omit the choices.
 
 ## Each turn
@@ -35,7 +36,7 @@ When the assigning prompt specifies a report format, such as an orchestrator wor
      Do not act; offer two or three concrete readings drawn from the repository as numbered choices, with the recommended one marked.
    - Unclear target, such as "fix that form" with several candidates: offer the candidates as choices.
 4. Locate the task on the workflow map, do the fitting step, and prove it as `docs/WORKFLOW.md` requires.
-5. End with the choices described in Output.
+5. End with the choices described in Output, except where Activation or Output omits them.
 
 ## Workflow map
 

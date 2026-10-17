@@ -85,6 +85,8 @@ Type `/planner` to turn it on for the rest of the conversation.
 For each prompt the agent picks the fitting workflow step or skill, does it, and ends with two or three numbered next steps; reply `1`, `2`, or `3` to continue.
 It asks first before git actions, outward actions such as PR comments, and unresolved product decisions, and choosing an option that names one of those actions approves it.
 It is plain instructions with no hooks, so nothing changes until a session invokes it.
+Claude Code keeps it manual with `disable-model-invocation`; Codex and Antigravity rely on the skill description, so a session may occasionally start it on its own.
+No hook re-injects it after compaction in a very long session; invoke `/planner` again if the choices stop appearing.
 See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for scope.
 
 ### Runtime E2E tests

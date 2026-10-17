@@ -716,6 +716,37 @@ test("update applies safe changes and preserves local collisions", () => {
   }
 });
 
+test("update retires coder files and warns when locally merged coder hooks remain", () => {
+  const fixture = createUpdateFixture("claude");
+  try {
+    const hash = require("../lib/update").hashBytes;
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    ["SKILL.md", "scripts/stop-gate.js"].forEach((name) => {
+      const target = path.join(fixture.workspace, ".claude/skills/coder", name);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, `legacy ${name}\n`);
+      state.files.push({
+        scope: "repository",
+        path: `.claude/skills/coder/${name}`,
+        hash: hash(Buffer.from(`legacy ${name}\n`)),
+      });
+    });
+    fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+    const settingsPath = path.join(fixture.workspace, ".claude/settings.json");
+    const merged = `${fs.readFileSync(settingsPath, "utf8")}\n`;
+    fs.writeFileSync(settingsPath, merged);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("RETIRE repository:.claude/skills/coder/SKILL.md"));
+    assert.ok(!fs.existsSync(path.join(fixture.workspace, ".claude/skills/coder/scripts/stop-gate.js")));
+    assert.strictEqual(fs.readFileSync(settingsPath, "utf8"), merged);
+    assert.ok(apply.stdout.includes("WARNING: the coder skill was retired"), apply.stdout);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("update preserves pre-hard-cut legacy files", () => {
   const fixture = createUpdateFixture();
   try {
