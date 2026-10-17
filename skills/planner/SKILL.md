@@ -19,7 +19,7 @@ If the invocation carries a request, handle it in the same turn.
 
 The mode lasts for the whole conversation until the human asks to stop it.
 Nothing re-injects it after context compaction, so if the choices stop appearing, the human re-invokes `/planner`.
-When the assigning prompt specifies a report format, such as an orchestrator worker prompt, report exactly in that format and omit the choices.
+When the assigning prompt specifies a report format, such as an orchestrator worker prompt, follow Assigned report format instead of the human-facing rules below.
 
 ## Each turn
 
@@ -37,6 +37,18 @@ When the assigning prompt specifies a report format, such as an orchestrator wor
    - Unclear target, such as "fix that form" with several candidates: offer the candidates as choices.
 4. Locate the task on the workflow map, do the fitting step, and prove it as `docs/WORKFLOW.md` requires.
 5. End with the choices described in Output, except where Activation or Output omits them.
+
+## Assigned report format
+
+When the assigning prompt specifies how to report, such as a Foreman worker prompt, no human reads your turns and the format is the only output channel.
+In that case:
+
+- Skip the activation confirmation and the next-step block; the final message is exactly what the format asks for, with nothing before or after it.
+- Never end with a question.
+  Where this skill would ask first or offer readings, stop and report in the format's blocked status (or its nearest equivalent) with the options as the format's own list.
+- Add no numbered list beyond the one the format allows.
+- Resources, mode, and limits in the assigning prompt, such as a read-only round, override the workflow map and skill routing.
+- Everything else, including evidence-first ambiguity handling, skill routing, and proof, still applies.
 
 ## Workflow map
 

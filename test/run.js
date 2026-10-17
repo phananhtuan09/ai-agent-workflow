@@ -747,6 +747,37 @@ test("update retires coder files and warns when locally merged coder hooks remai
   }
 });
 
+test("update retires coder files and leaves unmodified Claude settings without coder hooks", () => {
+  const fixture = createUpdateFixture("claude");
+  try {
+    const hash = require("../lib/update").hashBytes;
+    const settingsPath = path.join(fixture.workspace, ".claude/settings.json");
+    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+    const coderHooks = {
+      SessionStart: [{ hooks: [{ type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/coder/scripts/session-start.js"' }] }],
+    };
+    const installedBytes = Buffer.from(`${JSON.stringify({ ...settings, hooks: coderHooks }, null, 2)}\n`);
+    fs.writeFileSync(settingsPath, installedBytes);
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    state.files.find((file) => file.path === ".claude/settings.json").hash = hash(installedBytes);
+    const scriptPath = path.join(fixture.workspace, ".claude/skills/coder/scripts/session-start.js");
+    fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
+    fs.writeFileSync(scriptPath, "legacy\n");
+    state.files.push({ scope: "repository", path: ".claude/skills/coder/scripts/session-start.js", hash: hash(Buffer.from("legacy\n")) });
+    fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("UPDATE repository:.claude/settings.json"), apply.stdout);
+    assert.ok(apply.stdout.includes("RETIRE repository:.claude/skills/coder/scripts/session-start.js"));
+    assert.ok(!fs.existsSync(scriptPath));
+    assert.ok(!fs.readFileSync(settingsPath, "utf8").includes("coder"));
+    assert.ok(!apply.stdout.includes("WARNING: the coder skill was retired"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("update preserves pre-hard-cut legacy files", () => {
   const fixture = createUpdateFixture();
   try {
