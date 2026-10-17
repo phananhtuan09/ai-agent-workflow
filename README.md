@@ -42,7 +42,7 @@ Record which source or revision you used when comparing installations.
 | Capability | Install flag | What it adds | Status |
 | --- | --- | --- | --- |
 | Core protocol | `--kit coding-standard` | `AGENTS.md`, `docs/WORKFLOW.md`, and the `docs/` namespaces | Stable |
-| Coder | `--tool claude --bundle coder-agent` | Session-wide coder contract enforced by Claude Code hooks | Experimental |
+| Planner mode | `--bundle planner-mode` | Manually invoked `/planner` mode that picks the next workflow step and suggests numbered next prompts | Experimental |
 | Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
 | Design | `--kit design` | `docs/PRODUCT.md` and `docs/DESIGN.md` for the external Impeccable engine | Stable |
 | Workflow evaluation | `--kit workflow-eval` | Trace-first evaluation standard, templates, and skills under `docs/evaluation/` | Stable |
@@ -62,7 +62,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `manage-project-knowledge` | Finds, explains, and, on request, updates durable knowledge under `docs/`. |
 | `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
-| `coder` | Experimental Claude Code coder contract. |
+| `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
 | `workflow-evaluation`, `record-workflow-friction` | Evaluate AI workflows and record execution friction. |
 | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` | Run two-to-three-day learning mini-projects. |
 
@@ -74,20 +74,20 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `testing` | `runtime-e2e-test` |
 | `evaluation` | `workflow-evaluation`, `record-workflow-friction` |
 | `learning` | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` |
-| `coder-agent` | `coder`, `quality-code-check`, `smart-commits`, `manage-project-knowledge` |
+| `planner-mode` | `planner`, `quality-code-check`, `smart-commits`, `manage-project-knowledge` |
 
 The bundle named `core` is optional; the `coding-standard` kit does not require it.
 
-### Coder (experimental, Claude Code)
+### Planner mode
 
-The `coder-agent` bundle turns every Claude Code session in the project into a coder.
-The human steers intent, material decisions, and sign-off; the session picks skills, validates with the project's own checks, proposes durable knowledge updates for approval, and ends each change with a `Status:` handoff.
-When the assigning prompt specifies a report format, as Foreman worker prompts do, the coder reports in that format instead.
-It commits or pushes only when the human asks.
-
-Two hooks in `.claude/settings.json` enforce the contract: SessionStart injects it, and Stop asks for the handoff once when files changed.
-An existing `.claude/settings.json` is preserved and the installer prints the hooks to merge manually.
-See the [decision record](docs/decisions/2026-10-08-coder-capability.md) for scope and the A/B criteria that decide whether it stays.
+The `planner-mode` bundle installs the `planner` skill with `quality-code-check`, `smart-commits`, and `manage-project-knowledge`; Codex and Antigravity receive the same skill.
+Type `/planner` to turn it on for the rest of the conversation.
+For each prompt the agent picks the fitting workflow step or skill, does it, and ends with two or three numbered next steps; reply `1`, `2`, or `3` to continue.
+It asks first before git actions, outward actions such as PR comments, and unresolved product decisions, and choosing an option that names one of those actions approves it.
+It is plain instructions with no hooks, so nothing changes until a session invokes it.
+Claude Code keeps it manual with `disable-model-invocation`; Codex and Antigravity rely on the skill description, so a session may occasionally start it on its own.
+No hook re-injects it after compaction in a very long session; invoke `/planner` again if the choices stop appearing.
+See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for scope.
 
 ### Runtime E2E tests
 

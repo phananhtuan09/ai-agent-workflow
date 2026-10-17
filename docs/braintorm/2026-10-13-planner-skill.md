@@ -41,15 +41,55 @@ Khi nhận một prompt, planner biết nên làm bước gì, làm xong thì g�
 Với việc nhỏ (case 3, 8), planner gần như chỉ thêm phần gợi ý cuối lượt.
 Khác biệt lớn nhất nằm ở chọn skill tự động, gợi ý bước tiếp theo và việc dừng hỏi đúng chỗ.
 
-## Câu hỏi còn mở
+## Chốt thêm ngày 2026-10-14
 
-1. Chọn một gợi ý kiểu "ghi vào docs" có được tính là đã duyệt ghi durable knowledge không?
-2. Thao tác ra bên ngoài như post comment lên PR có phải hỏi lại không, dù phỏng vấn chưa chọn mục này?
-3. Khi prompt mơ hồ (case 10, 15), planner có nên chủ động đọc plan và trạng thái git không?
-4. Planner nên gọi skill rồi làm luôn, hay chỉ gợi ý skill rồi chờ human chọn?
-5. Gợi ý nên dài hay ngắn hơn mức trong mô phỏng?
-6. Planner chỉ cho Claude Code hay cài cho cả Codex và Antigravity?
+1. Chọn một gợi ý ghi docs được tính là đã duyệt khi gợi ý đó nêu đủ namespace, file đích và tóm tắt một dòng thay đổi.
+   Lựa chọn đó là yêu cầu rõ ràng mà `manage-project-knowledge` cần; gợi ý chung chung kiểu "ghi docs" thì chưa tính.
+2. Thao tác ra bên ngoài (post comment PR, tạo issue, gửi message, deploy) phải hỏi trước, giống git.
+   Nếu human vừa chọn đúng gợi ý đó, ví dụ `2. Post comment lên PR`, thì lựa chọn đó là lời duyệt.
+3. Khi prompt mơ hồ như "làm tiếp đi", planner chủ động đọc chỉ-đọc: `docs/plans/active/`, `git status`, vài commit gần nhất, rồi đưa lựa chọn.
+   Chốt theo đề xuất, không hỏi riêng, vì chỉ đọc và đúng nguyên tắc inspect smallest relevant surface trong `docs/WORKFLOW.md`.
+4. Planner gọi skill và làm luôn, kể cả skill tạo artifact như `proposal-designer` hay `runtime-e2e-test`.
+   Chỉ dừng hỏi khi chạm git, thao tác ra bên ngoài, hoặc quyết định sản phẩm còn mơ hồ.
+5. Gợi ý cuối lượt gồm 2–3 dòng, mỗi dòng không quá khoảng 15 từ: số, hành động, skill nếu có, và đánh dấu ★ cho bước khuyến nghị.
+   Bỏ hẳn phần gợi ý khi không còn bước tiếp theo đáng làm.
+6. Cài cho cả Claude Code, Codex và Antigravity.
+   Planner chỉ là text, không cần hook; giữ mode qua lịch sử hội thoại bằng lượt bootstrap giống `brainstorm-partner`.
+
+Phác thảo phần gợi ý:
+
+```markdown
+Tiếp theo:
+1. ★ Thêm E2E cho login có email chứa dấu + (`runtime-e2e-test`)
+2. Tìm chỗ khác encode email tương tự
+3. Commit fix (`smart-commits`, sẽ hỏi trước khi push)
+```
+
+## Câu hỏi mới phát sinh
+
+1. Giữ mode qua compaction: coder dùng SessionStart hook để tiêm lại contract, planner thì không.
+   Phần gợi ý cuối mỗi lượt có thể đủ làm mốc, nhưng cần quan sát phiên dài thật trước khi kết luận.
+2. Khi planner gọi `brainstorm-partner` (case 14), phiên chuyển sang chỉ-đọc; gợi ý phải luôn có một lựa chọn quay lại implement.
+3. Human gõ `1` khi lượt trước không có gợi ý: xử lý như prompt thường hay hỏi lại?
+4. Cách gọi tay trên Codex và Antigravity có thể không phải `/planner`; cần kiểm tra cú pháp từng runtime trước khi viết hướng dẫn.
+5. Đo hiệu quả: kịch bản A/B của coder chưa chạy; có dùng lại [kịch bản đó](2026-10-08-coder-ab-benchmark.md) cho planner so với baseline không?
+   `docs/WORKFLOW.md` yêu cầu có dùng lặp lại thật trước khi thêm skill mới.
+6. Planner nằm trong bundle `core` hay bundle riêng, và có đặt `disable-model-invocation: true` để chỉ kích hoạt bằng tay không?
+
+## Chốt khi viết bản v1 (2026-10-16)
+
+- Gõ `/planner` chỉ bật mode, không tự đọc trạng thái repo.
+- Bước tiếp theo dựa vào bản đồ workflow: biết việc đang ở chặng nào để gợi ý chặng kế.
+- Prompt mơ hồ: tìm bằng chứng trong repo trước; đoán sai mà rẻ thì đoán, làm và ghi giả định; đoán sai mà đắt thì đưa các cách hiểu làm lựa chọn.
+- Mặc định v1, chỉnh sau khi dùng thử:
+  - không có dòng `Mục tiêu:`, chỉ ghi giả định khi thật sự đoán;
+  - thứ tự ★: rủi ro, hoàn thành mục tiêu, đưa code ra ngoài, lưu kiến thức;
+  - đổi UI nhìn thấy nhưng không đổi logic hay dữ liệu được tính là rẻ;
+  - gõ số khi không có danh sách gợi ý được xử lý như prompt thường;
+  - than phiền về agent chỉ được gợi ý `record-workflow-friction`, không tự ghi;
+  - bundle riêng `planner-mode`, `disable-model-invocation: true`.
 
 ## Bước tiếp theo
 
-Brainstorm tiếp các câu hỏi mở, rồi mới quyết định implement planner và xóa `coder`.
+Bản v1 nằm ở `skills/planner/SKILL.md`, `coder` đã bị gỡ, quyết định ghi ở [decision record](../decisions/2026-10-16-planner-capability.md).
+Dùng thử trên phiên thật, đếm số lần human chọn ★, chọn lựa chọn khác, hoặc tự gõ yêu cầu khác, rồi chỉnh các mặc định.

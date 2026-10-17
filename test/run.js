@@ -309,174 +309,34 @@ test("review-pr installs its canonical skill and runtime reviewer", () => {
   });
 });
 
-test("coder-agent bundle installs the coder contract and its Claude hooks", () => {
-  const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--bundle", "coder-agent"]);
-  try {
-    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    ["SKILL.md", "scripts/session-start.js", "scripts/stop-gate.js", "scripts/gate-state.js"].forEach(
-      (relativePath) => {
-        assert.ok(fs.existsSync(path.join(result.workspace, ".claude/skills/coder", relativePath)), relativePath);
+[
+  ["claude", ".claude/skills"],
+  ["codex", ".agents/skills"],
+  ["antigravity", ".agents/skills"],
+].forEach(([tool, root]) => {
+  test(`planner-mode bundle installs the manual planner mode for ${tool}`, () => {
+    const result = runCli(["--kit", "coding-standard", "--tool", tool, "--bundle", "planner-mode"]);
+    try {
+      assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+      ["planner", "quality-code-check", "smart-commits", "manage-project-knowledge"].forEach((skillId) => {
+        assert.ok(fs.existsSync(path.join(result.workspace, root, skillId, "SKILL.md")), skillId);
+      });
+      const planner = fs.readFileSync(path.join(result.workspace, root, "planner/SKILL.md"), "utf8");
+      assert.ok(planner.includes("disable-model-invocation: true"));
+      assert.ok(!fs.existsSync(path.join(result.workspace, root, "coder")));
+
+      // Planner is plain instructions, so Claude settings carry no hooks for it.
+      if (tool === "claude") {
+        assert.ok(
+          fs.readFileSync(path.join(result.workspace, ".claude/settings.json")).equals(
+            fs.readFileSync(path.join(SOURCE_ROOT, ".claude/settings.json"))
+          )
+        );
       }
-    );
-    assert.ok(!fs.existsSync(path.join(result.workspace, ".claude/agents/review-pr.md")));
-
-    const settings = JSON.parse(
-      fs.readFileSync(path.join(result.workspace, ".claude/settings.json"), "utf8")
-    );
-    const commands = (event) => settings.hooks[event].flatMap((entry) => entry.hooks.map((hook) => hook.command));
-    assert.deepStrictEqual(commands("SessionStart"), [
-      'node "$CLAUDE_PROJECT_DIR/.claude/skills/coder/scripts/session-start.js"',
-    ]);
-    assert.deepStrictEqual(commands("Stop"), [
-      'node "$CLAUDE_PROJECT_DIR/.claude/skills/coder/scripts/stop-gate.js"',
-    ]);
-    assert.deepStrictEqual(
-      settings.permissions,
-      JSON.parse(fs.readFileSync(path.join(SOURCE_ROOT, ".claude/settings.json"), "utf8")).permissions
-    );
-
-    const update = spawnSync(process.execPath, [path.join(SOURCE_ROOT, "cli.js"), "update"], {
-      cwd: result.workspace,
-      env: { ...process.env, HOME: result.home },
-      encoding: "utf8",
-    });
-    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
-    assert.ok(update.stdout.includes("UNCHANGED repository:.claude/settings.json"), update.stdout);
-    assert.ok(!update.stdout.includes("UPDATE repository:"), update.stdout);
-    assert.ok(!update.stdout.includes("ADD repository:"), update.stdout);
-  } finally {
-    result.cleanup();
-  }
-});
-
-test("Claude settings stay byte-identical to source without the coder skill", () => {
-  const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--skill", "review-pr"]);
-  try {
-    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.ok(
-      fs.readFileSync(path.join(result.workspace, ".claude/settings.json")).equals(
-        fs.readFileSync(path.join(SOURCE_ROOT, ".claude/settings.json"))
-      )
-    );
-    assert.ok(!fs.existsSync(path.join(result.workspace, ".claude/skills/coder")));
-  } finally {
-    result.cleanup();
-  }
-});
-
-test("coder preserves existing Claude settings and prints the hooks to merge", () => {
-  const existing = '{ "model": "project-owned" }\n';
-  const result = runCli(
-    ["--kit", "coding-standard", "--tool", "claude", "--bundle", "coder-agent"],
-    ({ workspace }) => {
-      fs.mkdirSync(path.join(workspace, ".claude"), { recursive: true });
-      fs.writeFileSync(path.join(workspace, ".claude/settings.json"), existing);
+    } finally {
+      result.cleanup();
     }
-  );
-  try {
-    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.strictEqual(fs.readFileSync(path.join(result.workspace, ".claude/settings.json"), "utf8"), existing);
-    assert.ok(result.stdout.includes("coder is inactive until these hooks are merged"), result.stdout);
-    assert.ok(result.stdout.includes("stop-gate.js"), result.stdout);
-  } finally {
-    result.cleanup();
-  }
-});
-
-test("non-coding kits do not install coder files", () => {
-  const result = runCli(["--kit", "workflow-eval", "--tool", "claude"]);
-  try {
-    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.ok(!fs.existsSync(path.join(result.workspace, ".claude/skills/coder")));
-    const settings = JSON.parse(fs.readFileSync(path.join(result.workspace, ".claude/settings.json"), "utf8"));
-    assert.ok(!JSON.stringify(settings.hooks || {}).includes("coder"));
-  } finally {
-    result.cleanup();
-  }
-});
-
-test("coder hooks inject the contract and gate stops on unreported changes", () => {
-  const scripts = path.join(SOURCE_ROOT, "skills/coder/scripts");
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-coder-gate-"));
-  const sessionId = `test-${process.pid}-${Date.now()}`;
-  const hook = (script, input) => {
-    const run = spawnSync(process.execPath, [path.join(scripts, script)], {
-      cwd: repo,
-      input: JSON.stringify({ session_id: sessionId, cwd: repo, ...input }),
-      encoding: "utf8",
-    });
-    assert.strictEqual(run.status, 0, run.stderr);
-    return run.stdout.trim() ? JSON.parse(run.stdout) : null;
-  };
-  const git = (...args) => {
-    const run = spawnSync("git", args, { cwd: repo, encoding: "utf8" });
-    assert.strictEqual(run.status, 0, run.stderr);
-  };
-  try {
-    git("init", "-q");
-    fs.writeFileSync(path.join(repo, "tracked.txt"), "v1\n");
-    git("add", "tracked.txt");
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init");
-    fs.writeFileSync(path.join(repo, "existing.txt"), "pre-existing work\n");
-
-    const started = hook("session-start.js", {});
-    assert.strictEqual(started.hookSpecificOutput.hookEventName, "SessionStart");
-    assert.ok(started.hookSpecificOutput.additionalContext.startsWith("# Coder"));
-    assert.ok(started.hookSpecificOutput.additionalContext.includes("Status: HANDOFF"));
-
-    // Uncommitted work that predates the session never blocks a stop.
-    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "answer" }), null);
-
-    fs.writeFileSync(path.join(repo, "change.txt"), "agent edit\n");
-    const blocked = hook("stop-gate.js", { last_assistant_message: "done" });
-    assert.strictEqual(blocked.decision, "block");
-    assert.ok(blocked.reason.includes("Status: HANDOFF"));
-
-    assert.strictEqual(hook("stop-gate.js", { stop_hook_active: true }), null);
-    assert.strictEqual(
-      hook("stop-gate.js", { last_assistant_message: "Status: DECISION NEEDED\n- Result: draft" }),
-      null
-    );
-    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "follow-up answer" }), null);
-
-    // A JSON report set by the assigning prompt, such as a Foreman Paseo worker, also passes the gate.
-    fs.writeFileSync(path.join(repo, "json.txt"), "json edit\n");
-    assert.strictEqual(
-      hook("stop-gate.js", { last_assistant_message: '{"status":"done","summary":"ok"}' }),
-      null
-    );
-    // Herdr workers report through Foreman's own stop hook.
-    fs.writeFileSync(path.join(repo, "herdr.txt"), "herdr edit\n");
-    const herdr = spawnSync(process.execPath, [path.join(scripts, "stop-gate.js")], {
-      cwd: repo,
-      input: JSON.stringify({ session_id: sessionId, cwd: repo, last_assistant_message: "done" }),
-      env: { ...process.env, FOREMAN_ROOT: "/foreman", HERDR_PANE_ID: "pane-1" },
-      encoding: "utf8",
-    });
-    assert.strictEqual(herdr.stdout, "");
-    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "done" }).decision, "block");
-    assert.strictEqual(
-      hook("stop-gate.js", { last_assistant_message: "Status: HANDOFF\n- Result: ok" }),
-      null
-    );
-
-    // A growing untracked file, such as a log, is tracked by path only.
-    fs.appendFileSync(path.join(repo, "change.txt"), "log line\n");
-    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "answer" }), null);
-
-    fs.writeFileSync(path.join(repo, "tracked.txt"), "v2\n");
-    assert.strictEqual(hook("stop-gate.js", { last_assistant_message: "done" }).decision, "block");
-
-    const outside = spawnSync(process.execPath, [path.join(scripts, "stop-gate.js")], {
-      cwd: os.tmpdir(),
-      input: JSON.stringify({ session_id: sessionId, cwd: path.parse(repo).root }),
-      encoding: "utf8",
-    });
-    assert.strictEqual(outside.stdout, "");
-  } finally {
-    fs.rmSync(repo, { recursive: true, force: true });
-    fs.rmSync(path.join(os.tmpdir(), "claude-coder-gate", sessionId), { force: true });
-  }
+  });
 });
 
 test("Claude project instructions use the root protocol as their source", () => {
@@ -851,6 +711,68 @@ test("update applies safe changes and preserves local collisions", () => {
       fs.readFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), "utf8"),
       localWorkflow
     );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update retires coder files and warns when locally merged coder hooks remain", () => {
+  const fixture = createUpdateFixture("claude");
+  try {
+    const hash = require("../lib/update").hashBytes;
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    ["SKILL.md", "scripts/stop-gate.js"].forEach((name) => {
+      const target = path.join(fixture.workspace, ".claude/skills/coder", name);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, `legacy ${name}\n`);
+      state.files.push({
+        scope: "repository",
+        path: `.claude/skills/coder/${name}`,
+        hash: hash(Buffer.from(`legacy ${name}\n`)),
+      });
+    });
+    fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+    const settingsPath = path.join(fixture.workspace, ".claude/settings.json");
+    const merged = `${fs.readFileSync(settingsPath, "utf8")}\n`;
+    fs.writeFileSync(settingsPath, merged);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("RETIRE repository:.claude/skills/coder/SKILL.md"));
+    assert.ok(!fs.existsSync(path.join(fixture.workspace, ".claude/skills/coder/scripts/stop-gate.js")));
+    assert.strictEqual(fs.readFileSync(settingsPath, "utf8"), merged);
+    assert.ok(apply.stdout.includes("WARNING: the coder skill was retired"), apply.stdout);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update retires coder files and leaves unmodified Claude settings without coder hooks", () => {
+  const fixture = createUpdateFixture("claude");
+  try {
+    const hash = require("../lib/update").hashBytes;
+    const settingsPath = path.join(fixture.workspace, ".claude/settings.json");
+    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+    const coderHooks = {
+      SessionStart: [{ hooks: [{ type: "command", command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/coder/scripts/session-start.js"' }] }],
+    };
+    const installedBytes = Buffer.from(`${JSON.stringify({ ...settings, hooks: coderHooks }, null, 2)}\n`);
+    fs.writeFileSync(settingsPath, installedBytes);
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    state.files.find((file) => file.path === ".claude/settings.json").hash = hash(installedBytes);
+    const scriptPath = path.join(fixture.workspace, ".claude/skills/coder/scripts/session-start.js");
+    fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
+    fs.writeFileSync(scriptPath, "legacy\n");
+    state.files.push({ scope: "repository", path: ".claude/skills/coder/scripts/session-start.js", hash: hash(Buffer.from("legacy\n")) });
+    fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("UPDATE repository:.claude/settings.json"), apply.stdout);
+    assert.ok(apply.stdout.includes("RETIRE repository:.claude/skills/coder/scripts/session-start.js"));
+    assert.ok(!fs.existsSync(scriptPath));
+    assert.ok(!fs.readFileSync(settingsPath, "utf8").includes("coder"));
+    assert.ok(!apply.stdout.includes("WARNING: the coder skill was retired"));
   } finally {
     fixture.cleanup();
   }

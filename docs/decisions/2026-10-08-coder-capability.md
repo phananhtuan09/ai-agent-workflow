@@ -1,8 +1,9 @@
 # Experimental coder capability for Claude Code
 
-Status: Accepted
+Status: Superseded
 Date: 2026-10-08
 Scope: Optional `coder` skill, `coder-agent` bundle, and the Claude Code project hooks the installer derives for it
+Superseded by: [Manual planner mode](2026-10-16-planner-capability.md)
 
 ## Context
 
