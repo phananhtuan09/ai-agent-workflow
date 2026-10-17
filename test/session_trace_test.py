@@ -134,6 +134,33 @@ class SessionTraceTests(unittest.TestCase):
         self.assertEqual(next(x for x in found if x["paseo"]["agent_id"] == "agent")["unavailable_reason"],
                          "ambiguous_transcript")
 
+    def test_paseo_claude_parent_resolves_despite_subagent_transcripts(self):
+        user = {"type": "user", "sessionId": "claude", "cwd": str(self.project), "message": {"content": "hello"}}
+        parent = self.write(self.roots["CLAUDE_CONFIG_DIR"] / "projects/p/claude.jsonl", [user])
+        self.write(self.roots["CLAUDE_CONFIG_DIR"] / "projects/p/claude/subagents/agent-1.jsonl",
+                   [dict(user, isSidechain=True)])
+        agents = self.roots["PASEO_HOME"] / "agents/project"
+        agents.mkdir(parents=True)
+        (agents / "agent.json").write_text(json.dumps({
+            "id": "agent", "provider": "claude", "cwd": str(self.project), "persistence": {"sessionId": "claude"},
+        }))
+        found, _ = MODULE["discover_paseo"](str(self.project))
+        self.assertTrue(found[0]["available"])
+        self.assertEqual(found[0]["transcript_path"], str(parent))
+
+    def test_unmatched_codex_web_search_is_reported(self):
+        records = [
+            {"type": "session_meta", "payload": {"id": "s", "cwd": str(self.project)}},
+            {"type": "event_msg", "payload": {"type": "web_search_call", "call_id": "search", "query": "q"}},
+        ]
+        source = self.write(self.root / "input.jsonl", records)
+        result = subprocess.run([sys.executable, "-B", str(SCRIPT), "--runtime", "codex", "--input", str(source),
+                                 "--output-dir", str(self.root / "output")], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        coverage = json.loads((self.root / "output/session-trace.json").read_text())["coverage"]
+        self.assertEqual(coverage["raw_tool_calls"], 1)
+        self.assertEqual(coverage["calls_without_results"], ["search"])
+
     def test_claude_preserves_errors_model_and_usage_without_claiming_completion(self):
         records = [
             {"type": "assistant", "message": {"model": "example-model", "usage": {"input_tokens": 12},

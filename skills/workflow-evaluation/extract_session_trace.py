@@ -163,7 +163,8 @@ def discover_paseo(project_path):
                 found, errors = discover_transcripts(runtime, project_path)
                 provider_sessions[runtime] = found
                 issues.extend(errors)
-            matches = [item for item in provider_sessions.get(runtime, []) if item["session_id"] == session_id]
+            matches = [item for item in provider_sessions.get(runtime, [])
+                       if item["session_id"] == session_id and not item.get("subagent")]
             entry = dict(matches[0]) if len(matches) == 1 else {
                 "runtime": runtime, "session_id": session_id,
                 "project": canonical_path(project_path), "transcript_path": None,
@@ -1094,6 +1095,11 @@ def assess_coverage(artifact, records):
                 if kind in {"function_call", "custom_tool_call"}:
                     raw_calls.append((index, payload.get("call_id")))
                 elif kind in {"function_call_output", "custom_tool_call_output"}:
+                    raw_results.append((index, payload.get("call_id")))
+            elif record.get("type") == "event_msg":
+                if payload.get("type") == "web_search_call":
+                    raw_calls.append((index, payload.get("call_id")))
+                elif payload.get("type") == "web_search_end":
                     raw_results.append((index, payload.get("call_id")))
             blocks = payload.get("content") or []
         else:
