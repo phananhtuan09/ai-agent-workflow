@@ -19,6 +19,7 @@ const PROTOCOL_FILES = [
   "docs/plans/completed/README.md",
   "docs/patterns/README.md",
   "docs/runbooks/README.md",
+  "docs/observed/README.md",
 ];
 
 function runCli(args, setup) {

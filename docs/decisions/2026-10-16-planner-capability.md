@@ -45,3 +45,4 @@ The coder enforcement was heavier than that need, was limited to Claude Code, an
 - Supersedes [Experimental coder capability for Claude Code](2026-10-08-coder-capability.md)
 - [Planner brainstorm](../braintorm/2026-10-13-planner-skill.md)
 - [Repository-driven workflow](../WORKFLOW.md)
+- Item 5 of the Decision is replaced by [Agent-maintained durable knowledge](2026-10-19-agent-maintained-knowledge.md)

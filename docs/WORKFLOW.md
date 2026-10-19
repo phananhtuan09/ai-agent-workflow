@@ -35,11 +35,11 @@ Evaluation, learning, and design standards govern only their explicitly selected
 Apply these conflict rules:
 
 - If the current explicit request clearly changes existing behavior, treat the request as authority for that requested delta.
-- If durable product or decision docs become stale because of an accepted change, update durable knowledge only when the new behavior should outlive the current task.
+- If durable product or decision docs become stale because of an accepted change, update them as part of the task when the new behavior should outlive the current task.
 - If code, tests, schemas, configuration, or runtime evidence disagree, investigate the current-state inconsistency.
 - If multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and ask the smallest necessary human question.
 - If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/product/` or `docs/decisions/`, treat the durable location as authority and correct the derived file.
-- Do not turn user requests into persisted product documentation automatically.
+- If code changes that no human request authorized disagree with durable intent, report the drift and keep the intent unchanged.
 
 Newly accepted durable knowledge belongs in the following locations:
 
@@ -51,6 +51,7 @@ Newly accepted durable knowledge belongs in the following locations:
 | Completed durable plans | `docs/plans/completed/` |
 | Recurring technical patterns | `docs/patterns/` |
 | Verified operating procedures | `docs/runbooks/` |
+| Observed current-state knowledge | `docs/observed/` |
 
 Proposal, evaluation, learning, and design artifacts are optional capability-owned namespaces:
 
@@ -116,13 +117,29 @@ Do not make normal repository-driven execution depend on feature artifacts or co
 Do not add a fixed execution chain or require workflow artifacts for ordinary work.
 Do not fabricate product rules, decisions, plans, runbooks, proof, or execution state.
 
-## Durable knowledge threshold
+## Durable knowledge maintenance
+
+The agent maintains durable knowledge; the human does not need to request, approve, or edit documentation.
+The human sees knowledge changes in the task report and the diff, and a revert or later request corrects them.
 
 Write to `docs/product/` only for accepted behavior that should outlive one implementation task.
 Write to `docs/decisions/` only for meaningful decisions and rationale future work must respect.
 Write to `docs/patterns/` only for accepted recurring technical guidance.
 Write to `docs/runbooks/` only for verified operational procedures.
+Write to `docs/observed/` only for current-state facts that future work needs and cannot cheaply rediscover from the code.
 Do not create durable files merely to record that ordinary work occurred.
+
+Knowledge is accepted when a human explicitly states lasting behavior, a decision, or a convention in the conversation, or answers a decision question.
+Choosing a next step, such as running tests or committing, accepts no knowledge.
+A request scoped to one task is not a lasting rule unless the human says it should apply going forward.
+Record accepted knowledge in its namespace before reporting the task, and cite the accepting request in the artifact.
+Knowledge inferred from code, tests, history, or runtime behavior is observed, not accepted.
+Record it only in `docs/observed/`, never treat it as intent authority, and correct or remove it when the code it describes changes.
+A verified operational procedure is the exception: record it in `docs/runbooks/` under that namespace's contract.
+When a human explicitly states that an observed fact is intended behavior, move it to the matching authority namespace and remove the observed entry.
+After a task, keep current the knowledge that task touched or made stale: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/`.
+Tidy the rest of the tree only during a whole-project maintenance pass.
+Ask the human only when intended-behavior sources conflict and the current request does not resolve the conflict.
 
 Each durable artifact namespace governed by this protocol defines its current admission criteria and document contract in that namespace's `README.md`.
 Capabilities managing durable repository knowledge must discover eligible namespaces through `docs/README.md` and follow the selected namespace contract rather than carrying a second embedded format.
@@ -140,7 +157,7 @@ For multi-case runtime E2E work that must survive sessions or support later audi
 ## Completion
 
 Complete every requested end-to-end behavior and named acceptance criterion.
-Update durable knowledge only when the change alters durable truth.
+Record durable knowledge changes as described in Durable knowledge maintenance and list them in the report.
 Remove temporary proof fixtures and scaffolding before completion.
 Report changed behavior and direct automated evidence separately from checks that still require human judgment.
 Do not claim evidence that was not observed.

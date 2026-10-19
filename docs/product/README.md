@@ -8,6 +8,7 @@ Do not invent examples or policies merely to populate this directory.
 ## Admission
 
 Create or update a product artifact only when the knowledge is accepted intent, not merely behavior inferred from code or tests.
+Record inferred behavior in `../observed/` instead.
 Update an existing topic before creating a competing document.
 Use a lowercase kebab-case topic filename, such as `account-recovery.md`.
 `README.md` defines this namespace and is not a product artifact.
@@ -45,10 +46,11 @@ Superseded by: <relative link; include only when applicable>
 
 ## References
 
-- <Related decision, schema, contract, or other durable artifact. Omit when none exist.>
+- <Accepting human request as `Human request, YYYY-MM-DD: <one-line summary>`.>
+- <Related decision, schema, contract, or other durable artifact.>
 ```
 
-`Purpose` and `Rules` are required.
+`Purpose`, `Rules`, and `References` are required; `References` must cite the accepting request or decision.
 All other sections are conditional, but the `Status` and `Scope` fields are required.
 
 ## Writing rules
