@@ -7,6 +7,7 @@ Patterns do not replace product policy and should not duplicate an established r
 ## Admission
 
 Create a pattern artifact only when guidance is accepted, recurring, and useful across more than one isolated implementation.
+A convention inferred from code but never confirmed by a human belongs in `../observed/`.
 Update an existing pattern before creating a competing convention.
 Use a lowercase kebab-case topic filename, such as `boundary-validation.md`.
 `README.md` defines this namespace and is not a pattern artifact.

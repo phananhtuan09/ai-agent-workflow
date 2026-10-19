@@ -59,7 +59,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `review-pr` | Reviews a PR, branch, commit range, or diff for evidence-backed blocking defects. |
 | `quality-code-check` | Lint, type check, build, and failing-validation debugging with project-native commands. |
 | `smart-commits` | Groups the working tree into intent-based commits and pushes on request. |
-| `manage-project-knowledge` | Finds, explains, and, on request, updates durable knowledge under `docs/`. |
+| `manage-project-knowledge` | Finds and explains durable knowledge under `docs/`, and keeps it current on its own after each task. |
 | `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
 | `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
@@ -129,6 +129,7 @@ docs/
 ├── plans/               # active and completed durable working memory
 ├── patterns/            # accepted recurring technical patterns
 ├── runbooks/            # verified operating procedures
+├── observed/            # agent-maintained current-state facts, not authority
 ├── proposals/           # optional proposal drafts and human decisions
 ├── testing/             # optional runtime E2E plans and evidence
 ├── evaluation/          # optional workflow evaluation capability
@@ -138,6 +139,7 @@ docs/
 ```
 
 Optional namespaces are not product authority and are not loaded by ordinary coding work.
+The agent maintains durable knowledge itself: it records what you accept in conversation, keeps facts it infers from code in `docs/observed/`, and asks only when intent sources conflict.
 See [`docs/README.md`](docs/README.md) for each location's contract.
 
 ## Updating an installation

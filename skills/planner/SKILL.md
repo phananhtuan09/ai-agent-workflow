@@ -80,7 +80,7 @@ If a skill is not installed, apply `docs/WORKFLOW.md` directly and say the skill
 | Multi-case user flow or API acceptance that must stay re-runnable | `runtime-e2e-test` |
 | Hard bug, unclear logic, or technical trade-off to think through | `brainstorm-partner` |
 | Review a PR, branch, or diff | `review-pr` |
-| Durable knowledge the human chose to record | `manage-project-knowledge` |
+| Task accepted, changed, or invalidated durable knowledge | `manage-project-knowledge` |
 | Commit or push the human asked for | `smart-commits` |
 | The human asks to log agent friction | `record-workflow-friction` |
 | The human asks to evaluate the workflow | `workflow-evaluation` |
@@ -102,10 +102,9 @@ A commit request does not cover push.
 
 ## Durable knowledge
 
-Do not write `docs/product/`, `docs/decisions/`, `docs/patterns/`, or `docs/runbooks/` on your own.
-When something should outlive the task, offer it as a choice naming the target file and a one-line summary of the change.
-Choosing such an option is the explicit request `manage-project-knowledge` needs.
-A vague request such as "write it to docs" is not approval; offer concrete targets as choices.
+Maintain durable knowledge yourself with `manage-project-knowledge` before reporting a step; do not offer it as a choice or wait for approval.
+A numbered choice the human picks, or a decision they answer, is accepted knowledge when it should outlive the task.
+List knowledge files you changed in the main answer so the human can see them.
 
 ## Output
 
@@ -123,7 +122,7 @@ Next:
 ```
 
 - Two or three options, each about fifteen words or fewer and concrete enough to run without another question.
-- Mark exactly one option with ★, ranked by: unresolved risk such as unproven changes, red CI, or open decisions; then finishing the current goal; then shipping through commit, push, or PR; then recording knowledge.
+- Mark exactly one option with ★, ranked by: unresolved risk such as unproven changes, red CI, or open decisions; then finishing the current goal; then shipping through commit, push, or PR.
 - Name the skill when an option uses one.
 - Rank lower the options the human has skipped repeatedly in this conversation.
 - Decision questions use the same numbered format, with ★ on the recommendation.

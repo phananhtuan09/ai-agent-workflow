@@ -46,10 +46,11 @@ Superseded by: <relative link; include only when applicable>
 
 ## References
 
-- <Related product rule, pattern, runbook, code boundary, or external source. Omit when none exist.>
+- <Accepting human request as `Human request, YYYY-MM-DD: <one-line summary>`.>
+- <Related product rule, pattern, runbook, code boundary, or external source.>
 ```
 
-`Context`, `Decision`, and `Consequences` are required.
+`Context`, `Decision`, `Consequences`, and `References` are required; `References` must cite the accepting request.
 `Constraints` is required when the decision imposes ongoing boundaries.
 The metadata fields `Status`, `Date`, and `Scope` are required.
 

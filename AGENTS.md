@@ -17,7 +17,8 @@
 - Current-state evidence describes what exists now and disagreements between those sources normally require investigation before deciding what to change.
 - Active plans record work state but do not override product or architecture authority.
 - Evaluation and learning capabilities use their canonical namespaces under `docs/evaluation/` and `docs/learning/`.
-- When durable intent becomes stale because of an accepted current request, update durable knowledge only when the new behavior should outlive the current task.
+- When durable intent becomes stale because of an accepted current request, update it as part of the task when the new behavior should outlive the current task.
+- Knowledge inferred from code, history, or runtime behavior is observed knowledge under `docs/observed/` and never intent authority.
 - When multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and request the smallest necessary decision.
 - Never invent material product, security, compatibility, or operational policy.
 
@@ -32,7 +33,7 @@
 
 - Inspect only relevant files and reuse existing repository patterns before introducing new structure.
 - Preserve unrelated work and never overwrite, revert, or reformat changes outside the requested scope.
-- Keep durable repository knowledge only when it will outlive the current task.
+- Maintain durable repository knowledge yourself, without waiting for a human request, following `docs/WORKFLOW.md`; keep only knowledge that will outlive the current task.
 - Load a specialized skill only when it materially improves correctness or proof.
 - Use direct repository-driven execution; do not create or depend on a legacy coordinator state.
 
