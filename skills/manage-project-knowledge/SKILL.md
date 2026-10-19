@@ -130,7 +130,7 @@ Bring all durable knowledge in line with the conversation and the current reposi
 5. Tidy the tree: mark replaced artifacts superseded, merge duplicates, fix broken links, move finished active plans, and delete observed artifacts with no remaining facts.
 
 On a large repository, cover the most central and most changed areas first, and report which areas remain unsurveyed instead of recording shallow facts.
-A repeat run on an unchanged repository should make no edits.
+Repeat runs on an unchanged repository should converge: once the survey has covered every area, a further run makes no edits.
 
 ## Write through the namespace contract
 
