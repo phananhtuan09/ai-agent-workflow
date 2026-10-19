@@ -59,7 +59,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `review-pr` | Reviews a PR, branch, commit range, or diff for evidence-backed blocking defects. |
 | `quality-code-check` | Lint, type check, build, and failing-validation debugging with project-native commands. |
 | `smart-commits` | Groups the working tree into intent-based commits and pushes on request. |
-| `manage-project-knowledge` | Finds and explains durable knowledge under `docs/`, and keeps it current on its own after each task. |
+| `manage-project-knowledge` | Finds and explains durable knowledge under `docs/`, keeps it current on its own after each task, and maintains all project docs when invoked without a topic. |
 | `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
 | `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |

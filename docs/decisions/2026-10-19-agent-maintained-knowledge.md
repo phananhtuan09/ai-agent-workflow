@@ -20,7 +20,8 @@ Letting the agent write knowledge it infers from code into authority namespaces 
 4. A human request that confirms an observed fact as intended behavior moves it to the matching authority namespace.
 5. When code changes that no human request authorized disagree with authority, the agent reports the drift and keeps the authority unchanged.
 6. The agent keeps knowledge tidy while working: superseding, merging duplicates, fixing links, and moving finished plans.
-7. The agent asks the human only when intended-behavior sources conflict and the conversation does not resolve the conflict.
+7. Invoking `manage-project-knowledge` without a specific topic maintains all project documentation: it records accepted knowledge, checks all authority against code and reports drift, refreshes and extends observed knowledge from the codebase, and tidies the tree.
+8. The agent asks the human only when intended-behavior sources conflict and the conversation does not resolve the conflict.
 
 ## Constraints
 

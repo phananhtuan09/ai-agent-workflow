@@ -1,6 +1,6 @@
 ---
 name: manage-project-knowledge
-description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, patterns, runbooks, or other declared artifact namespaces, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
+description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, patterns, runbooks, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
 ---
 
 # Manage Project Knowledge
@@ -9,6 +9,7 @@ description: Find, explain, and maintain durable repository knowledge. Use when 
 
 Find and explain durable repository knowledge without requiring the human to know its file location, and keep it current without requiring the human to request, approve, or edit documentation.
 Use this skill when a human asks what the repository has recorded, why a durable choice exists, or how an accepted pattern or verified procedure works.
+When a human invokes this skill without a specific question or topic, or asks to sync, audit, or review the project's docs, run Maintain the whole project.
 Also use it on your own before reporting a task in which the human accepted knowledge that should outlive the task, the work invalidated recorded knowledge, or the work established observed facts future work needs.
 Explanation requests are read-only unless the conversation also accepted new knowledge.
 Do not write artifacts merely because ordinary work occurred.
@@ -80,7 +81,7 @@ An explanation response should contain:
 
 ## Select the mutation
 
-Work from the topics the human's request or the completed task touched.
+Work from the topics the human's request or the completed task touched, or from every topic during Maintain the whole project.
 Search the declared namespaces for an artifact that already owns each topic.
 Prefer the smallest coherent update that leaves one clear home for each rule, decision, pattern, or procedure.
 Link related artifacts instead of duplicating their content.
@@ -97,7 +98,7 @@ Preserve still-valid content and history.
 Apply supersession, deprecation, retirement, or replacement exactly as the namespace contract specifies.
 
 Apply supported documentation edits directly; no separate approval is needed.
-If the human asks for a preview, audit, proposal, or review, show the proposed changes without writing them.
+If the human asks for a preview, dry run, or proposal, show the proposed changes without writing them.
 
 ## Maintain after a task
 
@@ -111,6 +112,21 @@ Before reporting a task, check whether it:
 6. left replaced, duplicated, or stale artifacts; mark them superseded, merge them, fix links, or move finished plans as their contracts require.
 
 When none applies, make no edits.
+
+## Maintain the whole project
+
+Bring all durable knowledge in line with the conversation and the current repository:
+
+1. Record knowledge the human accepted in the current conversation, as in Maintain after a task.
+2. Check every rule, decision, and pattern in the authority namespaces against code, tests, schemas, and configuration.
+   Report each disagreement as drift with its evidence; never rewrite authority to match code.
+3. Check every observed fact against current evidence; correct, remove, or refresh `Last checked` on each.
+4. Survey the codebase and history for current-state facts future work needs and cannot cheaply rediscover, such as domain flows, cross-module invariants, and non-obvious boundaries.
+   Record them in the observed namespace and put unclear intent, such as a possible defect, under `Open questions`.
+5. Tidy the tree: mark replaced artifacts superseded, merge duplicates, fix broken links, move finished active plans, and delete observed artifacts with no remaining facts.
+
+On a large repository, cover the most central and most changed areas first, and report which areas remain unsurveyed instead of recording shallow facts.
+A repeat run on an unchanged repository should change only `Last checked` dates.
 
 ## Write through the namespace contract
 
