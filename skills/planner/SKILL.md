@@ -103,7 +103,7 @@ A commit request does not cover push.
 ## Durable knowledge
 
 Maintain durable knowledge yourself with `manage-project-knowledge` before reporting a step; do not offer it as a choice or wait for approval.
-A numbered choice the human picks, or a decision they answer, is accepted knowledge when it should outlive the task.
+An answered decision question, or a picked option that states lasting behavior or a decision, is accepted knowledge; picking a next step such as testing or committing accepts nothing.
 List knowledge files you changed in the main answer so the human can see them.
 
 ## Output

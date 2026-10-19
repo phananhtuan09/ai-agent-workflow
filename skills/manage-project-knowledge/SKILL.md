@@ -39,9 +39,11 @@ Future namespaces are supported through the same discovery process without chang
 ## Establish authority
 
 Separate accepted intent from current-state evidence and work memory.
-A human statement or confirmation in the conversation, such as a requested behavior change, a chosen option, or an answered decision question, establishes durable intent when the knowledge should outlive the current task.
+A human's explicit statement of lasting behavior, a decision, or a convention in the conversation, or an answer to a decision question, establishes durable intent.
+Choosing a next step, such as running tests or committing, establishes nothing, and a request scoped to one task is not a lasting rule unless the human says it should apply going forward.
 Code, tests, schemas, configuration, history, and runtime observations describe current state; they do not by themselves establish intended product behavior, historical rationale, or an accepted recurring convention.
 Record such current-state facts only in the observed namespace declared by the documentation index, never in an authority namespace.
+A verified operational procedure is the exception and follows the runbook namespace contract.
 
 Do not fabricate policy, rationale, approval, ownership, dates, verification, alternatives, or operational evidence.
 Do not convert a suggestion, experiment, brainstorm, or unanswered question into an active artifact.
@@ -105,11 +107,12 @@ If the human asks for a preview, dry run, or proposal, show the proposed changes
 Before reporting a task, check whether it:
 
 1. accepted new product behavior, a decision, a pattern, or a verified procedure; record it and cite the accepting request in `References`;
-2. confirmed an observed fact as intended behavior; move it to the matching authority namespace and remove the observed entry;
+2. explicitly stated that an observed fact is intended behavior; move it to the matching authority namespace and remove the observed entry;
 3. changed code that recorded knowledge describes; update observed facts to match, and update authority only when the human requested that change;
 4. changed code against authority without a human request; leave the authority unchanged and report the drift;
 5. established current-state facts future work needs and cannot cheaply rediscover; record them in the observed namespace;
-6. left replaced, duplicated, or stale artifacts; mark them superseded, merge them, fix links, or move finished plans as their contracts require.
+6. left artifacts it touched or made stale replaced, duplicated, or outdated; mark them superseded, merge them, fix links, or move finished plans as their contracts require.
+   Leave unrelated artifacts to Maintain the whole project.
 
 When none applies, make no edits.
 
@@ -120,13 +123,14 @@ Bring all durable knowledge in line with the conversation and the current reposi
 1. Record knowledge the human accepted in the current conversation, as in Maintain after a task.
 2. Check every rule, decision, and pattern in the authority namespaces against code, tests, schemas, and configuration.
    Report each disagreement as drift with its evidence; never rewrite authority to match code.
-3. Check every observed fact against current evidence; correct, remove, or refresh `Last checked` on each.
+   Report authority artifacts that lack a citation their contract requires as a contract gap; never add a citation you cannot source from the conversation.
+3. Check every observed fact against current evidence; correct or remove each one that no longer holds.
 4. Survey the codebase and history for current-state facts future work needs and cannot cheaply rediscover, such as domain flows, cross-module invariants, and non-obvious boundaries.
    Record them in the observed namespace and put unclear intent, such as a possible defect, under `Open questions`.
 5. Tidy the tree: mark replaced artifacts superseded, merge duplicates, fix broken links, move finished active plans, and delete observed artifacts with no remaining facts.
 
 On a large repository, cover the most central and most changed areas first, and report which areas remain unsurveyed instead of recording shallow facts.
-A repeat run on an unchanged repository should change only `Last checked` dates.
+A repeat run on an unchanged repository should make no edits.
 
 ## Write through the namespace contract
 

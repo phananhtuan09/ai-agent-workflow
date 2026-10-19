@@ -129,12 +129,16 @@ Write to `docs/runbooks/` only for verified operational procedures.
 Write to `docs/observed/` only for current-state facts that future work needs and cannot cheaply rediscover from the code.
 Do not create durable files merely to record that ordinary work occurred.
 
-Knowledge is accepted when a human states or confirms it in the conversation, such as a requested behavior change, a chosen option, or an answered decision question.
+Knowledge is accepted when a human explicitly states lasting behavior, a decision, or a convention in the conversation, or answers a decision question.
+Choosing a next step, such as running tests or committing, accepts no knowledge.
+A request scoped to one task is not a lasting rule unless the human says it should apply going forward.
 Record accepted knowledge in its namespace before reporting the task, and cite the accepting request in the artifact.
 Knowledge inferred from code, tests, history, or runtime behavior is observed, not accepted.
 Record it only in `docs/observed/`, never treat it as intent authority, and correct or remove it when the code it describes changes.
-When a human request confirms an observed fact as intended behavior, move it to the matching authority namespace and remove the observed entry.
-Keep knowledge current while working: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/`.
+A verified operational procedure is the exception: record it in `docs/runbooks/` under that namespace's contract.
+When a human explicitly states that an observed fact is intended behavior, move it to the matching authority namespace and remove the observed entry.
+After a task, keep current the knowledge that task touched or made stale: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/`.
+Tidy the rest of the tree only during a whole-project maintenance pass.
 Ask the human only when intended-behavior sources conflict and the current request does not resolve the conflict.
 
 Each durable artifact namespace governed by this protocol defines its current admission criteria and document contract in that namespace's `README.md`.

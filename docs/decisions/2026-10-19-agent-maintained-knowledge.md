@@ -13,14 +13,17 @@ Letting the agent write knowledge it infers from code into authority namespaces 
 ## Decision
 
 1. The agent maintains durable knowledge itself before reporting a task; no separate human request, approval, or edit is needed.
-2. Knowledge is accepted when a human states or confirms it in the conversation, such as a requested behavior change, a chosen option, or an answered decision question.
+2. Knowledge is accepted when a human explicitly states lasting behavior, a decision, or a convention in the conversation, or answers a decision question.
+   Choosing a next step accepts no knowledge, and a request scoped to one task is not a lasting rule unless the human says it should apply going forward.
    Accepted knowledge goes to its authority namespace and cites the accepting request in `References`.
 3. Knowledge inferred from code, tests, history, or runtime behavior is observed knowledge.
    It is recorded only in the new `docs/observed/` namespace, is never intent authority, and is corrected or removed when the code it describes changes.
-4. A human request that confirms an observed fact as intended behavior moves it to the matching authority namespace.
+   Verified operational procedures remain in `docs/runbooks/`.
+4. A human explicitly stating that an observed fact is intended behavior moves it to the matching authority namespace.
 5. When code changes that no human request authorized disagree with authority, the agent reports the drift and keeps the authority unchanged.
-6. The agent keeps knowledge tidy while working: superseding, merging duplicates, fixing links, and moving finished plans.
+6. After a task, the agent keeps current the knowledge that task touched or made stale: superseding, merging duplicates, fixing links, and moving finished plans.
 7. Invoking `manage-project-knowledge` without a specific topic maintains all project documentation: it records accepted knowledge, checks all authority against code and reports drift, refreshes and extends observed knowledge from the codebase, and tidies the tree.
+   It reports authority artifacts that lack an accepting-request citation instead of inventing one.
 8. The agent asks the human only when intended-behavior sources conflict and the conversation does not resolve the conflict.
 
 ## Constraints
