@@ -28,13 +28,16 @@ A repository-driven protocol for AI coding assistants, installed by the `ai-work
 
 ## How it works
 
-```mermaid
-flowchart LR
-    A["Requested outcome"] --> B["Read the smallest<br/>relevant authority"]
-    B --> C["Make the smallest<br/>coherent change"]
-    C --> D["Prove it with the<br/>cheapest reliable check"]
-    D --> E["Report evidence<br/>and remaining risk"]
-```
+<p align="center">
+  <img src=".github/assets/workflow.svg" alt="Animated workflow: a request is checked against repository authority, routed to a read-only, bounded, durable, or decision-blocked work shape, proved, and reported, with durable knowledge recorded under docs/" width="100%">
+</p>
+
+Each colored token follows one work shape:
+
+- 🔵 **Read-only** work answers with evidence and skips mutation.
+- 🟢 **Bounded change** makes the smallest coherent change, proves it, and reports.
+- 🟣 **Durable change** keeps a resumable plan and records accepted knowledge in `docs/`, which later work reads back as authority.
+- 🟡 **Decision-blocked** work stops before mutation and asks the smallest human question.
 
 The full rules live in [`AGENTS.md`](AGENTS.md) and [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 

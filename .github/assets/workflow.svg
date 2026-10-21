@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1110 560" width="1110" height="560" role="img" aria-labelledby="title desc">
+  <title id="title">Repository-driven workflow</title>
+  <desc id="desc">A request is checked against repository authority, routed to one of four work shapes (read-only, bounded change, durable change, decision-blocked), proved with the cheapest reliable check, and reported. Durable knowledge is recorded under docs/ and read back as authority.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6366f1" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif; }
+    .name { fill: #f1f5f9; font-size: 15px; font-weight: 600; }
+    .sub { fill: #94a3b8; font-size: 11px; }
+    .label { font-size: 11px; font-style: italic; }
+    .box { fill: #0f172a; stroke: #334155; stroke-width: 1.5; }
+    .edge { fill: none; stroke: #475569; stroke-width: 1.6; stroke-dasharray: 6 7; animation: flow 1.4s linear infinite; }
+    .pulse { animation: pulse 4s ease-in-out infinite; }
+    @keyframes flow { to { stroke-dashoffset: -26; } }
+    @keyframes pulse { 0%, 100% { stroke-opacity: 0.35; } 50% { stroke-opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .edge, .pulse { animation: none; } }
+  </style>
+
+  <rect width="1110" height="560" rx="16" fill="url(#bg)"/>
+  <ellipse cx="555" cy="230" rx="520" ry="230" fill="url(#halo)"/>
+
+  <text x="30" y="42" class="name" style="font-size:18px">How an agent handles every request</text>
+  <text x="1080" y="42" class="sub" text-anchor="end">one protocol · four work shapes · repository as memory</text>
+
+  <!-- edges -->
+  <path class="edge" d="M170,215 L210,215" marker-end="url(#arrow)"/>
+  <path class="edge" d="M370,215 L410,215" marker-end="url(#arrow)"/>
+  <path class="edge" d="M530,215 C560,215 560,103 590,103" marker-end="url(#arrow)"/>
+  <path class="edge" d="M530,215 C560,215 560,178 590,178" marker-end="url(#arrow)"/>
+  <path class="edge" d="M530,215 C560,215 560,253 590,253" marker-end="url(#arrow)"/>
+  <path class="edge" d="M530,215 C560,215 560,328 590,328" marker-end="url(#arrow)"/>
+  <path class="edge" d="M770,103 C950,103 1025,103 1025,180" marker-end="url(#arrow)"/>
+  <path class="edge" d="M770,178 C800,178 800,215 830,215" marker-end="url(#arrow)"/>
+  <path class="edge" d="M770,253 C800,253 800,215 830,215" marker-end="url(#arrow)"/>
+  <path class="edge" d="M940,215 L970,215" marker-end="url(#arrow)"/>
+  <path class="edge" d="M680,356 C680,400 660,410 620,410 L140,410 C110,410 100,390 100,250" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1025,250 C1025,470 1000,485 770,485" marker-end="url(#arrow)"/>
+  <path class="edge" d="M330,485 C300,485 290,470 290,250" marker-end="url(#arrow)"/>
+
+  <text x="900" y="93" class="label" fill="#22d3ee" text-anchor="middle">answer with evidence</text>
+  <text x="400" y="401" class="label" fill="#fbbf24" text-anchor="middle">ask the smallest human question</text>
+  <text x="900" y="474" class="label" fill="#a78bfa" text-anchor="middle">record accepted knowledge</text>
+  <text x="280" y="445" class="label" fill="#a78bfa" text-anchor="end">read as authority</text>
+
+  <!-- main nodes -->
+  <g>
+    <rect class="box pulse" x="30" y="180" width="140" height="70" rx="12" style="stroke:#60a5fa"/>
+    <text x="100" y="211" class="name" text-anchor="middle">Request</text>
+    <text x="100" y="231" class="sub" text-anchor="middle">requested outcome</text>
+  </g>
+  <g>
+    <rect class="box pulse" x="210" y="180" width="160" height="70" rx="12" style="stroke:#60a5fa;animation-delay:.5s"/>
+    <text x="290" y="211" class="name" text-anchor="middle">Authority</text>
+    <text x="290" y="231" class="sub" text-anchor="middle">intent · current evidence</text>
+  </g>
+  <g>
+    <polygon class="box pulse" points="470,155 530,215 470,275 410,215" style="stroke:#818cf8;animation-delay:1s"/>
+    <text x="470" y="211" class="name" text-anchor="middle" style="font-size:13px">Work</text>
+    <text x="470" y="228" class="name" text-anchor="middle" style="font-size:13px">shape</text>
+  </g>
+
+  <!-- work shapes -->
+  <g>
+    <rect class="box" x="590" y="75" width="180" height="56" rx="10"/>
+    <rect x="590" y="75" width="5" height="56" rx="2.5" fill="#22d3ee"/>
+    <text x="608" y="99" class="name">Read-only</text>
+    <text x="608" y="118" class="sub">explain · review · diagnose</text>
+  </g>
+  <g>
+    <rect class="box" x="590" y="150" width="180" height="56" rx="10"/>
+    <rect x="590" y="150" width="5" height="56" rx="2.5" fill="#4ade80"/>
+    <text x="608" y="174" class="name">Bounded change</text>
+    <text x="608" y="193" class="sub">smallest coherent change</text>
+  </g>
+  <g>
+    <rect class="box" x="590" y="225" width="180" height="56" rx="10"/>
+    <rect x="590" y="225" width="5" height="56" rx="2.5" fill="#a78bfa"/>
+    <text x="608" y="249" class="name">Durable change</text>
+    <text x="608" y="268" class="sub">resumable plan in docs/plans</text>
+  </g>
+  <g>
+    <rect class="box" x="590" y="300" width="180" height="56" rx="10"/>
+    <rect x="590" y="300" width="5" height="56" rx="2.5" fill="#fbbf24"/>
+    <text x="608" y="324" class="name">Decision-blocked</text>
+    <text x="608" y="343" class="sub">stop before mutation</text>
+  </g>
+
+  <!-- proof and report -->
+  <g>
+    <rect class="box pulse" x="830" y="180" width="110" height="70" rx="12" style="stroke:#4ade80;animation-delay:1.5s"/>
+    <text x="885" y="211" class="name" text-anchor="middle">Proof</text>
+    <text x="885" y="231" class="sub" text-anchor="middle">cheapest reliable</text>
+  </g>
+  <g>
+    <rect class="box pulse" x="970" y="180" width="110" height="70" rx="12" style="stroke:#4ade80;animation-delay:2s"/>
+    <text x="1025" y="211" class="name" text-anchor="middle">Report</text>
+    <text x="1025" y="231" class="sub" text-anchor="middle">evidence · risk</text>
+  </g>
+
+  <!-- durable memory -->
+  <g>
+    <rect class="box pulse" x="330" y="455" width="440" height="60" rx="30" style="stroke:#a78bfa;animation-delay:2.5s"/>
+    <text x="550" y="481" class="name" text-anchor="middle">docs/ · durable repository memory</text>
+    <text x="550" y="500" class="sub" text-anchor="middle">product · decisions · plans · patterns · runbooks · observed</text>
+  </g>
+  <!-- tokens: one per work shape -->
+  <g filter="url(#glow)">
+    <circle r="5" fill="#22d3ee" opacity="0">
+      <animateMotion dur="5s" begin="0s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,103 590,103 L770,103 C950,103 1025,103 1025,215"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.94;1" dur="5s" begin="0s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="5" fill="#4ade80" opacity="0">
+      <animateMotion dur="5s" begin="1.25s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,178 590,178 L770,178 C800,178 800,215 830,215 L1025,215"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.94;1" dur="5s" begin="1.25s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="5" fill="#a78bfa" opacity="0">
+      <animateMotion dur="8s" begin="2.5s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,253 590,253 L770,253 C800,253 800,215 830,215 L1025,215 L1025,250 C1025,470 1000,485 770,485 L330,485 C300,485 290,470 290,250"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="8s" begin="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="5" fill="#fbbf24" opacity="0">
+      <animateMotion dur="6.5s" begin="3.75s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,328 590,328 L680,328 L680,356 C680,400 660,410 620,410 L140,410 C110,410 100,390 100,250"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.95;1" dur="6.5s" begin="3.75s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>
