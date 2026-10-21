@@ -29,7 +29,7 @@ A repository-driven protocol for AI coding assistants, installed by the `ai-work
 ## How it works
 
 <p align="center">
-  <img src=".github/assets/workflow.svg" alt="Animated metro map of the workflow: a request is checked against repository authority, routed to a read-only, bounded, durable, or decision-blocked work shape, proved, and reported, with durable knowledge recorded under docs/" width="100%">
+  <img src=".github/assets/workflow.svg" alt="Agent Metro, an animated transit map of the workflow: a request is checked against repository authority, routed to a read-only, bounded, durable, or decision-blocked work shape, proved, and reported, with durable knowledge recorded under docs/" width="100%">
 </p>
 
 Every request boards at **Request**, changes at **Authority**, and picks a line at **Work shape**:

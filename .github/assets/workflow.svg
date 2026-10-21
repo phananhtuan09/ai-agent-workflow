@@ -1,113 +1,207 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 610" width="1120" height="610" role="img" aria-labelledby="title desc">
-  <title id="title">Repository-driven workflow network map</title>
-  <desc id="desc">A metro map of the workflow. Four lines share the Request, Authority, and Work shape interchanges. Line 1 (read-only) runs to Report. Line 2 (bounded change) runs through Proof to Report. Line 3 (durable change) runs through Proof and Report, then loops through the docs/ depot back to Authority. Line 4 (decision-blocked) stops before mutation and loops back to Request.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Metro: the repository-driven workflow as a transit map</title>
+  <desc id="desc">Four lines share the Request, Authority, and Work shape interchanges. L1 read-only runs to Report. L2 bounded change runs through Proof to Report. L3 durable change runs through Proof and Report, then loops through the docs/ memory depot back to Authority. L4 decision-blocked stops before mutation and returns to Request.</desc>
   <defs>
-    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
-      <circle cx="1" cy="1" r="1" fill="#d9d1c0"/>
-    </pattern>
+    <pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.9" fill="#d8cfbd"/></pattern>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%"><feGaussianBlur stdDeviation="2.5"/></filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="river" x1="0" x2="1"><stop offset="0" stop-color="#9cc9e8"/><stop offset=".5" stop-color="#b9dbf0"/><stop offset="1" stop-color="#9cc9e8"/></linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8f4ea"/><stop offset="1" stop-color="#efe8d8"/></linearGradient>
   </defs>
   <style>
     text { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
-    .title { fill: #1d1d1b; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-    .kicker { fill: #8a8273; font-size: 11px; font-weight: 700; letter-spacing: 2px; }
+    .title { fill: #fff; font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
+    .kicker { fill: #9fb3d1; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; }
     .st { fill: #1d1d1b; font-size: 14px; font-weight: 700; }
     .cap { fill: #6f685c; font-size: 11px; }
     .note { fill: #8a8273; font-size: 11px; font-style: italic; }
-    .badge { fill: #fff; font-size: 11px; font-weight: 700; }
+    .zone { font-size: 11px; font-weight: 700; letter-spacing: 3px; }
+    .badge { fill: #fff; font-size: 11px; font-weight: 800; }
+    .led { font-family: "Courier New", Courier, monospace; font-size: 13px; font-weight: 700; fill: #ffb400; }
+    .ledd { font-family: "Courier New", Courier, monospace; font-size: 13px; font-weight: 700; fill: #6b4c00; }
     .line { fill: none; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
-    .ring { fill: none; stroke: #1d1d1b; stroke-width: 2; animation: ping 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
-    @keyframes ping { 0% { opacity: .7; transform: scale(1); } 100% { opacity: 0; transform: scale(2.2); } }
-    @media (prefers-reduced-motion: reduce) { .ring { animation: none; opacity: 0; } }
+    .ring { fill: none; stroke: #e32017; stroke-width: 2.5; animation: ping 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+    .blink { animation: blink 1s steps(2, start) infinite; }
+    .flow { animation: flow 3s linear infinite; }
+    @keyframes ping { 0% { opacity: .8; transform: scale(1); } 100% { opacity: 0; transform: scale(2.3); } }
+    @keyframes blink { to { visibility: hidden; } }
+    @keyframes flow { to { stroke-dashoffset: -40; } }
+    @media (prefers-reduced-motion: reduce) { .ring, .blink, .flow { animation: none; } }
   </style>
-
-  <rect width="1120" height="610" rx="18" fill="#f6f1e7"/>
-  <rect width="1120" height="610" rx="18" fill="url(#grid)"/>
-  <text x="36" y="44" class="kicker">AI AGENT WORKFLOW · NETWORK MAP</text>
-  <text x="36" y="72" class="title">Every request rides one of four lines</text>
-  <rect x="500" y="574" width="28" height="16" rx="8" fill="#0a76d8"/><text x="514" y="586" class="badge" text-anchor="middle">L1</text><text x="536" y="586.5" class="st" style="font-size:12px">Read-only</text>
-  <rect x="620" y="574" width="28" height="16" rx="8" fill="#00a35a"/><text x="634" y="586" class="badge" text-anchor="middle">L2</text><text x="656" y="586.5" class="st" style="font-size:12px">Bounded change</text>
-  <rect x="780" y="574" width="28" height="16" rx="8" fill="#8e3fbf"/><text x="794" y="586" class="badge" text-anchor="middle">L3</text><text x="816" y="586.5" class="st" style="font-size:12px">Durable change</text>
-  <rect x="940" y="574" width="28" height="16" rx="8" fill="#ee7a00"/><text x="954" y="586" class="badge" text-anchor="middle">L4</text><text x="976" y="586.5" class="st" style="font-size:12px">Decision-blocked</text>
-  <g>
-    <path class="line" d="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230" stroke="#f6f1e7" style="stroke-width:12"/>
+  <rect width="1200" height="780" rx="20" fill="url(#paper)"/>
+  <rect width="1200" height="780" rx="20" fill="url(#grid)" opacity=".8"/>
+  <path d="M0,20 Q0,0 20,0 L1180,0 Q1200,0 1200,20 L1200,132 L0,132 Z" fill="#0f1f3d"/>
+  <rect y="132" width="1200" height="5" fill="#e32017"/>
+  <g transform="translate(78,66)">
+    <circle r="34" fill="none" stroke="#e32017" stroke-width="13"/>
+    <rect x="-50" y="-11" width="100" height="22" fill="#0a76d8"/>
+    <text y="5" class="badge" text-anchor="middle" style="font-size:13px;letter-spacing:1.5px">AGENT</text>
+  </g>
+  <text x="146" y="54" class="kicker">AI AGENT WORKFLOW · NETWORK MAP</text>
+  <text x="146" y="92" class="title">Agent Metro</text>
+  <text x="146" y="115" style="fill:#c9d5e8;font-size:13px">Every request rides one of four lines. Change at Authority, prove before you arrive.</text>
+  <rect x="780" y="18" width="396" height="100" rx="8" fill="#0a0a0a" stroke="#2c3a55" stroke-width="2"/>
+  <text x="794" y="38" class="led" style="font-size:11px;letter-spacing:2px;fill:#ffd36b">DEPARTURES · PLATFORM REQUEST</text>
+  <circle cx="1160" cy="34" r="4" fill="#ff3b30" class="blink"/>
+  <rect x="794" y="47" width="26" height="14" rx="3" fill="#0a76d8"/><text x="807" y="58" class="badge" text-anchor="middle" style="font-size:10px">L1</text>
+  <text x="830" y="58" class="led">READ-ONLY        </text>
+  <text x="990" y="58" class="ledd">answer with evidence</text>
+  <text x="1162" y="58" class="led" text-anchor="end" opacity="0">DUE<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="0s" repeatCount="indefinite"/></text>
+  <text x="990" y="58" class="led" opacity="0">answer with evidence<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="0s" repeatCount="indefinite"/></text>
+  <rect x="794" y="64" width="26" height="14" rx="3" fill="#00a35a"/><text x="807" y="75" class="badge" text-anchor="middle" style="font-size:10px">L2</text>
+  <text x="830" y="75" class="led">BOUNDED CHANGE   </text>
+  <text x="990" y="75" class="ledd">change, prove, report</text>
+  <text x="1162" y="75" class="led" text-anchor="end" opacity="0">DUE<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="2s" repeatCount="indefinite"/></text>
+  <text x="990" y="75" class="led" opacity="0">change, prove, report<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="2s" repeatCount="indefinite"/></text>
+  <rect x="794" y="81" width="26" height="14" rx="3" fill="#8e3fbf"/><text x="807" y="92" class="badge" text-anchor="middle" style="font-size:10px">L3</text>
+  <text x="830" y="92" class="led">DURABLE CHANGE   </text>
+  <text x="990" y="92" class="ledd">plan, prove, remember</text>
+  <text x="1162" y="92" class="led" text-anchor="end" opacity="0">DUE<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="4s" repeatCount="indefinite"/></text>
+  <text x="990" y="92" class="led" opacity="0">plan, prove, remember<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="4s" repeatCount="indefinite"/></text>
+  <rect x="794" y="98" width="26" height="14" rx="3" fill="#ee7a00"/><text x="807" y="109" class="badge" text-anchor="middle" style="font-size:10px">L4</text>
+  <text x="830" y="109" class="led">DECISION-BLOCKED </text>
+  <text x="990" y="109" class="ledd">stop and ask first</text>
+  <text x="1162" y="109" class="led" text-anchor="end" opacity="0">DUE<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="6s" repeatCount="indefinite"/></text>
+  <text x="990" y="109" class="led" opacity="0">stop and ask first<animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.02;0.22;0.25;1" dur="8s" begin="6s" repeatCount="indefinite"/></text>
+  <g transform="translate(40,98)">
+    <rect x="30" y="150" width="440" height="145" rx="28" fill="#0a76d8" opacity=".07"/>
+    <rect x="30" y="150" width="440" height="145" rx="28" fill="none" stroke="#0a76d8" stroke-opacity=".25" stroke-dasharray="2 5"/>
+    <text x="116" y="322" class="zone" fill="#0a76d8" fill-opacity=".55">INTENT QUARTER</text>
+    <rect x="800" y="150" width="300" height="215" rx="28" fill="#00a35a" opacity=".07"/>
+    <rect x="800" y="150" width="300" height="215" rx="28" fill="none" stroke="#00a35a" stroke-opacity=".25" stroke-dasharray="2 5"/>
+    <text x="830" y="350" class="zone" fill="#00a35a" fill-opacity=".55">PROOF HEIGHTS</text>
+    <rect x="230" y="478" width="620" height="94" rx="28" fill="#8e3fbf" opacity=".07"/>
+    <rect x="230" y="478" width="620" height="94" rx="28" fill="none" stroke="#8e3fbf" stroke-opacity=".25" stroke-dasharray="2 5"/>
+    <text x="250" y="566" class="zone" fill="#8e3fbf" fill-opacity=".55">MEMORY DOCKS</text>
+    <path d="M-40,476 C80,456 180,494 300,474 S520,452 640,472 S860,494 980,470 S1120,458 1160,470" fill="none" stroke="url(#river)" stroke-width="20" stroke-linecap="round"/>
+    <path d="M-40,476 C80,456 180,494 300,474 S520,452 640,472 S860,494 980,470 S1120,458 1160,470" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.5" stroke-dasharray="6 14" class="flow"/>
+    <text x="420" y="470" class="note" style="fill:#4f88b5;font-size:12px" transform="rotate(-2 420 470)">River Diff</text>
+    <g filter="url(#shadow)" opacity=".18" transform="translate(2,4)">
+      <path class="line" d="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230" stroke="#000"/>
+      <path class="line" d="M80,241 L1060,241" stroke="#000"/>
+      <path class="line" d="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262" stroke="#000"/>
+      <path class="line" d="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273" stroke="#000"/>
+    </g>
+    <path class="line" d="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230" stroke="#f6f1e7" style="stroke-width:13"/>
     <path class="line" d="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230" stroke="#0a76d8"/>
-    <path class="line" d="M80,241 L1060,241" stroke="#f6f1e7" style="stroke-width:12"/>
+    <path class="line" d="M80,241 L1060,241" stroke="#f6f1e7" style="stroke-width:13"/>
     <path class="line" d="M80,241 L1060,241" stroke="#00a35a"/>
-    <path class="line" d="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262" stroke="#f6f1e7" style="stroke-width:12"/>
+    <path class="line" d="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262" stroke="#f6f1e7" style="stroke-width:13"/>
     <path class="line" d="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262" stroke="#8e3fbf"/>
-    <path class="line" d="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273" stroke="#f6f1e7" style="stroke-width:12"/>
+    <path class="line" d="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273" stroke="#f6f1e7" style="stroke-width:13"/>
     <path class="line" d="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273" stroke="#ee7a00"/>
+    <path d="M258,465 l5,5 M282,465 l-5,5 M258,489 l5,-5 M282,489 l-5,-5" stroke="#1d1d1b" stroke-width="2" fill="none"/>
+    <path d="M1073,457 l5,5 M1097,457 l-5,5 M1073,481 l5,-5 M1097,481 l-5,-5" stroke="#1d1d1b" stroke-width="2" fill="none"/>
+    <rect x="76" y="224" width="8" height="12" rx="2" fill="#0a76d8"/>
+    <rect x="76" y="235" width="8" height="12" rx="2" fill="#00a35a"/>
+    <rect x="76" y="246" width="8" height="12" rx="2" fill="#8e3fbf"/>
+    <rect x="76" y="257" width="8" height="12" rx="2" fill="#ee7a00"/>
+    <path class="line" d="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230" pathLength="1000" stroke="#fff" stroke-opacity=".75" stroke-dasharray="70 3000" stroke-dashoffset="70" filter="url(#glow)">
+      <animate attributeName="stroke-dashoffset" values="70.0;52.7;52.7;-103.5;-103.5;-259.6;-259.6;-512.8;-512.8;-911.4;-911.4;-930.0" keyTimes="0.0000;0.0111;0.0829;0.1830;0.2548;0.3549;0.4266;0.5890;0.6608;0.9163;0.9881;1.0000" dur="11.15s" begin="0.0s" repeatCount="indefinite"/>
+    </path>
+    <path class="line" d="M80,241 L1060,241" pathLength="1000" stroke="#fff" stroke-opacity=".75" stroke-dasharray="70 3000" stroke-dashoffset="70" filter="url(#glow)">
+      <animate attributeName="stroke-dashoffset" values="70.0;45.0;45.0;-130.0;-130.0;-280.0;-280.0;-530.0;-530.0;-730.0;-730.0;-905.0;-905.0;-930.0" keyTimes="0.0000;0.0144;0.0850;0.1859;0.2565;0.3429;0.4135;0.5576;0.6282;0.7435;0.8141;0.9150;0.9856;1.0000" dur="11.33s" begin="1.3s" repeatCount="indefinite"/>
+    </path>
+    <path class="line" d="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262" pathLength="1000" stroke="#fff" stroke-opacity=".75" stroke-dasharray="70 3000" stroke-dashoffset="70" filter="url(#glow)">
+      <animate attributeName="stroke-dashoffset" values="70.0;61.4;61.4;-11.5;-11.5;-80.1;-80.1;-191.5;-191.5;-288.5;-288.5;-363.9;-363.9;-690.6;-690.6;-930.0" keyTimes="0.0000;0.0063;0.0440;0.0977;0.1354;0.1859;0.2236;0.3056;0.3433;0.4147;0.4524;0.5079;0.5456;0.7861;0.8238;1.0000" dur="21.22s" begin="2.6s" repeatCount="indefinite"/>
+    </path>
+    <path class="line" d="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273" pathLength="1000" stroke="#fff" stroke-opacity=".75" stroke-dasharray="70 3000" stroke-dashoffset="70" filter="url(#glow)">
+      <animate attributeName="stroke-dashoffset" values="70.0;58.8;58.8;-47.6;-47.6;-148.4;-148.4;-343.8;-343.8;-930.0" keyTimes="0.0000;0.0086;0.0659;0.1479;0.2052;0.2829;0.3401;0.4908;0.5480;1.0000" dur="13.97s" begin="3.9000000000000004s" repeatCount="indefinite"/>
+    </path>
+    <text x="930" y="492" class="note" text-anchor="middle">record accepted knowledge</text>
+    <text x="282" y="380" class="note">read back as authority</text>
+    <text x="430" y="432" class="note" text-anchor="middle">ask the smallest human question, then reboard</text>
+    <rect class="ring" x="89" y="219" width="22" height="55" rx="11"/>
+    <rect x="89" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+    <text x="100" y="200" class="st" text-anchor="middle">Request</text>
+    <text x="100" y="215" class="cap" text-anchor="middle">you are here</text>
+    <rect x="259" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+    <text x="270" y="200" class="st" text-anchor="middle">Authority</text>
+    <text x="270" y="215" class="cap" text-anchor="middle">intent · evidence</text>
+    <rect x="419" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+    <text x="430" y="200" class="st" text-anchor="middle">Work shape</text>
+    <text x="430" y="215" class="cap" text-anchor="middle">pick the smallest</text>
+    <rect x="849" y="230" width="22" height="33" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+    <text x="860" y="300" class="st" text-anchor="middle">Proof</text>
+    <text x="860" y="315" class="cap" text-anchor="middle">cheapest reliable</text>
+    <rect x="1029" y="219" width="22" height="44" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+    <text x="1040" y="186" class="st" text-anchor="middle">Report</text>
+    <text x="1040" y="201" class="cap" text-anchor="middle">evidence · risk</text>
+    <rect x="520" y="488" width="160" height="24" rx="12" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+    <text x="600" y="504" class="st" text-anchor="middle" style="font-size:12px">docs/</text>
+    <text x="600" y="538" class="st" text-anchor="middle">Durable memory depot</text>
+    <text x="600" y="554" class="cap" text-anchor="middle">product · decisions · plans · patterns · runbooks · observed</text>
+    <circle cx="660" cy="110" r="7" fill="#fff" stroke="#0a76d8" stroke-width="4"/>
+    <text x="660" y="92" class="st" text-anchor="middle">Read-only</text><text x="660" y="136" class="cap" text-anchor="middle">answer with evidence · no mutation</text>
+    <circle cx="660" cy="241" r="7" fill="#fff" stroke="#00a35a" stroke-width="4"/>
+    <text x="660" y="223" class="st" text-anchor="middle">Bounded change</text><text x="660" y="267" class="cap" text-anchor="middle">smallest coherent change</text>
+    <circle cx="665" cy="330" r="7" fill="#fff" stroke="#8e3fbf" stroke-width="4"/>
+    <text x="665" y="312" class="st" text-anchor="middle">Durable change</text><text x="665" y="356" class="cap" text-anchor="middle">resumable plan in docs/plans</text>
+    <circle cx="690" cy="410" r="7" fill="#fff" stroke="#ee7a00" stroke-width="4"/>
+    <text x="690" y="392" class="st" text-anchor="middle">Decision-blocked</text><text x="690" y="436" class="cap" text-anchor="middle">stop before mutation</text>
+    <g opacity="0">
+      <rect x="-19" y="-6.5" width="38" height="13" rx="6" fill="#0a76d8" stroke="#1d1d1b" stroke-width="1.6"/>
+      <rect x="-13" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="-4" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="5" y="-3" width="6" height="6" rx="1" fill="#fff"/><circle cx="16" cy="0" r="1.8" fill="#fff6b0"/>
+      <animateMotion dur="11.15s" begin="0.0s" repeatCount="indefinite" rotate="auto" calcMode="linear" keyPoints="0.0000;0.0173;0.0173;0.1735;0.1735;0.3296;0.3296;0.5828;0.5828;0.9814;0.9814;1.0000" keyTimes="0.0000;0.0111;0.0829;0.1830;0.2548;0.3549;0.4266;0.5890;0.6608;0.9163;0.9881;1.0000" path="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.02;0.97;1" dur="11.15s" begin="0.0s" repeatCount="indefinite"/>
+    </g>
+    <g opacity="0">
+      <rect x="-19" y="-6.5" width="38" height="13" rx="6" fill="#00a35a" stroke="#1d1d1b" stroke-width="1.6"/>
+      <rect x="-13" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="-4" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="5" y="-3" width="6" height="6" rx="1" fill="#fff"/><circle cx="16" cy="0" r="1.8" fill="#fff6b0"/>
+      <animateMotion dur="11.33s" begin="1.3s" repeatCount="indefinite" rotate="auto" calcMode="linear" keyPoints="0.0000;0.0250;0.0250;0.2000;0.2000;0.3500;0.3500;0.6000;0.6000;0.8000;0.8000;0.9750;0.9750;1.0000" keyTimes="0.0000;0.0144;0.0850;0.1859;0.2565;0.3429;0.4135;0.5576;0.6282;0.7435;0.8141;0.9150;0.9856;1.0000" path="M80,241 L1060,241"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.02;0.97;1" dur="11.33s" begin="1.3s" repeatCount="indefinite"/>
+    </g>
+    <g opacity="0">
+      <rect x="-19" y="-6.5" width="38" height="13" rx="6" fill="#8e3fbf" stroke="#1d1d1b" stroke-width="1.6"/>
+      <rect x="-13" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="-4" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="5" y="-3" width="6" height="6" rx="1" fill="#fff"/><circle cx="16" cy="0" r="1.8" fill="#fff6b0"/>
+      <animateMotion dur="21.22s" begin="2.6s" repeatCount="indefinite" rotate="auto" calcMode="linear" keyPoints="0.0000;0.0086;0.0086;0.0815;0.0815;0.1501;0.1501;0.2615;0.2615;0.3585;0.3585;0.4339;0.4339;0.7606;0.7606;1.0000" keyTimes="0.0000;0.0063;0.0440;0.0977;0.1354;0.1859;0.2236;0.3056;0.3433;0.4147;0.4524;0.5079;0.5456;0.7861;0.8238;1.0000" path="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.02;0.97;1" dur="21.22s" begin="2.6s" repeatCount="indefinite"/>
+    </g>
+    <g opacity="0">
+      <rect x="-19" y="-6.5" width="38" height="13" rx="6" fill="#ee7a00" stroke="#1d1d1b" stroke-width="1.6"/>
+      <rect x="-13" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="-4" y="-3" width="6" height="6" rx="1" fill="#fff"/><rect x="5" y="-3" width="6" height="6" rx="1" fill="#fff"/><circle cx="16" cy="0" r="1.8" fill="#fff6b0"/>
+      <animateMotion dur="13.97s" begin="3.9s" repeatCount="indefinite" rotate="auto" calcMode="linear" keyPoints="0.0000;0.0112;0.0112;0.1176;0.1176;0.2184;0.2184;0.4138;0.4138;1.0000" keyTimes="0.0000;0.0086;0.0659;0.1479;0.2052;0.2829;0.3401;0.4908;0.5480;1.0000" path="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.02;0.97;1" dur="13.97s" begin="3.9s" repeatCount="indefinite"/>
+    </g>
   </g>
-  <rect x="76" y="224" width="8" height="12" rx="2" fill="#0a76d8"/>
-  <rect x="76" y="235" width="8" height="12" rx="2" fill="#00a35a"/>
-  <rect x="76" y="246" width="8" height="12" rx="2" fill="#8e3fbf"/>
-  <rect x="76" y="257" width="8" height="12" rx="2" fill="#ee7a00"/>
-  <text x="930" y="491" class="note" text-anchor="middle">record accepted knowledge</text>
-  <text x="282" y="380" class="note">read back as authority</text>
-  <text x="430" y="432" class="note" text-anchor="middle">ask the smallest human question, then reboard</text>
-  <rect class="ring" x="89" y="219" width="22" height="55" rx="11"/>
-  <rect x="89" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
-  <text x="100" y="200" class="st" text-anchor="middle">Request</text>
-  <text x="100" y="215" class="cap" text-anchor="middle">you are here</text>
-  <rect x="259" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
-  <text x="270" y="200" class="st" text-anchor="middle">Authority</text>
-  <text x="270" y="215" class="cap" text-anchor="middle">intent · evidence</text>
-  <rect x="419" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
-  <text x="430" y="200" class="st" text-anchor="middle">Work shape</text>
-  <text x="430" y="215" class="cap" text-anchor="middle">pick the smallest</text>
-  <rect x="849" y="230" width="22" height="33" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
-  <text x="860" y="300" class="st" text-anchor="middle">Proof</text>
-  <text x="860" y="315" class="cap" text-anchor="middle">cheapest reliable</text>
-  <rect x="1029" y="219" width="22" height="44" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
-  <text x="1040" y="186" class="st" text-anchor="middle">Report</text>
-  <text x="1040" y="201" class="cap" text-anchor="middle">evidence · risk</text>
-  <rect x="520" y="488" width="160" height="24" rx="12" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
-  <text x="600" y="504" class="st" text-anchor="middle" style="font-size:12px">docs/</text>
-  <text x="600" y="538" class="st" text-anchor="middle">Durable memory depot</text>
-  <text x="600" y="554" class="cap" text-anchor="middle">product · decisions · plans · patterns · runbooks · observed</text>
-  <circle cx="660" cy="110" r="7" fill="#fff" stroke="#0a76d8" stroke-width="4"/>
-  <text x="660" y="92" class="st" text-anchor="middle">Read-only</text><text x="660" y="136" class="cap" text-anchor="middle">answer with evidence · no mutation</text>
-  <circle cx="660" cy="241" r="7" fill="#fff" stroke="#00a35a" stroke-width="4"/>
-  <text x="660" y="223" class="st" text-anchor="middle">Bounded change</text><text x="660" y="267" class="cap" text-anchor="middle">smallest coherent change</text>
-  <circle cx="665" cy="330" r="7" fill="#fff" stroke="#8e3fbf" stroke-width="4"/>
-  <text x="665" y="312" class="st" text-anchor="middle">Durable change</text><text x="665" y="356" class="cap" text-anchor="middle">resumable plan in docs/plans</text>
-  <circle cx="690" cy="410" r="7" fill="#fff" stroke="#ee7a00" stroke-width="4"/>
-  <text x="690" y="392" class="st" text-anchor="middle">Decision-blocked</text><text x="690" y="436" class="cap" text-anchor="middle">stop before mutation</text>
-  <text x="36" y="586" class="note">Map not to scale · a train departs with every request</text>
-  <g opacity="0">
-    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#0a76d8" stroke="#1d1d1b" stroke-width="1.5"/>
-    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
-    <animateMotion dur="7.2s" begin="0.0s" repeatCount="indefinite" rotate="auto" path="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230"/>
-    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="7.2s" begin="0.0s" repeatCount="indefinite"/>
+  <line x1="40" y1="676" x2="1160" y2="676" stroke="#d8cfbd" stroke-width="1.5"/>
+  <g transform="translate(40,694)">
+    <rect width="200" height="52" rx="8" fill="#fff" stroke="#d8cfbd"/>
+    <path d="M0,8 Q0,0 8,0 L12,0 L12,52 L8,52 Q0,52 0,44 Z" fill="#0a76d8"/>
+    <circle cx="12" cy="26" r="4" fill="#efe8d8"/>
+    <text x="26" y="22" class="st" style="font-size:13px"><tspan fill="#0a76d8">L1</tspan>  Read-only</text>
+    <text x="26" y="40" class="cap">answer with evidence</text>
   </g>
-  <g opacity="0">
-    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#00a35a" stroke="#1d1d1b" stroke-width="1.5"/>
-    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
-    <animateMotion dur="6.53s" begin="1.1s" repeatCount="indefinite" rotate="auto" path="M80,241 L1060,241"/>
-    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="6.53s" begin="1.1s" repeatCount="indefinite"/>
+  <g transform="translate(255,694)">
+    <rect width="200" height="52" rx="8" fill="#fff" stroke="#d8cfbd"/>
+    <path d="M0,8 Q0,0 8,0 L12,0 L12,52 L8,52 Q0,52 0,44 Z" fill="#00a35a"/>
+    <circle cx="12" cy="26" r="4" fill="#efe8d8"/>
+    <text x="26" y="22" class="st" style="font-size:13px"><tspan fill="#00a35a">L2</tspan>  Bounded change</text>
+    <text x="26" y="40" class="cap">change, prove, report</text>
   </g>
-  <g opacity="0">
-    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#8e3fbf" stroke="#1d1d1b" stroke-width="1.5"/>
-    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
-    <animateMotion dur="15.8s" begin="2.2s" repeatCount="indefinite" rotate="auto" path="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262"/>
-    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="15.8s" begin="2.2s" repeatCount="indefinite"/>
+  <g transform="translate(470,694)">
+    <rect width="200" height="52" rx="8" fill="#fff" stroke="#d8cfbd"/>
+    <path d="M0,8 Q0,0 8,0 L12,0 L12,52 L8,52 Q0,52 0,44 Z" fill="#8e3fbf"/>
+    <circle cx="12" cy="26" r="4" fill="#efe8d8"/>
+    <text x="26" y="22" class="st" style="font-size:13px"><tspan fill="#8e3fbf">L3</tspan>  Durable change</text>
+    <text x="26" y="40" class="cap">plan, prove, remember</text>
   </g>
-  <g opacity="0">
-    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#8e3fbf" stroke="#1d1d1b" stroke-width="1.5"/>
-    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
-    <animateMotion dur="15.8s" begin="10.1s" repeatCount="indefinite" rotate="auto" path="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262"/>
-    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="15.8s" begin="10.1s" repeatCount="indefinite"/>
+  <g transform="translate(685,694)">
+    <rect width="200" height="52" rx="8" fill="#fff" stroke="#d8cfbd"/>
+    <path d="M0,8 Q0,0 8,0 L12,0 L12,52 L8,52 Q0,52 0,44 Z" fill="#ee7a00"/>
+    <circle cx="12" cy="26" r="4" fill="#efe8d8"/>
+    <text x="26" y="22" class="st" style="font-size:13px"><tspan fill="#ee7a00">L4</tspan>  Decision-blocked</text>
+    <text x="26" y="40" class="cap">stop and ask first</text>
   </g>
-  <g opacity="0">
-    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#ee7a00" stroke="#1d1d1b" stroke-width="1.5"/>
-    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
-    <animateMotion dur="10.92s" begin="3.3s" repeatCount="indefinite" rotate="auto" path="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273"/>
-    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="10.92s" begin="3.3s" repeatCount="indefinite"/>
+  <g transform="translate(920,704)">
+    <rect width="80" height="6" fill="#1d1d1b"/><rect x="40" width="40" height="6" fill="#fff" stroke="#1d1d1b"/>
+    <text y="22" class="cap">0</text><text x="80" y="22" class="cap" text-anchor="end">1 diff</text>
+    <text y="40" class="note">Map not to scale</text>
   </g>
-  <g opacity="0">
-    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#ee7a00" stroke="#1d1d1b" stroke-width="1.5"/>
-    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
-    <animateMotion dur="10.92s" begin="8.76s" repeatCount="indefinite" rotate="auto" path="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273"/>
-    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="10.92s" begin="8.76s" repeatCount="indefinite"/>
+  <g transform="translate(1130,718)">
+    <circle r="26" fill="#fff" stroke="#d8cfbd"/>
+    <path d="M0,-20 L6,0 L0,20 L-6,0 Z" fill="#1d1d1b"/><path d="M0,-20 L6,0 L-6,0 Z" fill="#e32017"/>
+    <text y="-30" class="st" text-anchor="middle" style="font-size:10px">N</text>
+    <text y="40" class="cap" text-anchor="middle">north star: proof</text>
   </g>
 </svg>
