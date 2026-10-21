@@ -36,22 +36,26 @@ If `gh` is missing, unauthenticated, or cannot write to the repository, report t
 | `ready-for-human` | A human decision is required before work can start | The decision and the recommended option |
 | `wontfix` | The human decided not to do it | None from this skill |
 
-Run `gh label list` first and reuse an existing label that already means the same state, such as an existing `wontfix` or `question` label, instead of adding a parallel one.
+Run `gh label list` first and reuse an existing label only when its name or description clearly means the same state, such as an existing `wontfix`, instead of adding a parallel one.
 Report the mapping you used.
 Create a missing state label with `gh label create` only when applying it, and report each label created.
-An issue holds exactly one state label: when applying one, remove the others in the same `gh issue edit` call.
+An issue holds exactly one state label: when applying one, remove only the other state labels in the same `gh issue edit` call and keep every non-state label, such as `bug` or `enhancement`.
 
 ## Select the issues
 
 - Named issues: triage those numbers or URLs.
 - No issue named: triage open issues labeled `needs-triage` or carrying no state label, oldest first.
-  Ask before processing more than 20 in one run.
+  Ask before processing more than 20 in one run; when no human can answer, such as a CI run, process the oldest 20 and report how many remain.
 - An issue in `needs-info` whose reporter has replied since the last triage comment is eligible again.
-- Skip an issue already in a state when nothing new has arrived since its last triage comment.
+- An issue whose last triage comment names a state but that still has `needs-triage` or no state label is unfinished: apply the missing label and do not post a second comment.
+- An issue whose state label is another state than its last triage comment was changed by a human: keep that label, report it, and re-triage only when asked.
+- Skip an issue when its state label matches its last triage comment and nothing new has arrived since that comment.
+
+A triage comment is a comment that contains the marker described under Comment; ignore similar comments without it.
 
 ## Classify each issue
 
-Read the issue with `gh issue view <n> --comments --json number,title,body,author,labels,comments,state`.
+Read the issue with `gh issue view <n> --json number,title,body,author,labels,comments,state`.
 Inspect the smallest repository surface that settles the state: the affected code, `docs/product/`, `docs/decisions/`, and related open or closed issues.
 Separate what the issue states, what the repository confirms, and what you infer.
 
@@ -67,7 +71,9 @@ Confirm a bug report against the code when that is cheap, but do not fix it.
 ## Comment
 
 Post one comment per issue with `gh issue comment <n> --body-file <file>`, in the issue's language, starting with a line that names the state.
+End it with the hidden marker `<!-- triage:state=<state> -->` so later runs can find it and compare it with the label.
 Keep it short enough to read without scrolling.
+Post the comment first and apply the state label after it, so a label never announces a state whose comment is missing.
 
 - `needs-info`: up to five numbered questions, each naming the exact fact needed and why it blocks the work.
   Do not write a generic "please add more details".
