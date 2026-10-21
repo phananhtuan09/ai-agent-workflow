@@ -150,6 +150,9 @@ When adding a durable artifact namespace, classify and index it in `docs/README.
 Choose the cheapest reliable proof that observes the changed behavior.
 Use focused unit proof for pure local logic, integration proof for boundaries, runtime or browser proof for visible behavior, and measurement for performance claims.
 For a regression bug, reproduce the failure before the fix and confirm the same scenario after the fix when feasible.
+For a bug whose cause is not evident, first build a fast check that fails on the bug, then state for each hypothesis the result it predicts on that check before changing code.
+When no cheap reproduction is feasible, state why and gather the closest observational evidence, such as logs, traces, bisection, or a runtime observation, instead of trying guessed fixes.
+Keep the reproduction as a regression test when it fits the project's test suite; otherwise remove it with the other temporary proof scaffolding.
 For migration or recovery-sensitive behavior, exercise a dry run or recovery scenario.
 Repository-wide checks supplement focused proof but do not replace it.
 For multi-case runtime E2E work that must survive sessions or support later audit, use the installed runtime E2E capability and its namespace contract. A runtime case passes only through its declared production path and observable result; unit, widget, mocked, build, and source checks remain supporting proof.
