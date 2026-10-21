@@ -134,7 +134,7 @@
     <g transform="translate(57.56,195)"><circle r="10" fill="#1d1d1b"/><path d="M-5,-4 h10 a2,2 0 0 1 2,2 v4 a2,2 0 0 1 -2,2 h-5 l-3,3 v-3 h-2 a2,2 0 0 1 -2,-2 v-4 a2,2 0 0 1 2,-2z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
     <g transform="translate(219.72,195)"><circle r="10" fill="#1d1d1b"/><path d="M0,-6 L5,-4 V0 C5,3.5 2.5,5.5 0,6.5 C-2.5,5.5 -5,3.5 -5,0 V-4 Z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
     <g transform="translate(375.8,195)"><circle r="10" fill="#1d1d1b"/><path d="M0,6 V0 M0,0 L-5,-5 M0,0 L5,-5 M-5,-5 h2.5 M-5,-5 v2.5 M5,-5 h-2.5 M5,-5 v2.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
-    <g transform="translate(825.4,295)"><circle r="10" fill="#1d1d1b"/><path d="M-5,0 L-1.5,3.5 L5,-4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/></g>
+    <g transform="translate(825.4,295)"><circle r="10" fill="#1d1d1b"/><path d="M-5,0 L-1.5,3.5 L5,-4" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
     <circle cx="854" cy="330" r="4.2" fill="#00a35a" stroke="#fff" stroke-width="1.2"/>
     <circle cx="866" cy="330" r="4.2" fill="#8e3fbf" stroke="#fff" stroke-width="1.2"/>
     <g transform="translate(1001.48,181)"><circle r="10" fill="#1d1d1b"/><path d="M-4,-6 h5 l3,3 v9 h-8z M-2,-1 h4 M-2,2 h4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
