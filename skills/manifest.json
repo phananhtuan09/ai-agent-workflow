@@ -23,6 +23,9 @@
     "testing": [
       "runtime-e2e-test"
     ],
+    "issue-triage": [
+      "triage"
+    ],
     "evaluation": [
       "workflow-evaluation",
       "record-workflow-friction"

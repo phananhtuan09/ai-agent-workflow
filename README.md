@@ -62,6 +62,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `manage-project-knowledge` | Finds and explains durable knowledge under `docs/`, keeps it current on its own after each task, and maintains all project docs when invoked without a topic. |
 | `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
+| `triage` | Labels GitHub issues as needs-info, ready-for-agent, or ready-for-human and comments with questions, an agent brief, or the decision needed. |
 | `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
 | `workflow-evaluation`, `record-workflow-friction` | Evaluate AI workflows and record execution friction. |
 | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` | Run two-to-three-day learning mini-projects. |
@@ -72,6 +73,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `common-review` | `quality-code-check`, `review-pr` |
 | `proposal` | `proposal-designer` |
 | `testing` | `runtime-e2e-test` |
+| `issue-triage` | `triage` |
 | `evaluation` | `workflow-evaluation`, `record-workflow-friction` |
 | `learning` | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` |
 | `planner-mode` | `planner`, `quality-code-check`, `smart-commits`, `manage-project-knowledge` |

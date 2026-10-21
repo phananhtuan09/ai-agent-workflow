@@ -250,6 +250,15 @@ test("testing bundle registers the runtime E2E skill", () => {
   assert.deepStrictEqual(skillIds, ["runtime-e2e-test"]);
 });
 
+test("triage bundle registers the issue triage skill", () => {
+  const { skillIds } = resolveSkills({
+    sourceRoot: SOURCE_ROOT,
+    kitId: "coding-standard",
+    extraBundles: ["issue-triage"],
+  });
+  assert.deepStrictEqual(skillIds, ["triage"]);
+});
+
 test("canonical skills have required entrypoints", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(SOURCE_ROOT, "skills/manifest.json"), "utf8"));
   const ids = Object.values(manifest.bundles).flat();
