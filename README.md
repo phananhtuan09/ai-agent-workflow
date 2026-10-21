@@ -29,15 +29,15 @@ A repository-driven protocol for AI coding assistants, installed by the `ai-work
 ## How it works
 
 <p align="center">
-  <img src=".github/assets/workflow.svg" alt="Animated workflow: a request is checked against repository authority, routed to a read-only, bounded, durable, or decision-blocked work shape, proved, and reported, with durable knowledge recorded under docs/" width="100%">
+  <img src=".github/assets/workflow.svg" alt="Animated metro map of the workflow: a request is checked against repository authority, routed to a read-only, bounded, durable, or decision-blocked work shape, proved, and reported, with durable knowledge recorded under docs/" width="100%">
 </p>
 
-Each colored token follows one work shape:
+Every request boards at **Request**, changes at **Authority**, and picks a line at **Work shape**:
 
-- 🔵 **Read-only** work answers with evidence and skips mutation.
-- 🟢 **Bounded change** makes the smallest coherent change, proves it, and reports.
-- 🟣 **Durable change** keeps a resumable plan and records accepted knowledge in `docs/`, which later work reads back as authority.
-- 🟡 **Decision-blocked** work stops before mutation and asks the smallest human question.
+- 🔵 **L1 Read-only** answers with evidence and skips mutation.
+- 🟢 **L2 Bounded change** makes the smallest coherent change, proves it, and reports.
+- 🟣 **L3 Durable change** keeps a resumable plan and loops through the `docs/` depot, which later work reads back as authority.
+- 🟠 **L4 Decision-blocked** stops before mutation, asks the smallest human question, and reboards at Request.
 
 The full rules live in [`AGENTS.md`](AGENTS.md) and [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 

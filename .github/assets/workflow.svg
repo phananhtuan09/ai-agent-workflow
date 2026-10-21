@@ -1,140 +1,113 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1110 560" width="1110" height="560" role="img" aria-labelledby="title desc">
-  <title id="title">Repository-driven workflow</title>
-  <desc id="desc">A request is checked against repository authority, routed to one of four work shapes (read-only, bounded change, durable change, decision-blocked), proved with the cheapest reliable check, and reported. Durable knowledge is recorded under docs/ and read back as authority.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 610" width="1120" height="610" role="img" aria-labelledby="title desc">
+  <title id="title">Repository-driven workflow network map</title>
+  <desc id="desc">A metro map of the workflow. Four lines share the Request, Authority, and Work shape interchanges. Line 1 (read-only) runs to Report. Line 2 (bounded change) runs through Proof to Report. Line 3 (durable change) runs through Proof and Report, then loops through the docs/ depot back to Authority. Line 4 (decision-blocked) stops before mutation and loops back to Request.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0b1020"/>
-      <stop offset="1" stop-color="#111827"/>
-    </linearGradient>
-    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#6366f1" stop-opacity="0.18"/>
-      <stop offset="1" stop-color="#6366f1" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="glow" x="-200%" y="-200%" width="500%" height="500%">
-      <feGaussianBlur stdDeviation="4" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
-    </marker>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#d9d1c0"/>
+    </pattern>
   </defs>
   <style>
-    text { font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif; }
-    .name { fill: #f1f5f9; font-size: 15px; font-weight: 600; }
-    .sub { fill: #94a3b8; font-size: 11px; }
-    .label { font-size: 11px; font-style: italic; }
-    .box { fill: #0f172a; stroke: #334155; stroke-width: 1.5; }
-    .edge { fill: none; stroke: #475569; stroke-width: 1.6; stroke-dasharray: 6 7; animation: flow 1.4s linear infinite; }
-    .pulse { animation: pulse 4s ease-in-out infinite; }
-    @keyframes flow { to { stroke-dashoffset: -26; } }
-    @keyframes pulse { 0%, 100% { stroke-opacity: 0.35; } 50% { stroke-opacity: 1; } }
-    @media (prefers-reduced-motion: reduce) { .edge, .pulse { animation: none; } }
+    text { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    .title { fill: #1d1d1b; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+    .kicker { fill: #8a8273; font-size: 11px; font-weight: 700; letter-spacing: 2px; }
+    .st { fill: #1d1d1b; font-size: 14px; font-weight: 700; }
+    .cap { fill: #6f685c; font-size: 11px; }
+    .note { fill: #8a8273; font-size: 11px; font-style: italic; }
+    .badge { fill: #fff; font-size: 11px; font-weight: 700; }
+    .line { fill: none; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+    .ring { fill: none; stroke: #1d1d1b; stroke-width: 2; animation: ping 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes ping { 0% { opacity: .7; transform: scale(1); } 100% { opacity: 0; transform: scale(2.2); } }
+    @media (prefers-reduced-motion: reduce) { .ring { animation: none; opacity: 0; } }
   </style>
 
-  <rect width="1110" height="560" rx="16" fill="url(#bg)"/>
-  <ellipse cx="555" cy="230" rx="520" ry="230" fill="url(#halo)"/>
-
-  <text x="30" y="42" class="name" style="font-size:18px">How an agent handles every request</text>
-  <text x="1080" y="42" class="sub" text-anchor="end">one protocol · four work shapes · repository as memory</text>
-
-  <!-- edges -->
-  <path class="edge" d="M170,215 L210,215" marker-end="url(#arrow)"/>
-  <path class="edge" d="M370,215 L410,215" marker-end="url(#arrow)"/>
-  <path class="edge" d="M530,215 C560,215 560,103 590,103" marker-end="url(#arrow)"/>
-  <path class="edge" d="M530,215 C560,215 560,178 590,178" marker-end="url(#arrow)"/>
-  <path class="edge" d="M530,215 C560,215 560,253 590,253" marker-end="url(#arrow)"/>
-  <path class="edge" d="M530,215 C560,215 560,328 590,328" marker-end="url(#arrow)"/>
-  <path class="edge" d="M770,103 C950,103 1025,103 1025,180" marker-end="url(#arrow)"/>
-  <path class="edge" d="M770,178 C800,178 800,215 830,215" marker-end="url(#arrow)"/>
-  <path class="edge" d="M770,253 C800,253 800,215 830,215" marker-end="url(#arrow)"/>
-  <path class="edge" d="M940,215 L970,215" marker-end="url(#arrow)"/>
-  <path class="edge" d="M680,356 C680,400 660,410 620,410 L140,410 C110,410 100,390 100,250" marker-end="url(#arrow)"/>
-  <path class="edge" d="M1025,250 C1025,470 1000,485 770,485" marker-end="url(#arrow)"/>
-  <path class="edge" d="M330,485 C300,485 290,470 290,250" marker-end="url(#arrow)"/>
-
-  <text x="900" y="93" class="label" fill="#22d3ee" text-anchor="middle">answer with evidence</text>
-  <text x="400" y="401" class="label" fill="#fbbf24" text-anchor="middle">ask the smallest human question</text>
-  <text x="900" y="474" class="label" fill="#a78bfa" text-anchor="middle">record accepted knowledge</text>
-  <text x="280" y="445" class="label" fill="#a78bfa" text-anchor="end">read as authority</text>
-
-  <!-- main nodes -->
+  <rect width="1120" height="610" rx="18" fill="#f6f1e7"/>
+  <rect width="1120" height="610" rx="18" fill="url(#grid)"/>
+  <text x="36" y="44" class="kicker">AI AGENT WORKFLOW · NETWORK MAP</text>
+  <text x="36" y="72" class="title">Every request rides one of four lines</text>
+  <rect x="500" y="574" width="28" height="16" rx="8" fill="#0a76d8"/><text x="514" y="586" class="badge" text-anchor="middle">L1</text><text x="536" y="586.5" class="st" style="font-size:12px">Read-only</text>
+  <rect x="620" y="574" width="28" height="16" rx="8" fill="#00a35a"/><text x="634" y="586" class="badge" text-anchor="middle">L2</text><text x="656" y="586.5" class="st" style="font-size:12px">Bounded change</text>
+  <rect x="780" y="574" width="28" height="16" rx="8" fill="#8e3fbf"/><text x="794" y="586" class="badge" text-anchor="middle">L3</text><text x="816" y="586.5" class="st" style="font-size:12px">Durable change</text>
+  <rect x="940" y="574" width="28" height="16" rx="8" fill="#ee7a00"/><text x="954" y="586" class="badge" text-anchor="middle">L4</text><text x="976" y="586.5" class="st" style="font-size:12px">Decision-blocked</text>
   <g>
-    <rect class="box pulse" x="30" y="180" width="140" height="70" rx="12" style="stroke:#60a5fa"/>
-    <text x="100" y="211" class="name" text-anchor="middle">Request</text>
-    <text x="100" y="231" class="sub" text-anchor="middle">requested outcome</text>
+    <path class="line" d="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230" stroke="#f6f1e7" style="stroke-width:12"/>
+    <path class="line" d="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230" stroke="#0a76d8"/>
+    <path class="line" d="M80,241 L1060,241" stroke="#f6f1e7" style="stroke-width:12"/>
+    <path class="line" d="M80,241 L1060,241" stroke="#00a35a"/>
+    <path class="line" d="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262" stroke="#f6f1e7" style="stroke-width:12"/>
+    <path class="line" d="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262" stroke="#8e3fbf"/>
+    <path class="line" d="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273" stroke="#f6f1e7" style="stroke-width:12"/>
+    <path class="line" d="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273" stroke="#ee7a00"/>
   </g>
-  <g>
-    <rect class="box pulse" x="210" y="180" width="160" height="70" rx="12" style="stroke:#60a5fa;animation-delay:.5s"/>
-    <text x="290" y="211" class="name" text-anchor="middle">Authority</text>
-    <text x="290" y="231" class="sub" text-anchor="middle">intent · current evidence</text>
+  <rect x="76" y="224" width="8" height="12" rx="2" fill="#0a76d8"/>
+  <rect x="76" y="235" width="8" height="12" rx="2" fill="#00a35a"/>
+  <rect x="76" y="246" width="8" height="12" rx="2" fill="#8e3fbf"/>
+  <rect x="76" y="257" width="8" height="12" rx="2" fill="#ee7a00"/>
+  <text x="930" y="491" class="note" text-anchor="middle">record accepted knowledge</text>
+  <text x="282" y="380" class="note">read back as authority</text>
+  <text x="430" y="432" class="note" text-anchor="middle">ask the smallest human question, then reboard</text>
+  <rect class="ring" x="89" y="219" width="22" height="55" rx="11"/>
+  <rect x="89" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+  <text x="100" y="200" class="st" text-anchor="middle">Request</text>
+  <text x="100" y="215" class="cap" text-anchor="middle">you are here</text>
+  <rect x="259" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+  <text x="270" y="200" class="st" text-anchor="middle">Authority</text>
+  <text x="270" y="215" class="cap" text-anchor="middle">intent · evidence</text>
+  <rect x="419" y="219" width="22" height="55" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+  <text x="430" y="200" class="st" text-anchor="middle">Work shape</text>
+  <text x="430" y="215" class="cap" text-anchor="middle">pick the smallest</text>
+  <rect x="849" y="230" width="22" height="33" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+  <text x="860" y="300" class="st" text-anchor="middle">Proof</text>
+  <text x="860" y="315" class="cap" text-anchor="middle">cheapest reliable</text>
+  <rect x="1029" y="219" width="22" height="44" rx="11" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+  <text x="1040" y="186" class="st" text-anchor="middle">Report</text>
+  <text x="1040" y="201" class="cap" text-anchor="middle">evidence · risk</text>
+  <rect x="520" y="488" width="160" height="24" rx="12" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
+  <text x="600" y="504" class="st" text-anchor="middle" style="font-size:12px">docs/</text>
+  <text x="600" y="538" class="st" text-anchor="middle">Durable memory depot</text>
+  <text x="600" y="554" class="cap" text-anchor="middle">product · decisions · plans · patterns · runbooks · observed</text>
+  <circle cx="660" cy="110" r="7" fill="#fff" stroke="#0a76d8" stroke-width="4"/>
+  <text x="660" y="92" class="st" text-anchor="middle">Read-only</text><text x="660" y="136" class="cap" text-anchor="middle">answer with evidence · no mutation</text>
+  <circle cx="660" cy="241" r="7" fill="#fff" stroke="#00a35a" stroke-width="4"/>
+  <text x="660" y="223" class="st" text-anchor="middle">Bounded change</text><text x="660" y="267" class="cap" text-anchor="middle">smallest coherent change</text>
+  <circle cx="665" cy="330" r="7" fill="#fff" stroke="#8e3fbf" stroke-width="4"/>
+  <text x="665" y="312" class="st" text-anchor="middle">Durable change</text><text x="665" y="356" class="cap" text-anchor="middle">resumable plan in docs/plans</text>
+  <circle cx="690" cy="410" r="7" fill="#fff" stroke="#ee7a00" stroke-width="4"/>
+  <text x="690" y="392" class="st" text-anchor="middle">Decision-blocked</text><text x="690" y="436" class="cap" text-anchor="middle">stop before mutation</text>
+  <text x="36" y="586" class="note">Map not to scale · a train departs with every request</text>
+  <g opacity="0">
+    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#0a76d8" stroke="#1d1d1b" stroke-width="1.5"/>
+    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
+    <animateMotion dur="7.2s" begin="0.0s" repeatCount="indefinite" rotate="auto" path="M80,230 L452.0,230.0 Q470,230 482.7,217.3 L577.3,122.7 Q590,110 608.0,110.0 L862.0,110.0 Q880,110 892.7,122.7 L987.3,217.3 Q1000,230 1018.0,230.0 L1060,230"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="7.2s" begin="0.0s" repeatCount="indefinite"/>
   </g>
-  <g>
-    <polygon class="box pulse" points="470,155 530,215 470,275 410,215" style="stroke:#818cf8;animation-delay:1s"/>
-    <text x="470" y="211" class="name" text-anchor="middle" style="font-size:13px">Work</text>
-    <text x="470" y="228" class="name" text-anchor="middle" style="font-size:13px">shape</text>
+  <g opacity="0">
+    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#00a35a" stroke="#1d1d1b" stroke-width="1.5"/>
+    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
+    <animateMotion dur="6.53s" begin="1.1s" repeatCount="indefinite" rotate="auto" path="M80,241 L1060,241"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="6.53s" begin="1.1s" repeatCount="indefinite"/>
   </g>
-
-  <!-- work shapes -->
-  <g>
-    <rect class="box" x="590" y="75" width="180" height="56" rx="10"/>
-    <rect x="590" y="75" width="5" height="56" rx="2.5" fill="#22d3ee"/>
-    <text x="608" y="99" class="name">Read-only</text>
-    <text x="608" y="118" class="sub">explain · review · diagnose</text>
+  <g opacity="0">
+    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#8e3fbf" stroke="#1d1d1b" stroke-width="1.5"/>
+    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
+    <animateMotion dur="15.8s" begin="2.2s" repeatCount="indefinite" rotate="auto" path="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="15.8s" begin="2.2s" repeatCount="indefinite"/>
   </g>
-  <g>
-    <rect class="box" x="590" y="150" width="180" height="56" rx="10"/>
-    <rect x="590" y="150" width="5" height="56" rx="2.5" fill="#4ade80"/>
-    <text x="608" y="174" class="name">Bounded change</text>
-    <text x="608" y="193" class="sub">smallest coherent change</text>
+  <g opacity="0">
+    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#8e3fbf" stroke="#1d1d1b" stroke-width="1.5"/>
+    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
+    <animateMotion dur="15.8s" begin="10.1s" repeatCount="indefinite" rotate="auto" path="M80,252 L482.0,252.0 Q500,252 512.7,264.7 L565.3,317.3 Q578,330 596.0,330.0 L732.0,330.0 Q750,330 762.7,317.3 L815.3,264.7 Q828,252 846.0,252.0 L1067.0,252.0 Q1085,252 1085.0,270.0 L1085.0,482.0 Q1085,500 1067.0,500.0 L288.0,500.0 Q270,500 270.0,482.0 L270,262"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="15.8s" begin="10.1s" repeatCount="indefinite"/>
   </g>
-  <g>
-    <rect class="box" x="590" y="225" width="180" height="56" rx="10"/>
-    <rect x="590" y="225" width="5" height="56" rx="2.5" fill="#a78bfa"/>
-    <text x="608" y="249" class="name">Durable change</text>
-    <text x="608" y="268" class="sub">resumable plan in docs/plans</text>
+  <g opacity="0">
+    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#ee7a00" stroke="#1d1d1b" stroke-width="1.5"/>
+    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
+    <animateMotion dur="10.92s" begin="3.3s" repeatCount="indefinite" rotate="auto" path="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="10.92s" begin="3.3s" repeatCount="indefinite"/>
   </g>
-  <g>
-    <rect class="box" x="590" y="300" width="180" height="56" rx="10"/>
-    <rect x="590" y="300" width="5" height="56" rx="2.5" fill="#fbbf24"/>
-    <text x="608" y="324" class="name">Decision-blocked</text>
-    <text x="608" y="343" class="sub">stop before mutation</text>
-  </g>
-
-  <!-- proof and report -->
-  <g>
-    <rect class="box pulse" x="830" y="180" width="110" height="70" rx="12" style="stroke:#4ade80;animation-delay:1.5s"/>
-    <text x="885" y="211" class="name" text-anchor="middle">Proof</text>
-    <text x="885" y="231" class="sub" text-anchor="middle">cheapest reliable</text>
-  </g>
-  <g>
-    <rect class="box pulse" x="970" y="180" width="110" height="70" rx="12" style="stroke:#4ade80;animation-delay:2s"/>
-    <text x="1025" y="211" class="name" text-anchor="middle">Report</text>
-    <text x="1025" y="231" class="sub" text-anchor="middle">evidence · risk</text>
-  </g>
-
-  <!-- durable memory -->
-  <g>
-    <rect class="box pulse" x="330" y="455" width="440" height="60" rx="30" style="stroke:#a78bfa;animation-delay:2.5s"/>
-    <text x="550" y="481" class="name" text-anchor="middle">docs/ · durable repository memory</text>
-    <text x="550" y="500" class="sub" text-anchor="middle">product · decisions · plans · patterns · runbooks · observed</text>
-  </g>
-  <!-- tokens: one per work shape -->
-  <g filter="url(#glow)">
-    <circle r="5" fill="#22d3ee" opacity="0">
-      <animateMotion dur="5s" begin="0s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,103 590,103 L770,103 C950,103 1025,103 1025,215"/>
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.94;1" dur="5s" begin="0s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="5" fill="#4ade80" opacity="0">
-      <animateMotion dur="5s" begin="1.25s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,178 590,178 L770,178 C800,178 800,215 830,215 L1025,215"/>
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.94;1" dur="5s" begin="1.25s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="5" fill="#a78bfa" opacity="0">
-      <animateMotion dur="8s" begin="2.5s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,253 590,253 L770,253 C800,253 800,215 830,215 L1025,215 L1025,250 C1025,470 1000,485 770,485 L330,485 C300,485 290,470 290,250"/>
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="8s" begin="2.5s" repeatCount="indefinite"/>
-    </circle>
-    <circle r="5" fill="#fbbf24" opacity="0">
-      <animateMotion dur="6.5s" begin="3.75s" repeatCount="indefinite" path="M100,215 L530,215 C560,215 560,328 590,328 L680,328 L680,356 C680,400 660,410 620,410 L140,410 C110,410 100,390 100,250"/>
-      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.95;1" dur="6.5s" begin="3.75s" repeatCount="indefinite"/>
-    </circle>
+  <g opacity="0">
+    <rect x="-15" y="-6" width="30" height="12" rx="5" fill="#ee7a00" stroke="#1d1d1b" stroke-width="1.5"/>
+    <rect x="-10" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="-2.5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/><rect x="5" y="-2.5" width="5" height="5" rx="1" fill="#fff"/>
+    <animateMotion dur="10.92s" begin="8.76s" repeatCount="indefinite" rotate="auto" path="M80,263 L442.0,263.0 Q460,263 472.7,275.7 L594.3,397.3 Q607,410 625.0,410.0 L765.0,410.0 Q780,410 780.0,425.0 L780.0,425.0 Q780,440 765.0,440.0 L118.0,440.0 Q100,440 100.0,422.0 L100,273"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.03;0.96;1" dur="10.92s" begin="8.76s" repeatCount="indefinite"/>
   </g>
 </svg>
