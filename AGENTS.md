@@ -42,4 +42,4 @@
 - Select the cheapest reliable proof for the changed behavior, such as a focused test, integration check, runtime observation, browser check, or measurement.
 - Reproduce a reported bug before changing code when the repository and environment make reproduction feasible.
 - Do not claim completion until the requested behavior is implemented end to end and relevant proof has passed.
-- Report changed behavior, checks actually run, unresolved failures, and remaining material risk without fabricating evidence.
+- Report changed behavior with the checks actually run, what that evidence did not cover, unresolved failures, remaining material risk, and what only a human can confirm, without fabricating evidence.
