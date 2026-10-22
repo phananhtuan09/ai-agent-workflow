@@ -192,7 +192,7 @@ For an A/B benchmark, also compare globally available skills and instructions, r
 
 | Path | Contents | Installed by the CLI |
 | --- | --- | --- |
-| [`global-skills/`](global-skills) | Machine-wide skills (`herdr-guide`, `prompt-leverage`) | No; follow its README |
+| [`global-skills/`](global-skills) | Machine-wide skills (`herdr-guide`, `idea-scout`, `prompt-leverage`) | No; follow its README |
 | [`paseo-plugins/`](paseo-plugins) | [Paseo](https://paseo.sh) plugins (`attention`, `usage-pill`) | No; follow its README |
 | `cli.js`, `lib/` | The `ai-workflow-init` installer and updater | — |
 | `docs/braintorm/` | Exploratory design notes, not product authority | No |
