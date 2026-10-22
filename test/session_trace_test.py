@@ -250,7 +250,7 @@ class SessionTraceTests(unittest.TestCase):
         self.assertEqual(noisy["triage"]["interrupts"], 1)
         self.assertEqual(noisy["triage"]["human_after_done_claim"], 1)
         self.assertEqual(project["counts"], {"sessions": 2, "subagents": 1, "excluded": 1, "evidence_gaps": 1,
-                                             "outside_window": 1, "issues": 0})
+                                             "unknown_activity": 0, "outside_window": 1, "issues": 0})
         self.assertEqual(project["evidence_gaps"][0]["paseo"]["agent_id"], "lost")
         self.assertEqual([item["session_id"] for item in second["sessions"]], ["elsewhere"])
         ranking = [(item["session_id"], item["friction"], item["deep_dive"]) for item in result["triage"]]
@@ -268,6 +268,33 @@ class SessionTraceTests(unittest.TestCase):
             result = self.run_triage("--project", str(self.project))
         self.assertEqual(result["projects"][0]["excluded"][0]["reason"], "audit_session")
         self.assertEqual(result["triage"], [])
+
+    def test_triage_counts_string_messages_once_and_dedupes_projects(self):
+        self.write(self.roots["CLAUDE_CONFIG_DIR"] / "projects/p/plain.jsonl", [
+            {"type": "user", "sessionId": "plain", "cwd": str(self.project), "timestamp": "2026-10-20T09:00:00Z",
+             "message": {"role": "user", "content": "fix it #friction wrong file"}},
+            {"type": "assistant", "sessionId": "plain", "cwd": str(self.project), "timestamp": "2026-10-20T09:01:00Z",
+             "message": {"role": "assistant", "content": [{"type": "text", "text": "ok"}]}}])
+        with patch.dict("os.environ", {"CLAUDE_CODE_SESSION_ID": "", "PASEO_AGENT_ID": ""}):
+            result = self.run_triage("--project", str(self.project), "--project", str(self.project) + "/.")
+        self.assertEqual(len(result["projects"]), 1)
+        self.assertEqual(len(result["triage"]), 1)
+        triage = result["projects"][0]["sessions"][0]["triage"]
+        self.assertEqual(triage["human_messages"], 1)
+        self.assertEqual(len(triage["friction_notes"]), 1)
+
+    def test_triage_evidence_gaps_respect_exclusion_and_unknown_activity(self):
+        agents = self.roots["PASEO_HOME"] / "agents/project"
+        agents.mkdir(parents=True)
+        for aid, activity in [("audit-agent", "2026-10-20T09:00:00Z"), ("undated", None)]:
+            (agents / f"{aid}.json").write_text(json.dumps({
+                "id": aid, "provider": "claude", "cwd": str(self.project), "lastStatus": "closed",
+                "lastActivityAt": activity, "persistence": {"sessionId": f"missing-{aid}"}}))
+        with patch.dict("os.environ", {"CLAUDE_CODE_SESSION_ID": "", "PASEO_AGENT_ID": "audit-agent"}):
+            project = self.run_triage("--project", str(self.project))["projects"][0]
+        self.assertEqual(project["evidence_gaps"], [])
+        self.assertEqual([item["agent_id"] for item in project["excluded"]], ["audit-agent"])
+        self.assertEqual([item["paseo"]["agent_id"] for item in project["unknown_activity"]], ["undated"])
 
     def test_triage_options_are_validated(self):
         for args in (["--list", "--runtime", "claude", "--project", "a", "--since", "2026-10-01"],

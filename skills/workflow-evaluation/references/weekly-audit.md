@@ -35,9 +35,10 @@ The default window is the 7 days before `--until` (default now); naive dates are
 Sessions are kept when their actual transcript timestamps overlap the window; file mtime only rules sessions out.
 Paseo wrappers are merged into their provider transcript (`paseo_agents`); subagent transcripts are listed under `subagents` and excluded from the denominator.
 The running audit session is excluded automatically from `CLAUDE_CODE_SESSION_ID` and `PASEO_AGENT_ID`; pass `--exclude-session` when those are absent.
-Unavailable Paseo transcripts appear under `evidence_gaps`, and unreadable files under `issues`.
+Unavailable Paseo transcripts whose last activity falls in the window appear under `evidence_gaps`; those without an activity time appear under `unknown_activity`, and unreadable files under `issues`.
 
 Each session gets `triage` signals: `#friction` notes, human messages, interrupts, human messages after a "done" claim, tool errors, repeated commands, revert commands, compactions, duration, events, and skills used.
+Tool errors are counted for Claude only; Codex tool results carry no parsed failure status yet, so Codex-backed sessions show `tool_errors: 0` and the report notes this gap.
 The ranked `triage` list puts sessions with a `#friction` note first, then orders by `score`, and marks the top N as `deep_dive`.
 Signals and `#friction` notes are leads, not findings.
 

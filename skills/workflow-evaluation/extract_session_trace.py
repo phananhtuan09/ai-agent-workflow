@@ -290,14 +290,6 @@ def extract_claude_local_command(content: str):
     }
 
 
-def normalize_claude_blocks(content):
-    if isinstance(content, str):
-        return [{"type": "text", "text": content}]
-    if isinstance(content, list):
-        return content
-    return []
-
-
 def parse_claude_transcript(records, transcript_path: Path):
     artifact = build_base_artifact("claude", transcript_path)
     tool_calls = {}
@@ -368,7 +360,8 @@ def parse_claude_transcript(records, transcript_path: Path):
                         "text": content,
                     })
 
-            for block in normalize_claude_blocks(content):
+            # String content was recorded above; only block lists remain.
+            for block in (content if isinstance(content, list) else []):
                 block_type = block.get("type")
                 if block_type == "text":
                     push_if_text(artifact["session_trace"]["chat_history"], {
@@ -1277,12 +1270,12 @@ def audit_inventory(projects, since, until, top=5, exclude=()):
     result = {"window": {"since": since.isoformat(), "until": until.isoformat()}, "top_n": top,
               "excluded_session_ids": sorted(exclude), "projects": [], "triage": []}
     ranked = []
-    for project in projects:
+    for project in dict.fromkeys(canonical_path(project) for project in projects):
         claude, issues = discover_transcripts("claude", project)
         paseo, paseo_issues = discover_paseo(project)
         seen_issues = set()
         report = {"project": canonical_path(project), "sessions": [], "subagents": [], "excluded": [],
-                  "evidence_gaps": [], "outside_window": 0, "issues": []}
+                  "evidence_gaps": [], "unknown_activity": [], "outside_window": 0, "issues": []}
         for issue in issues + paseo_issues:
             if json.dumps(issue, sort_keys=True) not in seen_issues:
                 seen_issues.add(json.dumps(issue, sort_keys=True))
@@ -1299,8 +1292,14 @@ def audit_inventory(projects, since, until, top=5, exclude=()):
         for item in paseo:
             reference = item.pop("paseo")
             if not item["available"]:
+                if reference.get("agent_id") in exclude:
+                    report["excluded"].append({"session_id": item["session_id"], "agent_id": reference["agent_id"],
+                                               "reason": "audit_session", "transcript_path": None})
+                    continue
                 activity = parse_time(reference.get("last_activity_at"))
-                if activity is None or activity >= since:
+                if activity is None:
+                    report["unknown_activity"].append(dict(item, paseo=reference))
+                elif since <= activity <= until:
                     report["evidence_gaps"].append(dict(item, paseo=reference))
                 continue
             key = (item["runtime"], item["session_id"])
@@ -1340,6 +1339,7 @@ def audit_inventory(projects, since, until, top=5, exclude=()):
             ranked.append((report["project"], entry))
         report["counts"] = {"sessions": len(report["sessions"]), "subagents": len(report["subagents"]),
                             "excluded": len(report["excluded"]), "evidence_gaps": len(report["evidence_gaps"]),
+                            "unknown_activity": len(report["unknown_activity"]),
                             "outside_window": report["outside_window"], "issues": len(report["issues"])}
         result["projects"].append(report)
     ranked.sort(key=lambda item: (not item[1]["triage"]["friction_notes"], -item[1]["triage"]["score"],
