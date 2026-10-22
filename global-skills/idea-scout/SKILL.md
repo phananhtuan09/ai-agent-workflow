@@ -1,6 +1,6 @@
 ---
 name: idea-scout
-description: Propose evidence-based feature ideas for a project when the human has no specific idea yet, grounded in the project's intent, its GitHub issues, and similar products the human chooses, ending with a ranked top 3 to 5, in the same language the user wrote in. Use only when the user asks for feature ideas or what to build next for a project. Do not use to refine, debate, or spec an idea the user already has, or to scan the codebase for gaps.
+description: Propose evidence-based feature ideas for a project when the human has no specific idea yet, grounded in the project's intent, its GitHub issues, and similar products the human chooses, ending with a ranked shortlist of up to 5 ideas, in the same language the user wrote in. Use only when the user asks for feature ideas or what to build next for a project. Do not use to refine, debate, or spec an idea the user already has, or to scan the codebase for gaps.
 ---
 
 # Idea Scout
@@ -57,11 +57,12 @@ The goal is learning to adapt, not comparison.
 ### 4. Generate and filter
 
 Every idea cites its source: an issue number or a product link.
-Drop ideas that duplicate open issues, repeat rejected ones without new evidence, or contradict stated non-goals.
+Keep worthwhile open issues as candidates with their issue links, and merge a matching new idea into that issue instead of proposing it again.
+Drop ideas that repeat rejected ones without new evidence or contradict stated non-goals.
 
 ## Output format
 
-Return a ranked top 3 to 5 ideas.
+Return a ranked top 3 to 5 ideas, or fewer when fewer pass the evidence and filter rules; if none qualify, say why instead of adding unsupported ideas.
 For each idea:
 
 - **Problem**: the user problem it addresses.

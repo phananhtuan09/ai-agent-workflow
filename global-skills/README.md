@@ -9,7 +9,7 @@ Hand this file to an agent and ask it to install them; it fetches the content st
 | Skill | Role |
 | --- | --- |
 | `herdr-guide` | Owns Herdr CLI mechanics. |
-| `idea-scout` | Experimental. Proposes a ranked top 3 to 5 feature ideas grounded in project intent, GitHub issues, and chosen similar products, in the user's language. |
+| `idea-scout` | Experimental. Proposes a ranked shortlist of up to 5 feature ideas grounded in project intent, GitHub issues, and chosen similar products, in the user's language. |
 | `prompt-leverage` | Rewrites a raw prompt into Expected output, Effort, and How to verify, in the user's language. |
 
 ## Layout
