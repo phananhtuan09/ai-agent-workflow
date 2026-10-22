@@ -194,6 +194,89 @@ class SessionTraceTests(unittest.TestCase):
         self.assertTrue(any(issue["reason"] == "AttributeError" for issue in inventory["issues"]))
         self.assertEqual(before, set(self.root.rglob("*")))
 
+    def claude_session(self, folder, session_id, timestamps, texts, cwd=None, path=None, **extra):
+        records = [{"type": "user" if index % 2 == 0 else "assistant", "sessionId": session_id,
+                    "cwd": str(cwd or self.project), "timestamp": timestamp,
+                    "message": {"content": [{"type": "text", "text": text}]}, **extra}
+                   for index, (timestamp, text) in enumerate(zip(timestamps, texts))]
+        return self.write(path or self.roots["CLAUDE_CONFIG_DIR"] / "projects" / folder / f"{session_id}.jsonl",
+                          records)
+
+    def run_triage(self, *args):
+        from io import StringIO
+        argv = [str(SCRIPT), "--triage", "--since", "2026-10-15T00:00:00+00:00",
+                "--until", "2026-10-22T00:00:00+00:00", *args]
+        with patch.object(sys, "argv", argv), patch("sys.stdout", new_callable=StringIO) as output:
+            MODULE["main"]()
+        return json.loads(output.getvalue())
+
+    def test_triage_inventories_projects_by_transcript_time_and_ranks_friction_first(self):
+        other = self.root / "other"
+        other.mkdir()
+        week = ["2026-10-20T09:00:00Z", "2026-10-20T09:05:00Z", "2026-10-20T09:10:00Z", "2026-10-20T09:15:00Z"]
+        self.claude_session("p", "noisy", week + ["2026-10-20T09:20:00Z"],
+                            ["build it", "Done, implemented.", "that is wrong, redo", "Done.",
+                             "[Request interrupted by user]"])
+        marked = self.claude_session("p", "marked", week[:2], ["fix tests #friction agent ignored the plan", "ok"])
+        with marked.open("a", encoding="utf-8") as handle:
+            for block in [{"type": "tool_use", "id": "s", "name": "Skill", "input": {"skill": "planner"}},
+                          {"type": "tool_use", "id": "r", "name": "Read",
+                           "input": {"file_path": "/x/.claude/skills/review-pr/SKILL.md"}}]:
+                handle.write(json.dumps({"type": "assistant", "sessionId": "marked", "timestamp": week[1],
+                                         "message": {"content": [block]}}) + "\n")
+        # File mtime is recent, but the transcript itself predates the window.
+        self.claude_session("p", "old", ["2026-09-01T09:00:00Z"], ["old work"])
+        self.claude_session("p", "audit", week[:1], ["run the weekly audit"])
+        self.claude_session("p", "noisy", week[:1], ["subagent"], isSidechain=True,
+                            path=self.roots["CLAUDE_CONFIG_DIR"] / "projects/p/noisy/subagents/agent-1.jsonl")
+        self.claude_session("o", "elsewhere", week[:1], ["other project"], cwd=other)
+        agents = self.roots["PASEO_HOME"] / "agents/project"
+        agents.mkdir(parents=True)
+        for aid, sid, activity in [("wrapper", "noisy", "2026-10-20T09:20:00Z"),
+                                   ("lost", "gone", "2026-10-20T09:00:00Z"),
+                                   ("stale", "gone-old", "2026-09-01T09:00:00Z")]:
+            (agents / f"{aid}.json").write_text(json.dumps({
+                "id": aid, "provider": "claude", "cwd": str(self.project), "lastStatus": "closed",
+                "lastActivityAt": activity, "persistence": {"sessionId": sid}}))
+        before = set(self.root.rglob("*"))
+        with patch.dict("os.environ", {"CLAUDE_CODE_SESSION_ID": "", "PASEO_AGENT_ID": ""}):
+            result = self.run_triage("--project", str(self.project), "--project", str(other),
+                                     "--exclude-session", "audit", "--top", "1")
+        self.assertEqual(before, set(self.root.rglob("*")))
+        project, second = result["projects"]
+        self.assertEqual(sorted(item["session_id"] for item in project["sessions"]), ["marked", "noisy"])
+        noisy = next(item for item in project["sessions"] if item["session_id"] == "noisy")
+        self.assertEqual([ref["agent_id"] for ref in noisy["paseo_agents"]], ["wrapper"])
+        self.assertEqual(noisy["triage"]["interrupts"], 1)
+        self.assertEqual(noisy["triage"]["human_after_done_claim"], 1)
+        self.assertEqual(project["counts"], {"sessions": 2, "subagents": 1, "excluded": 1, "evidence_gaps": 1,
+                                             "outside_window": 1, "issues": 0})
+        self.assertEqual(project["evidence_gaps"][0]["paseo"]["agent_id"], "lost")
+        self.assertEqual([item["session_id"] for item in second["sessions"]], ["elsewhere"])
+        ranking = [(item["session_id"], item["friction"], item["deep_dive"]) for item in result["triage"]]
+        self.assertEqual(ranking[0], ("marked", True, True))
+        self.assertFalse(any(deep for _, _, deep in ranking[1:]))
+        self.assertEqual(len(ranking), 3)
+        marked = next(item for item in project["sessions"] if item["session_id"] == "marked")
+        self.assertEqual(marked["triage"]["friction_notes"][0]["note"], "agent ignored the plan")
+        self.assertLess(marked["triage"]["score"], noisy["triage"]["score"])
+        self.assertEqual(marked["triage"]["skills_used"], ["planner", "review-pr"])
+
+    def test_triage_excludes_the_running_audit_session_from_the_environment(self):
+        self.claude_session("p", "current", ["2026-10-20T09:00:00Z"], ["audit"])
+        with patch.dict("os.environ", {"CLAUDE_CODE_SESSION_ID": "current", "PASEO_AGENT_ID": ""}):
+            result = self.run_triage("--project", str(self.project))
+        self.assertEqual(result["projects"][0]["excluded"][0]["reason"], "audit_session")
+        self.assertEqual(result["triage"], [])
+
+    def test_triage_options_are_validated(self):
+        for args in (["--list", "--runtime", "claude", "--project", "a", "--since", "2026-10-01"],
+                     ["--list", "--runtime", "claude", "--project", "a", "--project", "b"],
+                     ["--triage"],
+                     ["--triage", "--project", "a", "--since", "2026-10-22", "--until", "2026-10-01"]):
+            result = subprocess.run([sys.executable, "-B", str(SCRIPT), *args], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2, args)
+
     def test_malformed_snapshot_fails_without_partial_artifacts(self):
         source = self.root / "partial.jsonl"
         source.write_text('{"type":"session_meta"}\n{"type":')

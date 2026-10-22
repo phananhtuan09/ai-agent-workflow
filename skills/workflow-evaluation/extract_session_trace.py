@@ -7,7 +7,7 @@ import re
 import sqlite3
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -174,6 +174,7 @@ def discover_paseo(project_path):
                 "workspace_id": agent.get("workspaceId"),
                 "status": agent.get("lastStatus", "unknown"),
                 "archived_at": agent.get("archivedAt"),
+                "last_activity_at": agent.get("lastActivityAt") or agent.get("updatedAt"),
             }
             entry["status"] = agent.get("lastStatus", "unknown")
             entry["available"] = len(matches) == 1
@@ -1183,6 +1184,176 @@ def write_artifact_set(artifact, output_dir: Path):
     write_json(output_dir / "failure-retry-log.json", artifact["session_trace"]["failure_retry_log"])
 
 
+FRICTION_MARKER = re.compile(r"#friction\b[:\s]*(.*)", re.IGNORECASE | re.DOTALL)
+INTERRUPT_MARKER = "[Request interrupted by user"
+DONE_CLAIM = re.compile(r"\b(?:done|completed|finished|implemented)\b|hoàn thành|đã xong", re.IGNORECASE)
+SKILL_FILE = re.compile(r"skills/([\w.-]+)/SKILL\.md")
+REVERT_COMMAND = re.compile(r"\bgit\s+(?:restore|revert|reset\s+--hard|checkout\s+--\s)")
+
+
+def parse_time(value):
+    """Parse an ISO timestamp; naive values are UTC (transcript convention)."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = re.sub(r"\.(\d+)", lambda match: "." + match.group(1)[:6].ljust(6, "0"),
+                  value.strip().replace("Z", "+00:00"), count=1)
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def record_window(records):
+    times = [parse_time(record.get("timestamp")) for record in records if isinstance(record, dict)]
+    times = [value for value in times if value]
+    return (min(times), max(times)) if times else (None, None)
+
+
+def triage_signals(runtime, records, transcript_path):
+    """Cheap observable signals for ranking; leads for a deep dive, not findings."""
+    parse = parse_claude_transcript if runtime == "claude" else parse_codex_transcript
+    artifact = parse(records, transcript_path)
+    assess_coverage(artifact, records)
+    trace = artifact["session_trace"]
+    friction, human, interrupts, after_done = [], 0, 0, 0
+    last_assistant = ""
+    for entry in trace["chat_history"]:
+        text = str(entry.get("text") or "").strip()
+        if entry.get("role") != "user":
+            last_assistant = text
+            continue
+        if text.startswith(INTERRUPT_MARKER):
+            interrupts += 1
+            continue
+        if text.startswith(("<", "# AGENTS.md instructions")):  # runtime-injected context, not human input
+            continue
+        human += 1
+        match = FRICTION_MARKER.search(text)
+        if match:
+            friction.append({"index": entry.get("index"), "note": match.group(1).strip()[:300]})
+        if last_assistant and DONE_CLAIM.search(last_assistant):
+            after_done += 1
+        last_assistant = ""
+    interrupts += sum(1 for record in records if isinstance(record, dict)
+                      and (record.get("payload") or {}).get("type") == "turn_aborted")
+    commands = [str(entry["command"]) for entry in trace["command_transcript"] if entry.get("command")]
+    skills = set()
+    for entry in trace["tool_call_trace"]:
+        tool_input = entry.get("input") if entry["direction"] == "call" else None
+        if isinstance(tool_input, dict) and entry.get("tool_name") == "Skill" and tool_input.get("skill"):
+            skills.add(str(tool_input["skill"]))
+        elif tool_input is not None:
+            skills.update(SKILL_FILE.findall(json.dumps(tool_input)))
+    started, ended = record_window(records)
+    signals = {
+        "friction_notes": friction,
+        "human_messages": human,
+        "interrupts": interrupts,
+        "human_after_done_claim": after_done,
+        "tool_errors": len(trace["failure_retry_log"]),
+        "repeated_commands": len(commands) - len(set(commands)),
+        "revert_commands": sum(1 for command in commands if REVERT_COMMAND.search(command)),
+        "compactions": len(artifact["coverage"]["compaction_indices"]),
+        "duration_minutes": round((ended - started).total_seconds() / 60) if started else None,
+        "events": len(artifact["normalized_events"]),
+        "skills_used": sorted(skills),
+    }
+    signals["score"] = (3 * (interrupts + after_done) + 2 * (signals["revert_commands"] + signals["compactions"])
+                        + signals["tool_errors"] + signals["repeated_commands"] + max(0, human - 1)
+                        + (signals["duration_minutes"] or 0) // 60)
+    return signals
+
+
+def in_window(start, end, since, until):
+    return start is not None and end >= since and start <= until
+
+
+def audit_inventory(projects, since, until, top=5, exclude=()):
+    """Multi-project Claude/Paseo inventory filtered by transcript timestamps, with triage ranking."""
+    exclude = set(exclude) | {os.environ.get(name) for name in ("CLAUDE_CODE_SESSION_ID", "PASEO_AGENT_ID")}
+    exclude.discard(None)
+    exclude.discard("")
+    result = {"window": {"since": since.isoformat(), "until": until.isoformat()}, "top_n": top,
+              "excluded_session_ids": sorted(exclude), "projects": [], "triage": []}
+    ranked = []
+    for project in projects:
+        claude, issues = discover_transcripts("claude", project)
+        paseo, paseo_issues = discover_paseo(project)
+        seen_issues = set()
+        report = {"project": canonical_path(project), "sessions": [], "subagents": [], "excluded": [],
+                  "evidence_gaps": [], "outside_window": 0, "issues": []}
+        for issue in issues + paseo_issues:
+            if json.dumps(issue, sort_keys=True) not in seen_issues:
+                seen_issues.add(json.dumps(issue, sort_keys=True))
+                report["issues"].append(issue)
+        candidates = {}
+        for item in claude:
+            key = ("claude", item["session_id"])
+            if item["subagent"]:
+                report["subagents"].append(item)
+            elif key in candidates:
+                report["issues"].append({"path": item["transcript_path"], "reason": "duplicate_session_id"})
+            else:
+                candidates[key] = dict(item, paseo_agents=[])
+        for item in paseo:
+            reference = item.pop("paseo")
+            if not item["available"]:
+                activity = parse_time(reference.get("last_activity_at"))
+                if activity is None or activity >= since:
+                    report["evidence_gaps"].append(dict(item, paseo=reference))
+                continue
+            key = (item["runtime"], item["session_id"])
+            entry = candidates.setdefault(key, dict(item, paseo_agents=[]))
+            entry["paseo_agents"].append(reference)
+            entry["status"] = item["status"]
+        subagents, report["subagents"] = report["subagents"], []
+        for entry in list(candidates.values()) + subagents:
+            ids = {entry["session_id"]} | {ref.get("agent_id") for ref in entry.get("paseo_agents", [])}
+            if ids & exclude:
+                report["excluded"].append({"session_id": entry["session_id"], "reason": "audit_session",
+                                           "transcript_path": entry["transcript_path"]})
+                continue
+            path = Path(entry["transcript_path"])
+            try:
+                # mtime is never older than the last write, so it can only rule sessions out.
+                if datetime.fromtimestamp(path.stat().st_mtime, timezone.utc) < since:
+                    report["outside_window"] += 1
+                    continue
+                records = read_jsonl(path)
+                start, end = record_window(records)
+                if start is None:
+                    report["issues"].append({"path": str(path), "reason": "transcript_timestamps_missing"})
+                    continue
+                if not in_window(start, end, since, until):
+                    report["outside_window"] += 1
+                    continue
+                entry.update(first_at=start.isoformat(), last_at=end.isoformat())
+                if entry.get("subagent"):
+                    report["subagents"].append(entry)
+                    continue
+                entry["triage"] = triage_signals(entry["runtime"], records, path)
+            except (OSError, ValueError, AttributeError, TypeError, KeyError) as exc:
+                report["issues"].append({"path": str(path), "reason": type(exc).__name__})
+                continue
+            report["sessions"].append(entry)
+            ranked.append((report["project"], entry))
+        report["counts"] = {"sessions": len(report["sessions"]), "subagents": len(report["subagents"]),
+                            "excluded": len(report["excluded"]), "evidence_gaps": len(report["evidence_gaps"]),
+                            "outside_window": report["outside_window"], "issues": len(report["issues"])}
+        result["projects"].append(report)
+    ranked.sort(key=lambda item: (not item[1]["triage"]["friction_notes"], -item[1]["triage"]["score"],
+                                  item[1]["first_at"]))
+    for rank, (project, entry) in enumerate(ranked, start=1):
+        result["triage"].append({
+            "rank": rank, "deep_dive": rank <= top, "project": project, "runtime": entry["runtime"],
+            "session_id": entry["session_id"], "transcript_path": entry["transcript_path"],
+            "paseo_agent_ids": [ref.get("agent_id") for ref in entry["paseo_agents"]],
+            "friction": bool(entry["triage"]["friction_notes"]), "score": entry["triage"]["score"],
+        })
+    return result
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Discover project sessions and normalize local history for independent workflow evaluation.")
     parser.add_argument("--input", help="Raw local transcript path, or the opencode database path.")
@@ -1190,10 +1361,41 @@ def parse_args():
     parser.add_argument("--session-id", help="Opencode session ID, or exact Paseo agent ID when --runtime paseo.")
     parser.add_argument("--list", action="store_true", help="Print project session inventory as JSON without writing files (Claude, Codex, Paseo).")
     parser.add_argument("--latest", action="store_true", help="Pick the latest transcript or session for the runtime.")
-    parser.add_argument("--project", help="Exact project/cwd path; required for --list and Paseo resolution.")
+    parser.add_argument("--triage", action="store_true",
+                        help="Print a multi-project Claude/Paseo inventory filtered by transcript timestamps, "
+                             "with triage ranking, as JSON without writing files.")
+    parser.add_argument("--project", action="append",
+                        help="Exact project/cwd path; required for --list, --triage (repeatable), and Paseo resolution.")
+    parser.add_argument("--since", help="--triage window start (ISO date/time, naive = local time); default 7 days before --until.")
+    parser.add_argument("--until", help="--triage window end (ISO date/time, naive = local time); default now.")
+    parser.add_argument("--top", type=int, default=5, help="--triage sessions marked for deep dive (default 5).")
+    parser.add_argument("--exclude-session", action="append", default=[],
+                        help="--triage session or Paseo agent ID to exclude, such as the audit session (repeatable).")
     parser.add_argument("--output-dir", help="Target output directory.")
     parser.add_argument("--stdout", action="store_true", help="Print session-trace.json to stdout.")
     args = parser.parse_args()
+    triage_only = args.since or args.until or args.exclude_session or args.top != 5
+    if args.triage:
+        if not args.project:
+            parser.error("--triage requires at least one --project.")
+        if args.list or args.runtime or args.input or args.latest or args.session_id or args.output_dir or args.stdout:
+            parser.error("--triage cannot be combined with --list, --runtime, or extraction options.")
+        if args.top < 0:
+            parser.error("--top must not be negative.")
+        try:
+            args.until = datetime.fromisoformat(args.until).astimezone() if args.until else datetime.now().astimezone()
+            args.since = (datetime.fromisoformat(args.since).astimezone() if args.since
+                          else args.until - timedelta(days=7))
+        except ValueError as exc:
+            parser.error(f"Invalid --since/--until: {exc}")
+        if args.since > args.until:
+            parser.error("--since must not be after --until.")
+        return args
+    if triage_only:
+        parser.error("--since, --until, --top, and --exclude-session require --triage.")
+    if args.project and len(args.project) > 1:
+        parser.error("Only --triage accepts more than one --project.")
+    args.project = args.project[0] if args.project else None
     if args.list:
         if not args.project or args.runtime not in {"claude", "codex", "paseo"}:
             parser.error("--list requires --project and --runtime claude, codex, or paseo.")
@@ -1207,6 +1409,10 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.triage:
+        print(json.dumps(audit_inventory(args.project, args.since, args.until, args.top, args.exclude_session),
+                         indent=2, ensure_ascii=False))
+        return
     if args.list:
         sessions, issues = (discover_paseo(args.project) if args.runtime == "paseo"
                             else discover_transcripts(args.runtime, args.project))

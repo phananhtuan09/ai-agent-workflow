@@ -1219,6 +1219,11 @@ test("workflow-eval installs canonical evaluation files", () => {
       "utf8"
     );
     assert.ok(skill.includes(".agents/skills/workflow-evaluation/extract_session_trace.py"));
+    assert.ok(
+      fs.existsSync(
+        path.join(result.workspace, ".agents/skills/workflow-evaluation/references/weekly-audit.md")
+      )
+    );
     assert.ok(fs.existsSync(path.join(result.workspace, ".codex/agents/review-pr.toml")));
   } finally {
     result.cleanup();

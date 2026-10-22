@@ -33,6 +33,7 @@ Codex discovery includes both `sessions` and `archived_sessions`.
 Project matching uses the actual transcript or agent `cwd`, not a folder-name substring.
 Worktrees and subdirectory sessions have different working directories: identify the requested project's relevant workspace paths and inventory those explicitly.
 Inventory timestamps are selection hints; filesystem modification time can change on archive or copy, so verify the requested time window against actual transcript timestamps.
+For several projects and a time window at once, `--triage` filters Claude and Paseo sessions by actual transcript timestamps, deduplicates Paseo wrappers, separates subagents, and ranks sessions; see [weekly-audit.md](weekly-audit.md).
 
 Paseo inventory resolves its local agent metadata to the Claude/Codex provider session ID and raw transcript.
 It includes the Paseo agent/workspace identifiers, recorded status, and archive metadata.
