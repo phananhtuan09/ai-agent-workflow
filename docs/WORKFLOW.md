@@ -116,6 +116,10 @@ Treat specialized skills as optional capabilities and load one only when it mate
 Do not make normal repository-driven execution depend on feature artifacts or coordinator state.
 Do not add a fixed execution chain or require workflow artifacts for ordinary work.
 Do not fabricate product rules, decisions, plans, runbooks, proof, or execution state.
+When counting, filtering, aggregating, or extracting from bulk data of roughly five or more files or 300 or more lines, write a small script that prints only the needed result instead of reading the raw data into context.
+Bulk data means logs, test or build output, payloads, and statistics across many files; reading code to understand or change it is not bulk data, and a search script never replaces reading a component you are about to change.
+Keep such scripts in a temporary or git-ignored directory so they can be rerun to show how a result was produced without polluting the repository.
+These thresholds are approximate guidance, not hard limits.
 
 ## Durable knowledge maintenance
 
