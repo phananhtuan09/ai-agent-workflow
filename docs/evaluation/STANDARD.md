@@ -371,6 +371,8 @@ Calibration target khoi dau:
 - toi thieu `80%` agreement ve first divergence va attribution tren it nhat nam session duoc human review
 - `0` unsupported workflow attribution trong sample da audit
 
+Human verdict (`confirmed`/`rejected`) trong findings ledger cua weekly session audit (`skills/workflow-evaluation/references/weekly-audit.md`) duoc tinh la human reference review; ap dung cung metric va calibration target o tren.
+
 Sample nho chi la calibration evidence, khong phai statistical proof. Khi human va evaluator bat dong, ghi disagreement va evidence; human label khong duoc coi la oracle khong can review.
 
 Khong co calibration set khong cam evaluator tao exploratory findings, nhung evaluator khong duoc claim quy trinh evaluation da duoc kiem chung.

@@ -1,6 +1,6 @@
 ---
 name: workflow-evaluation
-description: Audit AI coding sessions by project from Claude Code, Codex, or Paseo in a separate evaluation session; diagnose friction, rework, human intervention, and workflow causes from recorded evidence. Also compare or review workflow designs without runtime history. Produces a Vietnamese HTML report with evidence and limitations.
+description: Audit AI coding sessions by project from Claude Code, Codex, or Paseo in a separate evaluation session; diagnose friction, rework, human intervention, and workflow causes from recorded evidence. Also compare or review workflow designs without runtime history, or run a manual weekly multi-project session audit (experimental) with a findings ledger. Produces a Vietnamese HTML report, or a Vietnamese Markdown report for the weekly audit, with evidence and limitations.
 ---
 
 # Workflow Evaluation
@@ -8,6 +8,7 @@ description: Audit AI coding sessions by project from Claude Code, Codex, or Pas
 Evaluate observable agent behavior and determine whether, where, and how the workflow contributes to it.
 
 For retrospective audits of named projects, read [references/project-audit.md](references/project-audit.md).
+For the manual weekly session audit of several projects (experimental), also read [references/weekly-audit.md](references/weekly-audit.md).
 Run the audit in its own conversation or job when requested; reading history does not require prompting, resuming, or interrupting the source agents.
 Do not attach audit hooks, schedule jobs, or insert evaluation into ongoing coding work unless the user requests that integration.
 
@@ -224,7 +225,9 @@ Treat observations created by `record-workflow-friction` as `agent-reported-obse
 
 ## Output
 
-Write a self-contained Vietnamese HTML5 report to:
+The weekly session audit is the only exception: it writes a Vietnamese Markdown report and updates the findings ledger as defined in [references/weekly-audit.md](references/weekly-audit.md).
+
+Every other full evaluation writes a self-contained Vietnamese HTML5 report to:
 
 ```text
 docs/evaluation/reports/{name}.html
@@ -279,4 +282,4 @@ For `artifact-first`, also require:
 - exercise coverage and limitations are visible
 - adoption verdict, when requested, matches the evidence
 
-Every full evaluation ends with the required Vietnamese HTML report and no unresolved template placeholders.
+Every full evaluation ends with the required Vietnamese HTML report and no unresolved template placeholders; the weekly session audit ends with its Markdown report and ledger update instead.
