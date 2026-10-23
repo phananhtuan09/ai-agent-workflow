@@ -71,6 +71,7 @@ Do one plan step per turn for durable work, keep the plan current, and suggest t
 
 Pick the skill yourself and load it with the Skill tool before doing that kind of work; following its steps from memory does not count.
 If a skill is not installed, apply `docs/WORKFLOW.md` directly and say the skill is missing.
+`brainstorm-partner` and `smart-commits` are machine-wide global skills, not installed by any bundle.
 
 | Situation | Skill |
 | --- | --- |

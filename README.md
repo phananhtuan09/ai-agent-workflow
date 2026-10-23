@@ -85,36 +85,34 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 
 | Skill | Purpose |
 | --- | --- |
-| `brainstorm-partner` | Read-only thinking partner for vague ideas, hard bugs, and technical decisions. |
 | `review-pr` | Reviews a PR, branch, commit range, or diff for evidence-backed blocking defects. |
 | `quality-code-check` | Lint, type check, build, and failing-validation debugging with project-native commands. |
-| `smart-commits` | Groups the working tree into intent-based commits and pushes on request. |
 | `manage-project-knowledge` | Finds and explains durable knowledge under `docs/`, keeps it current on its own after each task, and maintains all project docs when invoked without a topic. |
 | `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
-| `triage` | Labels GitHub issues as needs-info, ready-for-agent, or ready-for-human and comments with questions, an agent brief, or the decision needed. |
 | `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
 | `workflow-evaluation`, `record-workflow-friction` | Evaluate AI workflows and record execution friction. |
 | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` | Run two-to-three-day learning mini-projects. |
 
 | Bundle | Skills |
 | --- | --- |
-| `core` | `brainstorm-partner`, `review-pr`, `smart-commits`, `manage-project-knowledge` |
+| `core` | `review-pr`, `manage-project-knowledge` |
 | `common-review` | `quality-code-check`, `review-pr` |
 | `proposal` | `proposal-designer` |
 | `testing` | `runtime-e2e-test` |
-| `issue-triage` | `triage` |
 | `evaluation` | `workflow-evaluation`, `record-workflow-friction` |
 | `learning` | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` |
-| `planner-mode` | `planner`, `quality-code-check`, `smart-commits`, `manage-project-knowledge` |
+| `planner-mode` | `planner`, `quality-code-check`, `manage-project-knowledge` |
 
 The bundle named `core` is optional; the `coding-standard` kit does not require it.
+`brainstorm-partner`, `smart-commits`, and `triage` are machine-wide skills in [`global-skills/`](global-skills), installed once per machine instead of by a bundle.
 
 </details>
 
 ### Planner mode
 
-The `planner-mode` bundle installs the `planner` skill with `quality-code-check`, `smart-commits`, and `manage-project-knowledge`; Codex and Antigravity receive the same skill.
+The `planner-mode` bundle installs the `planner` skill with `quality-code-check` and `manage-project-knowledge`; Codex and Antigravity receive the same skill.
+It routes to the global `brainstorm-partner` and `smart-commits` skills when they are installed on the machine.
 Type `/planner` to turn it on for the rest of the conversation.
 For each prompt the agent picks the fitting workflow step or skill, does it, and ends with two or three numbered next steps; reply `1`, `2`, or `3` to continue.
 It asks first before git actions, outward actions such as PR comments, and unresolved product decisions, and choosing an option that names one of those actions approves it.
@@ -234,7 +232,7 @@ For an A/B benchmark, also compare globally available skills and instructions, r
 
 | Path | Contents | Installed by the CLI |
 | --- | --- | --- |
-| [`global-skills/`](global-skills) | Machine-wide skills (`herdr-guide`, `idea-scout`, `prompt-leverage`) | No; follow its README |
+| [`global-skills/`](global-skills) | Machine-wide skills (`brainstorm-partner`, `herdr-guide`, `idea-scout`, `prompt-leverage`, `smart-commits`, `triage`) | No; follow its README |
 | [`paseo-plugins/`](paseo-plugins) | [Paseo](https://paseo.sh) plugins (`attention`, `usage-pill`) | No; follow its README |
 | `cli.js`, `lib/` | The `ai-workflow-init` installer and updater | — |
 | `docs/braintorm/` | Exploratory design notes, not product authority | No |

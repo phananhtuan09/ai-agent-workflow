@@ -167,4 +167,4 @@ Ask only when:
 ## Attribution
 
 Adapted from the `smart-commits` skill in the MIT-licensed [`hoangnb24/skills`](https://github.com/hoangnb24/skills) Khuym plugin.
-Scope control, proof selection, and push confirmation follow this repository's protocol.
+Scope control, proof selection, and push confirmation follow the `ai-agent-workflow` protocol.
