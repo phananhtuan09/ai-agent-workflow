@@ -84,7 +84,9 @@ Group changes by the behavior they produce, not by file type.
 
 ### 4. Prove before committing
 
-Choose the cheapest reliable proof for the changed behavior, following `docs/WORKFLOW.md`.
+Choose the cheapest reliable proof for the changed behavior, following the repository's own proof rules.
+Read `docs/WORKFLOW.md` when it exists; otherwise read `AGENTS.md` and `CLAUDE.md`, and also read a file they reference for proof or validation rules.
+When none of these files exists or none references such rules, stop looking and use the cheapest reliable check.
 Prefer the repository's own focused commands over a full repository-wide suite.
 
 - Behavior change in code -> run the focused test or check that observes it
@@ -101,10 +103,11 @@ If a check is unavailable, already known broken, or disproportionately expensive
 
 ```bash
 git add <specific files>
-git commit -m "<type>(<scope>): <subject>" -m "<body>"
+git commit -m "<subject in the repository convention>" -m "<body>"
 ```
 
-Use conventional commit messages.
+Match the commit message convention in the repository's recent history (`git log --oneline -20`) and any commit rules in `AGENTS.md`, `CLAUDE.md`, or `docs/WORKFLOW.md`, reading them for this even when proof rules came from another file.
+Use conventional commits (`<type>(<scope>): <subject>`) only when the repository has no clear convention.
 Write a body that explains why the group belongs together when the subject alone does not make that clear.
 
 After each commit, re-run `git status --porcelain=v1` and continue until every in-scope change is committed.
@@ -164,4 +167,4 @@ Ask only when:
 ## Attribution
 
 Adapted from the `smart-commits` skill in the MIT-licensed [`hoangnb24/skills`](https://github.com/hoangnb24/skills) Khuym plugin.
-Scope control, proof selection, and push confirmation follow this repository's protocol.
+Scope control, proof selection, and push confirmation follow the `ai-agent-workflow` protocol.

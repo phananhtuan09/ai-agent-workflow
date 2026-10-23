@@ -8,9 +8,7 @@
   },
   "bundles": {
     "core": [
-      "brainstorm-partner",
       "review-pr",
-      "smart-commits",
       "manage-project-knowledge"
     ],
     "common-review": [
@@ -22,9 +20,6 @@
     ],
     "testing": [
       "runtime-e2e-test"
-    ],
-    "issue-triage": [
-      "triage"
     ],
     "evaluation": [
       "workflow-evaluation",
@@ -39,7 +34,6 @@
     "planner-mode": [
       "planner",
       "quality-code-check",
-      "smart-commits",
       "manage-project-knowledge"
     ]
   },
