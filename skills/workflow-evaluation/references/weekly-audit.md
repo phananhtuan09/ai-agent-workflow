@@ -38,6 +38,8 @@ The running audit session is excluded automatically from `CLAUDE_CODE_SESSION_ID
 Unavailable Paseo transcripts whose last activity falls in the window appear under `evidence_gaps`; those without an activity time appear under `unknown_activity`, and unreadable files under `issues`.
 
 Each session gets `triage` signals: `#friction` notes, human messages, interrupts, human messages after a "done" claim, tool errors, repeated commands, revert commands, compactions, duration, events, and skills used.
+Human messages exclude runtime-injected text such as a loaded skill's body (Claude `isMeta` records).
+`skills_used` counts Skill tool invocations and reads of a `SKILL.md` (the Read tool, or a `cat`/`head`/`tail`/`sed`-style read command); a path mentioned in other tool input, such as an edit, a web fetch, or an issue body, does not count.
 Tool errors are counted for Claude only; Codex tool results carry no parsed failure status yet, so Codex-backed sessions show `tool_errors: 0` and the report notes this gap.
 The ranked `triage` list puts sessions with a `#friction` note first, then orders by `score`, and marks the top N as `deep_dive`.
 Signals and `#friction` notes are leads, not findings.

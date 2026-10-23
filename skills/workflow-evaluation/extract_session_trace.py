@@ -1181,6 +1181,9 @@ FRICTION_MARKER = re.compile(r"#friction\b[:\s]*(.*)", re.IGNORECASE | re.DOTALL
 INTERRUPT_MARKER = "[Request interrupted by user"
 DONE_CLAIM = re.compile(r"\b(?:done|completed|finished|implemented)\b|hoàn thành|đã xong", re.IGNORECASE)
 SKILL_FILE = re.compile(r"skills/([\w.-]+)/SKILL\.md")
+SKILL_READERS = {"cat", "head", "tail", "less", "more", "bat", "nl", "sed"}
+SHELLS = {"bash", "sh", "zsh"}
+CODE_COMMAND = re.compile(r"\b(?:cmd|command)\s*:\s*([\"'`])(.*?)\1", re.DOTALL)
 REVERT_COMMAND = re.compile(r"\bgit\s+(?:restore|revert|reset\s+--hard|checkout\s+--\s)")
 
 
@@ -1203,15 +1206,43 @@ def record_window(records):
     return (min(times), max(times)) if times else (None, None)
 
 
+def skills_loaded(tool_name, tool_input):
+    """Skills invoked or read from their SKILL.md; a path merely mentioned in other tool input does not count."""
+    if isinstance(tool_input, dict) and tool_name == "Skill":
+        return {str(tool_input["skill"])} if tool_input.get("skill") else set()
+    if isinstance(tool_input, dict) and tool_name == "Read":
+        return set(SKILL_FILE.findall(str(tool_input.get("file_path") or "")))
+    if isinstance(tool_input, dict):
+        command = tool_input.get("cmd") or tool_input.get("command")
+        commands = [" ".join(map(str, command)) if isinstance(command, list) else str(command or "")]
+    elif isinstance(tool_input, str):  # Codex custom-tool code that calls exec_command
+        commands = [match.group(2) for match in CODE_COMMAND.finditer(tool_input)]
+    else:
+        return set()
+    found = set()
+    for command in commands:
+        for segment in re.split(r"&&|\|\||[;|\n]", command):
+            words = [word.strip("'\"") for word in segment.split()]
+            if len(words) > 2 and words[0] in SHELLS and words[1].startswith("-") and "c" in words[1]:
+                words = words[2:]
+            if words and words[0] in SKILL_READERS and not (words[0] == "sed" and "-i" in words):
+                found.update(SKILL_FILE.findall(segment))
+    return found
+
+
 def triage_signals(runtime, records, transcript_path):
     """Cheap observable signals for ranking; leads for a deep dive, not findings."""
     parse = parse_claude_transcript if runtime == "claude" else parse_codex_transcript
     artifact = parse(records, transcript_path)
     assess_coverage(artifact, records)
     trace = artifact["session_trace"]
+    # Claude records injected text, such as a loaded skill's body, as user messages flagged isMeta.
+    meta = {index for index, record in enumerate(records) if isinstance(record, dict) and record.get("isMeta")}
     friction, human, interrupts, after_done = [], 0, 0, 0
     last_assistant = ""
     for entry in trace["chat_history"]:
+        if entry.get("index") in meta:
+            continue
         text = str(entry.get("text") or "").strip()
         if entry.get("role") != "user":
             last_assistant = text
@@ -1233,11 +1264,8 @@ def triage_signals(runtime, records, transcript_path):
     commands = [str(entry["command"]) for entry in trace["command_transcript"] if entry.get("command")]
     skills = set()
     for entry in trace["tool_call_trace"]:
-        tool_input = entry.get("input") if entry["direction"] == "call" else None
-        if isinstance(tool_input, dict) and entry.get("tool_name") == "Skill" and tool_input.get("skill"):
-            skills.add(str(tool_input["skill"]))
-        elif tool_input is not None:
-            skills.update(SKILL_FILE.findall(json.dumps(tool_input)))
+        if entry["direction"] == "call":
+            skills.update(skills_loaded(entry.get("tool_name"), entry.get("input")))
     started, ended = record_window(records)
     signals = {
         "friction_notes": friction,

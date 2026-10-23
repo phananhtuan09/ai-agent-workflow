@@ -221,7 +221,16 @@ class SessionTraceTests(unittest.TestCase):
         with marked.open("a", encoding="utf-8") as handle:
             for block in [{"type": "tool_use", "id": "s", "name": "Skill", "input": {"skill": "planner"}},
                           {"type": "tool_use", "id": "r", "name": "Read",
-                           "input": {"file_path": "/x/.claude/skills/review-pr/SKILL.md"}}]:
+                           "input": {"file_path": "/x/.claude/skills/review-pr/SKILL.md"}},
+                          {"type": "tool_use", "id": "b", "name": "Bash",
+                           "input": {"command": "cd /x && sed -n '1,80p' skills/triage/SKILL.md"}},
+                          # Mentions of a SKILL.md path in other tool input are not skill use.
+                          {"type": "tool_use", "id": "g", "name": "Bash",
+                           "input": {"command": "grep -n name skills/smart-commits/SKILL.md"}},
+                          {"type": "tool_use", "id": "w", "name": "Write",
+                           "input": {"file_path": "/x/issue.md", "content": "see skills/idea-scout/SKILL.md"}},
+                          {"type": "tool_use", "id": "f", "name": "WebFetch",
+                           "input": {"url": "https://github.com/o/r/blob/main/skills/tdd/SKILL.md"}}]:
                 handle.write(json.dumps({"type": "assistant", "sessionId": "marked", "timestamp": week[1],
                                          "message": {"content": [block]}}) + "\n")
         # File mtime is recent, but the transcript itself predates the window.
@@ -260,7 +269,31 @@ class SessionTraceTests(unittest.TestCase):
         marked = next(item for item in project["sessions"] if item["session_id"] == "marked")
         self.assertEqual(marked["triage"]["friction_notes"][0]["note"], "agent ignored the plan")
         self.assertLess(marked["triage"]["score"], noisy["triage"]["score"])
-        self.assertEqual(marked["triage"]["skills_used"], ["planner", "review-pr"])
+        self.assertEqual(marked["triage"]["skills_used"], ["planner", "review-pr", "triage"])
+
+    def test_skills_loaded_counts_reads_but_not_edits_or_mentions(self):
+        loaded = MODULE["skills_loaded"]
+        self.assertEqual(loaded("exec_command", {"cmd": ["bash", "-lc", "cat .agents/skills/triage/SKILL.md"]}),
+                         {"triage"})
+        self.assertEqual(loaded("exec", 'await tools.exec_command({cmd: "head -50 .agents/skills/planner/SKILL.md"})'),
+                         {"planner"})
+        self.assertEqual(loaded("exec_command", {"cmd": "sed -i 's/a/b/' .agents/skills/triage/SKILL.md"}), set())
+        self.assertEqual(loaded("Edit", {"file_path": "/x/skills/triage/SKILL.md", "old_string": "a"}), set())
+
+    def test_triage_skips_injected_meta_messages(self):
+        self.write(self.roots["CLAUDE_CONFIG_DIR"] / "projects/p/meta.jsonl", [
+            {"type": "user", "sessionId": "meta", "cwd": str(self.project), "timestamp": "2026-10-20T09:00:00Z",
+             "message": {"role": "user", "content": [{"type": "text", "text": "build it"}]}},
+            {"type": "assistant", "sessionId": "meta", "timestamp": "2026-10-20T09:01:00Z",
+             "message": {"role": "assistant", "content": [{"type": "text", "text": "Done."}]}},
+            {"type": "user", "sessionId": "meta", "timestamp": "2026-10-20T09:02:00Z", "isMeta": True,
+             "message": {"role": "user", "content": [
+                 {"type": "text", "text": "Base directory for this skill: /x\n\n#friction example"}]}}])
+        with patch.dict("os.environ", {"CLAUDE_CODE_SESSION_ID": "", "PASEO_AGENT_ID": ""}):
+            triage = self.run_triage("--project", str(self.project))["projects"][0]["sessions"][0]["triage"]
+        self.assertEqual(triage["human_messages"], 1)
+        self.assertEqual(triage["human_after_done_claim"], 0)
+        self.assertEqual(triage["friction_notes"], [])
 
     def test_triage_excludes_the_running_audit_session_from_the_environment(self):
         self.claude_session("p", "current", ["2026-10-20T09:00:00Z"], ["audit"])
