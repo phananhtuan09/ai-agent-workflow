@@ -84,7 +84,9 @@ Group changes by the behavior they produce, not by file type.
 
 ### 4. Prove before committing
 
-Choose the cheapest reliable proof for the changed behavior, following `docs/WORKFLOW.md`.
+Choose the cheapest reliable proof for the changed behavior, following the repository's own proof rules.
+Read `docs/WORKFLOW.md` when it exists; otherwise read `AGENTS.md` and `CLAUDE.md`, and also read a file they reference for proof or validation rules.
+When none of these files exists or none references such rules, stop looking and use the cheapest reliable check.
 Prefer the repository's own focused commands over a full repository-wide suite.
 
 - Behavior change in code -> run the focused test or check that observes it
