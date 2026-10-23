@@ -116,6 +116,10 @@ Treat specialized skills as optional capabilities and load one only when it mate
 Do not make normal repository-driven execution depend on feature artifacts or coordinator state.
 Do not add a fixed execution chain or require workflow artifacts for ordinary work.
 Do not fabricate product rules, decisions, plans, runbooks, proof, or execution state.
+When counting, filtering, aggregating, or extracting from bulk data of roughly five or more files or 300 or more lines, write a small script that prints only the needed result instead of reading the raw data into context.
+Bulk data means logs, test or build output, payloads, and statistics across many files; reading code to understand or change it is not bulk data, and a search script never replaces reading a component you are about to change.
+Keep such scripts in a temporary or git-ignored directory so they can be rerun to show how a result was produced without polluting the repository.
+These thresholds are approximate guidance, not hard limits.
 
 ## Durable knowledge maintenance
 
@@ -162,5 +166,8 @@ For multi-case runtime E2E work that must survive sessions or support later audi
 Complete every requested end-to-end behavior and named acceptance criterion.
 Record durable knowledge changes as described in Durable knowledge maintenance and list them in the report.
 Remove temporary proof fixtures and scaffolding before completion.
-Report changed behavior and direct automated evidence separately from checks that still require human judgment.
+Report every handoff, bounded or durable, in three parts, scaling detail with risk; for a small change one line per part is enough.
+Claims: state each changed behavior with the evidence observed for it, such as the command run and its result, a file and line, or observed output.
+Limits: state what that evidence did not exercise or check.
+Human confirmation: list separately what only a human can confirm, such as product fit, UX, or business correctness, and never present it as verified.
 Do not claim evidence that was not observed.
