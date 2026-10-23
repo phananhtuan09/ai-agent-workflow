@@ -9,6 +9,7 @@ Hand this file to an agent and ask it to install them; it fetches the content st
 | Skill | Role |
 | --- | --- |
 | `herdr-guide` | Owns Herdr CLI mechanics. |
+| `idea-scout` | Experimental. Proposes a ranked shortlist of up to 5 feature ideas grounded in project intent, GitHub issues, and chosen similar products, in the user's language. |
 | `prompt-leverage` | Rewrites a raw prompt into Expected output, Effort, and How to verify, in the user's language. |
 
 ## Layout
@@ -30,7 +31,7 @@ Every other runtime gets a short pointer file that tells the agent to read the C
 ```bash
 BASE=https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/global-skills
 
-for skill in herdr-guide prompt-leverage; do
+for skill in herdr-guide idea-scout prompt-leverage; do
   mkdir -p "$HOME/.claude/skills/$skill"
   curl -fsSL "$BASE/$skill/SKILL.md" -o "$HOME/.claude/skills/$skill/SKILL.md"
 done
@@ -42,7 +43,7 @@ Each stub keeps its own frontmatter, because `description` is what makes a runti
 Only the body is replaced by the pointer.
 
 ```bash
-for skill in herdr-guide prompt-leverage; do
+for skill in herdr-guide idea-scout prompt-leverage; do
   src="$HOME/.claude/skills/$skill/SKILL.md"
   mkdir -p "$HOME/.agents/skills/$skill"
   {
@@ -69,7 +70,7 @@ These were established by testing against real runtimes; violating them fails si
 ## Verify
 
 ```bash
-for skill in herdr-guide prompt-leverage; do
+for skill in herdr-guide idea-scout prompt-leverage; do
   head -2 ~/.claude/skills/$skill/SKILL.md ~/.agents/skills/$skill/SKILL.md
 done
 find ~/.claude/skills ~/.agents/skills -name SKILL.md -type l
