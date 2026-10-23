@@ -106,7 +106,7 @@ git add <specific files>
 git commit -m "<subject in the repository convention>" -m "<body>"
 ```
 
-Match the commit message convention in the repository's recent history (`git log --oneline -20`) and any commit rules in the files read for proof rules.
+Match the commit message convention in the repository's recent history (`git log --oneline -20`) and any commit rules in `AGENTS.md`, `CLAUDE.md`, or `docs/WORKFLOW.md`, reading them for this even when proof rules came from another file.
 Use conventional commits (`<type>(<scope>): <subject>`) only when the repository has no clear convention.
 Write a body that explains why the group belongs together when the subject alone does not make that clear.
 
