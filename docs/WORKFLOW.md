@@ -166,5 +166,8 @@ For multi-case runtime E2E work that must survive sessions or support later audi
 Complete every requested end-to-end behavior and named acceptance criterion.
 Record durable knowledge changes as described in Durable knowledge maintenance and list them in the report.
 Remove temporary proof fixtures and scaffolding before completion.
-Report changed behavior and direct automated evidence separately from checks that still require human judgment.
+Report every handoff, bounded or durable, in three parts, scaling detail with risk; for a small change one line per part is enough.
+Claims: state each changed behavior with the evidence observed for it, such as the command run and its result, a file and line, or observed output.
+Limits: state what that evidence did not exercise or check.
+Human confirmation: list separately what only a human can confirm, such as product fit, UX, or business correctness, and never present it as verified.
 Do not claim evidence that was not observed.

@@ -1,17 +1,44 @@
+<div align="center">
+
 # AI Agent Workflow
+
+**One protocol, any AI coding assistant: read the repo, make the smallest change, prove it.**
+
+[![npm version](https://img.shields.io/npm/v/ai-workflow-init?logo=npm)](https://www.npmjs.com/package/ai-workflow-init)
+[![CI](https://github.com/phananhtuan09/ai-agent-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/phananhtuan09/ai-agent-workflow/actions/workflows/ci.yml)
+[![Node](https://img.shields.io/badge/node-%3E%3D14-339933?logo=node.js&logoColor=white)](package.json)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](package.json)
+
+Claude Code · Codex · Google Antigravity · OpenCode · Pi
+
+[Quick start](#quick-start) · [Capabilities](#capabilities) · [Runtimes](#supported-runtimes) · [Updating](#updating-an-installation) · [Migrating](#migrating-an-existing-project)
+
+</div>
+
+---
 
 A repository-driven protocol for AI coding assistants, installed by the `ai-workflow-init` CLI, with optional skills for review, testing, design, workflow evaluation, and learning.
 
+## Why
+
+- 🎯 **No ceremony.** There is no mandatory spec → plan → execute → verify chain and no coordinator state.
+- 📚 **The repository is the memory.** Intent, decisions, and observed facts live in `docs/`, so any session or contributor can pick up the work.
+- ✅ **Evidence over claims.** Every change ends with the cheapest reliable proof and an honest report of what remains risky.
+- 🧩 **Opt-in capabilities.** Start with the core protocol and add skills only when they materially help.
+
 ## How it works
 
-The default path is direct execution:
+<p align="center">
+  <img src=".github/assets/workflow.svg" alt="Agent Metro, an animated transit map of the workflow: a request is checked against repository authority, routed to a read-only, bounded, durable, or decision-blocked work shape, proved, and reported, with durable knowledge recorded under docs/" width="100%">
+</p>
 
-1. Read the requested outcome and the smallest relevant repository authority.
-2. Make the smallest coherent change.
-3. Prove the changed behavior with the cheapest reliable check.
-4. Report observed evidence and remaining risk.
+Every request boards at **Request**, changes at **Authority**, and picks a line at **Work shape**:
 
-There is no required design/specification/execution/verification chain and no coordinator state.
+- 🔵 **L1 Read-only** answers with evidence and skips mutation.
+- 🟢 **L2 Bounded change** makes the smallest coherent change, proves it, and reports.
+- 🟣 **L3 Durable change** keeps a resumable plan and loops through the `docs/` depot, which later work reads back as authority.
+- 🟠 **L4 Decision-blocked** stops before mutation, asks the smallest human question, and reboards at Request.
+
 The full rules live in [`AGENTS.md`](AGENTS.md) and [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 
 ## Quick start
@@ -41,14 +68,17 @@ Record which source or revision you used when comparing installations.
 
 | Capability | Install flag | What it adds | Status |
 | --- | --- | --- | --- |
-| Core protocol | `--kit coding-standard` | `AGENTS.md`, `docs/WORKFLOW.md`, and the `docs/` namespaces | Stable |
-| Planner mode | `--bundle planner-mode` | Manually invoked `/planner` mode that picks the next workflow step and suggests numbered next prompts | Experimental |
-| Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
-| Design | `--kit design` | `docs/PRODUCT.md` and `docs/DESIGN.md` for the external Impeccable engine | Stable |
-| Workflow evaluation | `--kit workflow-eval` | Trace-first evaluation standard, templates, and skills under `docs/evaluation/` | Stable |
-| Learning | `--kit learning-workflow` | Mini-project learning coordinator and helpers under `docs/learning/` | Stable |
+| 🧭 Core protocol | `--kit coding-standard` | `AGENTS.md`, `docs/WORKFLOW.md`, and the `docs/` namespaces | Stable |
+| 🗺️ Planner mode | `--bundle planner-mode` | Manually invoked `/planner` mode that picks the next workflow step and suggests numbered next prompts | Experimental |
+| 🧪 Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
+| 🎨 Design | `--kit design` | `docs/PRODUCT.md` and `docs/DESIGN.md` for the external Impeccable engine | Stable |
+| 📊 Workflow evaluation | `--kit workflow-eval` | Trace-first evaluation standard, templates, and skills under `docs/evaluation/` | Stable |
+| 🎓 Learning | `--kit learning-workflow` | Mini-project learning coordinator and helpers under `docs/learning/` | Stable |
 
 ### Skills and bundles
+
+<details>
+<summary>Show all skills and bundles</summary>
 
 Skills are maintained in [`skills/`](skills) and declared in [`skills/manifest.json`](skills/manifest.json).
 Add one with `--skill <name>` or a group with `--bundle <name>`.
@@ -79,6 +109,8 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `planner-mode` | `planner`, `quality-code-check`, `smart-commits`, `manage-project-knowledge` |
 
 The bundle named `core` is optional; the `coding-standard` kit does not require it.
+
+</details>
 
 ### Planner mode
 
@@ -122,6 +154,9 @@ Existing project and global instruction files are always preserved.
 
 ## Repository docs layout
 
+<details>
+<summary>Show the <code>docs/</code> layout</summary>
+
 ```text
 AGENTS.md
 docs/
@@ -143,6 +178,8 @@ docs/
 Optional namespaces are not product authority and are not loaded by ordinary coding work.
 The agent maintains durable knowledge itself: it records what you accept in conversation, keeps facts it infers from code in `docs/observed/`, and asks only when intent sources conflict.
 See [`docs/README.md`](docs/README.md) for each location's contract.
+
+</details>
 
 ## Updating an installation
 
@@ -177,6 +214,9 @@ That template is not the source of the current project protocol.
 
 ### Handoff checklist for AI assistants
 
+<details>
+<summary>Show the checklist</summary>
+
 Before reporting an installation as complete, verify that:
 
 - `AGENTS.md` points to `docs/WORKFLOW.md`, and both describe direct execution without a mandatory phase chain.
@@ -187,6 +227,8 @@ Before reporting an installation as complete, verify that:
 - The handoff lists the source and revision, kit and runtime, added skills, and preserved files that still need migration.
 
 For an A/B benchmark, also compare globally available skills and instructions, runtime versions, verification tools, and starting files across both sessions.
+
+</details>
 
 ## Also in this repository
 
