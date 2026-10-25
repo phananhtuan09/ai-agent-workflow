@@ -142,11 +142,11 @@ Learning is separate from ordinary coding work and supports Codex, Claude Code, 
 
 | Runtime | `--tool` | Skill directory | Other installed files |
 | --- | --- | --- | --- |
-| Claude Code | `claude` | `.claude/skills/` | `.claude/CLAUDE.md` generated from `AGENTS.md`, plus agents, output styles, scripts, settings, and status line |
+| Claude Code | `claude` | `.claude/skills/` | `.claude/CLAUDE.md` that imports `AGENTS.md`, plus agents, output styles, scripts, settings, and status line |
 | Codex | `codex` | `.agents/skills/` | `.agents/roles/` and `.codex/` |
 | Google Antigravity | `antigravity` | `.agents/skills/` | — |
-| OpenCode | `opencode` | — | Native agents in `.opencode/agents/` only when a selected kit requires them |
-| Pi | `pi` | — | None; Pi reads the repository protocol directly |
+| OpenCode | `opencode` | `.agents/skills/` | Native agents in `.opencode/agents/` only when a selected kit requires them |
+| Pi | `pi` | `.agents/skills/` | None; Pi reads the repository protocol directly |
 
 Existing project and global instruction files are always preserved.
 
@@ -219,7 +219,7 @@ Before reporting an installation as complete, verify that:
 
 - `AGENTS.md` points to `docs/WORKFLOW.md`, and both describe direct execution without a mandatory phase chain.
 - Project-specific rules remain intact and unresolved instruction conflicts are identified.
-- For Claude, `.claude/CLAUDE.md` reflects the current protocol and keeps project-specific rules.
+- For Claude, `.claude/CLAUDE.md` imports `AGENTS.md` and keeps project-specific rules.
 - Only requested skills were added.
 - No specification, plan, or design exercise was started merely to install the workflow.
 - The handoff lists the source and revision, kit and runtime, added skills, and preserved files that still need migration.

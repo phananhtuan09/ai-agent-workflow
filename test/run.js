@@ -314,6 +314,8 @@ test("review-pr installs its canonical skill and runtime reviewer", () => {
   ["claude", ".claude/skills"],
   ["codex", ".agents/skills"],
   ["antigravity", ".agents/skills"],
+  ["opencode", ".agents/skills"],
+  ["pi", ".agents/skills"],
 ].forEach(([tool, root]) => {
   test(`planner-mode bundle installs the manual planner mode for ${tool}`, () => {
     const result = runCli(["--kit", "coding-standard", "--tool", tool, "--bundle", "planner-mode"]);
@@ -342,6 +344,36 @@ test("review-pr installs its canonical skill and runtime reviewer", () => {
 
 test("Claude project instructions use the root protocol as their source", () => {
   assert.ok(!fs.existsSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.md")));
+  assert.strictEqual(
+    fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.project.md"), "utf8"),
+    "@../AGENTS.md\n"
+  );
+});
+
+test("Claude install imports AGENTS.md instead of copying it", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "claude"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(
+      fs.readFileSync(path.join(result.workspace, ".claude/CLAUDE.md"), "utf8"),
+      "@../AGENTS.md\n"
+    );
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("installing skills next to existing Claude skills warns about duplicates", () => {
+  const result = runCli(
+    ["--kit", "coding-standard", "--tool", "codex", "--bundle", "planner-mode"],
+    ({ workspace }) => fs.mkdirSync(path.join(workspace, ".claude/skills"), { recursive: true })
+  );
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(result.stdout.includes("list each skill twice"));
+  } finally {
+    result.cleanup();
+  }
 });
 
 test("clean coding-standard install includes protocol without legacy artifacts", () => {
@@ -602,7 +634,7 @@ test("Claude selection installs only missing Claude global instructions", () => 
     );
     assert.ok(
       fs.readFileSync(path.join(result.workspace, ".claude/CLAUDE.md")).equals(
-        fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md"))
+        fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.project.md"))
       )
     );
     assert.ok(!fs.existsSync(path.join(result.home, ".codex/AGENTS.md")));
@@ -649,7 +681,7 @@ test("global instructions keep the legacy context while Claude project scope use
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const legacyGlobal = fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.global.md"));
-    const currentProject = fs.readFileSync(path.join(SOURCE_ROOT, "AGENTS.md"));
+    const currentProject = fs.readFileSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.project.md"));
     assert.ok(fs.readFileSync(path.join(result.home, ".codex/AGENTS.md")).equals(legacyGlobal));
     assert.ok(fs.readFileSync(path.join(result.home, ".claude/CLAUDE.md")).equals(legacyGlobal));
     assert.ok(fs.readFileSync(path.join(result.workspace, ".claude/CLAUDE.md")).equals(currentProject));
