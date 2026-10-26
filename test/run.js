@@ -363,16 +363,117 @@ test("Claude install imports AGENTS.md instead of copying it", () => {
   }
 });
 
-test("installing skills next to existing Claude skills warns about duplicates", () => {
+test("installing a skill that already exists in .claude/skills warns about the duplicate", () => {
+  const result = runCli(
+    ["--kit", "coding-standard", "--tool", "codex", "--bundle", "planner-mode"],
+    ({ workspace }) => {
+      fs.mkdirSync(path.join(workspace, ".claude/skills/planner"), { recursive: true });
+      fs.mkdirSync(path.join(workspace, ".claude/skills/consumer-only"), { recursive: true });
+    }
+  );
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const warning = result.stdout.split("\n").find((line) => line.includes("list each skill twice"));
+    assert.ok(warning, result.stdout);
+    assert.ok(warning.includes("planner"));
+    assert.ok(!warning.includes("consumer-only"));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("skill roots without a shared skill do not warn about duplicates", () => {
   const result = runCli(
     ["--kit", "coding-standard", "--tool", "codex", "--bundle", "planner-mode"],
     ({ workspace }) => fs.mkdirSync(path.join(workspace, ".claude/skills"), { recursive: true })
   );
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.ok(result.stdout.includes("list each skill twice"));
+    assert.ok(fs.existsSync(path.join(result.workspace, ".agents/skills/planner/SKILL.md")));
+    assert.ok(!result.stdout.includes("list each skill twice"), result.stdout);
   } finally {
     result.cleanup();
+  }
+});
+
+for (const kitArgs of [["--kit", "workflow-eval"], ["--kit", "design", "--skill", "planner"]]) {
+  test(`${kitArgs[1]} warns when its skills exist for both Claude and shared runtimes`, () => {
+    const result = runCli([...kitArgs, "--tool", "codex"]);
+    try {
+      assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+      assert.ok(!result.stdout.includes("list each skill twice"), result.stdout);
+      const claude = spawnSync(
+        process.execPath,
+        [path.join(SOURCE_ROOT, "cli.js"), ...kitArgs, "--tool", "claude"],
+        { cwd: result.workspace, env: { ...process.env, HOME: result.home }, encoding: "utf8" }
+      );
+      assert.strictEqual(claude.status, 0, claude.stderr || claude.stdout);
+      assert.ok(claude.stdout.includes("list each skill twice"), claude.stdout);
+    } finally {
+      result.cleanup();
+    }
+  });
+}
+
+test("shared skills installed for several runtimes stay managed", () => {
+  const fixture = createCliFixture();
+  try {
+    const install = fixture.run([
+      "--kit", "coding-standard", "--all", "--skill", "record-workflow-friction",
+    ]);
+    assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+    const skillPath = ".agents/skills/record-workflow-friction/SKILL.md";
+    // Codex comes first among the selected shared runtimes, so the shared copy is adapted for it.
+    assert.ok(
+      fs.readFileSync(path.join(fixture.workspace, skillPath), "utf8").includes("runtime: codex")
+    );
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(state.files.some((file) => file.path === skillPath));
+
+    const dryRun = fixture.run(["update"]);
+    assert.strictEqual(dryRun.status, 0, dryRun.stderr || dryRun.stdout);
+    assert.ok(dryRun.stdout.includes(`UNCHANGED repository:${skillPath}`), dryRun.stdout);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update without installed state recognizes a legacy Claude protocol copy and keeps it", () => {
+  const fixture = createCliFixture(({ workspace, sourceRoot }) => {
+    // Earlier installers copied AGENTS.md into .claude/CLAUDE.md; nothing else from Claude remains.
+    const legacyProtocol = "# Protocol from an earlier installer\n";
+    fs.writeFileSync(path.join(workspace, "AGENTS.md"), legacyProtocol);
+    fs.mkdirSync(path.join(workspace, ".claude"), { recursive: true });
+    fs.writeFileSync(path.join(workspace, ".claude/CLAUDE.md"), legacyProtocol);
+    assert.ok(fs.existsSync(path.join(sourceRoot, ".claude/CLAUDE.project.md")));
+  });
+  try {
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("SKIP UNKNOWN repository:.claude/CLAUDE.md"), apply.stdout);
+    assert.ok(apply.stdout.includes("is a copy of AGENTS.md from an earlier installer"), apply.stdout);
+    assert.strictEqual(
+      fs.readFileSync(path.join(fixture.workspace, ".claude/CLAUDE.md"), "utf8"),
+      "# Protocol from an earlier installer\n"
+    );
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(state.core.runtimes.includes("claude"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update does not report an edited Claude project file as a legacy copy", () => {
+  const fixture = createUpdateFixture("claude");
+  try {
+    fs.unlinkSync(fixture.statePath);
+    fs.writeFileSync(path.join(fixture.workspace, ".claude/CLAUDE.md"), "# Project-owned Claude notes\n");
+    const dryRun = fixture.run(["update"]);
+    assert.strictEqual(dryRun.status, 0, dryRun.stderr || dryRun.stdout);
+    assert.ok(dryRun.stdout.includes("SKIP UNKNOWN repository:.claude/CLAUDE.md"), dryRun.stdout);
+    assert.ok(!dryRun.stdout.includes("earlier installer"), dryRun.stdout);
+  } finally {
+    fixture.cleanup();
   }
 });
 
