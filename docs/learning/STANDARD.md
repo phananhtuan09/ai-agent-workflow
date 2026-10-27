@@ -108,7 +108,7 @@ Implied requirement được `learning-case` chuẩn bị theo active project v�
 
 Mỗi implied requirement phải suy ra được từ problem, user, business goal hoặc project context công khai, nằm trong scale và time budget của mini-project, được tiết lộ bởi ít nhất một discoverable fact có discovery path hợp lý và có check quan sát được trên deliverable.
 
-Mỗi implied requirement phải được một rubric dimension về product understanding đánh giá; dimension này ảnh hưởng outcome và progression như mọi dimension khác.
+Mỗi implied requirement phải được một rubric dimension product understanding riêng đánh giá, không gắn vào dimension của protected judgment; dimension này ảnh hưởng outcome và progression như mọi dimension khác.
 
 Review phân loại mỗi implied requirement là `self-identified`, `discovered` qua câu hỏi stakeholder của learner, `prompted` sau câu hỏi feedback, hoặc `missed`; `prompted` tối đa là `partial` và `missed` là `not-demonstrated` cho requirement đó.
 

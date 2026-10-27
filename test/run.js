@@ -2437,6 +2437,11 @@ test("learning mini-project sessions require assessed implied requirements", () 
     unassessed.rubric.pop();
     rejectsCase(unassessed, "must be assessed by a rubric dimension");
 
+    const sharedDimension = withImpliedRequirements();
+    sharedDimension.rubric.pop();
+    sharedDimension.rubric[0].required_implied_requirement_ids = ["IR-WEBHOOK-001"];
+    rejectsCase(sharedDimension, "dedicated product-understanding dimension");
+
     const unknownReference = withImpliedRequirements();
     productDimension(unknownReference).required_implied_requirement_ids = ["IR-WEBHOOK-009"];
     rejectsCase(unknownReference, "references unknown implied requirements");

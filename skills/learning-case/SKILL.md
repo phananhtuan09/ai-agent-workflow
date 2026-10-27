@@ -117,7 +117,7 @@ Add one to three hidden functional or non-functional requirements that a learner
 }
 ```
 
-Add or extend a rubric dimension named for product understanding that lists every implied requirement in `required_implied_requirement_ids`. Record the change as a new `case_history` entry. Never add or change implied requirements after a session checksum binds the case.
+Add a dedicated product-understanding rubric dimension that lists every implied requirement in `required_implied_requirement_ids` and no `required_judgment_ids`; the validator rejects implied requirements attached to a judgment dimension. Record the change as a new `case_history` entry. Never add or change implied requirements after a session checksum binds the case.
 
 ### Discover
 

@@ -385,6 +385,8 @@ def validate_case(case: dict[str, Any]) -> None:
         unknown_requirements = required_requirements - implied_requirement_ids
         if unknown_requirements:
             fail(f"case.rubric[{index}] references unknown implied requirements: {sorted(unknown_requirements)}")
+        if required_requirements and required:
+            fail(f"case.rubric[{index}] must assess implied requirements in a dedicated product-understanding dimension")
         assessed_requirement_ids |= required_requirements
         require_string_list(
             dimension.get("observable_signals"),
