@@ -58,6 +58,15 @@ Check the deliverable against the product spec:
 - Did the learner keep claims within the tested method and environment?
 - Did the twist produce a meaningful revision or a justified decision to keep the design?
 
+For each implied requirement in the case, check its `check` against the delivered behavior and classify it:
+
+- `self-identified`: handled, or explicitly reasoned about, without asking about it and before feedback;
+- `discovered`: handled after the learner's own stakeholder question disclosed one of its facts;
+- `prompted`: handled only after a feedback question pointed at it;
+- `missed`: not handled.
+
+`self-identified` and `discovered` support an independent `demonstrated` rating for product understanding. `prompted` supports at most `partial`. `missed` supports `not-demonstrated` for that requirement. Cite the attempt, discovery, assistance, revision, or delivery records behind each classification, and never count a requirement against the learner when its facts were not discoverable before assessment.
+
 Classify important gaps when supported:
 
 - `knowledge-gap`;

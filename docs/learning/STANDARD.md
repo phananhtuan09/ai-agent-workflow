@@ -26,7 +26,7 @@ Spec mặc định dùng mini-project của schedule cycle hiện tại và đư
 
 Trong Build, learner tự research, thiết kế và implement theo nhịp của mình; AI không chủ động hỏi, nhắc hoặc gợi ý, và chỉ trả lời khi learner hỏi stakeholder hoặc xin hỗ trợ.
 
-Review bắt đầu khi learner nộp bài: AI chạy demo, ghi first attempt từ submission và đưa đúng một vòng feedback gồm phần đã đạt, tối đa hai câu hỏi hoặc counterexample trung lập và twist nếu trigger đã thỏa.
+Review bắt đầu khi learner nộp bài: AI chạy demo, ghi first attempt từ submission và đưa đúng một vòng feedback gồm phần đã đạt, tối đa hai câu hỏi hoặc counterexample trung lập về decision learner sở hữu, một câu hỏi theo tình huống user cho mỗi implied requirement bị bỏ sót và twist nếu trigger đã thỏa.
 
 Learner được revise hoặc defend một lần trước Reflect; nếu learner bỏ qua, AI chuyển sang Reflect.
 
@@ -88,7 +88,8 @@ Mini-project là đơn vị học mặc định và phải có:
 - một deliverable có thể chạy hoặc demo;
 - definition of done;
 - một active competency và thường chỉ một protected judgment;
-- tối đa một change request, incident hoặc evidence twist đã được khai báo trước.
+- tối đa một change request, incident hoặc evidence twist đã được khai báo trước;
+- từ một đến ba implied requirement ẩn theo section `Implied Requirements`.
 
 Human-facing brief phải bắt đầu bằng product spec hoặc yêu cầu chức năng. Invariant, failure mode và trade-off là điều learner khám phá từ spec, clarification, implementation và consequence; không được dùng chúng như đề bài duy nhất một cách máy móc.
 
@@ -97,7 +98,21 @@ Mỗi mini-project chọn một mode:
 - `practice`: ưu tiên momentum; AI được hint sớm hơn và kết quả không được ghi là independent competency evidence;
 - `challenge`: learner giữ first attempt và key decisions để tạo learning evidence.
 
-Mini-project hoàn tất khi deliverable đạt definition of done trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
+Mini-project hoàn tất khi deliverable đạt definition of done và implied requirement trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
+
+## Implied Requirements
+
+Spec được trình bày cố ý chưa đầy đủ: mỗi mini-project case có từ một đến ba implied requirement chức năng hoặc phi chức năng không xuất hiện trong spec, để kiểm tra learner có thực sự hiểu user và product hay không.
+
+Implied requirement được `learning-case` chuẩn bị theo active project và case đang chọn trước khi session bind case; không dùng danh sách cố định.
+
+Mỗi implied requirement phải suy ra được từ problem, user, business goal hoặc project context công khai, nằm trong scale và time budget của mini-project, được tiết lộ bởi ít nhất một discoverable fact có discovery path hợp lý và có check quan sát được trên deliverable.
+
+Mỗi implied requirement phải được một rubric dimension về product understanding đánh giá; dimension này ảnh hưởng outcome và progression như mọi dimension khác.
+
+Review phân loại mỗi implied requirement là `self-identified`, `discovered` qua câu hỏi stakeholder của learner, `prompted` sau câu hỏi feedback, hoặc `missed`; `prompted` tối đa là `partial` và `missed` là `not-demonstrated` cho requirement đó.
+
+Không tính một implied requirement là bỏ sót nếu fact tiết lộ nó không thể được khám phá trước assessment.
 
 ## Product Lens
 
