@@ -362,7 +362,8 @@ def run_base(bundle, root, data, run_id):
         with (run / "setup.log").open("w", encoding="utf-8") as log:
             for step in base.get("setup", []):
                 try:
-                    done = subprocess.run(step, cwd=tree, capture_output=True, text=True, timeout=SETUP_TIMEOUT)
+                    # Setup steps are human-approved argument arrays (hashed with the suite) and run without a shell.
+                    done = subprocess.run(step, cwd=tree, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
                     code, output = done.returncode, done.stdout + done.stderr
                 except subprocess.TimeoutExpired:
                     code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
