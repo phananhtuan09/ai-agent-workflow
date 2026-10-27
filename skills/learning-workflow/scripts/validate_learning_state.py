@@ -56,6 +56,8 @@ MINI_PROJECT_CATEGORIES = {
 MINI_PROJECT_ACTIVITIES = {"build", "debug", "integrate", "optimize", "review"}
 MINI_PROJECT_MODES = {"practice", "challenge"}
 DELIVERY_STATUSES = {"not-started", "in-progress", "shipped", "blocked"}
+IMPLIED_REQUIREMENT_KINDS = {"functional", "non-functional"}
+MAX_IMPLIED_REQUIREMENTS = 3
 
 
 def validate_mini_project(value: Any, field: str) -> dict[str, Any]:
@@ -346,21 +348,54 @@ def validate_case(case: dict[str, Any]) -> None:
         if "kind" in event:
             require_string(event.get("kind"), f"case.future_events[{index}].kind")
 
+    implied_requirements = require_list(case.get("implied_requirements", []), "case.implied_requirements")
+    implied_requirement_ids = unique_ids(implied_requirements, "case.implied_requirements")
+    if len(implied_requirements) > MAX_IMPLIED_REQUIREMENTS:
+        fail(f"case.implied_requirements must contain at most {MAX_IMPLIED_REQUIREMENTS} items")
+    discoverable_fact_ids = {item["id"] for item in facts if item.get("visibility") == "discoverable"}
+    for index, requirement in enumerate(implied_requirements):
+        if requirement.get("kind") not in IMPLIED_REQUIREMENT_KINDS:
+            fail(f"case.implied_requirements[{index}].kind must be functional or non-functional")
+        require_string(requirement.get("statement"), f"case.implied_requirements[{index}].statement")
+        require_string(requirement.get("derived_from"), f"case.implied_requirements[{index}].derived_from")
+        require_string(requirement.get("check"), f"case.implied_requirements[{index}].check")
+        revealing_facts = set(require_string_list(
+            requirement.get("fact_ids"),
+            f"case.implied_requirements[{index}].fact_ids",
+            allow_empty=False,
+        ))
+        if revealing_facts - discoverable_fact_ids:
+            fail(f"case.implied_requirements[{index}] must reference discoverable facts")
+
     rubric = require_list(case.get("rubric"), "case.rubric")
     unique_ids(rubric, "case.rubric")
     if not rubric:
         fail("case.rubric must not be empty")
+    assessed_requirement_ids: set[str] = set()
     for index, dimension in enumerate(rubric):
         require_string(dimension.get("name"), f"case.rubric[{index}].name")
         required = set(require_list(dimension.get("required_judgment_ids"), f"case.rubric[{index}].required_judgment_ids"))
         unknown = required - judgment_ids
         if unknown:
             fail(f"case.rubric[{index}] references unknown judgments: {sorted(unknown)}")
+        required_requirements = set(require_string_list(
+            dimension.get("required_implied_requirement_ids", []),
+            f"case.rubric[{index}].required_implied_requirement_ids",
+        ))
+        unknown_requirements = required_requirements - implied_requirement_ids
+        if unknown_requirements:
+            fail(f"case.rubric[{index}] references unknown implied requirements: {sorted(unknown_requirements)}")
+        if required_requirements and required:
+            fail(f"case.rubric[{index}] must assess implied requirements in a dedicated product-understanding dimension")
+        assessed_requirement_ids |= required_requirements
         require_string_list(
             dimension.get("observable_signals"),
             f"case.rubric[{index}].observable_signals",
             allow_empty=False,
         )
+    unassessed = implied_requirement_ids - assessed_requirement_ids
+    if unassessed:
+        fail(f"case implied requirements must be assessed by a rubric dimension: {sorted(unassessed)}")
 
     transfer = case.get("transfer")
     if not isinstance(transfer, dict):

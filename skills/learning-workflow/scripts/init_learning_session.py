@@ -57,6 +57,8 @@ def main() -> int:
         case_mini_project = case.get("mini_project")
         if case_mini_project is not None and case["case_id"] not in current_week_plan.get("mini_project_ids", []):
             raise ValidationError("mini-project case is not listed in the current schedule cycle")
+        if case_mini_project is not None and not case.get("implied_requirements"):
+            raise ValidationError("mini-project case requires implied requirements before a session binds to it")
         if case_mini_project is not None:
             selected_mode = args.mode if args.mode is not None else case_mini_project["mode"]
             selected_budget = (

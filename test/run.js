@@ -1846,7 +1846,7 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     assert.ok(fs.existsSync(path.join(skillsRoot, "learning-review/SKILL.md")));
 
     const coordinator = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
-    assert.ok(coordinator.includes("Choose -> Build -> Twist -> Ship -> Reflect"));
+    assert.ok(coordinator.includes("Setup -> Spec -> Build -> Review -> Reflect"));
     assert.ok(coordinator.includes("STANDARD.md"));
     assert.ok(coordinator.includes("update_learning_state.py"));
     assert.ok(coordinator.includes("update_learning_context.py"));
@@ -2356,6 +2356,129 @@ test("learning validator rejects malformed case contracts", () => {
       encoding: "utf8",
     });
     assert.notStrictEqual(rejected.status, 0);
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("learning mini-project sessions require assessed implied requirements", () => {
+  const result = runCli(["--kit", "learning-workflow", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const skillRoot = path.join(result.workspace, ".agents/skills/learning-workflow");
+    const validatePath = path.join(skillRoot, "scripts/validate_learning_state.py");
+    const initPath = path.join(skillRoot, "scripts/init_learning_session.py");
+    const contextPath = path.join(skillRoot, "scripts/update_learning_context.py");
+    const casePath = path.join(result.workspace, "docs/learning/cases/webhook-replay-inspector.json");
+    const projectPath = path.join(result.workspace, "docs/learning/project.json");
+    const schedulePath = path.join(result.workspace, "docs/learning/schedule.json");
+    const profilePath = path.join(result.workspace, "docs/learning/profile.json");
+    const sessionPath = path.join(result.workspace, "docs/learning/sessions/webhook-replay-inspector-001.json");
+    const run = (args) => spawnSync("python3", args, { cwd: result.workspace, encoding: "utf8" });
+    const initialize = () => run([
+      initPath,
+      "--case", casePath,
+      "--project", projectPath,
+      "--schedule", schedulePath,
+      "--profile", profilePath,
+      "--session", sessionPath,
+      "--goal", "Build product-minded fullstack judgment",
+      "--baseline", "Builds React features without designing integration failure handling",
+    ]);
+
+    const acceptedContext = run([contextPath, "accept", "--project", projectPath, "--schedule", schedulePath]);
+    assert.strictEqual(acceptedContext.status, 0, acceptedContext.stderr || acceptedContext.stdout);
+
+    const blocked = initialize();
+    assert.notStrictEqual(blocked.status, 0);
+    assert.ok(blocked.stderr.includes("requires implied requirements"));
+    assert.ok(!fs.existsSync(sessionPath));
+
+    const baseCase = JSON.parse(fs.readFileSync(casePath, "utf8"));
+    const withImpliedRequirements = () => {
+      const value = JSON.parse(JSON.stringify(baseCase));
+      value.facts.push({
+        id: "F-WEBHOOK-005",
+        visibility: "discoverable",
+        statement: "Developers paste the shown payload into bug reports.",
+        discovery_paths: ["Ask how developers share a captured webhook"],
+      });
+      value.implied_requirements = [{
+        id: "IR-WEBHOOK-001",
+        kind: "functional",
+        statement: "A developer can copy the raw payload without the secret.",
+        derived_from: "The user debugs integrations and shares findings.",
+        fact_ids: ["F-WEBHOOK-005"],
+        check: "The demo copies a raw payload that contains no secret.",
+      }];
+      value.rubric.push({
+        id: "RUB-WEBHOOK-004",
+        name: "Product understanding",
+        required_judgment_ids: [],
+        required_implied_requirement_ids: ["IR-WEBHOOK-001"],
+        observable_signals: ["The learner handles a need implied by the user and problem."],
+      });
+      return value;
+    };
+    const productDimension = (value) => value.rubric.find((dimension) => dimension.id === "RUB-WEBHOOK-004");
+    const rejectsCase = (value, message) => {
+      const invalidPath = path.join(result.workspace, "invalid-implied-case.json");
+      fs.writeFileSync(invalidPath, JSON.stringify(value, null, 2) + "\n");
+      const rejected = run([validatePath, invalidPath]);
+      assert.notStrictEqual(rejected.status, 0);
+      assert.ok(rejected.stderr.includes(message), rejected.stderr);
+    };
+
+    const publicFact = withImpliedRequirements();
+    publicFact.implied_requirements[0].fact_ids = ["F-WEBHOOK-001"];
+    rejectsCase(publicFact, "must reference discoverable facts");
+
+    const unassessed = withImpliedRequirements();
+    unassessed.rubric.pop();
+    rejectsCase(unassessed, "must be assessed by a rubric dimension");
+
+    const sharedDimension = withImpliedRequirements();
+    sharedDimension.rubric.pop();
+    sharedDimension.rubric[0].required_implied_requirement_ids = ["IR-WEBHOOK-001"];
+    rejectsCase(sharedDimension, "dedicated product-understanding dimension");
+
+    const unknownReference = withImpliedRequirements();
+    productDimension(unknownReference).required_implied_requirement_ids = ["IR-WEBHOOK-009"];
+    rejectsCase(unknownReference, "references unknown implied requirements");
+
+    const tooMany = withImpliedRequirements();
+    for (const suffix of ["002", "003", "004"]) {
+      tooMany.implied_requirements.push({ ...tooMany.implied_requirements[0], id: `IR-WEBHOOK-${suffix}` });
+      productDimension(tooMany).required_implied_requirement_ids.push(`IR-WEBHOOK-${suffix}`);
+    }
+    rejectsCase(tooMany, "at most 3");
+
+    const invalidKind = withImpliedRequirements();
+    invalidKind.implied_requirements[0].kind = "nice-to-have";
+    rejectsCase(invalidKind, "must be functional or non-functional");
+
+    for (const field of ["statement", "derived_from", "check"]) {
+      const missingField = withImpliedRequirements();
+      delete missingField.implied_requirements[0][field];
+      rejectsCase(missingField, `implied_requirements[0].${field} must be a non-empty string`);
+    }
+
+    const noRevealingFact = withImpliedRequirements();
+    noRevealingFact.implied_requirements[0].fact_ids = [];
+    rejectsCase(noRevealingFact, "fact_ids must not be empty");
+
+    fs.writeFileSync(casePath, JSON.stringify(withImpliedRequirements(), null, 2) + "\n");
+    const initialized = initialize();
+    assert.strictEqual(initialized.status, 0, initialized.stderr || initialized.stdout);
+    const validated = run([
+      validatePath,
+      sessionPath,
+      "--case", casePath,
+      "--profile", profilePath,
+      "--project", projectPath,
+      "--schedule", schedulePath,
+    ]);
+    assert.strictEqual(validated.status, 0, validated.stderr || validated.stdout);
   } finally {
     result.cleanup();
   }

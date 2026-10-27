@@ -1,6 +1,6 @@
 ---
 name: learning-case
-description: Select, create, validate, or serve facts and predeclared twists for a two-to-three-day software mini-project. Use internally from learning-workflow or directly when the human wants to prepare, inspect, validate, or create a case. Do not coach, assess the learner, or run experiments.
+description: Select, create, validate, prepare hidden implied requirements for, or serve facts and predeclared twists for a two-to-three-day software mini-project. Use internally from learning-workflow or directly when the human wants to prepare, inspect, validate, or create a case. Do not coach, assess the learner, or run experiments.
 ---
 
 # Learning Case
@@ -40,7 +40,7 @@ Prefer an existing mini-project that:
 
 Reject an existing case when its established facts conflict with the active project's current state or accepted evolution history.
 
-Recommend up to three different pitches when materially different choices are available. Never decide the human's learning direction or hide a meaningful format trade-off.
+For a schedule-default request, return the single best case for the current schedule cycle with its reason; the human still approves it through the session boundary. Recommend up to three different pitches when the coordinator requests alternatives and materially different choices are available. Never decide the human's learning direction or hide a meaningful format trade-off.
 
 Return:
 
@@ -81,6 +81,7 @@ The case must contain:
 - one active competency and normally one protected judgment;
 - public and discoverable facts;
 - a discovery path for every discoverable fact;
+- one to three implied requirements prepared under `Prepare Implied Requirements`;
 - at most one predeclared change request, incident, counterexample, or evidence twist;
 - an observable rubric;
 - a transfer prompt;
@@ -93,6 +94,30 @@ Do not add technology, scale, failure, or complexity without a supporting requir
 Validate the file with the validator in the sibling `learning-workflow` skill before returning it.
 
 Case creation is a learning-namespace mutation. Acquire the shared `docs/learning/` lock while checking project context, validate the case with the sibling `learning-workflow` validator, and commit the new case through its recoverable writer. Never replace a case after a session checksum binds to it.
+
+### Prepare Implied Requirements
+
+Run this before a session binds to any mini-project case that has no `implied_requirements`, including installed cases, and as part of `Create`. Derive them from the active project and the selected case instead of reusing a fixed list.
+
+Add one to three hidden functional or non-functional requirements that a learner who understands the user and problem should anticipate, such as an unstated user need, an edge case, an empty or error state, usability, performance, or data safety. Each requirement must:
+
+- follow from the public problem, user, business goal, or current project context, recorded in `derived_from`;
+- stay inside the mini-project's scale and time budget, without adding persistence, authentication, deployment, or integrations the brief excludes;
+- be revealed by at least one discoverable fact with a reasonable stakeholder discovery path, referenced in `fact_ids`;
+- state an observable `check` the review can run against the delivered behavior.
+
+```json
+{
+  "id": "IR-WEBHOOK-001",
+  "kind": "functional | non-functional",
+  "statement": "Hidden requirement",
+  "derived_from": "Public problem, user, goal, or project context it follows from",
+  "fact_ids": ["F-WEBHOOK-005"],
+  "check": "Observable check against delivered behavior"
+}
+```
+
+Add a dedicated product-understanding rubric dimension that lists every implied requirement in `required_implied_requirement_ids` and no `required_judgment_ids`; the validator rejects implied requirements attached to a judgment dimension. Record the change as a new `case_history` entry. Never add or change implied requirements after a session checksum binds the case.
 
 ### Discover
 
@@ -138,7 +163,8 @@ Create a mini-project in a different domain or constraint context that exercises
 
 ## Integrity Rules
 
-- Preserve facts once a session checksum binds the case.
+- Preserve facts and implied requirements once a session checksum binds the case.
+- Never include implied requirements in the public brief or spec.
 - Distinguish public facts, discoverable facts, predeclared twists, assumptions, simulations, and external sources.
 - A missed fact counts against discovery only when it existed before assessment and had a reasonable discovery path.
 - Evaluate decisions against facts available at the time, not future-twist hindsight.

@@ -15,8 +15,44 @@ Workflow MVP dùng một active mini-project, một active competency và một 
 Luồng human-facing duy nhất là:
 
 ```text
-Choose -> Build -> Twist -> Ship -> Reflect
+Setup -> Spec -> Build -> Review -> Reflect
 ```
+
+## Nhịp Tương Tác
+
+Setup chỉ hỏi phần tổng quan một lần cho learning program: duyệt project và schedule, goal, baseline, daily time budget và mode; không hỏi về case cụ thể.
+
+Spec mặc định dùng mini-project của schedule cycle hiện tại và được trình bày trọn vẹn trong một lần, kèm submission checklist; chỉ đề xuất tối đa ba lựa chọn khi human yêu cầu.
+
+Trong Build, learner tự research, thiết kế và implement theo nhịp của mình; AI không chủ động hỏi, nhắc hoặc gợi ý, và chỉ trả lời khi learner hỏi stakeholder hoặc xin hỗ trợ.
+
+Review bắt đầu khi learner nộp bài: AI chạy demo, ghi first attempt từ submission và đưa đúng một vòng feedback gồm phần đã đạt, tối đa hai câu hỏi hoặc counterexample trung lập về decision learner sở hữu, một câu hỏi theo tình huống user cho mỗi implied requirement bị bỏ sót và twist nếu trigger đã thỏa.
+
+Learner được revise hoặc defend một lần trước Reflect; nếu learner bỏ qua, AI chuyển sang Reflect.
+
+Khi submission thiếu decision mà learner sở hữu, AI hỏi bổ sung trong một tin nhắn ngắn thay vì phỏng vấn từng bước.
+
+Khi learner tự khai AI tool hoặc nguồn bên ngoài đã định hình decision mà learner sở hữu, phần đó được attribution là material assistance; hỗ trợ mechanical không cần ghi nhận.
+
+## Workspace Isolation
+
+Learner implement mini-project trong folder do learner tự chọn, nằm ngoài workspace chứa `docs/learning/`, để coding agent không đọc được hidden fact, future event hoặc rubric; AI không cố định tên folder và nhận folder path khi learner nộp bài.
+
+Review đọc và chạy code tại folder path đã nộp mà không copy vào learning workspace; artifact reference là folder path kèm commit SHA khi folder là git repository.
+
+Khi folder đã nộp nằm trong workspace chứa `docs/learning/`, delivery limitation phải ghi rằng case content có thể đã bị truy cập.
+
+Khi giao implementation cho coding agent, learner ghi rõ decision mình sở hữu trong task để agent implement thay vì tự chọn.
+
+## Learner Docs Trong Review
+
+Review chỉ đọc product hoặc decision doc trong folder của learner khi learner chỉ định hoặc khi commit range đã nộp thay đổi chúng.
+
+Case spec vẫn là chuẩn đánh giá và code đang chạy vẫn là behavior evidence; learner doc chỉ là reasoning learner tự trình bày.
+
+Learner doc chỉ được tính là reasoning của learner khi learner xác nhận đã tự viết, vì coding agent có thể đã viết hoặc cập nhật nó.
+
+Khi doc và code lệch nhau, AI không tự quyết bên nào đúng mà đưa độ lệch thành một câu hỏi trong vòng feedback.
 
 ## Learning Direction
 
@@ -52,7 +88,8 @@ Mini-project là đơn vị học mặc định và phải có:
 - một deliverable có thể chạy hoặc demo;
 - definition of done;
 - một active competency và thường chỉ một protected judgment;
-- tối đa một change request, incident hoặc evidence twist đã được khai báo trước.
+- tối đa một change request, incident hoặc evidence twist đã được khai báo trước;
+- từ một đến ba implied requirement ẩn theo section `Implied Requirements`.
 
 Human-facing brief phải bắt đầu bằng product spec hoặc yêu cầu chức năng. Invariant, failure mode và trade-off là điều learner khám phá từ spec, clarification, implementation và consequence; không được dùng chúng như đề bài duy nhất một cách máy móc.
 
@@ -61,7 +98,35 @@ Mỗi mini-project chọn một mode:
 - `practice`: ưu tiên momentum; AI được hint sớm hơn và kết quả không được ghi là independent competency evidence;
 - `challenge`: learner giữ first attempt và key decisions để tạo learning evidence.
 
-Mini-project hoàn tất khi deliverable đạt definition of done trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
+Mini-project hoàn tất khi deliverable đạt definition of done trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context; implied requirement bị bỏ sót không chặn completion mà chỉ hạ rating product understanding trong assessment. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
+
+## Implied Requirements
+
+Spec được trình bày cố ý chưa đầy đủ: mỗi mini-project case có từ một đến ba implied requirement chức năng hoặc phi chức năng không xuất hiện trong spec, để kiểm tra learner có thực sự hiểu user và product hay không.
+
+Implied requirement được `learning-case` chuẩn bị theo active project và case đang chọn trước khi session bind case; không dùng danh sách cố định.
+
+Mỗi implied requirement phải suy ra được từ problem, user, business goal hoặc project context công khai, nằm trong scale và time budget của mini-project, được tiết lộ bởi ít nhất một discoverable fact có discovery path hợp lý và có check quan sát được trên deliverable.
+
+Mỗi implied requirement phải được một rubric dimension product understanding riêng đánh giá, không gắn vào dimension của protected judgment; dimension này ảnh hưởng outcome và progression như mọi dimension khác.
+
+Review phân loại mỗi implied requirement là `self-identified`, `discovered` qua câu hỏi stakeholder của learner, `prompted` sau câu hỏi feedback, hoặc `missed`; `prompted` tối đa là `partial` và `missed` là `not-demonstrated` cho requirement đó.
+
+Không tính một implied requirement là bỏ sót nếu fact tiết lộ nó không thể được khám phá trước assessment.
+
+## Product Lens
+
+Mỗi mini-project giữ một product lens nhẹ để learner luyện tư duy sản phẩm bên cạnh kỹ thuật:
+
+- submission checklist yêu cầu learner ghi deliverable giúp user nào làm được gì, thấy thành công ra sao, và một thứ learner chủ động để ngoài scope cùng lý do;
+- khi twist là stakeholder change request, AI hỏi learner sẽ giữ, cắt hay đổi phần scope nào để vẫn đạt definition of done;
+- ở Reflect, AI đưa tối đa một nhận xét product thinking dựa trên câu trả lời đã ghi.
+
+Câu trả lời product lens được ghi trung thành trong first attempt hoặc revision hiện có dưới dạng assumption hoặc trade-off.
+
+Product lens không phải protected judgment, không thêm rubric dimension, không phải competency evidence và không ảnh hưởng outcome hay progression.
+
+Câu hỏi product lens phải trung lập, không gợi ý protected judgment hay hidden fact, và learner được bỏ qua.
 
 
 ## Boundary
