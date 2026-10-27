@@ -15,8 +15,24 @@ Workflow MVP dùng một active mini-project, một active competency và một 
 Luồng human-facing duy nhất là:
 
 ```text
-Choose -> Build -> Twist -> Ship -> Reflect
+Setup -> Spec -> Build -> Review -> Reflect
 ```
+
+## Nhịp Tương Tác
+
+Setup chỉ hỏi phần tổng quan một lần cho learning program: duyệt project và schedule, goal, baseline, daily time budget và mode; không hỏi về case cụ thể.
+
+Spec mặc định dùng mini-project của schedule cycle hiện tại và được trình bày trọn vẹn trong một lần, kèm submission checklist; chỉ đề xuất tối đa ba lựa chọn khi human yêu cầu.
+
+Trong Build, learner tự research, thiết kế và implement theo nhịp của mình; AI không chủ động hỏi, nhắc hoặc gợi ý, và chỉ trả lời khi learner hỏi stakeholder hoặc xin hỗ trợ.
+
+Review bắt đầu khi learner nộp bài: AI chạy demo, ghi first attempt từ submission và đưa đúng một vòng feedback gồm phần đã đạt, tối đa hai câu hỏi hoặc counterexample trung lập và twist nếu trigger đã thỏa.
+
+Learner được revise hoặc defend một lần trước Reflect; nếu learner bỏ qua, AI chuyển sang Reflect.
+
+Khi submission thiếu decision mà learner sở hữu, AI hỏi bổ sung trong một tin nhắn ngắn thay vì phỏng vấn từng bước.
+
+Khi learner tự khai AI tool hoặc nguồn bên ngoài đã định hình decision mà learner sở hữu, phần đó được attribution là material assistance; hỗ trợ mechanical không cần ghi nhận.
 
 ## Learning Direction
 
@@ -67,7 +83,7 @@ Mini-project hoàn tất khi deliverable đạt definition of done trong scope �
 
 Mỗi mini-project giữ một product lens nhẹ để learner luyện tư duy sản phẩm bên cạnh kỹ thuật:
 
-- khi hỏi first direction, AI hỏi kèm learner deliverable giúp user nào làm được gì, thấy thành công ra sao, và một thứ learner chủ động để ngoài scope hôm nay cùng lý do;
+- submission checklist yêu cầu learner ghi deliverable giúp user nào làm được gì, thấy thành công ra sao, và một thứ learner chủ động để ngoài scope cùng lý do;
 - khi twist là stakeholder change request, AI hỏi learner sẽ giữ, cắt hay đổi phần scope nào để vẫn đạt definition of done;
 - ở Reflect, AI đưa tối đa một nhận xét product thinking dựa trên câu trả lời đã ghi.
 

@@ -40,7 +40,7 @@ Prefer an existing mini-project that:
 
 Reject an existing case when its established facts conflict with the active project's current state or accepted evolution history.
 
-Recommend up to three different pitches when materially different choices are available. Never decide the human's learning direction or hide a meaningful format trade-off.
+For a schedule-default request, return the single best case for the current schedule cycle with its reason; the human still approves it through the session boundary. Recommend up to three different pitches when the coordinator requests alternatives and materially different choices are available. Never decide the human's learning direction or hide a meaningful format trade-off.
 
 Return:
 

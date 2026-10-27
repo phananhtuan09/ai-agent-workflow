@@ -1,6 +1,6 @@
 ---
 name: learning-workflow
-description: Start, resume, and complete a two-to-three-day software mini-project through a Choose, Build, Twist, Ship, Reflect conversation while preserving human ownership of assessed judgment. Coordinates case, evidence, and review helpers internally. Do not use for ordinary software delivery or direct tutoring without an active learning case.
+description: Start, resume, and complete a two-to-three-day software mini-project through a Setup, Spec, Build, Review, Reflect flow where the learner works independently between spec and review, while preserving human ownership of assessed judgment. Coordinates case, evidence, and review helpers internally. Do not use for ordinary software delivery or direct tutoring without an active learning case.
 ---
 
 # Learning Workflow
@@ -55,23 +55,24 @@ Only this coordinator owns the end-to-end learning conversation. Helpers return 
 The visible flow has five phases:
 
 ```text
-Choose -> Build -> Twist -> Ship -> Reflect
+Setup -> Spec -> Build -> Review -> Reflect
 ```
 
-- `Choose`: ask for time, preferred activity, format, difficulty, and interest; offer at most three mini-project pitches.
-- `Build`: present a product spec, answer clarification questions as a stakeholder, and collect the learner's first design or implementation direction.
-- `Twist`: after the declared trigger is satisfied, introduce one predeclared change request, incident, counterexample, or bounded evidence result.
-- `Ship`: run the smallest relevant validation or demo and record the deliverable, completed criteria, artifact references, and limitations.
+- `Setup`: once per learning program, approve the project and schedule overview and collect the goal, baseline, daily time budget, and mode. Ask nothing about a specific case.
+- `Spec`: pick the current schedule cycle's mini-project and present one complete spec with a submission checklist.
+- `Build`: the learner researches, designs, and implements on their own time. Do not push questions; answer stakeholder questions or help requests only when the learner asks.
+- `Review`: when the learner submits, run the demo, record the submission, and give one feedback round with the predeclared twist when triggered. The learner may revise or defend once.
 - `Reflect`: summarize independently demonstrated behavior, assisted behavior, missing evidence, and exactly one next mini-project direction.
 
 Use natural mentoring language. Do not announce helper invocation, JSON updates, or lifecycle transitions.
 
 The human should be able to operate the workflow with ordinary requests such as:
 
-- “Bắt đầu một mini-project trong 30 phút.”
-- “Cho tôi ba ý tưởng tool hoặc web feature thú vị.”
-- “Tiếp tục project hôm qua.”
-- “Tôi muốn ship phần hiện tại và xem feedback.”
+- “Bắt đầu learning.”
+- “Cho tôi spec mini-project tiếp theo.”
+- “Tôi muốn hỏi stakeholder: …”
+- “Tôi làm xong rồi, review giúp tôi.”
+- “Cho tôi ba ý tưởng khác.”
 
 Do not present the full season roadmap when one current mini-project and one next action are sufficient.
 
@@ -85,19 +86,21 @@ Do not present the full season roadmap when one current mini-project and one nex
 - The session JSON is the durable record. Do not create a transcript or duplicate narrative report.
 - Store concise observable decisions, assumptions, predictions, revisions, assistance, delivery records, and evidence. Never store private chain-of-thought.
 
-## Start Or Resume
+## Setup
 
 1. Inspect the project, schedule, profile, and sessions.
-2. Resume the single non-completed session when one exists, unless the human explicitly chooses another.
-3. If project or schedule is draft, present only the domain, product goal, architecture baseline, season cadence, current cycle, and current mini-project choices; request human approval before continuing.
+2. Resume the single non-completed session when one exists, unless the human explicitly chooses another. Resume in its current phase: briefly restate the spec during `Build`, or continue the open feedback round during `Review`.
+3. If project or schedule is draft, present only the domain, product goal, architecture baseline, season cadence, and current cycle; request human approval before continuing.
 4. Apply accepted project and schedule artifacts with `update_learning_context.py accept`.
-5. If no profile exists, ask for one concise long-term capability goal and one concise baseline describing what the human can currently do without AI help.
-6. Ask for a time budget between 15 and 120 minutes per day, a mode (`practice` or `challenge`), and a preferred activity such as build, debug, integrate, optimize, or review. Use reasonable defaults when the human does not care.
-7. Use `learning-case` in selection mode with the active project, current schedule cycle, goal, competency evidence, current gaps, time budget, mode, preferred activity, and interest tags.
-8. Offer at most three selected mini-project pitches. Do not decide the human's topic when materially different formats remain viable.
-9. Select only a case aligned with the active project version and current schedule cycle. Prefer an existing case with a matching mini-project format; create a new case when no suitable case exists.
-10. Never bind a session directly to an asset inside an installed skill directory. Copy or create the case under `docs/learning/cases/` first.
-11. Initialize the session:
+5. If no profile exists, ask in one message for one concise long-term capability goal, one concise baseline describing what the human can currently do without AI help, a time budget between 15 and 120 minutes per day, and a mode (`practice` or `challenge`). Use the current cycle's mini-project defaults when the human does not care.
+6. Do not ask case, domain, or design questions during setup.
+
+## Spec
+
+1. Use `learning-case` in selection mode with the schedule-default request: the active project, current schedule cycle, goal, competency evidence, current gaps, time budget, and mode. Request up to three pitches instead only when the human asks for alternatives, another activity, or another interest.
+2. Select only a case aligned with the active project version and current schedule cycle. Create a new case when no suitable case exists.
+3. Never bind a session directly to an asset inside an installed skill directory. Copy or create the case under `docs/learning/cases/` first.
+4. Initialize the session; the script creates the profile when it does not exist yet:
 
    ```bash
    python3 skills/learning-workflow/scripts/init_learning_session.py \
@@ -112,35 +115,50 @@ Do not present the full season roadmap when one current mini-project and one nex
      --time-budget-minutes "{daily-budget}"
    ```
 
-12. Present one short product brief with problem, user, functional requirements, acceptance criteria, constraints, non-goals, deliverable, definition of done, and today's milestone. Do not expose hidden future events or internal rubric language.
-13. Ask “Bắt đầu nhé?” or an equivalent natural confirmation.
-14. After acceptance, use `update_learning_state.py accept-boundary` before continuing.
+5. Present the complete spec in one message: problem, user, functional requirements, acceptance criteria, constraints, non-goals, deliverable, definition of done, the decision the learner owns, and the day-by-day milestones. Omit milestone scope tied to an unreleased future event. Do not expose hidden facts, future events, or internal rubric language.
+6. End the spec with the submission checklist:
+   - where the deliverable lives and how to run or demo it;
+   - the key decisions and why, including the decision the learner owns;
+   - assumptions and what the learner is unsure about;
+   - the product lens from `STANDARD.md`: who the deliverable helps, what success looks like, and one thing deliberately left out of scope and why;
+   - any AI tool or outside source used and which parts it shaped.
+7. Ask “Bắt đầu nhé?” or an equivalent natural confirmation. After acceptance, use `update_learning_state.py accept-boundary`, then tell the learner to come back when they finish or want to ask something.
 
 The mini-project definition of done is the scope boundary. Do not silently add persistence, authentication, deployment, integrations, or polish not required by the brief.
 
 ## Build
 
-- Start from the product spec and let the human ask clarification questions.
-- Return only facts justified by the human's question. Do not reveal hidden twist facts or design implications before the learner reasons about them.
-- In `challenge` mode, ask for a first direction before material assistance or implementation that would decide the protected judgment. In `practice` mode, a scoped hint may come earlier, but record the assistance and never describe the result as independent evidence.
-- When asking for the first direction, add the light product lens from `STANDARD.md`: who the deliverable helps and what success looks like, plus one thing the learner deliberately leaves out of today's scope and why. Keep the questions neutral and skippable.
-- Record a concise faithful summary with `record-attempt`; do not strengthen the human's answer. Record product-lens answers in the same attempt as `assumptions` or `tradeoffs`.
-- AI may create boilerplate, fixtures, formatting, local harnesses, or other explicitly authorized mechanical work. It may not choose the protected behavior or silently change the accepted scope.
+- The learner works independently. Do not send unrequested questions, reminders, or hints.
+- When the learner asks a stakeholder question, return only facts justified by that question and record matched discoverable facts with `disclose-facts`. Do not reveal hidden twist facts or design implications.
+- When the learner asks for help before submitting, in `challenge` mode first ask for their current direction and record it with `record-attempt`, then escalate under the assistance rules in `STANDARD.md`. In `practice` mode, a scoped hint may come earlier, but record the assistance and never describe the result as independent evidence.
+- AI may create boilerplate, fixtures, formatting, local harnesses, or other mechanical work only when the learner asks. It may not choose the protected behavior or silently change the accepted scope.
 - Route production implementation through the repository coding workflow. Use isolated worktrees or temporary directories for disposable work.
-- Ask one high-value clarification or counterexample at a time. Escalate assistance only when the learner is blocked under the rules in `STANDARD.md`.
 
-## Twist
+## Review
 
-Use a future event only when its declared trigger is satisfied. A twist can be:
+Start when the learner submits or asks for feedback.
 
-- a stakeholder change request;
-- a concrete incident report;
-- a counterexample against the current behavior;
-- a bounded evidence result.
+1. Read the submission against the checklist. When the decision the learner owns is missing or too thin to count as a first attempt, ask for it in one short message; do not run a step-by-step interview.
+2. Record a concise faithful summary with `record-attempt` unless an attempt already exists; do not strengthen the learner's answer. Record product-lens answers in the same attempt as `assumptions` or `tradeoffs`.
+3. Mechanical outside help needs no record. When the learner reports that an AI tool or outside source shaped the decision they own, record it with `record-assistance` at level 5, kind `external-help-self-reported`, stating in `content` that it happened before submission.
+4. Run the smallest relevant validation or demo and record the observed delivery with `record-deliverable`:
 
-Route release validation to `learning-case`, then record it with `release-event` before presenting the twist. Give the human a clear opportunity to revise or defend the feature decision. Do not create a new fact after seeing the decision merely to make it wrong.
+   ```json
+   {
+     "status": "shipped",
+     "summary": "What works and what was demonstrated",
+     "artifact_refs": ["relative/path/or/stable-runtime-reference"],
+     "completed_criteria": ["Definition-of-done item demonstrated"],
+     "limitations": ["What remains outside the tested scope"]
+   }
+   ```
 
-When the twist is a stakeholder change request, also ask which part of the scope the learner keeps, cuts, or changes to still meet the definition of done. Record a changed scope decision with `record-revision`.
+   Use `in-progress` when definition-of-done items remain and `blocked` when a real dependency prevents delivery, with the blocker in `limitations`. A delivery never claims independent competency merely because the artifact passes.
+5. Give one feedback round in one message:
+   - what works, as shown by the demo, against the definition of done;
+   - at most two neutral questions or counterexamples on the decision the learner owns, each recorded with `record-assistance` at its level; never correct a weak decision directly;
+   - the twist, when a future event's declared trigger is satisfied: route release validation to `learning-case` and record it with `release-event` before presenting it. When the twist is a stakeholder change request, also ask which part of the scope the learner keeps, cuts, or changes to still meet the definition of done. Do not create a new fact after seeing the decision merely to make it wrong.
+6. Let the learner revise or defend in their own time and resubmit once. Record changed decisions with `record-revision` and re-record the delivery. When the learner skips the revision, continue to `Reflect`.
 
 When the learner chooses system evidence:
 
@@ -151,35 +169,17 @@ When the learner chooses system evidence:
 5. Ask the human what the evidence proves, does not prove, and whether the decision changes.
 6. Record protected interpretation with `interpret-evidence`.
 
-## Ship
-
-A mini-project may ship a CLI, endpoint, web page, screenshot, test scenario, pull request, incident note, or other concrete artifact required by its spec.
-
-After the relevant coding or evidence proof, record the delivery:
-
-```json
-{
-  "status": "shipped",
-  "summary": "What works and what was demonstrated",
-  "artifact_refs": ["relative/path/or/stable-runtime-reference"],
-  "completed_criteria": ["Definition-of-done item demonstrated"],
-  "limitations": ["What remains outside the tested scope"]
-}
-```
-
-Use `update_learning_state.py record-deliverable --payload {payload.json}`. A `blocked` delivery must record the blocker or limitation honestly. A shipped delivery requires a first attempt for every protected judgment and must not claim independent competency merely because the artifact passes.
-
 ## Reflect
 
 Enter reflection when:
 
+- the feedback round is resolved by a resubmission, a defense, or an explicit skip;
 - the learner asks to stop and receive feedback;
-- the mini-project is shipped or explicitly blocked;
-- every assessed judgment is ready to close;
+- the mini-project is explicitly blocked;
 - the session cannot progress without material solution help;
 - a dispute or evidence gap requires an inconclusive close.
 
-Route the case, session, delivery record, and evidence to `learning-review`.
+Close each open judgment with `close-judgment`: `assessment-closed` after an independent first attempt and a revise-or-defend opportunity, or `assessment-frozen` when the learner asks for the solution or stops independent work. Then route the case, session, delivery record, and evidence to `learning-review`.
 
 After receiving its result:
 
@@ -196,7 +196,7 @@ After receiving its result:
 11. Ask whether accepted decisions should update the durable learning-project state.
 12. Record explicitly accepted learning-project evolution with `update_learning_context.py record-project-evolution`. This never promotes a case decision into repository product authority, architecture decisions, risk acceptance, production code, or production configuration.
 13. Validate state.
-14. Offer one next mini-project direction and let the learner choose whether to continue, pause, or switch format.
+14. Offer the next mini-project spec when the learner wants to continue, or let them pause or switch format.
 
 Do not present process-step completion as learning evidence. Present the shipped behavior and the learner's observed decisions instead.
 

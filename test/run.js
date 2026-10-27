@@ -1846,7 +1846,7 @@ test("learning-workflow installs durable artifacts and executable state tooling"
     assert.ok(fs.existsSync(path.join(skillsRoot, "learning-review/SKILL.md")));
 
     const coordinator = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
-    assert.ok(coordinator.includes("Choose -> Build -> Twist -> Ship -> Reflect"));
+    assert.ok(coordinator.includes("Setup -> Spec -> Build -> Review -> Reflect"));
     assert.ok(coordinator.includes("STANDARD.md"));
     assert.ok(coordinator.includes("update_learning_state.py"));
     assert.ok(coordinator.includes("update_learning_context.py"));
