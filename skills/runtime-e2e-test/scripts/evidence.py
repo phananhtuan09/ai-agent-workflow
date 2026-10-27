@@ -74,9 +74,10 @@ def contract(suite, root):
             raise ValueError("determinism normalize rules need a pattern and a replacement")
         for rule in rules:
             try:
-                re.compile(rule["pattern"])
-            except re.error as error:
-                raise ValueError(f"Invalid normalize pattern {rule['pattern']!r}: {error}") from None
+                # sub() parses the replacement template even without a match, so bad group references fail here.
+                re.compile(rule["pattern"]).sub(rule["replacement"], "")
+            except (re.error, IndexError) as error:
+                raise ValueError(f"Invalid normalize rule {rule['pattern']!r} -> {rule['replacement']!r}: {error}") from None
         limits = det.get("limits", [])
         if not isinstance(limits, list) or any(not isinstance(x, str) or not x.strip() for x in limits):
             raise ValueError("determinism limits must be nonempty strings")

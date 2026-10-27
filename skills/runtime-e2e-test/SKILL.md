@@ -104,7 +104,7 @@ Do not freeze an implementation detail unless it identifies the production path 
    Copy each case's generated `Can-fail` value into the ledger:
    - `PROVEN`: fails on base and passes on head.
    - `NON_PROVING`: a `new-behavior` case that passes on base too. It is not a passing case and keeps the suite from completing; report it as a test that does not prove the change. Strengthening the test or reclassifying the case requires reapproval.
-   - `NOT_PROVEN`: no base was declared, the base run degraded, the case was flaky on base, or the base failure disappears once IDs and timestamps are normalized; state "ability to fail not proven" and the reason.
+   - `NOT_PROVEN`: no base was declared, the base run degraded, the case was flaky on base, or the base failure disappears once IDs and timestamps are normalized; state "ability to fail not proven" and the reason. For the normalization cause, check that the normalized field is noise and not the behavior under test; if a rule hides the behavior, narrow the rule and reapprove.
    - `NOT_REQUIRED`: an `invariant` case.
 8. Do not fix application code in this mode. Preserve failures and report them for a separate authorized fix. Test/config changes require reapproval and a new run; rerun the same case after a fix.
 9. Complete cleanup and record its status.
@@ -115,6 +115,7 @@ Do not freeze an implementation detail unless it identifies the production path 
 11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations or counts.
 
 Report the generated determinism limits, or that determinism was not declared, among the run's limits.
+
 A degraded base run is reported with the reason the tool recorded; never compare against nothing or describe a degraded run as proven.
 
 Do not silently resume by reusing earlier PASS results for a changed revision or environment.

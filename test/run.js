@@ -1101,7 +1101,12 @@ test("runtime E2E applies determinism settings and normalizes base comparisons",
       suite.determinism = { normalize: [{ pattern: "(", replacement: "" }] };
     });
     assert.strictEqual(badPattern.status, 2);
-    assert.ok(badPattern.stderr.includes("Invalid normalize pattern"));
+    assert.ok(badPattern.stderr.includes("Invalid normalize rule"));
+    const badReplacement = fixture.validate((suite) => {
+      suite.determinism = { normalize: [{ pattern: "order-[0-9]+", replacement: "\\9" }] };
+    });
+    assert.strictEqual(badReplacement.status, 2);
+    assert.ok(badReplacement.stderr.includes("Invalid normalize rule"), badReplacement.stderr);
   } finally {
     fixture.cleanup();
   }
