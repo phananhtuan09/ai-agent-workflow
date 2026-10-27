@@ -69,7 +69,7 @@ The fixed constraints are:
 ## Mode: `plan`
 
 1. Read the project runtime reference, current request, and the smallest relevant product, domain, architecture, code, configuration, and runtime surfaces.
-2. Derive cases from observable behavior, boundaries, failures, and material negative paths. Classify each case as `new-behavior` (must fail on base) or `invariant` (expected to pass on base too).
+2. Derive cases from observable behavior, boundaries, failures, and material negative paths. Classify each case as `new-behavior` (must fail on base) or `invariant` (expected to pass on base too); keep at least one `invariant` case as a base health probe.
 3. When validating a change, list the tests the change adds or modifies and declare each as a `pr-test` case so the run shows whether it can fail on base. A PR test never replaces a runtime case; it only proves or disproves its own ability to fail.
 4. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
 5. Separate agent-verifiable behavior from subjective human judgment.

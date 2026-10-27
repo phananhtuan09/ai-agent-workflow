@@ -22,7 +22,7 @@ Paths below are relative to the project root; suite files live beside the Markdo
     {
       "id": "E2E-01",
       "kind": "browser",
-      "proof": "new-behavior",
+      "classification": "new-behavior",
       "checks": [
         {"id": "ui_staff", "expected": "Staff B after reload", "source": "rendered DOM"},
         {"id": "saved_staff", "expected": "staff-b persisted", "source": "fresh API read"},
@@ -32,14 +32,15 @@ Paths below are relative to the project root; suite files live beside the Markdo
     {
       "id": "PR-01",
       "kind": "pr-test",
-      "proof": "new-behavior",
+      "classification": "new-behavior",
       "test": {"file": "e2e/orders.spec.ts", "title": "assigns staff"}
     }
   ]
 }
 ```
 
-`proof` is `new-behavior` (default; the case must fail on base) or `invariant` (expected to pass on base too).
+`classification` is `new-behavior` (default; the case must fail on base) or `invariant` (expected to pass on base too).
+Include at least one `invariant` case when declaring a base: invariant cases double as a base health probe, and if none of them passes on base the base run is treated as degraded.
 A `pr-test` case runs a test the change itself added or modified, matched by file and title; it needs no tag or observations and its PASS is a native result only.
 List PR test files in `files` (the tool rejects a `pr-test` whose file is not listed) and target them in `command` like any other test.
 A suite needs at least one runtime case besides `pr-test` cases.
@@ -49,7 +50,8 @@ A suite needs at least one runtime case besides `pr-test` cases.
 `base` is optional.
 When present, `run` creates a detached worktree at `base.revision`, copies the approved `files` from the snapshot over it except those named in `keep`, runs each `setup` step there, then runs the same `command` with `base.env` added.
 The tests therefore come from head and only the application comes from base; keep application code out of `files`, and list in `keep` any dependency manifest or lockfile that must stay at its base version.
-`base.env` is required and must give the base instance its own ports and data so the two instances share no mutable state.
+`base.env` is required and must give the base instance its own ports and data so the two instances share no mutable state; setup steps and the test command both receive it.
+Setup must reproduce what the head run relies on (dependencies, seed data, fixtures) so a base failure reflects the behavior rather than a missing prerequisite.
 The rest of the environment is inherited as for the head run, so every shared or stateful endpoint the app reads must be overridden there.
 `base.env` values are snapshotted into the bundle: use non-secret values only.
 Setup steps run with a 30-minute timeout and log both output streams to `base/setup.log`.

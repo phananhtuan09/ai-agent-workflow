@@ -759,7 +759,7 @@ app = Path("app.txt").read_text().strip()
 tests = json.loads(Path(sys.argv[1]).read_text())
 specs = []
 for item in tests:
-    passed = item["expect"] in ("*", app)
+    passed = item["expect"] in ("*", app) and os.environ.get("WEB_PORT") != "dead"
     observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED", "port": os.environ.get("WEB_PORT", ""),
                 "spec": Path("e2e/label.spec.ts").read_text().strip(),
                 "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": item["expect"] if passed else app}]}
@@ -873,8 +873,8 @@ function createBaseHeadFixture() {
     revision: "head",
     base: { revision: base, env: { WEB_PORT: "5301" } },
     cases: [
-      { id: "E2E-01", kind: "api", proof: "new-behavior", checks: [check] },
-      { id: "E2E-02", kind: "api", proof: "invariant", checks: [check] },
+      { id: "E2E-01", kind: "api", classification: "new-behavior", checks: [check] },
+      { id: "E2E-02", kind: "api", classification: "invariant", checks: [check] },
       { id: "PR-01", kind: "pr-test", test: { file: "e2e/label.spec.ts", title: "renders a label" } },
     ],
   };
@@ -1013,14 +1013,22 @@ test("runtime E2E labels cases without a usable base as not proven", () => {
       { title: "renders a label", file: "e2e/label.spec.ts", expect: "*", existing: true },
     ]);
     const flaky = fixture.run((suite) => {
-      suite.cases[2].proof = "invariant";
+      suite.cases[2].classification = "invariant";
     }, "flaky-base");
     assert.strictEqual(flaky.status, 0, flaky.stderr || flaky.stdout);
     assert.strictEqual(proofs(flaky.results)["E2E-01"], "NOT_PROVEN");
     assert.ok(flaky.results.cases[0].proofReason.includes("flaky on base"));
 
+    const deadBase = fixture.run((suite) => {
+      suite.base.env.WEB_PORT = "dead";
+      suite.base.setup = [["python3", "-c", "import os, sys; sys.exit(os.environ['WEB_PORT'] != 'dead')"]];
+    }, "base-not-running");
+    assert.strictEqual(deadBase.status, 0, deadBase.stderr || deadBase.stdout);
+    assert.deepStrictEqual(deadBase.results.base.degraded, "No invariant case passed on base; the base runtime may not have run");
+    assert.strictEqual(proofs(deadBase.results)["E2E-01"], "NOT_PROVEN");
+
     const invariantOnly = fixture.run((suite) => {
-      suite.cases.forEach((item) => (item.proof = "invariant"));
+      suite.cases.forEach((item) => (item.classification = "invariant"));
     }, "invariant-only");
     assert.strictEqual(invariantOnly.status, 0, invariantOnly.stderr || invariantOnly.stdout);
 

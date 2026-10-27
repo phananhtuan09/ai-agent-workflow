@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 KINDS = {"browser", "api", "pr-test"}
-PROOFS = {"new-behavior", "invariant"}
+CLASSIFICATIONS = {"new-behavior", "invariant"}
 SETUP_TIMEOUT = 1800
 
 
@@ -69,8 +69,8 @@ def contract(suite, root):
     for case in cases:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", case["id"]) or case.get("kind") not in KINDS:
             raise ValueError("Invalid case ID/kind")
-        if case.get("proof", "new-behavior") not in PROOFS:
-            raise ValueError("proof must be new-behavior or invariant")
+        if case.get("classification", "new-behavior") not in CLASSIFICATIONS:
+            raise ValueError("classification must be new-behavior or invariant")
         if case["kind"] == "pr-test":
             test = case.get("test", {})
             if not isinstance(test, dict) or any(not isinstance(test.get(k), str) or not test[k] for k in ("file", "title")):
@@ -197,6 +197,10 @@ def base_status(bundle, suite):
     manifest = load(base / "run-manifest.json")
     degraded = manifest.get("degraded")
     rows, errors = ({}, []) if degraded else score_run(base, suite)
+    probes = [c["id"] for c in suite["cases"] if c.get("classification") == "invariant"]
+    if not degraded and probes and not any(rows[i]["result"] == "PASS" for i in probes):
+        # Invariant cases double as a health probe: if none passes, the base app was not really exercised.
+        degraded = "No invariant case passed on base; the base runtime may not have run"
     if not degraded and errors:
         degraded = "Base run reported global errors: " + str(errors[0].get("message", errors[0]))[:300]
     status = {"revision": manifest["revision"], "gitHead": manifest.get("gitHead", ""), "exitCode": manifest.get("exitCode"), "nativeErrors": errors, "degraded": degraded}
@@ -207,7 +211,7 @@ def proof(case, head, base, base_rows):
     """Classify whether a passing head case is shown able to fail on base."""
     if head["result"] != "PASS":
         return "NOT_EVALUATED", "Head result is not PASS"
-    if case.get("proof", "new-behavior") == "invariant":
+    if case.get("classification", "new-behavior") == "invariant":
         return "NOT_REQUIRED", "Invariant case; expected to pass on base too"
     if base is None:
         return "NOT_PROVEN", "Ability to fail not proven: no base revision declared"
@@ -363,7 +367,7 @@ def run_base(bundle, root, data, run_id):
             for step in base.get("setup", []):
                 try:
                     # Setup steps are human-approved argument arrays (hashed with the suite) and run without a shell.
-                    done = subprocess.run(step, cwd=tree, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+                    done = subprocess.run(step, cwd=tree, env={**os.environ, **base["env"]}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
                     code, output = done.returncode, done.stdout + done.stderr
                 except subprocess.TimeoutExpired:
                     code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
