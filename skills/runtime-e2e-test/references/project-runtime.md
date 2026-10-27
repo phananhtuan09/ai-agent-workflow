@@ -111,6 +111,14 @@ Use the skill's suite contract and evidence tool described in `playwright-contra
 Launch a separate browser per invocation rather than attaching to a shared CDP session.
 Tests must emit structured checkpoint observations, not screenshot-only proof.
 
+## Base instance
+
+Used when a suite declares `base` to prove that new-behavior tests can fail.
+
+- Base environment: `<variable names and values that give the base instance its own ports and data, e.g. WEB_PORT, DATA_DIR>`
+- Base setup: `<argument arrays run in the base worktree, e.g. dependency install, or NONE>`
+- Base start limitations: `<revisions that cannot start, missing migrations, or NONE>`
+
 ## Parallel execution
 
 - Isolation: `<isolated fixtures/accounts/databases OR serialized>`

@@ -12,19 +12,43 @@ Paths below are relative to the project root; suite files live beside the Markdo
   "command": ["npx", "--no-install", "playwright", "test", "tests/orders.spec.ts"],
   "environment": "isolated-local",
   "revision": "web@<commit>; dirty-tree identity recorded in approved file hashes",
+  "base": {
+    "revision": "<merge-base commit>",
+    "env": {"WEB_PORT": "5274", "DATA_DIR": ".data-base"},
+    "setup": [["npm", "ci"]]
+  },
   "cases": [
     {
       "id": "E2E-01",
       "kind": "browser",
+      "proof": "new-behavior",
       "checks": [
         {"id": "ui_staff", "expected": "Staff B after reload", "source": "rendered DOM"},
         {"id": "saved_staff", "expected": "staff-b persisted", "source": "fresh API read"},
         {"id": "total", "expected": "unchanged from captured baseline", "source": "fresh API read"}
       ]
+    },
+    {
+      "id": "PR-01",
+      "kind": "pr-test",
+      "proof": "new-behavior",
+      "test": {"file": "e2e/orders.spec.ts", "title": "assigns staff"}
     }
   ]
 }
 ```
+
+`proof` is `new-behavior` (default; the case must fail on base) or `invariant` (expected to pass on base too).
+A `pr-test` case runs a test the change itself added or modified, matched by file and title; it needs no tag or observations and its PASS is a native result only.
+List PR test files in `files` and target them in `command` like any other test.
+
+## Base revision
+
+`base` is optional.
+When present, `run` creates a detached worktree at `base.revision`, copies the approved `files` from the snapshot over it, runs each `setup` step there, then runs the same `command` with `base.env` added.
+The tests therefore come from head and only the application comes from base; keep application code out of `files`.
+`base.env` must give the base instance its own ports and data so the two instances share no mutable state.
+The worktree is removed after the run.
 
 List every executed local dependency in `files`, including helpers, fixture modules, configs, dependency manifests/lockfiles, and approved baselines.
 Use one test per case, titled `[E2E-01] descriptive title`.
@@ -94,6 +118,7 @@ Keep the lock through fixture cleanup; release it using the project's interrupti
 Do not permit tests to write generated output into approved files.
 
 The bundle includes `inputs/`, `approval.json`, `run-manifest.json`, `native.json`, `artifacts/`, `stdout.log`, `stderr.log`, `results.json`, `summary.md`, and `integrity.json`.
+With a base, `base/` holds the base run's manifest, native results, artifacts, and logs.
 Snapshots make the audit independent of later working-tree changes.
 Attachment paths in native results are normalized to bundle-relative locations.
 Only per-run artifact files and inline observations are accepted as attachments.
@@ -106,9 +131,19 @@ Keep the bundle locally unless its privacy/retention policy authorizes sharing i
 - `BLOCKED`: passing native execution lacks required proof/cleanup; malformed or missing output prevents acceptance.
 - `NOT_RUN`: skipped or absent test; never coverage credit.
 
+Each case also gets a `proof` value, computed from the head and base results:
+
+- `PROVEN`: head PASS and base FAIL.
+- `NON_PROVING`: a `new-behavior` case with head PASS and base PASS; it does not count as a passing case.
+- `NOT_PROVEN`: no base declared, base degraded (unresolvable revision, worktree or setup failure, or global errors such as an app that did not start), or base NOT_RUN/BLOCKED.
+- `NOT_REQUIRED`: an `invariant` case.
+- `NOT_EVALUATED`: head did not PASS.
+
+A base failure counts as proof only when the base run itself was not degraded.
+
 The tool exits nonzero for any result other than PASS or an execution failure.
 It records all attempts, and rejects duplicate/undeclared tests rather than silently broadening coverage.
-`audit` checks bundle integrity and recomputes the generated results/summary from raw results.
+`audit` checks bundle integrity and recomputes the generated results/summary, including `proof`, from the raw head and base results.
 It does not automatically establish `SUPPORTED`: Agent B still inspects assertions, trace/request checkpoints, baseline values, persistence sources, safety and approval provenance.
 Do not alter the bundle to repair failures; create a newly approved run instead.
 For prerequisites discovered before execution, record the blocker in the Markdown ledger; do not manufacture a native PASS or a fake run bundle.

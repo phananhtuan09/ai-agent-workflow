@@ -69,16 +69,17 @@ The fixed constraints are:
 ## Mode: `plan`
 
 1. Read the project runtime reference, current request, and the smallest relevant product, domain, architecture, code, configuration, and runtime surfaces.
-2. Derive cases from observable behavior, boundaries, failures, and material negative paths.
-3. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
-4. Separate agent-verifiable behavior from subjective human judgment.
-5. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
-6. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test and its required checks.
-7. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
-8. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
-9. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries.
-10. Mark `READY` only when paths, expectations, scripts, and required evidence are reviewable. Validate the Markdown and suite contracts.
-11. Stop and ask the human to review the plan, tests, fixtures, config, and commands. Record approval only after an explicit decision, using the evidence tool's `approve` command.
+2. Derive cases from observable behavior, boundaries, failures, and material negative paths. Classify each case as `new-behavior` (must fail on base) or `invariant` (expected to pass on base too).
+3. When validating a change, list the tests the change adds or modifies and declare each as a `pr-test` case so the run shows whether it can fail on base. A PR test never replaces a runtime case; it only proves or disproves its own ability to fail.
+4. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
+5. Separate agent-verifiable behavior from subjective human judgment.
+6. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
+7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference.
+8. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
+9. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
+10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries.
+11. Mark `READY` only when paths, expectations, scripts, and required evidence are reviewable. Validate the Markdown and suite contracts.
+12. Stop and ask the human to review the plan, tests, fixtures, config, and commands. Record approval only after an explicit decision, using the evidence tool's `approve` command.
 
 Include imported local helpers, fixture modules, relevant dependency lockfiles, config, and visual baselines in approved files.
 Any change to approved files, steps, assertions, or expected values invalidates approval.
@@ -91,7 +92,7 @@ Do not freeze an implementation detail unless it identifies the production path 
 1. Read the entire plan, project runtime reference, and current repository authority.
 2. Run the documented preflight where needed; do not start against a prohibited or unidentified environment.
 3. Record the tested revisions, environment, configuration identity, and a unique run ID without storing secrets.
-4. Check approval and snapshot approved files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session.
+4. Check approval and snapshot approved files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session. When the suite declares a base, the tool runs the same approved tests against the base revision in a separate worktree and app instance.
 5. Let Playwright drive the declared path and assert observable outcomes. Fresh contexts isolate sessions; run-marked fixtures isolate data. Serialize shared mutations or acquire the project lock before execution.
 6. Use the tool-generated native results, observations, attempts, trace, cleanup, and summary. Never hand-edit evidence or generated reports.
 7. Mark:
@@ -99,6 +100,12 @@ Do not freeze an implementation detail unless it identifies the production path 
    - `FAIL` when the path runs and the outcome differs.
    - `BLOCKED` when the required runtime path cannot be exercised.
    - `INVALIDATED` when accepted intent changed and the old case no longer represents the required behavior.
+
+   Copy each case's generated `Can-fail` value into the ledger:
+   - `PROVEN`: fails on base and passes on head.
+   - `NON_PROVING`: a `new-behavior` case that passes on base too. It is not a passing case; list it under limits as a test that does not prove the change.
+   - `NOT_PROVEN`: no base was declared or the base run degraded; state "ability to fail not proven" and the reason.
+   - `NOT_REQUIRED`: an `invariant` case.
 8. Do not fix application code in this mode. Preserve failures and report them for a separate authorized fix. Test/config changes require reapproval and a new run; rerun the same case after a fix.
 9. Complete cleanup and record its status.
 10. Update the run summary and set the suite status:
@@ -106,6 +113,8 @@ Do not freeze an implementation detail unless it identifies the production path 
    - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review remains.
    - `COMPLETED` only after required human sign-off is accepted.
 11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations or counts.
+
+A degraded base run is reported with the reason the tool recorded; never compare against nothing or describe a degraded run as proven.
 
 Do not silently resume by reusing earlier PASS results for a changed revision or environment.
 Each invocation is a separate run; partial suites require an explicitly narrowed, reviewed contract and never count as full coverage.

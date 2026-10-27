@@ -6,11 +6,16 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+KINDS = {"browser", "api", "pr-test"}
+PROOFS = {"new-behavior", "invariant"}
 
 
 def load(path):
@@ -42,13 +47,29 @@ def contract(suite, root):
         raise ValueError("command must be a nonempty argument array")
     if any(x.startswith(("--output", "--reporter")) for x in command):
         raise ValueError("Runner owns --output and --reporter")
+    base = data.get("base")
+    if base is not None:
+        if not isinstance(base, dict) or not isinstance(base.get("revision"), str) or not base["revision"].strip():
+            raise ValueError("base needs a revision")
+        if any(not isinstance(k, str) or not isinstance(v, str) for k, v in base.get("env", {}).items()):
+            raise ValueError("base env must map variable names to strings")
+        for step in base.get("setup", []):
+            if not isinstance(step, list) or not step or any(not isinstance(x, str) or not x for x in step):
+                raise ValueError("base setup steps must be nonempty argument arrays")
     cases = data.get("cases", [])
     ids = [c["id"] for c in cases]
     if not ids or len(ids) != len(set(ids)):
         raise ValueError("Cases must have unique IDs")
     for case in cases:
-        if not re.fullmatch(r"[A-Za-z0-9_.-]+", case["id"]) or case.get("kind") not in {"browser", "api"}:
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", case["id"]) or case.get("kind") not in KINDS:
             raise ValueError("Invalid case ID/kind")
+        if case.get("proof", "new-behavior") not in PROOFS:
+            raise ValueError("proof must be new-behavior or invariant")
+        if case["kind"] == "pr-test":
+            test = case.get("test", {})
+            if not isinstance(test, dict) or any(not isinstance(test.get(k), str) or not test[k] for k in ("file", "title")):
+                raise ValueError("pr-test cases need test.file and test.title")
+            continue
         checks = case.get("checks", [])
         if not checks or len({c["id"] for c in checks}) != len(checks):
             raise ValueError("Each case needs uniquely mapped checks")
@@ -83,26 +104,41 @@ def attachment(bundle, value):
     return local(bundle, value["path"]).read_bytes()
 
 
-def score(bundle):
-    manifest = load(bundle / "run-manifest.json")
-    suite = load(local(bundle / "inputs", manifest["suite"]))
-    native = load(bundle / "native.json")
-    if normalize(bundle, load(bundle / "native-raw.json"), Path(manifest["projectRoot"])) != native:
-        raise ValueError("Normalized results disagree with original native report")
+def same_file(declared, reported):
+    declared, reported = Path(declared).as_posix(), Path(reported).as_posix()
+    return declared == reported or declared.endswith("/" + reported)
+
+
+def native_tests(native, suite):
+    existing = [c for c in suite["cases"] if c["kind"] == "pr-test"]
     tests = {}
     for spec in specs(native):
+        owner = [c["id"] for c in existing if c["test"]["title"] == spec["title"] and same_file(c["test"]["file"], spec.get("file", ""))]
         match = re.search(r"\[([A-Za-z0-9_.-]+)\]", spec["title"])
-        if not match or match[1] in tests or len(spec.get("tests", [])) != 1:
+        case_id = owner[0] if len(owner) == 1 else match[1] if match else None
+        if not case_id or case_id in tests or len(spec.get("tests", [])) != 1:
             raise ValueError("Undeclared, duplicate, or multi-project test")
-        tests[match[1]] = spec["tests"][0]
+        tests[case_id] = spec["tests"][0]
     if set(tests) - {c["id"] for c in suite["cases"]}:
         raise ValueError("Native output contains undeclared cases")
-    rows = []
+    return tests
+
+
+def score_run(run, suite):
+    """Score one execution directory: the bundle itself (head) or its base/ directory."""
+    manifest = load(run / "run-manifest.json")
+    if not (run / "native-raw.json").exists():
+        return {}, []
+    native = load(run / "native.json")
+    if normalize(run, load(run / "native-raw.json"), Path(manifest["projectRoot"])) != native:
+        raise ValueError("Normalized results disagree with original native report")
+    tests = native_tests(native, suite)
+    rows = {}
     for case in suite["cases"]:
         test = tests.get(case["id"], {})
         attempts = test.get("results", [])
         row = {"caseId": case["id"], "result": "NOT_RUN", "attempts": len(attempts), "reasons": []}
-        rows.append(row)
+        rows[case["id"]] = row
         if not attempts or all(a["status"] == "skipped" for a in attempts):
             row["reasons"].append("Absent or skipped test")
             continue
@@ -111,13 +147,16 @@ def score(bundle):
             continue
         attachments = attempts[0].get("attachments", [])
         for item in attachments:
-            if "path" in item and (not item["path"].startswith("artifacts/") or not attachment(bundle, item)):
+            if "path" in item and (not item["path"].startswith("artifacts/") or not attachment(run, item)):
                 raise ValueError("Missing or invalid artifact attachment")
+        if case["kind"] == "pr-test":
+            row.update(result="PASS", reasons=["Existing PR test; native result only, no runtime observations"])
+            continue
         observations = [a for a in attachments if a["name"] == "runtime-observations"]
         if len(observations) != 1:
             row.update(result="BLOCKED", reasons=["Missing unique structured observations"])
             continue
-        observed = json.loads(attachment(bundle, observations[0]))
+        observed = json.loads(attachment(run, observations[0]))
         row["observations"] = observed
         checks = observed.get("checks", [])
         by_id = {c["id"]: c for c in checks}
@@ -137,14 +176,69 @@ def score(bundle):
             row.update(result="BLOCKED", reasons=["Browser case lacks trace"])
             continue
         row["result"] = "PASS"
-    return {"cases": rows, "exitCode": manifest["exitCode"], "nativeErrors": native.get("errors", [])}
+    return rows, native.get("errors", [])
+
+
+def base_status(bundle, suite):
+    if "base" not in suite:
+        return None, {}
+    base = bundle / "base"
+    manifest = load(base / "run-manifest.json")
+    rows, errors = score_run(base, suite)
+    degraded = manifest.get("degraded")
+    if not degraded and errors:
+        degraded = "Base run reported global errors: " + str(errors[0].get("message", errors[0]))[:300]
+    status = {"revision": manifest["revision"], "gitHead": manifest.get("gitHead", ""), "exitCode": manifest.get("exitCode"), "nativeErrors": errors, "degraded": degraded}
+    return status, rows
+
+
+def proof(case, head, base, base_rows):
+    """Classify whether a passing head case is shown able to fail on base."""
+    if head["result"] != "PASS":
+        return "NOT_EVALUATED", "Head result is not PASS"
+    if case.get("proof", "new-behavior") == "invariant":
+        return "NOT_REQUIRED", "Invariant case; expected to pass on base too"
+    if base is None:
+        return "NOT_PROVEN", "Ability to fail not proven: no base revision declared"
+    if base["degraded"]:
+        return "NOT_PROVEN", "Ability to fail not proven: " + base["degraded"]
+    result = base_rows[case["id"]]["result"]
+    if result == "FAIL":
+        return "PROVEN", "Fails on base and passes on head"
+    if result == "PASS":
+        return "NON_PROVING", "Passes on base too; does not prove the change"
+    return "NOT_PROVEN", f"Ability to fail not proven: base result {result}"
+
+
+def score(bundle):
+    manifest = load(bundle / "run-manifest.json")
+    suite = load(local(bundle / "inputs", manifest["suite"]))
+    head, errors = score_run(bundle, suite)
+    base, base_rows = base_status(bundle, suite)
+    rows = []
+    for case in suite["cases"]:
+        row = head[case["id"]]
+        row["proof"], row["proofReason"] = proof(case, row, base, base_rows)
+        if base_rows:
+            row["baseResult"] = base_rows[case["id"]]["result"]
+        rows.append(row)
+    return {"cases": rows, "exitCode": manifest["exitCode"], "nativeErrors": errors, "base": base}
 
 
 def summary(result):
     lines = ["# Runtime E2E results", "", "Mechanical proof only; semantic audit still required.", ""]
     for row in result["cases"]:
         lines.append(f"- {row['caseId']}: {row['result']} ({row['attempts']} attempt(s)); {'; '.join(row['reasons'])}")
+        lines.append(f"  - Can-fail: {row['proof']}; {row['proofReason']}")
     lines += ["", f"Execution exit code: {result['exitCode']}", f"Native global errors: {len(result['nativeErrors'])}"]
+    base = result["base"]
+    if base is None:
+        lines.append("Base: not declared; no case has proven ability to fail")
+    else:
+        lines.append(f"Base revision: {base['revision']} ({base['gitHead'] or 'unresolved'})")
+        lines.append(f"Base run: {'DEGRADED: ' + base['degraded'] if base['degraded'] else 'completed'}")
+    non_proving = [r["caseId"] for r in result["cases"] if r["proof"] == "NON_PROVING"]
+    lines.append(f"Non-proving PASS: {', '.join(non_proving) if non_proving else 'none'}")
     return "\n".join(lines) + "\n"
 
 
@@ -167,6 +261,12 @@ def audit(bundle):
         raise ValueError("Recorded command disagrees with approved command")
     if any(manifest[k] != suite[k] for k in ("environment", "revision")):
         raise ValueError("Recorded environment/revision disagrees with approved suite")
+    if "base" in suite:
+        base = load(bundle / "base" / "run-manifest.json")
+        if base["revision"] != suite["base"]["revision"]:
+            raise ValueError("Recorded base revision disagrees with approved suite")
+        if "command" in base and (base["command"][:-2] != suite["command"] or base["command"][-2] != "--reporter=json"):
+            raise ValueError("Recorded base command disagrees with approved command")
     for name, value in approval["hashes"].items():
         if digest(local(bundle / "inputs", name)) != value:
             raise ValueError("Approved input snapshot mismatch")
@@ -177,7 +277,8 @@ def audit(bundle):
     return 0 if result["exitCode"] == 0 and not result["nativeErrors"] and all(c["result"] == "PASS" for c in result["cases"]) else 1
 
 
-def normalize(bundle, native, root):
+def normalize(run, native, root):
+    original = load(run / "run-manifest.json")["artifactRoot"]
     for spec in specs(native):
         for test in spec.get("tests", []):
             for attempt in test.get("results", []):
@@ -186,13 +287,77 @@ def normalize(bundle, native, root):
                         path = Path(item["path"])
                         path = path.resolve() if path.is_absolute() else (root / path).resolve()
                         # Original reports use absolute paths; locate them in a moved bundle too.
-                        original = load(bundle / "run-manifest.json")["artifactRoot"]
                         relative = path.relative_to(original)
-                        stored = local(bundle / "artifacts", str(relative))
+                        stored = local(run / "artifacts", str(relative))
                         if not stored.is_file():
                             raise ValueError("Missing artifact attachment")
-                        item["path"] = str(stored.relative_to(bundle))
+                        item["path"] = str(stored.relative_to(run))
     return native
+
+
+def execute(run, cwd, command, extra_env, manifest):
+    """Run the approved command once and store its native report under run/."""
+    env = os.environ.copy()
+    env.update(extra_env, PLAYWRIGHT_JSON_OUTPUT_NAME=str(run / "native.json"))
+    command = command + ["--reporter=json", "--output=" + str(run / "artifacts")]
+    manifest.update(artifactRoot=str(run / "artifacts"), command=command, startedAt=datetime.now(timezone.utc).isoformat())
+    write(run / "run-manifest.json", manifest)
+    with (run / "stdout.log").open("wb") as stdout, (run / "stderr.log").open("wb") as stderr:
+        try:
+            execution = subprocess.run(command, cwd=cwd, env=env, stdout=stdout, stderr=stderr)
+            manifest["exitCode"] = execution.returncode
+        except OSError as error:
+            stderr.write(str(error).encode())
+            manifest["exitCode"] = 127
+    manifest["finishedAt"] = datetime.now(timezone.utc).isoformat()
+    write(run / "run-manifest.json", manifest)
+    native_path = run / "native.json"
+    if not native_path.exists():
+        write(native_path, {"suites": [], "errors": [{"message": "Native output missing; inspect stderr.log"}]})
+    (run / "native-raw.json").write_bytes(native_path.read_bytes())
+    write(native_path, normalize(run, load(native_path), cwd))
+
+
+def run_base(bundle, root, data, run_id):
+    """Run the approved tests against the base revision in a separate worktree."""
+    run = bundle / "base"
+    run.mkdir()
+    base = data["base"]
+    manifest = {"revision": base["revision"], "projectRoot": "", "gitHead": "", "setup": []}
+    resolved = subprocess.run(["git", "rev-parse", "--verify", base["revision"] + "^{commit}"], cwd=root, capture_output=True, text=True)
+    if resolved.returncode:
+        manifest["degraded"] = f"Base revision {base['revision']} cannot be resolved"
+        write(run / "run-manifest.json", manifest)
+        return
+    manifest["gitHead"] = resolved.stdout.strip()
+    tree = Path(tempfile.mkdtemp(prefix="runtime-e2e-base-"))
+    added = subprocess.run(["git", "worktree", "add", "--detach", str(tree), manifest["gitHead"]], cwd=root, capture_output=True, text=True)
+    try:
+        if added.returncode:
+            manifest["degraded"] = "Base worktree could not be created: " + added.stderr.strip()[:300]
+            write(run / "run-manifest.json", manifest)
+            return
+        manifest["projectRoot"] = str(tree)
+        # Tests come from the approved head snapshot; only the application is the base revision.
+        for name in data["files"]:
+            dest = local(tree, name)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(local(bundle / "inputs", name).read_bytes())
+        for step in base.get("setup", []):
+            try:
+                done = subprocess.run(step, cwd=tree, capture_output=True, text=True)
+                code, output = done.returncode, done.stderr
+            except OSError as error:
+                code, output = 127, str(error)
+            manifest["setup"].append({"command": step, "exitCode": code})
+            if code:
+                manifest["degraded"] = f"Base setup {step} exited {code}: " + output.strip()[:300]
+                write(run / "run-manifest.json", manifest)
+                return
+        execute(run, tree, data["command"], {**base.get("env", {}), "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
+    finally:
+        subprocess.run(["git", "worktree", "remove", "--force", str(tree)], cwd=root, capture_output=True)
+        shutil.rmtree(tree, ignore_errors=True)
 
 
 def main():
@@ -228,29 +393,13 @@ def main():
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(local(root, name).read_bytes())
     write(bundle / "approval.json", approval)
-    env = os.environ.copy()
     run_id = str(uuid.uuid4())
-    env.update(RUNTIME_E2E_RUN_ID=run_id, PLAYWRIGHT_JSON_OUTPUT_NAME=str(bundle / "native.json"))
-    command = data["command"] + ["--reporter=json", "--output=" + str(bundle / "artifacts")]
     git = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True)
     dirty = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True)
-    manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "artifactRoot": str(bundle / "artifacts"), "command": command, "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout, "startedAt": datetime.now(timezone.utc).isoformat()}
-    write(bundle / "run-manifest.json", manifest)
-    with (bundle / "stdout.log").open("wb") as stdout, (bundle / "stderr.log").open("wb") as stderr:
-        try:
-            execution = subprocess.run(command, cwd=root, env=env, stdout=stdout, stderr=stderr)
-            manifest["exitCode"] = execution.returncode
-        except OSError as error:
-            stderr.write(str(error).encode())
-            manifest["exitCode"] = 127
-    manifest["finishedAt"] = datetime.now(timezone.utc).isoformat()
-    write(bundle / "run-manifest.json", manifest)
-    native_path = bundle / "native.json"
-    if not native_path.exists():
-        write(native_path, {"suites": [], "errors": [{"message": "Native output missing; inspect stderr.log"}]})
-    (bundle / "native-raw.json").write_bytes(native_path.read_bytes())
-    native = normalize(bundle, load(native_path), root)
-    write(native_path, native)
+    manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout}
+    execute(bundle, root, data["command"], {"RUNTIME_E2E_RUN_ID": run_id}, manifest)
+    if "base" in data:
+        run_base(bundle, root, data, run_id)
     result = score(bundle)
     write(bundle / "results.json", result)
     (bundle / "summary.md").write_text(summary(result), encoding="utf-8")

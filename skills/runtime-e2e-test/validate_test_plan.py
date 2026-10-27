@@ -25,6 +25,14 @@ ALLOWED_PRIORITIES = {"RELEASE_BLOCKING", "NORMAL"}
 ALLOWED_HUMAN_JUDGMENT = {"YES", "NO"}
 ALLOWED_PATH_MATCH = {"NOT_RUN", "YES", "NO"}
 ALLOWED_DECISIONS = {"PENDING", "ACCEPTED", "REJECTED"}
+ALLOWED_CAN_FAIL = {
+    "PROVEN",
+    "NON_PROVING",
+    "NOT_PROVEN",
+    "NOT_REQUIRED",
+    "NOT_EVALUATED",
+    "NOT_RUN",
+}
 CASE_HEADING = re.compile(
     r"^## Case (?P<id>[A-Za-z0-9][A-Za-z0-9_.-]*)\s+[—-]\s+(?P<title>.+?)\s*$",
     re.MULTILINE,
@@ -136,6 +144,7 @@ def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
         human_judgment = case.field("Human judgment")
         result = case.field("Result")
         path_match = case.field("Path match")
+        can_fail = case.field("Can-fail")
 
         if priority not in ALLOWED_PRIORITIES:
             errors.append(f"{prefix}: invalid or missing Priority {priority!r}.")
@@ -143,8 +152,16 @@ def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
             errors.append(
                 f"{prefix}: Human judgment must be YES or NO; got {human_judgment!r}."
             )
+        if can_fail is not None and can_fail not in ALLOWED_CAN_FAIL:
+            errors.append(
+                f"{prefix}: Can-fail must be one of {', '.join(sorted(ALLOWED_CAN_FAIL))}; got {can_fail!r}."
+            )
+        non_proving = result == "PASS" and can_fail == "NON_PROVING"
         if result not in ALLOWED_RESULTS:
             errors.append(f"{prefix}: invalid or missing Result {result!r}.")
+        elif non_proving:
+            # A test that also passes on base does not prove the change.
+            results["NON_PROVING"] += 1
         else:
             results[result] += 1
         if path_match not in ALLOWED_PATH_MATCH:
@@ -159,7 +176,7 @@ def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
 
         if priority == "RELEASE_BLOCKING":
             release_total += 1
-            if result == "PASS":
+            if result == "PASS" and not non_proving:
                 release_pass += 1
         if human_judgment == "YES":
             human_cases += 1
@@ -191,6 +208,8 @@ def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
         "NOT_RUN": results["NOT_RUN"],
         "INVALIDATED": results["INVALIDATED"],
     }
+    if results["NON_PROVING"] or parse_count(text, "Non-proving", top_end) is not None:
+        expected_summary["Non-proving"] = results["NON_PROVING"]
     for label, expected_count in expected_summary.items():
         actual = parse_count(text, label, top_end)
         if actual is None:
