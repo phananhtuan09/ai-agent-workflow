@@ -16,6 +16,7 @@ from pathlib import Path
 
 KINDS = {"browser", "api", "pr-test"}
 PROOFS = {"new-behavior", "invariant"}
+SETUP_TIMEOUT = 1800
 
 
 def load(path):
@@ -51,15 +52,20 @@ def contract(suite, root):
     if base is not None:
         if not isinstance(base, dict) or not isinstance(base.get("revision"), str) or not base["revision"].strip():
             raise ValueError("base needs a revision")
-        if any(not isinstance(k, str) or not isinstance(v, str) for k, v in base.get("env", {}).items()):
-            raise ValueError("base env must map variable names to strings")
+        env = base.get("env")
+        if not isinstance(env, dict) or not env or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
+            raise ValueError("base env must give the base instance its own ports and data")
         for step in base.get("setup", []):
             if not isinstance(step, list) or not step or any(not isinstance(x, str) or not x for x in step):
                 raise ValueError("base setup steps must be nonempty argument arrays")
+        if not isinstance(base.get("keep", []), list) or set(base.get("keep", [])) - set(data.get("files") or []):
+            raise ValueError("base keep must list approved files")
     cases = data.get("cases", [])
     ids = [c["id"] for c in cases]
     if not ids or len(ids) != len(set(ids)):
         raise ValueError("Cases must have unique IDs")
+    if all(c.get("kind") == "pr-test" for c in cases):
+        raise ValueError("A suite needs at least one runtime case besides pr-test cases")
     for case in cases:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", case["id"]) or case.get("kind") not in KINDS:
             raise ValueError("Invalid case ID/kind")
@@ -69,6 +75,8 @@ def contract(suite, root):
             test = case.get("test", {})
             if not isinstance(test, dict) or any(not isinstance(test.get(k), str) or not test[k] for k in ("file", "title")):
                 raise ValueError("pr-test cases need test.file and test.title")
+            if test["file"] not in (data.get("files") or []):
+                raise ValueError("pr-test files must be listed in files")
             continue
         checks = case.get("checks", [])
         if not checks or len({c["id"] for c in checks}) != len(checks):
@@ -143,7 +151,9 @@ def score_run(run, suite):
             row["reasons"].append("Absent or skipped test")
             continue
         if test.get("expectedStatus", "passed") != "passed" or len(attempts) != 1 or attempts[0]["status"] != "passed":
-            row.update(result="FAIL", reasons=["Native failure, expected failure, or retry/flaky execution"])
+            error = next((str(a["error"].get("message", ""))[:300] for a in attempts if isinstance(a.get("error"), dict)), "")
+            row.update(result="FAIL", reasons=["Native failure, expected failure, or retry/flaky execution"],
+                       passedAttempt=any(a["status"] == "passed" for a in attempts), error=error)
             continue
         attachments = attempts[0].get("attachments", [])
         for item in attachments:
@@ -167,7 +177,8 @@ def score_run(run, suite):
             row.update(result="BLOCKED", reasons=["Missing expected/actual/source"])
             continue
         if any(c["actual"] != c["expected"] for c in checks):
-            row.update(result="FAIL", reasons=["Observed expected/actual mismatch"])
+            row.update(result="FAIL", reasons=["Observed expected/actual mismatch"],
+                       error="; ".join(c["id"] for c in checks if c["actual"] != c["expected"]) + " mismatched")
             continue
         if not observed.get("actualPath") or observed.get("cleanup") not in {"COMPLETE", "NOT_REQUIRED"}:
             row.update(result="BLOCKED", reasons=["Missing runtime path or completed cleanup"])
@@ -180,12 +191,12 @@ def score_run(run, suite):
 
 
 def base_status(bundle, suite):
-    if "base" not in suite:
+    if suite.get("base") is None:
         return None, {}
     base = bundle / "base"
     manifest = load(base / "run-manifest.json")
-    rows, errors = score_run(base, suite)
     degraded = manifest.get("degraded")
+    rows, errors = ({}, []) if degraded else score_run(base, suite)
     if not degraded and errors:
         degraded = "Base run reported global errors: " + str(errors[0].get("message", errors[0]))[:300]
     status = {"revision": manifest["revision"], "gitHead": manifest.get("gitHead", ""), "exitCode": manifest.get("exitCode"), "nativeErrors": errors, "degraded": degraded}
@@ -202,9 +213,13 @@ def proof(case, head, base, base_rows):
         return "NOT_PROVEN", "Ability to fail not proven: no base revision declared"
     if base["degraded"]:
         return "NOT_PROVEN", "Ability to fail not proven: " + base["degraded"]
-    result = base_rows[case["id"]]["result"]
+    row = base_rows[case["id"]]
+    result = row["result"]
+    if result == "FAIL" and row.get("passedAttempt"):
+        return "NOT_PROVEN", "Ability to fail not proven: flaky on base (an attempt passed)"
     if result == "FAIL":
-        return "PROVEN", "Fails on base and passes on head"
+        detail = f" ({row['error']})" if row.get("error") else ""
+        return "PROVEN", f"Fails on base{detail} and passes on head"
     if result == "PASS":
         return "NON_PROVING", "Passes on base too; does not prove the change"
     return "NOT_PROVEN", f"Ability to fail not proven: base result {result}"
@@ -261,7 +276,7 @@ def audit(bundle):
         raise ValueError("Recorded command disagrees with approved command")
     if any(manifest[k] != suite[k] for k in ("environment", "revision")):
         raise ValueError("Recorded environment/revision disagrees with approved suite")
-    if "base" in suite:
+    if suite.get("base") is not None:
         base = load(bundle / "base" / "run-manifest.json")
         if base["revision"] != suite["base"]["revision"]:
             raise ValueError("Recorded base revision disagrees with approved suite")
@@ -274,7 +289,7 @@ def audit(bundle):
     if result != load(bundle / "results.json") or summary(result) != (bundle / "summary.md").read_text():
         raise ValueError("Generated report disagrees with native evidence")
     print(summary(result))
-    return 0 if result["exitCode"] == 0 and not result["nativeErrors"] and all(c["result"] == "PASS" for c in result["cases"]) else 1
+    return 0 if result["exitCode"] == 0 and not result["nativeErrors"] and all(c["result"] == "PASS" and c["proof"] != "NON_PROVING" for c in result["cases"]) else 1
 
 
 def normalize(run, native, root):
@@ -331,33 +346,45 @@ def run_base(bundle, root, data, run_id):
         return
     manifest["gitHead"] = resolved.stdout.strip()
     tree = Path(tempfile.mkdtemp(prefix="runtime-e2e-base-"))
-    added = subprocess.run(["git", "worktree", "add", "--detach", str(tree), manifest["gitHead"]], cwd=root, capture_output=True, text=True)
     try:
+        added = subprocess.run(["git", "worktree", "add", "--detach", str(tree), manifest["gitHead"]], cwd=root, capture_output=True, text=True)
         if added.returncode:
             manifest["degraded"] = "Base worktree could not be created: " + added.stderr.strip()[:300]
-            write(run / "run-manifest.json", manifest)
             return
         manifest["projectRoot"] = str(tree)
-        # Tests come from the approved head snapshot; only the application is the base revision.
+        # Tests come from the approved head snapshot; the application and kept files stay at base.
         for name in data["files"]:
+            if name in base.get("keep", []):
+                continue
             dest = local(tree, name)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(local(bundle / "inputs", name).read_bytes())
-        for step in base.get("setup", []):
-            try:
-                done = subprocess.run(step, cwd=tree, capture_output=True, text=True)
-                code, output = done.returncode, done.stderr
-            except OSError as error:
-                code, output = 127, str(error)
-            manifest["setup"].append({"command": step, "exitCode": code})
-            if code:
-                manifest["degraded"] = f"Base setup {step} exited {code}: " + output.strip()[:300]
-                write(run / "run-manifest.json", manifest)
-                return
-        execute(run, tree, data["command"], {**base.get("env", {}), "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
+        with (run / "setup.log").open("w", encoding="utf-8") as log:
+            for step in base.get("setup", []):
+                try:
+                    done = subprocess.run(step, cwd=tree, capture_output=True, text=True, timeout=SETUP_TIMEOUT)
+                    code, output = done.returncode, done.stdout + done.stderr
+                except subprocess.TimeoutExpired:
+                    code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
+                except OSError as error:
+                    code, output = 127, str(error)
+                log.write(f"$ {step}\n{output}\n[exit {code}]\n")
+                manifest["setup"].append({"command": step, "exitCode": code})
+                if code:
+                    manifest["degraded"] = f"Base setup {step} exited {code}; see base/setup.log"
+                    return
+        try:
+            execute(run, tree, data["command"], {**base["env"], "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
+        except ValueError as error:
+            manifest["degraded"] = f"Base native report unusable: {error}"[:300]
     finally:
-        subprocess.run(["git", "worktree", "remove", "--force", str(tree)], cwd=root, capture_output=True)
+        removed = subprocess.run(["git", "worktree", "remove", "--force", str(tree)], cwd=root, capture_output=True, text=True)
         shutil.rmtree(tree, ignore_errors=True)
+        subprocess.run(["git", "worktree", "prune"], cwd=root, capture_output=True)
+        listed = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=root, capture_output=True, text=True).stdout
+        left = tree.exists() or f"worktree {tree}" in listed
+        manifest["worktreeCleanup"] = "INCOMPLETE: " + removed.stderr.strip()[:300] if left else "COMPLETE"
+        write(run / "run-manifest.json", manifest)
 
 
 def main():
@@ -398,7 +425,7 @@ def main():
     dirty = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True)
     manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout}
     execute(bundle, root, data["command"], {"RUNTIME_E2E_RUN_ID": run_id}, manifest)
-    if "base" in data:
+    if data.get("base") is not None:
         run_base(bundle, root, data, run_id)
     result = score(bundle)
     write(bundle / "results.json", result)

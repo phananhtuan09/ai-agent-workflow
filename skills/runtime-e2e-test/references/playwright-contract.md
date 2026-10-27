@@ -15,7 +15,8 @@ Paths below are relative to the project root; suite files live beside the Markdo
   "base": {
     "revision": "<merge-base commit>",
     "env": {"WEB_PORT": "5274", "DATA_DIR": ".data-base"},
-    "setup": [["npm", "ci"]]
+    "setup": [["npm", "ci"]],
+    "keep": ["package-lock.json"]
   },
   "cases": [
     {
@@ -40,15 +41,19 @@ Paths below are relative to the project root; suite files live beside the Markdo
 
 `proof` is `new-behavior` (default; the case must fail on base) or `invariant` (expected to pass on base too).
 A `pr-test` case runs a test the change itself added or modified, matched by file and title; it needs no tag or observations and its PASS is a native result only.
-List PR test files in `files` and target them in `command` like any other test.
+List PR test files in `files` (the tool rejects a `pr-test` whose file is not listed) and target them in `command` like any other test.
+A suite needs at least one runtime case besides `pr-test` cases.
 
 ## Base revision
 
 `base` is optional.
-When present, `run` creates a detached worktree at `base.revision`, copies the approved `files` from the snapshot over it, runs each `setup` step there, then runs the same `command` with `base.env` added.
-The tests therefore come from head and only the application comes from base; keep application code out of `files`.
-`base.env` must give the base instance its own ports and data so the two instances share no mutable state.
-The worktree is removed after the run.
+When present, `run` creates a detached worktree at `base.revision`, copies the approved `files` from the snapshot over it except those named in `keep`, runs each `setup` step there, then runs the same `command` with `base.env` added.
+The tests therefore come from head and only the application comes from base; keep application code out of `files`, and list in `keep` any dependency manifest or lockfile that must stay at its base version.
+`base.env` is required and must give the base instance its own ports and data so the two instances share no mutable state.
+The rest of the environment is inherited as for the head run, so every shared or stateful endpoint the app reads must be overridden there.
+`base.env` values are snapshotted into the bundle: use non-secret values only.
+Setup steps run with a 30-minute timeout and log both output streams to `base/setup.log`.
+The worktree is removed after the run and the outcome is recorded as `worktreeCleanup` in `base/run-manifest.json`.
 
 List every executed local dependency in `files`, including helpers, fixture modules, configs, dependency manifests/lockfiles, and approved baselines.
 Use one test per case, titled `[E2E-01] descriptive title`.
@@ -135,11 +140,12 @@ Each case also gets a `proof` value, computed from the head and base results:
 
 - `PROVEN`: head PASS and base FAIL.
 - `NON_PROVING`: a `new-behavior` case with head PASS and base PASS; it does not count as a passing case.
-- `NOT_PROVEN`: no base declared, base degraded (unresolvable revision, worktree or setup failure, or global errors such as an app that did not start), or base NOT_RUN/BLOCKED.
+- `NOT_PROVEN`: no base declared, base degraded (unresolvable revision, worktree or setup failure, unusable native report, or global errors such as an app that did not start), base NOT_RUN/BLOCKED, or a base failure where a retry attempt passed (flaky on base).
 - `NOT_REQUIRED`: an `invariant` case.
 - `NOT_EVALUATED`: head did not PASS.
 
-A base failure counts as proof only when the base run itself was not degraded.
+A base failure counts as proof only when the base run itself was not degraded; the reason names the base error or mismatched checks so an auditor can confirm the failure came from the behavior, not the environment.
+`run` and `audit` exit nonzero when any case is `NON_PROVING`.
 
 The tool exits nonzero for any result other than PASS or an execution failure.
 It records all attempts, and rejects duplicate/undeclared tests rather than silently broadening coverage.

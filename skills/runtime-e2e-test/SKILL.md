@@ -103,8 +103,8 @@ Do not freeze an implementation detail unless it identifies the production path 
 
    Copy each case's generated `Can-fail` value into the ledger:
    - `PROVEN`: fails on base and passes on head.
-   - `NON_PROVING`: a `new-behavior` case that passes on base too. It is not a passing case; list it under limits as a test that does not prove the change.
-   - `NOT_PROVEN`: no base was declared or the base run degraded; state "ability to fail not proven" and the reason.
+   - `NON_PROVING`: a `new-behavior` case that passes on base too. It is not a passing case and keeps the suite from completing; report it as a test that does not prove the change. Strengthening the test or reclassifying the case requires reapproval.
+   - `NOT_PROVEN`: no base was declared, the base run degraded, or the case was flaky on base; state "ability to fail not proven" and the reason.
    - `NOT_REQUIRED`: an `invariant` case.
 8. Do not fix application code in this mode. Preserve failures and report them for a separate authorized fix. Test/config changes require reapproval and a new run; rerun the same case after a fix.
 9. Complete cleanup and record its status.

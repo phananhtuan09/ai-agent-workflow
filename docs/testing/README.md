@@ -24,7 +24,7 @@ Read the installed `runtime-e2e-test/references/playwright-contract.md` for thei
 Human approval covers the plan, suite, executable tests, local helpers, fixtures, dependency/config files, and baselines before execution.
 Any change to approved inputs requires explicit reapproval.
 The Markdown ledger summarizes generated evidence; it does not replace native results.
-Copy each case's generated `Can-fail` value into the ledger. A PASS whose `Can-fail` is `NON_PROVING` is counted under `Non-proving` in the run summary, not under `PASS`.
+Copy each case's generated `Can-fail` value into the ledger; completion requires it on every PASS. A PASS whose `Can-fail` is `NON_PROVING` is counted under `Non-proving` in the run summary, not under `PASS`, and blocks completion.
 
 ```markdown
 # Runtime E2E Test Plan: <name>

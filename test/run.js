@@ -692,6 +692,7 @@ The allocation persists after reload without changing totals.
 - Observed: Allocation persisted after browser reload; totals were unchanged.
 - Evidence: artifacts/d2-after-reload.png; request POST /settled-corrections 200.
 - Cleanup: NOT_REQUIRED
+- Can-fail: PROVEN
 `;
 
   try {
@@ -721,7 +722,7 @@ The allocation persists after reload without changing totals.
     assert.ok(invalid.stderr.includes("PASS requires Path match: YES"));
 
     const nonProving = validPlan
-      .replace("- Cleanup: NOT_REQUIRED", "- Cleanup: NOT_REQUIRED\n- Can-fail: NON_PROVING")
+      .replace("- Can-fail: PROVEN", "- Can-fail: NON_PROVING")
       .replace("- PASS: 1", "- PASS: 0\n- Non-proving: 1")
       .replace("- Release-blocking PASS: 1/1", "- Release-blocking PASS: 0/1");
     fs.writeFileSync(planPath, nonProving);
@@ -740,6 +741,12 @@ The allocation persists after reload without changing totals.
     });
     assert.strictEqual(miscounted.status, 1, miscounted.stderr || miscounted.stdout);
     assert.ok(miscounted.stderr.includes("Run summary PASS is 1"));
+    fs.writeFileSync(planPath, validPlan.replace("- Can-fail: PROVEN\n", ""));
+    const unlabeled = spawnSync("python3", [validator, planPath, "--mode", "completion"], {
+      encoding: "utf8",
+    });
+    assert.strictEqual(unlabeled.status, 1, unlabeled.stderr || unlabeled.stdout);
+    assert.ok(unlabeled.stderr.includes("PASS requires the generated Can-fail value"));
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -754,11 +761,16 @@ specs = []
 for item in tests:
     passed = item["expect"] in ("*", app)
     observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED", "port": os.environ.get("WEB_PORT", ""),
+                "spec": Path("e2e/label.spec.ts").read_text().strip(),
                 "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": item["expect"] if passed else app}]}
     attachments = [] if item.get("existing") else [{"name": "runtime-observations", "contentType": "application/json",
                     "body": base64.b64encode(json.dumps(observed).encode()).decode()}]
+    results = [{"status": "passed" if passed else "failed", "attachments": attachments,
+                **({} if passed else {"error": {"message": f"expected {item['expect']}, got {app}"}})}]
+    if item.get("flaky") and not passed:
+        results.append({"status": "passed", "attachments": attachments})
     specs.append({"title": item["title"], "file": item.get("file", "case.spec.ts"),
-                  "tests": [{"expectedStatus": "passed", "results": [{"status": "passed" if passed else "failed", "attachments": attachments}]}]})
+                  "tests": [{"expectedStatus": "passed", "results": results}]})
 Path(os.environ["PLAYWRIGHT_JSON_OUTPUT_NAME"]).write_text(json.dumps({"suites": [{"title": "", "specs": specs}], "errors": []}))
 sys.exit(0 if all(r["status"] == "passed" for s in specs for t in s["tests"] for r in t["results"]) else 1)
 `;
@@ -829,10 +841,13 @@ function createBaseHeadFixture() {
   git("config", "user.email", "test@example.com");
   git("config", "user.name", "Test");
   fs.writeFileSync(path.join(root, "app.txt"), "old\n");
+  fs.mkdirSync(path.join(root, "e2e"));
+  fs.writeFileSync(path.join(root, "e2e/label.spec.ts"), "base spec\n");
   git("add", ".");
   git("commit", "-qm", "base");
   const base = git("rev-parse", "HEAD");
   fs.writeFileSync(path.join(root, "app.txt"), "new\n");
+  fs.writeFileSync(path.join(root, "e2e/label.spec.ts"), "head spec\n");
   git("commit", "-qam", "head");
   fs.mkdirSync(path.join(root, "tests"));
   fs.writeFileSync(path.join(root, "tests/runner.py"), FAKE_PLAYWRIGHT);
@@ -852,7 +867,7 @@ function createBaseHeadFixture() {
   const check = { id: "label", expected: "label", source: "fresh API read" };
   const suite = {
     plan: "docs/testing/active/label.md",
-    files: ["tests/runner.py", "tests/cases.json"],
+    files: ["tests/runner.py", "tests/cases.json", "e2e/label.spec.ts"],
     command: ["python3", "tests/runner.py", "tests/cases.json"],
     environment: "isolated-local",
     revision: "head",
@@ -869,6 +884,15 @@ function createBaseHeadFixture() {
   return {
     root,
     base,
+    validate(mutate) {
+      const data = JSON.parse(JSON.stringify(suite));
+      mutate(data);
+      fs.writeFileSync(suitePath, JSON.stringify(data, null, 2));
+      return run(["validate", suitePath]);
+    },
+    writeCases(cases) {
+      fs.writeFileSync(path.join(root, "tests/cases.json"), JSON.stringify(cases));
+    },
     run(mutate, name) {
       const data = JSON.parse(JSON.stringify(suite));
       if (mutate) mutate(data);
@@ -899,7 +923,7 @@ test("runtime E2E base run proves new-behavior cases can fail", () => {
   const fixture = createBaseHeadFixture();
   try {
     const run = fixture.run(null, "with-base");
-    assert.strictEqual(run.status, 0, run.stderr || run.stdout);
+    assert.strictEqual(run.status, 1, run.stderr || run.stdout);
     assert.deepStrictEqual(proofs(run.results), {
       "E2E-01": "PROVEN",
       "E2E-02": "NOT_REQUIRED",
@@ -913,16 +937,25 @@ test("runtime E2E base run proves new-behavior cases can fail", () => {
     assert.strictEqual(run.results.base.degraded, null);
     assert.ok(run.stdout.includes("Non-proving PASS: PR-01"));
 
-    const port = (file) => {
-      const native = JSON.parse(fs.readFileSync(path.join(run.out, file), "utf8"));
+    const observed = (out, file) => {
+      const native = JSON.parse(fs.readFileSync(path.join(out, file), "utf8"));
       const body = native.suites[0].specs[0].tests[0].results[0].attachments[0].body;
-      return JSON.parse(Buffer.from(body, "base64").toString("utf8")).port;
+      return JSON.parse(Buffer.from(body, "base64").toString("utf8"));
     };
-    assert.strictEqual(port("base/native.json"), "5301");
-    assert.strictEqual(port("native.json"), "");
+    assert.strictEqual(observed(run.out, "base/native.json").port, "5301");
+    assert.strictEqual(observed(run.out, "native.json").port, "");
+    assert.strictEqual(observed(run.out, "base/native.json").spec, "head spec");
     const baseManifest = JSON.parse(fs.readFileSync(path.join(run.out, "base/run-manifest.json"), "utf8"));
     assert.notStrictEqual(baseManifest.projectRoot, fixture.root);
     assert.ok(!fs.existsSync(baseManifest.projectRoot), "base worktree is removed after the run");
+    assert.strictEqual(baseManifest.worktreeCleanup, "COMPLETE");
+    assert.ok(run.results.cases[0].proofReason.includes("expected new, got old"));
+
+    const kept = fixture.run((suite) => {
+      suite.base.keep = ["e2e/label.spec.ts"];
+    }, "base-keeps-file");
+    assert.strictEqual(kept.status, 1, kept.stderr || kept.stdout);
+    assert.strictEqual(observed(kept.out, "base/native.json").spec, "base spec");
 
     const resultsPath = path.join(run.out, "results.json");
     const tampered = JSON.parse(fs.readFileSync(resultsPath, "utf8"));
@@ -959,6 +992,37 @@ test("runtime E2E labels cases without a usable base as not proven", () => {
     assert.ok(failedSetup.results.base.degraded.includes("exited 3"));
     assert.strictEqual(proofs(failedSetup.results)["E2E-01"], "NOT_PROVEN");
     assert.ok(failedSetup.stdout.includes("Base run: DEGRADED"));
+
+    const noEnv = fixture.validate((suite) => delete suite.base.env);
+    assert.strictEqual(noEnv.status, 2);
+    assert.ok(noEnv.stderr.includes("base env must give the base instance its own ports and data"));
+    const onlyPrTests = fixture.validate((suite) => {
+      suite.cases = suite.cases.filter((item) => item.kind === "pr-test");
+    });
+    assert.strictEqual(onlyPrTests.status, 2);
+    assert.ok(onlyPrTests.stderr.includes("at least one runtime case"));
+    const unlistedPrTest = fixture.validate((suite) => {
+      suite.files = suite.files.filter((name) => name !== "e2e/label.spec.ts");
+    });
+    assert.strictEqual(unlistedPrTest.status, 2);
+    assert.ok(unlistedPrTest.stderr.includes("pr-test files must be listed in files"));
+
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "new", flaky: true },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+      { title: "renders a label", file: "e2e/label.spec.ts", expect: "*", existing: true },
+    ]);
+    const flaky = fixture.run((suite) => {
+      suite.cases[2].proof = "invariant";
+    }, "flaky-base");
+    assert.strictEqual(flaky.status, 0, flaky.stderr || flaky.stdout);
+    assert.strictEqual(proofs(flaky.results)["E2E-01"], "NOT_PROVEN");
+    assert.ok(flaky.results.cases[0].proofReason.includes("flaky on base"));
+
+    const invariantOnly = fixture.run((suite) => {
+      suite.cases.forEach((item) => (item.proof = "invariant"));
+    }, "invariant-only");
+    assert.strictEqual(invariantOnly.status, 0, invariantOnly.stderr || invariantOnly.stdout);
 
     const missing = fixture.run((suite) => {
       suite.base.revision = "does-not-exist";

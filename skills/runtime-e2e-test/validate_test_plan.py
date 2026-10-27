@@ -181,6 +181,8 @@ def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
         if human_judgment == "YES":
             human_cases += 1
 
+        if result == "PASS" and mode == "completion" and missing_value(can_fail):
+            errors.append(f"{prefix}: PASS requires the generated Can-fail value at completion.")
         if result == "PASS":
             if path_match != "YES":
                 errors.append(f"{prefix}: PASS requires Path match: YES.")
@@ -237,7 +239,9 @@ def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
                 errors.append(
                     f"Completion validation requires a concrete '{field_name}'."
                 )
-        unresolved = results["NOT_RUN"] + results["FAIL"] + results["BLOCKED"]
+        unresolved = (
+            results["NOT_RUN"] + results["FAIL"] + results["BLOCKED"] + results["NON_PROVING"]
+        )
         if unresolved:
             errors.append(
                 f"Completion validation found {unresolved} unresolved case(s)."
