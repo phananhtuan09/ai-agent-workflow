@@ -24,9 +24,12 @@ When the assigning prompt specifies a report format, such as an orchestrator wor
 ## Each turn
 
 1. Read the prompt.
-   A bare number answers the latest choice list: do exactly that option as written.
-   With no pending list, treat a number as an ordinary prompt.
-   A new request replaces pending choices; do not repeat them.
+   When a question round is pending, apply the reply syntax in Output.
+   A bare number answers the latest next-step choice list, and only that list: do exactly that option as written.
+   A bare number does not answer a question round.
+   With no pending next-step list and no pending question round, treat a number as an ordinary prompt.
+   A new request replaces pending choices and a pending question round.
+   Do not repeat them.
 2. Resolve ambiguity from evidence before guessing or asking: the conversation, the working-tree diff, `docs/plans/active/`, `docs/product/`, and `docs/decisions/`.
    For a prompt such as "continue" or "keep going", inspect active plans, `git status`, and recent commits read-only, then offer choices without acting.
 3. Weigh what a wrong guess would cost.
@@ -34,6 +37,7 @@ When the assigning prompt specifies a report format, such as an orchestrator wor
      Pick the most likely reading, do it, and state the guess on the first line as an assumption.
    - Expensive: a product, security, compatibility, or data rule, irreversible effects, or large effort.
      Do not act; offer two or three concrete readings drawn from the repository as numbered choices, with the recommended one marked.
+     A request to stress-test a plan or decision is the exception: route it to `design-interview` and use a question round.
    - Unclear target, such as "fix that form" with several candidates: offer the candidates as choices.
 4. Locate the task on the workflow map, do the fitting step, and prove it as `docs/WORKFLOW.md` requires.
 5. End with the choices described in Output, except where Activation or Output omits them.
@@ -71,7 +75,7 @@ Do one plan step per turn for durable work, keep the plan current, and suggest t
 
 Pick the skill yourself and load it with the Skill tool before doing that kind of work; following its steps from memory does not count.
 If a skill is not installed, apply `docs/WORKFLOW.md` directly and say the skill is missing.
-`brainstorm-partner` and `smart-commits` are machine-wide global skills, not installed by any bundle.
+`brainstorm-partner`, `design-interview`, `sharpen-design`, and `smart-commits` are machine-wide global skills, not installed by any bundle.
 
 | Situation | Skill |
 | --- | --- |
@@ -80,6 +84,8 @@ If a skill is not installed, apply `docs/WORKFLOW.md` directly and say the skill
 | Vague product idea that needs framing | `proposal-designer` |
 | Multi-case user flow or API acceptance that must stay re-runnable | `runtime-e2e-test` |
 | Hard bug, unclear logic, or technical trade-off to think through | `brainstorm-partner` |
+| Stress-test a plan or decision | `design-interview` |
+| The human invokes a recording interview, or chooses a next step that names it | `sharpen-design` |
 | Review a PR, branch, or diff | `review-pr` |
 | Task accepted, changed, or invalidated durable knowledge | `manage-project-knowledge` |
 | Commit or push the human asked for | `smart-commits` |
@@ -105,6 +111,13 @@ A commit request does not cover push.
 
 Maintain durable knowledge yourself with `manage-project-knowledge` before reporting a step; do not offer it as a choice or wait for approval.
 An answered decision question, or a picked option that states lasting behavior or a decision, is accepted knowledge; picking a next step such as testing or committing accepts nothing.
+When a question round is in progress outside a read-only skill, record a confirmed project-specific term before the next round, through `manage-project-knowledge` and `docs/glossary/README.md`.
+Record an accepted decision in that same turn when it passes every test in `docs/decisions/README.md`, without asking for a separate permission step.
+`design-interview` itself does not write files.
+These records are this mode's knowledge duty when you loaded it.
+A term inferred only from code stays out of the glossary.
+While `brainstorm-partner` has the session in read-only mode, do not write.
+Offer a choice that leaves that mode and records the confirmed term.
 List knowledge files you changed in the main answer so the human can see them.
 
 ## Output
@@ -126,5 +139,15 @@ Next:
 - Mark exactly one option with ★, ranked by: unresolved risk such as unproven changes, red CI, or open decisions; then finishing the current goal; then shipping through commit, push, or PR.
 - Name the skill when an option uses one.
 - Rank lower the options the human has skipped repeatedly in this conversation.
-- Decision questions use the same numbered format, with ★ on the recommendation.
+- One ambiguity or one next-step decision may use this numbered list, with ★ on the recommendation.
+  A bare number picks that option.
+- A stress-test, or any design interview, uses a question round instead of this list.
+  Number questions Q1, Q2, and so on.
+  Give each question lettered options and mark exactly one recommended option with ★.
+  `ok` accepts every recommended answer.
+  A short affirmative reply with no override, such as `yes` or `đồng ý`, does the same.
+  `Q2: b` sets Q2 to option b and accepts the recommendation for every question the reply does not name.
+  `ok, Q2: b` means the same as `Q2: b`.
+  Do not show this next-step list in the same turn as a question round.
+  A bare number does not answer the round.
 - Omit the block when no next step is worth doing.

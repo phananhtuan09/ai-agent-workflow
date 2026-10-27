@@ -16,6 +16,10 @@ Intent authority describes what behavior is intended:
 1. The current explicit human request is immediate intent authority for the requested delta when it clearly authorizes a behavior change.
 2. Approved product and domain rules describe durable intended externally observable behavior.
 3. Approved architecture, security, and compatibility decisions constrain implementation choices.
+4. Accepted glossary terms define what a project-specific term means.
+   When the current explicit human request confirms a different meaning, update the glossary to that meaning.
+   Behavior stays in product rules, and implementation stays in the code.
+   Wording inferred from code stays in `docs/observed/`.
 
 Current-state evidence describes what exists now:
 
@@ -35,7 +39,7 @@ Evaluation, learning, and design standards govern only their explicitly selected
 Apply these conflict rules:
 
 - If the current explicit request clearly changes existing behavior, treat the request as authority for that requested delta.
-- If durable product or decision docs become stale because of an accepted change, update them as part of the task when the new behavior should outlive the current task.
+- If durable product, glossary, or decision docs become stale because of an accepted change, update them as part of the task when the new behavior should outlive the current task.
 - If code, tests, schemas, configuration, or runtime evidence disagree, investigate the current-state inconsistency.
 - If multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and ask the smallest necessary human question.
 - If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/product/` or `docs/decisions/`, treat the durable location as authority and correct the derived file.
@@ -46,6 +50,7 @@ Newly accepted durable knowledge belongs in the following locations:
 | Knowledge | Location |
 | --- | --- |
 | Product and domain rules | `docs/product/` |
+| Accepted project vocabulary | `docs/glossary/` |
 | Architecture and compatibility decisions | `docs/decisions/` |
 | Active durable plans | `docs/plans/active/` |
 | Completed durable plans | `docs/plans/completed/` |
@@ -103,6 +108,10 @@ A plan is working memory and never product authority.
 A task is decision-blocked when materially different product, security, compatibility, or operational choices remain open.
 Stop before externally observable mutation and ask the smallest question that resolves the missing authority.
 Choose ordinary implementation details directly when they do not create material policy.
+A design interview is a selected skill's mode for stress-testing a plan or shaping a proposal.
+It asks numbered rounds over a design tree and does not implement until the human confirms a shared understanding.
+Ordinary decision-blocked work still asks the smallest question.
+It starts a design interview only when the human or the selected skill asks for one.
 
 ## Execution rules
 
@@ -127,7 +136,11 @@ The agent maintains durable knowledge; the human does not need to request, appro
 The human sees knowledge changes in the task report and the diff, and a revert or later request corrects them.
 
 Write to `docs/product/` only for accepted behavior that should outlive one implementation task.
-Write to `docs/decisions/` only for meaningful decisions and rationale future work must respect.
+Write to `docs/glossary/` only for a project-specific term the human has explicitly confirmed.
+Write that entry as soon as they confirm it, before the next question round.
+Write to `docs/decisions/` only when the human accepted the choice and every admission test in `docs/decisions/README.md` passes.
+Those tests require a choice that is hard to reverse, surprising without the context, and the result of a real trade-off.
+Record a decision that passes without asking for a separate permission step.
 Write to `docs/patterns/` only for accepted recurring technical guidance.
 Write to `docs/runbooks/` only for verified operational procedures.
 Write to `docs/observed/` only for current-state facts that future work needs and cannot cheaply rediscover from the code.
@@ -137,8 +150,12 @@ Knowledge is accepted when a human explicitly states lasting behavior, a decisio
 Choosing a next step, such as running tests or committing, accepts no knowledge.
 A request scoped to one task is not a lasting rule unless the human says it should apply going forward.
 Record accepted knowledge in its namespace before reporting the task, and cite the accepting request in the artifact.
+A confirmed glossary term is recorded earlier, before the next question round.
 Knowledge inferred from code, tests, history, or runtime behavior is observed, not accepted.
-Record it only in `docs/observed/`, never treat it as intent authority, and correct or remove it when the code it describes changes.
+Record it only in `docs/observed/`.
+Do not record it in `docs/glossary/`, `docs/product/`, `docs/decisions/`, or `docs/patterns/`.
+Never treat it as intent authority, and correct or remove it when the code it describes changes.
+When code disagrees with an accepted glossary term, report the drift and leave the glossary unchanged.
 A verified operational procedure is the exception: record it in `docs/runbooks/` under that namespace's contract.
 When a human explicitly states that an observed fact is intended behavior, move it to the matching authority namespace and remove the observed entry.
 After a task, keep current the knowledge that task touched or made stale: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/`.
