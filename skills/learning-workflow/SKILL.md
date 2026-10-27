@@ -116,13 +116,14 @@ Do not present the full season roadmap when one current mini-project and one nex
    ```
 
 5. Present the complete spec in one message: problem, user, functional requirements, acceptance criteria, constraints, non-goals, deliverable, definition of done, the decision the learner owns, and the day-by-day milestones. Omit milestone scope tied to an unreleased future event. Do not expose hidden facts, future events, or internal rubric language.
-6. End the spec with the submission checklist:
-   - where the deliverable lives and how to run or demo it;
+6. Tell the learner to build in a folder of their choice outside the workspace that contains `docs/learning/`, to open any coding agent in that folder, and to send the folder path when submitting. Do not fix a folder name. When the learner delegates implementation to a coding agent, remind them to state the decision they own in the task so the agent implements it instead of choosing it.
+7. End the spec with the submission checklist:
+   - the folder path of the deliverable and how to run or demo it;
    - the key decisions and why, including the decision the learner owns;
    - assumptions and what the learner is unsure about;
    - the product lens from `STANDARD.md`: who the deliverable helps, what success looks like, and one thing deliberately left out of scope and why;
    - any AI tool or outside source used and which parts it shaped.
-7. Ask “Bắt đầu nhé?” or an equivalent natural confirmation. After acceptance, use `update_learning_state.py accept-boundary`, then tell the learner to come back when they finish or want to ask something.
+8. Ask “Bắt đầu nhé?” or an equivalent natural confirmation. After acceptance, use `update_learning_state.py accept-boundary`, then tell the learner to come back when they finish or want to ask something.
 
 The mini-project definition of done is the scope boundary. Do not silently add persistence, authentication, deployment, integrations, or polish not required by the brief.
 
@@ -131,34 +132,35 @@ The mini-project definition of done is the scope boundary. Do not silently add p
 - The learner works independently. Do not send unrequested questions, reminders, or hints.
 - When the learner asks a stakeholder question, return only facts justified by that question and record matched discoverable facts with `disclose-facts`. Do not reveal hidden twist facts or design implications.
 - When the learner asks for help before submitting, in `challenge` mode first ask for their current direction and record it with `record-attempt`, then escalate under the assistance rules in `STANDARD.md`. In `practice` mode, a scoped hint may come earlier, but record the assistance and never describe the result as independent evidence.
-- AI may create boilerplate, fixtures, formatting, local harnesses, or other mechanical work only when the learner asks. It may not choose the protected behavior or silently change the accepted scope.
-- Route production implementation through the repository coding workflow. Use isolated worktrees or temporary directories for disposable work.
+- AI may create boilerplate, fixtures, formatting, local harnesses, or other mechanical work only when the learner asks, inside the learner's folder. It may not choose the protected behavior, silently change the accepted scope, or copy case content into that folder.
+- Use isolated temporary directories outside the learning workspace for disposable work.
 
 ## Review
 
 Start when the learner submits or asks for feedback.
 
 1. Read the submission against the checklist. When the decision the learner owns is missing or too thin to count as a first attempt, ask for it in one short message; do not run a step-by-step interview.
-2. Record a concise faithful summary with `record-attempt` unless an attempt already exists; do not strengthen the learner's answer. Record product-lens answers in the same attempt as `assumptions` or `tradeoffs`.
-3. Mechanical outside help needs no record. When the learner reports that an AI tool or outside source shaped the decision they own, record it with `record-assistance` at level 5, kind `external-help-self-reported`, stating in `content` that it happened before submission.
-4. Run the smallest relevant validation or demo and record the observed delivery with `record-deliverable`:
+2. Read and run the code in place at the submitted folder path; do not copy it into the learning workspace. When access outside the working directory is blocked, ask the learner to grant it. When the folder is a git repository, record each artifact reference as `{folder_path}@{commit_sha}`; otherwise record the folder path. When the folder sits inside a workspace that contains `docs/learning/`, say once that case answers were reachable and record that in the delivery `limitations`.
+3. Record a concise faithful summary with `record-attempt` unless an attempt already exists; do not strengthen the learner's answer. Record product-lens answers in the same attempt as `assumptions` or `tradeoffs`.
+4. Mechanical outside help needs no record. When the learner reports that an AI tool or outside source shaped the decision they own, record it with `record-assistance` at level 5, kind `external-help-self-reported`, stating in `content` that it happened before submission.
+5. Run the smallest relevant validation or demo and record the observed delivery with `record-deliverable`:
 
    ```json
    {
      "status": "shipped",
      "summary": "What works and what was demonstrated",
-     "artifact_refs": ["relative/path/or/stable-runtime-reference"],
+     "artifact_refs": ["{folder_path}@{commit_sha}"],
      "completed_criteria": ["Definition-of-done item demonstrated"],
      "limitations": ["What remains outside the tested scope"]
    }
    ```
 
    Use `in-progress` when definition-of-done items remain and `blocked` when a real dependency prevents delivery, with the blocker in `limitations`. A delivery never claims independent competency merely because the artifact passes.
-5. Give one feedback round in one message:
+6. Give one feedback round in one message:
    - what works, as shown by the demo, against the definition of done;
    - at most two neutral questions or counterexamples on the decision the learner owns, each recorded with `record-assistance` at its level; never correct a weak decision directly;
    - the twist, when a future event's declared trigger is satisfied: route release validation to `learning-case` and record it with `release-event` before presenting it. When the twist is a stakeholder change request, also ask which part of the scope the learner keeps, cuts, or changes to still meet the definition of done. Do not create a new fact after seeing the decision merely to make it wrong.
-6. Let the learner revise or defend in their own time and resubmit once. Record changed decisions with `record-revision` and re-record the delivery. When the learner skips the revision, continue to `Reflect`.
+7. Let the learner revise or defend in their own time and resubmit once. Record changed decisions with `record-revision` and re-record the delivery with the new commit reference. When the learner skips the revision, continue to `Reflect`.
 
 When the learner chooses system evidence:
 

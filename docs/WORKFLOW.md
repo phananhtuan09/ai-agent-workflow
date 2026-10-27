@@ -62,6 +62,8 @@ Proposal, evaluation, learning, and design artifacts are optional capability-own
 
 The evaluation and learning namespaces are independent of repository product authority and must not be silently merged into it.
 
+Ordinary coding work must not read `docs/learning/cases/` or `docs/learning/sessions/`. They hold hidden learning facts, events, and assessment records, and only the learning capability reads them.
+
 The design namespace is subordinate rather than independent:
 
 - `docs/PRODUCT.md` is a derived summary written in an external capability's fixed schema and is never durable product authority.

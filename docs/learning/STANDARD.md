@@ -34,6 +34,16 @@ Khi submission thiếu decision mà learner sở hữu, AI hỏi bổ sung trong
 
 Khi learner tự khai AI tool hoặc nguồn bên ngoài đã định hình decision mà learner sở hữu, phần đó được attribution là material assistance; hỗ trợ mechanical không cần ghi nhận.
 
+## Workspace Isolation
+
+Learner implement mini-project trong folder do learner tự chọn, nằm ngoài workspace chứa `docs/learning/`, để coding agent không đọc được hidden fact, future event hoặc rubric; AI không cố định tên folder và nhận folder path khi learner nộp bài.
+
+Review đọc và chạy code tại folder path đã nộp mà không copy vào learning workspace; artifact reference là folder path kèm commit SHA khi folder là git repository.
+
+Khi folder đã nộp nằm trong workspace chứa `docs/learning/`, delivery limitation phải ghi rằng case content có thể đã bị truy cập.
+
+Khi giao implementation cho coding agent, learner ghi rõ decision mình sở hữu trong task để agent implement thay vì tự chọn.
+
 ## Learning Direction
 
 Profile phải lưu goal đã được human chấp thuận, baseline, current gaps, competency history và đúng một next action gần nhất.
