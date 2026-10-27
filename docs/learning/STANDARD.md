@@ -44,6 +44,16 @@ Khi folder đã nộp nằm trong workspace chứa `docs/learning/`, delivery li
 
 Khi giao implementation cho coding agent, learner ghi rõ decision mình sở hữu trong task để agent implement thay vì tự chọn.
 
+## Learner Docs Trong Review
+
+Review chỉ đọc product hoặc decision doc trong folder của learner khi learner chỉ định hoặc khi commit range đã nộp thay đổi chúng.
+
+Case spec vẫn là chuẩn đánh giá và code đang chạy vẫn là behavior evidence; learner doc chỉ là reasoning learner tự trình bày.
+
+Learner doc chỉ được tính là reasoning của learner khi learner xác nhận đã tự viết, vì coding agent có thể đã viết hoặc cập nhật nó.
+
+Khi doc và code lệch nhau, AI không tự quyết bên nào đúng mà đưa độ lệch thành một câu hỏi trong vòng feedback.
+
 ## Learning Direction
 
 Profile phải lưu goal đã được human chấp thuận, baseline, current gaps, competency history và đúng một next action gần nhất.
