@@ -764,7 +764,7 @@ for item in tests:
     if "actual" in item:
         # Per-revision observed values, e.g. a generated ID that differs between the two instances.
         actual = item["actual"]["base" if os.environ.get("WEB_PORT") else "head"]
-        passed = actual == item["expect"]
+        passed = actual == item["expect"] and os.environ.get("WEB_PORT") != "dead"
     observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED", "port": os.environ.get("WEB_PORT", ""),
                 "now": os.environ.get("FIXED_NOW", ""), "spec": Path("e2e/label.spec.ts").read_text().strip(),
                 "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": actual}]}
