@@ -60,6 +60,27 @@ def contract(suite, root):
                 raise ValueError("base setup steps must be nonempty argument arrays")
         if not isinstance(base.get("keep", []), list) or set(base.get("keep", [])) - set(data.get("files") or []):
             raise ValueError("base keep must list approved files")
+    det = data.get("determinism")
+    if det is not None:
+        if not isinstance(det, dict) or set(det) - {"env", "normalize", "limits"}:
+            raise ValueError("determinism takes only env, normalize, and limits")
+        env = det.get("env", {})
+        if not isinstance(env, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
+            raise ValueError("determinism env must map names to string values")
+        if base is not None and set(env) & set(base["env"]):
+            raise ValueError("base env must not override determinism env")
+        rules = det.get("normalize", [])
+        if not isinstance(rules, list) or any(not isinstance(r, dict) or set(r) != {"pattern", "replacement"} or not isinstance(r["pattern"], str) or not r["pattern"] or not isinstance(r["replacement"], str) for r in rules):
+            raise ValueError("determinism normalize rules need a pattern and a replacement")
+        for rule in rules:
+            try:
+                # sub() parses the replacement template even without a match, so bad group references fail here.
+                re.compile(rule["pattern"]).sub(rule["replacement"], "")
+            except (re.error, IndexError) as error:
+                raise ValueError(f"Invalid normalize rule {rule['pattern']!r} -> {rule['replacement']!r}: {error}") from None
+        limits = det.get("limits", [])
+        if not isinstance(limits, list) or any(not isinstance(x, str) or not x.strip() for x in limits):
+            raise ValueError("determinism limits must be nonempty strings")
     cases = data.get("cases", [])
     ids = [c["id"] for c in cases]
     if not ids or len(ids) != len(set(ids)):
@@ -132,6 +153,46 @@ def native_tests(native, suite):
     return tests
 
 
+def observation_document(run, attempt):
+    """Parse the unique runtime-observations attachment of an attempt, or return None."""
+    found = [a for a in attempt.get("attachments", []) if a.get("name") == "runtime-observations"]
+    if len(found) != 1:
+        return None
+    try:
+        observed = json.loads(attachment(run, found[0]))
+    except ValueError:
+        return None
+    return observed if isinstance(observed, dict) else None
+
+
+def checks_of(row):
+    checks = (row.get("observations") or {}).get("checks")
+    if not isinstance(checks, list):
+        return {}
+    return {c["id"]: c for c in checks if isinstance(c, dict) and isinstance(c.get("id"), str)}
+
+
+def normalized(value, rules):
+    """Apply the suite's normalization rules to every string inside an observed value."""
+    if isinstance(value, str):
+        for rule in rules:
+            value = re.sub(rule["pattern"], rule["replacement"], value)
+        return value
+    if isinstance(value, list):
+        return [normalized(item, rules) for item in value]
+    if isinstance(value, dict):
+        return {key: normalized(item, rules) for key, item in value.items()}
+    return value
+
+
+def base_diff(head, base, rules):
+    """List checks whose actual values still differ between head and base after normalization."""
+    head_checks, base_checks = checks_of(head), checks_of(base)
+    return [{"id": i, "base": base_checks[i].get("actual"), "head": head_checks[i].get("actual")}
+            for i in sorted(set(head_checks) & set(base_checks))
+            if normalized(head_checks[i].get("actual"), rules) != normalized(base_checks[i].get("actual"), rules)]
+
+
 def score_run(run, suite):
     """Score one execution directory: the bundle itself (head) or its base/ directory."""
     manifest = load(run / "run-manifest.json")
@@ -154,6 +215,9 @@ def score_run(run, suite):
             error = next((str(a["error"].get("message", ""))[:300] for a in attempts if isinstance(a.get("error"), dict)), "")
             row.update(result="FAIL", reasons=["Native failure, expected failure, or retry/flaky execution"],
                        passedAttempt=any(a["status"] == "passed" for a in attempts), error=error)
+            observed = observation_document(run, attempts[0]) if case["kind"] != "pr-test" else None
+            if observed is not None:
+                row["observations"] = observed
             continue
         attachments = attempts[0].get("attachments", [])
         for item in attachments:
@@ -207,7 +271,7 @@ def base_status(bundle, suite):
     return status, rows
 
 
-def proof(case, head, base, base_rows):
+def proof(case, head, base, base_rows, rules):
     """Classify whether a passing head case is shown able to fail on base."""
     if head["result"] != "PASS":
         return "NOT_EVALUATED", "Head result is not PASS"
@@ -221,6 +285,10 @@ def proof(case, head, base, base_rows):
     result = row["result"]
     if result == "FAIL" and row.get("passedAttempt"):
         return "NOT_PROVEN", "Ability to fail not proven: flaky on base (an attempt passed)"
+    mismatched = [c for c in checks_of(row).values() if c.get("actual") != c.get("expected")]
+    if result == "FAIL" and mismatched and all(normalized(c.get("actual"), rules) == normalized(c.get("expected"), rules) for c in mismatched):
+        names = ", ".join(c["id"] for c in mismatched)
+        return "NOT_PROVEN", f"Ability to fail not proven: base differs only in normalized values ({names})"
     if result == "FAIL":
         detail = f" ({row['error']})" if row.get("error") else ""
         return "PROVEN", f"Fails on base{detail} and passes on head"
@@ -234,14 +302,18 @@ def score(bundle):
     suite = load(local(bundle / "inputs", manifest["suite"]))
     head, errors = score_run(bundle, suite)
     base, base_rows = base_status(bundle, suite)
+    det = suite.get("determinism")
+    rules = (det or {}).get("normalize", [])
     rows = []
     for case in suite["cases"]:
         row = head[case["id"]]
-        row["proof"], row["proofReason"] = proof(case, row, base, base_rows)
+        row["proof"], row["proofReason"] = proof(case, row, base, base_rows, rules)
         if base_rows:
             row["baseResult"] = base_rows[case["id"]]["result"]
+            if "observations" in row and "observations" in base_rows[case["id"]]:
+                row["baseDiff"] = base_diff(row, base_rows[case["id"]], rules)
         rows.append(row)
-    return {"cases": rows, "exitCode": manifest["exitCode"], "nativeErrors": errors, "base": base}
+    return {"cases": rows, "exitCode": manifest["exitCode"], "nativeErrors": errors, "base": base, "determinism": det}
 
 
 def summary(result):
@@ -249,6 +321,9 @@ def summary(result):
     for row in result["cases"]:
         lines.append(f"- {row['caseId']}: {row['result']} ({row['attempts']} attempt(s)); {'; '.join(row['reasons'])}")
         lines.append(f"  - Can-fail: {row['proof']}; {row['proofReason']}")
+        if "baseDiff" in row:
+            diff = "; ".join(f"{d['id']}: base {json.dumps(d['base'], ensure_ascii=False)[:80]} vs head {json.dumps(d['head'], ensure_ascii=False)[:80]}" for d in row["baseDiff"])
+            lines.append(f"  - Base diff after normalization: {diff or 'none'}")
     lines += ["", f"Execution exit code: {result['exitCode']}", f"Native global errors: {len(result['nativeErrors'])}"]
     base = result["base"]
     if base is None:
@@ -256,6 +331,12 @@ def summary(result):
     else:
         lines.append(f"Base revision: {base['revision']} ({base['gitHead'] or 'unresolved'})")
         lines.append(f"Base run: {'DEGRADED: ' + base['degraded'] if base['degraded'] else 'completed'}")
+    det = result["determinism"]
+    if det is None:
+        lines.append("Determinism: not declared; time, seed data, randomness, and IDs are uncontrolled")
+    else:
+        lines.append(f"Determinism env: {', '.join(sorted(det.get('env', {}))) or 'none'}; normalization rules: {len(det.get('normalize', []))}")
+        lines.append(f"Determinism limits: {'; '.join(det.get('limits', [])) or 'none stated'}")
     non_proving = [r["caseId"] for r in result["cases"] if r["proof"] == "NON_PROVING"]
     lines.append(f"Non-proving PASS: {', '.join(non_proving) if non_proving else 'none'}")
     return "\n".join(lines) + "\n"
@@ -342,6 +423,7 @@ def run_base(bundle, root, data, run_id):
     run = bundle / "base"
     run.mkdir()
     base = data["base"]
+    fixed = (data.get("determinism") or {}).get("env", {})
     manifest = {"revision": base["revision"], "projectRoot": "", "gitHead": "", "setup": []}
     resolved = subprocess.run(["git", "rev-parse", "--verify", base["revision"] + "^{commit}"], cwd=root, capture_output=True, text=True)
     if resolved.returncode:
@@ -367,7 +449,7 @@ def run_base(bundle, root, data, run_id):
             for step in base.get("setup", []):
                 try:
                     # Setup steps are human-approved argument arrays (hashed with the suite) and run without a shell.
-                    done = subprocess.run(step, cwd=tree, env={**os.environ, **base["env"]}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+                    done = subprocess.run(step, cwd=tree, env={**os.environ, **fixed, **base["env"]}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
                     code, output = done.returncode, done.stdout + done.stderr
                 except subprocess.TimeoutExpired:
                     code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
@@ -379,7 +461,7 @@ def run_base(bundle, root, data, run_id):
                     manifest["degraded"] = f"Base setup {step} exited {code}; see base/setup.log"
                     return
         try:
-            execute(run, tree, data["command"], {**base["env"], "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
+            execute(run, tree, data["command"], {**fixed, **base["env"], "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
         except ValueError as error:
             manifest["degraded"] = f"Base native report unusable: {error}"[:300]
     finally:
@@ -429,7 +511,8 @@ def main():
     git = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True)
     dirty = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True)
     manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout}
-    execute(bundle, root, data["command"], {"RUNTIME_E2E_RUN_ID": run_id}, manifest)
+    fixed = (data.get("determinism") or {}).get("env", {})
+    execute(bundle, root, data["command"], {**fixed, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
     if data.get("base") is not None:
         run_base(bundle, root, data, run_id)
     result = score(bundle)

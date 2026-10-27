@@ -74,7 +74,7 @@ The fixed constraints are:
 4. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
 5. Separate agent-verifiable behavior from subjective human judgment.
 6. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
-7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference.
+7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit.
 8. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
 9. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
 10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries.
@@ -104,7 +104,7 @@ Do not freeze an implementation detail unless it identifies the production path 
    Copy each case's generated `Can-fail` value into the ledger:
    - `PROVEN`: fails on base and passes on head.
    - `NON_PROVING`: a `new-behavior` case that passes on base too. It is not a passing case and keeps the suite from completing; report it as a test that does not prove the change. Strengthening the test or reclassifying the case requires reapproval.
-   - `NOT_PROVEN`: no base was declared, the base run degraded, or the case was flaky on base; state "ability to fail not proven" and the reason.
+   - `NOT_PROVEN`: no base was declared, the base run degraded, the case was flaky on base, or the base failure disappears once IDs and timestamps are normalized; state "ability to fail not proven" and the reason. For the normalization cause, check that the normalized field is noise and not the behavior under test; if a rule hides the behavior, narrow the rule and reapprove.
    - `NOT_REQUIRED`: an `invariant` case.
 8. Do not fix application code in this mode. Preserve failures and report them for a separate authorized fix. Test/config changes require reapproval and a new run; rerun the same case after a fix.
 9. Complete cleanup and record its status.
@@ -113,6 +113,8 @@ Do not freeze an implementation detail unless it identifies the production path 
    - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review remains.
    - `COMPLETED` only after required human sign-off is accepted.
 11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations or counts.
+
+Report the generated determinism limits, or that determinism was not declared, among the run's limits.
 
 A degraded base run is reported with the reason the tool recorded; never compare against nothing or describe a degraded run as proven.
 
