@@ -760,9 +760,14 @@ tests = json.loads(Path(sys.argv[1]).read_text())
 specs = []
 for item in tests:
     passed = item["expect"] in ("*", app) and os.environ.get("WEB_PORT") != "dead"
+    actual = item["expect"] if passed else app
+    if "actual" in item:
+        # Per-revision observed values, e.g. a generated ID that differs between the two instances.
+        actual = item["actual"]["base" if os.environ.get("WEB_PORT") else "head"]
+        passed = actual == item["expect"]
     observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED", "port": os.environ.get("WEB_PORT", ""),
-                "spec": Path("e2e/label.spec.ts").read_text().strip(),
-                "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": item["expect"] if passed else app}]}
+                "now": os.environ.get("FIXED_NOW", ""), "spec": Path("e2e/label.spec.ts").read_text().strip(),
+                "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": actual}]}
     attachments = [] if item.get("existing") else [{"name": "runtime-observations", "contentType": "application/json",
                     "body": base64.b64encode(json.dumps(observed).encode()).decode()}]
     results = [{"status": "passed" if passed else "failed", "attachments": attachments,
@@ -1038,6 +1043,65 @@ test("runtime E2E labels cases without a usable base as not proven", () => {
     assert.strictEqual(missing.status, 0, missing.stderr || missing.stdout);
     assert.ok(missing.results.base.degraded.includes("cannot be resolved"));
     assert.strictEqual(fixture.audit(missing.out).status, 0);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E applies determinism settings and normalizes base comparisons", () => {
+  const fixture = createBaseHeadFixture();
+  const observed = (out, file, index = 0) => {
+    const native = JSON.parse(fs.readFileSync(path.join(out, file), "utf8"));
+    const body = native.suites[0].specs[index].tests[0].results[0].attachments[0].body;
+    return JSON.parse(Buffer.from(body, "base64").toString("utf8"));
+  };
+  const determinism = {
+    env: { FIXED_NOW: "2026-01-01T00:00:00Z" },
+    normalize: [{ pattern: "order-[0-9]+", replacement: "order-<ID>" }],
+    limits: ["Browser randomness is not stubbed"],
+  };
+  try {
+    const undeclared = fixture.run(null, "no-determinism");
+    assert.ok(undeclared.stdout.includes("Determinism: not declared"));
+    assert.deepStrictEqual(undeclared.results.cases[0].baseDiff, [{ id: "label", base: "old", head: "new" }]);
+    assert.ok(undeclared.stdout.includes('Base diff after normalization: label: base "old" vs head "new"'));
+    assert.deepStrictEqual(undeclared.results.cases[1].baseDiff, []);
+    assert.ok(!("baseDiff" in undeclared.results.cases[2]), "pr-test cases have no observations to diff");
+
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "order-7", actual: { head: "order-7", base: "order-9" } },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+      { title: "renders a label", file: "e2e/label.spec.ts", expect: "*", existing: true },
+    ]);
+    const noisy = fixture.run((suite) => {
+      suite.cases[2].classification = "invariant";
+    }, "id-noise-only");
+    assert.strictEqual(proofs(noisy.results)["E2E-01"], "PROVEN", "without normalization the raw ID difference counts");
+
+    const normalized = fixture.run((suite) => {
+      suite.cases[2].classification = "invariant";
+      suite.determinism = determinism;
+    }, "id-noise-normalized");
+    assert.strictEqual(normalized.status, 0, normalized.stderr || normalized.stdout);
+    assert.strictEqual(proofs(normalized.results)["E2E-01"], "NOT_PROVEN");
+    assert.ok(normalized.results.cases[0].proofReason.includes("base differs only in normalized values (label)"));
+    assert.deepStrictEqual(normalized.results.cases[0].baseDiff, []);
+    assert.strictEqual(observed(normalized.out, "native.json").now, "2026-01-01T00:00:00Z");
+    assert.strictEqual(observed(normalized.out, "base/native.json").now, "2026-01-01T00:00:00Z");
+    assert.ok(normalized.stdout.includes("Determinism env: FIXED_NOW; normalization rules: 1"));
+    assert.ok(normalized.stdout.includes("Determinism limits: Browser randomness is not stubbed"));
+    assert.strictEqual(fixture.audit(normalized.out).status, 0);
+
+    const overridden = fixture.validate((suite) => {
+      suite.determinism = { env: { WEB_PORT: "5301" } };
+    });
+    assert.strictEqual(overridden.status, 2);
+    assert.ok(overridden.stderr.includes("base env must not override determinism env"));
+    const badPattern = fixture.validate((suite) => {
+      suite.determinism = { normalize: [{ pattern: "(", replacement: "" }] };
+    });
+    assert.strictEqual(badPattern.status, 2);
+    assert.ok(badPattern.stderr.includes("Invalid normalize pattern"));
   } finally {
     fixture.cleanup();
   }

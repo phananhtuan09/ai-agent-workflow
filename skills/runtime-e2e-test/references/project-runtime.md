@@ -119,6 +119,16 @@ Used when a suite declares `base` to prove that new-behavior tests can fail.
 - Base setup: `<argument arrays run in the base worktree, e.g. dependency install, or NONE>`
 - Base start limitations: `<revisions that cannot start, missing migrations, or NONE>`
 
+## Determinism
+
+Copied into a suite's `determinism` so base and head differ only in behavior.
+
+- Time freeze: `<variable and value, e.g. FIXED_NOW=2026-01-01T00:00:00Z, or browser-only via page.clock, or NOT_SUPPORTED>`
+- Seed data: `<variable or setup step that loads identical data in every instance, or NOT_SUPPORTED>`
+- Randomness: `<variable that seeds or stubs random values, or NOT_SUPPORTED>`
+- Normalization rules: `<regular expressions for IDs, timestamps, and other per-instance values, with their replacements>`
+- Determinism limits: `<anything above that is NOT_SUPPORTED, stated as a limit>`
+
 ## Parallel execution
 
 - Isolation: `<isolated fixtures/accounts/databases OR serialized>`

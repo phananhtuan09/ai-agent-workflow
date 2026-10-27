@@ -18,6 +18,11 @@ Paths below are relative to the project root; suite files live beside the Markdo
     "setup": [["npm", "ci"]],
     "keep": ["package-lock.json"]
   },
+  "determinism": {
+    "env": {"FIXED_NOW": "2026-01-01T00:00:00Z", "SEED": "1"},
+    "normalize": [{"pattern": "ord_[0-9a-f]{8}", "replacement": "ord_<ID>"}],
+    "limits": ["Server-generated UUIDs are not seeded"]
+  },
   "cases": [
     {
       "id": "E2E-01",
@@ -56,6 +61,18 @@ The rest of the environment is inherited as for the head run, so every shared or
 `base.env` values are snapshotted into the bundle: use non-secret values only.
 Setup steps run with a 30-minute timeout and log both output streams to `base/setup.log`.
 The worktree is removed after the run and the outcome is recorded as `worktreeCleanup` in `base/run-manifest.json`.
+
+## Determinism
+
+`determinism` is optional; without it the summary states that time, seed data, randomness, and IDs are uncontrolled.
+Copy its settings from the project runtime reference.
+
+- `env`: non-secret variables that freeze time, seed data, or stub randomness where the app supports it. Both the head and base runs, and base setup, receive them; `base.env` must not override them.
+- `normalize`: regular-expression rules applied to observed values before head and base are compared, for IDs, timestamps, and other values that differ between two correct instances. Normalize only noise; a rule that hides the behavior under test makes every case unprovable.
+- `limits`: what the app cannot make deterministic. They appear in the summary and belong in the report's limits.
+
+When the app has no server-side clock control, freeze browser time in the test with `page.clock.setFixedTime()` or `page.clock.install()` and say so in `limits` if server time still varies.
+Read rendered values only after a web-first assertion (for example `await expect(row).toBeVisible()`) has confirmed the data loaded; `innerText()` and `textContent()` do not wait for data and make results timing-dependent.
 
 List every executed local dependency in `files`, including helpers, fixture modules, configs, dependency manifests/lockfiles, and approved baselines.
 Use one test per case, titled `[E2E-01] descriptive title`.
@@ -142,10 +159,11 @@ Each case also gets a `proof` value, computed from the head and base results:
 
 - `PROVEN`: head PASS and base FAIL.
 - `NON_PROVING`: a `new-behavior` case with head PASS and base PASS; it does not count as a passing case.
-- `NOT_PROVEN`: no base declared, base degraded (unresolvable revision, worktree or setup failure, unusable native report, or global errors such as an app that did not start), base NOT_RUN/BLOCKED, or a base failure where a retry attempt passed (flaky on base).
+- `NOT_PROVEN`: no base declared, base degraded (unresolvable revision, worktree or setup failure, unusable native report, or global errors such as an app that did not start), base NOT_RUN/BLOCKED, a base failure where a retry attempt passed (flaky on base), or a base failure whose mismatched checks all match once normalized (the difference was only IDs, timestamps, or other normalized noise).
 - `NOT_REQUIRED`: an `invariant` case.
 - `NOT_EVALUATED`: head did not PASS.
 
+When both runs recorded observations, `baseDiff` lists the checks whose actual values still differ between base and head after normalization.
 A base failure counts as proof only when the base run itself was not degraded; the reason names the base error or mismatched checks so an auditor can confirm the failure came from the behavior, not the environment.
 `run` and `audit` exit nonzero when any case is `NON_PROVING`.
 
