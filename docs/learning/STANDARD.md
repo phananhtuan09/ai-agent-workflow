@@ -98,7 +98,7 @@ Mỗi mini-project chọn một mode:
 - `practice`: ưu tiên momentum; AI được hint sớm hơn và kết quả không được ghi là independent competency evidence;
 - `challenge`: learner giữ first attempt và key decisions để tạo learning evidence.
 
-Mini-project hoàn tất khi deliverable đạt definition of done và implied requirement trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
+Mini-project hoàn tất khi deliverable đạt definition of done trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context; implied requirement bị bỏ sót không chặn completion mà chỉ hạ rating product understanding trong assessment. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
 
 ## Implied Requirements
 

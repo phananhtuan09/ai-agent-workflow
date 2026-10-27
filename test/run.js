@@ -2420,6 +2420,7 @@ test("learning mini-project sessions require assessed implied requirements", () 
       });
       return value;
     };
+    const productDimension = (value) => value.rubric.find((dimension) => dimension.id === "RUB-WEBHOOK-004");
     const rejectsCase = (value, message) => {
       const invalidPath = path.join(result.workspace, "invalid-implied-case.json");
       fs.writeFileSync(invalidPath, JSON.stringify(value, null, 2) + "\n");
@@ -2437,15 +2438,29 @@ test("learning mini-project sessions require assessed implied requirements", () 
     rejectsCase(unassessed, "must be assessed by a rubric dimension");
 
     const unknownReference = withImpliedRequirements();
-    unknownReference.rubric[3].required_implied_requirement_ids = ["IR-WEBHOOK-009"];
+    productDimension(unknownReference).required_implied_requirement_ids = ["IR-WEBHOOK-009"];
     rejectsCase(unknownReference, "references unknown implied requirements");
 
     const tooMany = withImpliedRequirements();
     for (const suffix of ["002", "003", "004"]) {
       tooMany.implied_requirements.push({ ...tooMany.implied_requirements[0], id: `IR-WEBHOOK-${suffix}` });
-      tooMany.rubric[3].required_implied_requirement_ids.push(`IR-WEBHOOK-${suffix}`);
+      productDimension(tooMany).required_implied_requirement_ids.push(`IR-WEBHOOK-${suffix}`);
     }
     rejectsCase(tooMany, "at most 3");
+
+    const invalidKind = withImpliedRequirements();
+    invalidKind.implied_requirements[0].kind = "nice-to-have";
+    rejectsCase(invalidKind, "must be functional or non-functional");
+
+    for (const field of ["statement", "derived_from", "check"]) {
+      const missingField = withImpliedRequirements();
+      delete missingField.implied_requirements[0][field];
+      rejectsCase(missingField, `implied_requirements[0].${field} must be a non-empty string`);
+    }
+
+    const noRevealingFact = withImpliedRequirements();
+    noRevealingFact.implied_requirements[0].fact_ids = [];
+    rejectsCase(noRevealingFact, "fact_ids must not be empty");
 
     fs.writeFileSync(casePath, JSON.stringify(withImpliedRequirements(), null, 2) + "\n");
     const initialized = initialize();
