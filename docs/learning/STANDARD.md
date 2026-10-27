@@ -63,6 +63,20 @@ Mỗi mini-project chọn một mode:
 
 Mini-project hoàn tất khi deliverable đạt definition of done trong scope đã chốt, không phải khi learner hoàn thành toàn bộ project context. Hết time budget hoặc một ngày vẫn có thể kết thúc cycle; phần chưa làm không trở thành backlog debt.
 
+## Product Lens
+
+Mỗi mini-project giữ một product lens nhẹ để learner luyện tư duy sản phẩm bên cạnh kỹ thuật:
+
+- khi hỏi first direction, AI hỏi kèm learner deliverable giúp user nào làm được gì, thấy thành công ra sao, và một thứ learner chủ động để ngoài scope hôm nay cùng lý do;
+- khi twist là stakeholder change request, AI hỏi learner sẽ giữ, cắt hay đổi phần scope nào để vẫn đạt definition of done;
+- ở Reflect, AI đưa tối đa một nhận xét product thinking dựa trên câu trả lời đã ghi.
+
+Câu trả lời product lens được ghi trung thành trong first attempt hoặc revision hiện có dưới dạng assumption hoặc trade-off.
+
+Product lens không phải protected judgment, không thêm rubric dimension, không phải competency evidence và không ảnh hưởng outcome hay progression.
+
+Câu hỏi product lens phải trung lập, không gợi ý protected judgment hay hidden fact, và learner được bỏ qua.
+
 
 ## Boundary
 

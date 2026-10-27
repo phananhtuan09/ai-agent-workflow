@@ -123,7 +123,8 @@ The mini-project definition of done is the scope boundary. Do not silently add p
 - Start from the product spec and let the human ask clarification questions.
 - Return only facts justified by the human's question. Do not reveal hidden twist facts or design implications before the learner reasons about them.
 - In `challenge` mode, ask for a first direction before material assistance or implementation that would decide the protected judgment. In `practice` mode, a scoped hint may come earlier, but record the assistance and never describe the result as independent evidence.
-- Record a concise faithful summary with `record-attempt`; do not strengthen the human's answer.
+- When asking for the first direction, add the light product lens from `STANDARD.md`: who the deliverable helps and what success looks like, plus one thing the learner deliberately leaves out of today's scope and why. Keep the questions neutral and skippable.
+- Record a concise faithful summary with `record-attempt`; do not strengthen the human's answer. Record product-lens answers in the same attempt as `assumptions` or `tradeoffs`.
 - AI may create boilerplate, fixtures, formatting, local harnesses, or other explicitly authorized mechanical work. It may not choose the protected behavior or silently change the accepted scope.
 - Route production implementation through the repository coding workflow. Use isolated worktrees or temporary directories for disposable work.
 - Ask one high-value clarification or counterexample at a time. Escalate assistance only when the learner is blocked under the rules in `STANDARD.md`.
@@ -138,6 +139,8 @@ Use a future event only when its declared trigger is satisfied. A twist can be:
 - a bounded evidence result.
 
 Route release validation to `learning-case`, then record it with `release-event` before presenting the twist. Give the human a clear opportunity to revise or defend the feature decision. Do not create a new fact after seeing the decision merely to make it wrong.
+
+When the twist is a stakeholder change request, also ask which part of the scope the learner keeps, cuts, or changes to still meet the definition of done. Record a changed scope decision with `record-revision`.
 
 When the learner chooses system evidence:
 
@@ -182,7 +185,7 @@ After receiving its result:
 
 1. Persist the proposal with `update_learning_state.py propose-assessment`.
 2. Present three plain-language groups: independently demonstrated, demonstrated with AI assistance, and not yet demonstrated.
-3. Present no more than three current improvement areas supported by the session evidence.
+3. Present no more than three current improvement areas supported by the session evidence, plus at most one product-thinking observation grounded in recorded product-lens answers. Keep that observation outside the assessment rating.
 4. Present limitations without rubric IDs.
 5. Give the human a chance to dispute the assessment.
 6. Record and resolve disputes with `raise-dispute` and `resolve-dispute`, then propose a corrected assessment when evidence requires a change.
