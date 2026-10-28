@@ -1056,6 +1056,12 @@ test("runtime E2E compares the project's own suites between base and head", () =
     assert.ok(missing.stderr.includes("Missing '## Existing suites'"), missing.stderr);
     const completion = ledger("## Existing suites\n\n- unit: NEW_FAILURE — formats dates\n- lint: NOT_COMPARABLE — no report\n\n", "completion");
     assert.ok(completion.stderr.includes("Existing suites fail on head but pass on base: unit"), completion.stderr);
+    const resultsPath = path.join(run.out, "results.json");
+    const results = fs.readFileSync(resultsPath, "utf8");
+    fs.writeFileSync(resultsPath, JSON.stringify({ ...run.results, existing: { suites: "unit" } }));
+    const corrupt = ledger("## Existing suites\n\n- unit: NEW_FAILURE — formats dates\n\n");
+    assert.ok(corrupt.stderr.includes("Cannot read existing suites"), corrupt.stderr);
+    fs.writeFileSync(resultsPath, results);
 
     const unitOnly = (suite) => {
       suite.existing = { suites: [{ id: "unit", command: ["python3", "unit.py", "{report}"] }] };
@@ -1071,6 +1077,12 @@ test("runtime E2E compares the project's own suites between base and head", () =
     }, "pre-existing-only");
     assert.strictEqual(older.results.existing.suites[0].status, "PRE_EXISTING");
     assert.ok(!older.stdout.includes("existing suites"), older.stdout);
+
+    const failedSetup = fixture.run((suite) => {
+      unitOnly(suite);
+      suite.base.setup = [["python3", "-c", "import sys; sys.exit(3)"]];
+    }, "existing-base-setup-fails");
+    assert.strictEqual(failedSetup.results.existing.suites[0].status, "NOT_COMPARABLE");
 
     const noBase = fixture.run((suite) => {
       unitOnly(suite);

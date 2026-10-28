@@ -171,12 +171,18 @@ def check_cases(cases: list[Case], bundle: Path) -> list[str]:
     return errors
 
 
-def existing_rows(bundle: Path) -> list[dict] | None:
+def existing_rows(bundle: Path) -> tuple[list[dict], list[str]]:
+    """The generated existing-suite rows; an unreadable results file is already reported by check_cases."""
     try:
-        existing = json.loads((bundle / "results.json").read_text(encoding="utf-8")).get("existing")
-        return None if existing is None else list(existing["suites"])
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        return None
+        results = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return [], []
+    if not isinstance(results, dict) or results.get("existing") is None:
+        return [], []
+    suites = results["existing"].get("suites") if isinstance(results["existing"], dict) else None
+    if not isinstance(suites, list) or not all(isinstance(row, dict) for row in suites):
+        return [], [f"Cannot read existing suites in {bundle / 'results.json'}."]
+    return suites, []
 
 
 def check_existing(text: str, rows: list[dict]) -> list[str]:
@@ -263,11 +269,11 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
             f"Last updated {updated.isoformat()} is in the future (now {now.isoformat(timespec='seconds')}); "
             "use the current UTC time."
         )
-    existing = (existing_rows(bundle) or []) if bundle is not None else []
+    existing, unreadable = existing_rows(bundle) if bundle is not None else ([], [])
     if bundle is not None:
         errors.extend(check_bundle(text, top_end, bundle))
         errors.extend(check_cases(cases, bundle))
-        errors.extend(check_existing(text, existing))
+        errors.extend(unreadable or check_existing(text, existing))
     new_failures = [row.get("id") for row in existing if row.get("status") == "NEW_FAILURE"]
     review = [row.get("id") for row in existing if row.get("status") in REVIEW_EXISTING]
     errors.extend(check_supporting(text, bundle is not None or mode == "completion"))
