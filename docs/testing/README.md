@@ -24,6 +24,7 @@ Read the installed `runtime-e2e-test/references/playwright-contract.md` for thei
 Human approval covers the plan, suite, executable tests, local helpers, fixtures, dependency/config files, and baselines before execution.
 Any change to approved inputs requires explicit reapproval.
 The Markdown ledger summarizes generated evidence; it does not replace native results.
+After a run, copy `Run ID` and the head and base commits into `Tested revisions` from the bundle's `run-manifest.json` files, and take `Last updated` from the clock when you write the ledger, never an estimate.
 Copy each case's generated `Can-fail` value into the ledger; completion requires it on every PASS. A PASS whose `Can-fail` is `NON_PROVING` is counted under `Non-proving` in the run summary, not under `PASS`, and blocks completion.
 
 ```markdown
@@ -33,7 +34,7 @@ Copy each case's generated `Can-fail` value into the ledger; completion requires
 - Run ID: NOT_STARTED
 - Environment: <runtime target>
 - Tested revisions: NOT_STARTED
-- Last updated: <ISO date/time>
+- Last updated: <UTC time the ledger was written, from `date -u +%Y-%m-%dT%H:%M:%SZ`>
 
 ## Scope
 
