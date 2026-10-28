@@ -27,6 +27,7 @@ ALLOWED_PRIORITIES = {"RELEASE_BLOCKING", "NORMAL"}
 ALLOWED_HUMAN_JUDGMENT = {"YES", "NO"}
 ALLOWED_PATH_MATCH = {"NOT_RUN", "YES", "NO"}
 ALLOWED_DECISIONS = {"PENDING", "ACCEPTED", "REJECTED"}
+ALLOWED_SUPPORTING = {"PASS", "FAIL", "NOT_RUN"}
 ALLOWED_CAN_FAIL = {
     "PROVEN",
     "NON_PROVING",
@@ -36,6 +37,7 @@ ALLOWED_CAN_FAIL = {
     "NOT_RUN",
 }
 CLOCK_SKEW = timedelta(minutes=1)
+SUPPORTING_CHECK = re.compile(r"^- (?P<check>.+?):\s*(?P<result>[A-Z_]+)\b\s*[—-]?\s*(?P<note>.*?)\s*$")
 CASE_HEADING = re.compile(
     r"^## Case (?P<id>[A-Za-z0-9][A-Za-z0-9_.-]*)\s+[—-]\s+(?P<title>.+?)\s*$",
     re.MULTILINE,
@@ -108,6 +110,62 @@ def parse_time(value: str | None) -> datetime | None:
     return parsed if parsed.tzinfo else None
 
 
+def top_section(text: str, name: str) -> str | None:
+    match = re.search(
+        rf"^## {re.escape(name)}\s*$\n(?P<body>.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL
+    )
+    return match.group("body") if match else None
+
+
+def check_supporting(text: str, after_run: bool) -> list[str]:
+    """Each supporting check carries its own result, so a listed check cannot silently go unrun."""
+    section = top_section(text, "Supporting checks")
+    if section is None:
+        return []
+    errors = []
+    for line in (line for line in section.splitlines() if line.startswith("- ")):
+        match = SUPPORTING_CHECK.match(line)
+        if not match or match.group("result") not in ALLOWED_SUPPORTING:
+            errors.append(
+                f"Supporting check {line[2:]!r} must read '- <check>: PASS|FAIL|NOT_RUN — <evidence or reason>'."
+            )
+        elif after_run and match.group("result") == "NOT_RUN" and not match.group("note"):
+            errors.append(f"Supporting check {match.group('check')!r} was not run; state why.")
+    return errors
+
+
+def check_cases(cases: list[Case], bundle: Path) -> list[str]:
+    """Compare each case's ledger entry with the generated results."""
+    try:
+        rows = json.loads((bundle / "results.json").read_text(encoding="utf-8"))["cases"]
+    except (OSError, ValueError, KeyError) as error:
+        return [f"Cannot read results in {bundle}: {error}"]
+    rows = {row["caseId"]: row for row in rows}
+    errors = []
+    for case in cases:
+        prefix = f"Case {case.case_id}"
+        result = case.field("Result")
+        row = rows.get(case.case_id)
+        if result == "INVALIDATED":
+            continue
+        if row is None:
+            if result != "NOT_RUN":
+                errors.append(f"{prefix}: Result is {result}, but the bundle has no result for this case.")
+            continue
+        if result != row["result"]:
+            errors.append(f"{prefix}: Result is {result}, but the bundle recorded {row['result']}.")
+        can_fail = case.field("Can-fail")
+        if not missing_value(can_fail) and can_fail != row.get("proof"):
+            errors.append(f"{prefix}: Can-fail is {can_fail}, but the bundle recorded {row.get('proof')}.")
+        recorded_path = (row.get("observations") or {}).get("actualPath")
+        if recorded_path and case.field("Actual path") != recorded_path:
+            errors.append(
+                f"{prefix}: Actual path must be the recorded path {recorded_path!r}; "
+                "set Path match by comparing it with the Runtime path."
+            )
+    return errors
+
+
 def check_bundle(text: str, top_end: int, bundle: Path) -> list[str]:
     """Compare the ledger's run identity with what the evidence tool recorded."""
     try:
@@ -174,6 +232,8 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
         )
     if bundle is not None:
         errors.extend(check_bundle(text, top_end, bundle))
+        errors.extend(check_cases(cases, bundle))
+    errors.extend(check_supporting(text, bundle is not None or mode == "completion"))
     if not cases:
         errors.append("No cases found. Use headings like '## Case D2 — Title'.")
         return errors, warnings
@@ -329,7 +389,7 @@ def main() -> int:
     parser.add_argument(
         "--bundle",
         type=Path,
-        help="Evidence run directory; checks Run ID, Tested revisions and Last updated against it.",
+        help="Evidence run directory; checks Run ID, Tested revisions, Last updated and each case's Result, Can-fail and Actual path against it.",
     )
     args = parser.parse_args()
 

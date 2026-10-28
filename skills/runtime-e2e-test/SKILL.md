@@ -21,7 +21,7 @@ python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode plan
 python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode completion --bundle <run-dir>
 ```
 
-After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run. Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
+After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run, and each case's `Result`, `Can-fail` and `Actual path` against the generated results. Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
 
 Runtime adapters rewrite the skill path when installed.
 
@@ -58,7 +58,7 @@ Use this capability when verification has multiple cases, crosses runtime bounda
 
 Do not create a durable plan for a small same-session check that can be reproduced and proved directly.
 
-A runtime case exercises the running system through its real user or operational entrypoint. Unit, widget, mocked, static-analysis, build, and source-inspection checks may supplement a run, but they never make a runtime case pass.
+A runtime case exercises the running system through its real user or operational entrypoint. Unit, widget, mocked, static-analysis, build, and source-inspection checks may supplement a run, but they never make a runtime case pass. List each one under `## Supporting checks` with its own result (`PASS`, `FAIL`, or `NOT_RUN` with the reason), never only in prose, and report every listed check that did not run.
 
 Interactive browser tools may discover selectors or debug a failure, but cannot replace script execution or score an automated case.
 The fixed constraints are:
@@ -96,7 +96,7 @@ Do not freeze an implementation detail unless it identifies the production path 
 3. Record the environment and configuration identity without storing secrets. The tool generates the run ID and records the head and base commits and start/finish times in `run-manifest.json`. Copy them from there into the ledger.
 4. Check approval and snapshot approved files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session. When the suite declares a base, the tool runs the same approved tests against the base revision in a separate worktree and app instance.
 5. Let Playwright drive the declared path and assert observable outcomes. Fresh contexts isolate sessions; run-marked fixtures isolate data. Serialize shared mutations or acquire the project lock before execution.
-6. Use the tool-generated native results, observations, attempts, trace, cleanup, and summary. Never hand-edit evidence or generated reports.
+6. Use the tool-generated native results, observations, attempts, trace, cleanup, and summary. Never hand-edit evidence or generated reports. Copy each case's `Actual path` from its recorded observations, then set `Path match` by comparing it with the case's `Runtime path`: `YES` only when both name the same entrypoint, boundary and outcome.
 7. Mark:
    - `PASS` only when the declared runtime path and expected outcome were observed.
    - `FAIL` when the path runs and the outcome differs.
@@ -114,7 +114,7 @@ Do not freeze an implementation detail unless it identifies the production path 
    - `FAILED` or `BLOCKED` while material cases remain unresolved.
    - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review remains.
    - `COMPLETED` only after required human sign-off is accepted.
-11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle` (`--mode plan` for a `FAILED` or `BLOCKED` ledger).
+11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Copy the audit's `Audit:` line into the run summary and report it as written: exit 1 means the evidence is consistent and cases remain unresolved; only exit 2 means the evidence is inconsistent or unreadable. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle` (`--mode plan` for a `FAILED` or `BLOCKED` ledger).
 
 Report the generated determinism limits, or that determinism was not declared, among the run's limits.
 

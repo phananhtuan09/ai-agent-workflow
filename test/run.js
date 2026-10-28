@@ -929,6 +929,8 @@ test("runtime E2E base run proves new-behavior cases can fail", () => {
   try {
     const run = fixture.run(null, "with-base");
     assert.strictEqual(run.status, 1, run.stderr || run.stdout);
+    // Exit 1 is consistent evidence with an unresolved case, not a failed audit.
+    assert.ok(run.stdout.includes("Audit: evidence consistent; unresolved: PR-01"), run.stdout);
     assert.deepStrictEqual(proofs(run.results), {
       "E2E-01": "PROVEN",
       "E2E-02": "NOT_REQUIRED",
@@ -993,6 +995,10 @@ test("runtime E2E validator checks the ledger's run identity and time against th
         runId: manifest.runId,
         revisions: `head ${manifest.gitHead.slice(0, 7)}; base ${fixture.base.slice(0, 7)}`,
         updated: new Date().toISOString(),
+        result: "PASS",
+        actualPath: "GET /label",
+        canFail: "PROVEN",
+        supporting: "",
         ...fields,
       };
       fs.writeFileSync(
@@ -1001,6 +1007,15 @@ test("runtime E2E validator checks the ledger's run identity and time against th
           .replace("- Run ID: NOT_STARTED", `- Run ID: ${values.runId}`)
           .replace("- Tested revisions: NOT_STARTED", `- Tested revisions: ${values.revisions}`)
           .replace("- Last updated: 2026-01-01T00:00:00Z", `- Last updated: ${values.updated}`)
+          .replace(`- PASS: 0\n`, `- ${values.result}: 1\n`)
+          .replace(`- NOT_RUN: 1\n`, `- NOT_RUN: 0\n`)
+          .replace("## Human sign-off", `${values.supporting}## Human sign-off`)
+          .replace("- Result: NOT_RUN", `- Result: ${values.result}`)
+          .replace("- Actual path: NOT_RUN", `- Actual path: ${values.actualPath}`)
+          .replace("- Path match: NOT_RUN", "- Path match: YES")
+          .replace("- Observed: NOT_RUN", "- Observed: label=new")
+          .replace("- Evidence: NOT_RUN", "- Evidence: results.json")
+          .replace("- Cleanup: NOT_RUN", `- Cleanup: NOT_REQUIRED\n- Can-fail: ${values.canFail}`)
       );
       return spawnSync("python3", [validator, planPath, "--bundle", run.out], { encoding: "utf8" });
     };
@@ -1034,6 +1049,29 @@ test("runtime E2E validator checks the ledger's run identity and time against th
     const partialSha = ledger({ revisions: `head x${manifest.gitHead.slice(0, 7)}; base ${fixture.base.slice(0, 7)}` });
     assert.strictEqual(partialSha.status, 1);
     assert.ok(partialSha.stderr.includes("recorded head commit"));
+
+    const wrongResult = ledger({ result: "FAIL" });
+    assert.strictEqual(wrongResult.status, 1);
+    assert.ok(wrongResult.stderr.includes("Result is FAIL, but the bundle recorded PASS"));
+
+    const wrongProof = ledger({ canFail: "NOT_PROVEN" });
+    assert.strictEqual(wrongProof.status, 1);
+    assert.ok(wrongProof.stderr.includes("Can-fail is NOT_PROVEN, but the bundle recorded PROVEN"));
+
+    const templatedPath = ledger({ actualPath: "GET /label through the running app" });
+    assert.strictEqual(templatedPath.status, 1);
+    assert.ok(templatedPath.stderr.includes("must be the recorded path 'GET /label'"));
+
+    const supported = ledger({ supporting: "## Supporting checks\n\n- `npm test`: PASS — 12 passed\n- `npm run lint`: NOT_RUN — no lint config\n\n" });
+    assert.strictEqual(supported.status, 0, supported.stderr || supported.stdout);
+
+    const unrun = ledger({ supporting: "## Supporting checks\n\n- `npm test`: NOT_RUN\n\n" });
+    assert.strictEqual(unrun.status, 1);
+    assert.ok(unrun.stderr.includes("'`npm test`' was not run; state why"));
+
+    const prose = ledger({ supporting: "## Supporting checks\n\n- `npm test` supports the PR's unit tests\n\n" });
+    assert.strictEqual(prose.status, 1);
+    assert.ok(prose.stderr.includes("must read '- <check>: PASS|FAIL|NOT_RUN"));
 
     // The future check needs no bundle: an estimated, rounded-up time is rejected on its own.
     const future = new Date(Date.now() + 10 * 60 * 1000).toISOString();
