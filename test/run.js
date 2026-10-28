@@ -795,7 +795,7 @@ for item in json.loads(Path("unit-cases.json").read_text()):
         continue
     failed = failed or status == "failed"
     body = {"failed": "<failure message='boom'/>", "skipped": "<skipped/>"}.get(status, "")
-    rows.append(f"<testcase classname='unit.test.ts' name={quoteattr(item['name'])}>{body}</testcase>")
+    rows.append(f"<testcase classname={quoteattr(item.get('file', 'unit.test.ts'))} name={quoteattr(item['name'])}>{body}</testcase>")
 Path(sys.argv[1]).write_text("<testsuites><testsuite name='unit'>" + "".join(rows) + "</testsuite></testsuites>")
 sys.exit(1 if failed else 0)
 `;
@@ -1014,7 +1014,9 @@ test("runtime E2E compares the project's own suites between base and head", () =
       { name: "formats dates", old: "passed", new: "failed" },
       { name: "loads slowly", old: "passed", new: "failed", rerun: "passed" },
       { name: "old helper", old: "passed" },
-      { name: "[E2E-01] a runtime case in the same project", new: "failed" },
+      { name: "[E2E-01] a runtime case in the same project", file: "tests/cases.json", new: "failed" },
+      // An earlier plan's committed spec reuses the ID; it is an existing test, not this plan's case.
+      { name: "[E2E-02] an earlier plan's case", file: "runtime/earlier.spec.ts", old: "passed", new: "failed" },
     ],
   });
   const validator = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/validate_test_plan.py");
@@ -1032,7 +1034,7 @@ test("runtime E2E compares the project's own suites between base and head", () =
     const [unit, lint] = run.results.existing.suites;
     assert.strictEqual(unit.status, "NEW_FAILURE");
     assert.deepStrictEqual(unit.tests, {
-      NEW_FAILURE: ["unit.test.ts > formats dates"],
+      NEW_FAILURE: ["runtime/earlier.spec.ts > [E2E-02] an earlier plan's case", "unit.test.ts > formats dates"],
       PRE_EXISTING: ["unit.test.ts > rounds half cents"],
       UNSTABLE: ["unit.test.ts > loads slowly"],
       REMOVED: ["unit.test.ts > old helper"],
@@ -1090,6 +1092,20 @@ test("runtime E2E compares the project's own suites between base and head", () =
     }, "existing-without-base");
     assert.strictEqual(noBase.results.existing.suites[0].status, "NOT_COMPARABLE");
     assert.ok(noBase.results.existing.suites[0].reason.includes("No usable base run"));
+
+    // Only the plan's own case fails on head: the red exit is explained by it, not a new failure.
+    fs.writeFileSync(
+      path.join(fixture.root, "unit-cases.json"),
+      JSON.stringify([
+        { name: "keeps totals", old: "passed", new: "passed" },
+        { name: "[E2E-01] a runtime case in the same project", file: "tests/cases.json", new: "failed" },
+      ])
+    );
+    spawnSync("git", ["commit", "-qam", "only the plan's own case fails"], { cwd: fixture.root });
+    // The base revision has no failing test, as when the plan's spec does not exist before the change.
+    const ownOnly = fixture.run(unitOnly, "own-case-only");
+    // The base commit's other tests are gone on head (REMOVED); what matters is no new failure.
+    assert.deepStrictEqual(Object.keys(ownOnly.results.existing.suites[0].tests), ["REMOVED"]);
 
     const undeclared = fixture.validate((suite) => delete suite.existing);
     assert.strictEqual(undeclared.status, 2);

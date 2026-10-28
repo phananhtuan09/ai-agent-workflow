@@ -84,7 +84,8 @@ A suite with a `base` must declare it; when the project has no suites of its own
 `run` runs each suite on head in the project root and on base in the base worktree, after putting every file it copied from the head snapshot back to its base version, so each revision runs its own tests. Base runs also receive `base.env`; neither receives `determinism.env`.
 Write `{report}` where the suite takes its JUnit XML output path, in an argument or an `env` value; the tool replaces it with a file in the bundle.
 With a report the tool compares each test; without one it compares exit codes only.
-Tests whose name carries one of the plan's case tags (`[E2E-01]`) are left out: the plan's own cases are judged as cases.
+Tests in one of the suite's `files` whose name carries one of the plan's case tags (`[E2E-01]`) are left out: the plan's own cases are judged as cases. Tagged tests in other files, such as earlier plans' committed specs, stay existing tests.
+A red exit with no failing test in the report, the plan's own included, counts as a failure of the whole suite.
 A test that passes on base and fails on head is run once more on head, with the whole suite, before it counts as a new failure.
 
 Each test is classified from its base and head outcomes:

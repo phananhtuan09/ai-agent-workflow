@@ -176,7 +176,7 @@ def run_existing(run, cwd, entry, extra_env, label):
 
 
 def junit(path):
-    """Map each test in a JUnit XML report to passed, failed, or skipped; None when the report is missing or unreadable."""
+    """Map each test in a JUnit XML report to (file, title, outcome); None when the report is missing or unreadable."""
     try:
         tree = ET.parse(path)
     except (OSError, ET.ParseError):
@@ -188,24 +188,29 @@ def junit(path):
         seen[name] = seen.get(name, 0) + 1
         key = name if seen[name] == 1 else f"{name} #{seen[name]}"
         if case.find("failure") is not None or case.find("error") is not None:
-            tests[key] = "failed"
+            outcome = "failed"
         elif case.find("skipped") is not None:
-            tests[key] = "skipped"
+            outcome = "skipped"
         else:
-            tests[key] = "passed"
+            outcome = "passed"
+        tests[key] = (case.get("classname", ""), case.get("name", ""), outcome)
     return tests
 
 
-def existing_tests(run, suite_id, label, record, tags):
-    """Test outcomes of one execution, without the plan's own tagged cases; None when they cannot be read."""
+def existing_tests(run, suite_id, label, record, own):
+    """Test outcomes of one execution, without the plan's own cases; None when they cannot be read."""
     tests = {}
     if record["report"]:
         parsed = junit(run / "existing" / suite_id / f"{label}.xml")
         if parsed is None:
             return None
         # The plan's own runtime cases live in the same project; they are judged as cases, not as existing tests.
-        tests = {k: v for k, v in parsed.items() if not any(tag in k for tag in tags)}
-        if record["exitCode"] != 0 and "failed" not in tests.values():
+        # A case is the plan's own only in an approved file: earlier plans' specs reuse the same IDs.
+        tags, files = own
+        tests = {k: outcome for k, (file, title, outcome) in parsed.items()
+                 if not (any(tag in title for tag in tags) and any(same_file(f, file) for f in files))}
+        # A red exit explained by any failing test, the plan's own included, is not a separate failure.
+        if record["exitCode"] != 0 and all(outcome != "failed" for _, _, outcome in parsed.values()):
             tests[SUITE_EXIT] = "failed"
     else:
         tests[SUITE_EXIT] = "passed" if record["exitCode"] == 0 else "failed"
@@ -242,7 +247,7 @@ def existing_status(bundle, suite, base):
     head_records = load(bundle / "run-manifest.json").get("existing", {})
     base_path = bundle / "base" / "run-manifest.json"
     base_records = load(base_path).get("existing", {}) if base is not None and base_path.exists() else {}
-    tags = [f"[{c['id']}]" for c in suite["cases"] if c["kind"] != "pr-test"]
+    own = ([f"[{c['id']}]" for c in suite["cases"] if c["kind"] != "pr-test"], suite["files"])
     rows = []
     for entry in existing.get("suites", []):
         records = head_records.get(entry["id"], {})
@@ -251,7 +256,7 @@ def existing_status(bundle, suite, base):
                "exitCodes": {"base": (base_record or {}).get("exitCode"), "head": (head_record or {}).get("exitCode"),
                              "rerun": (rerun_record or {}).get("exitCode")}}
         rows.append(row)
-        head = existing_tests(bundle, entry["id"], "head", head_record, tags) if head_record else None
+        head = existing_tests(bundle, entry["id"], "head", head_record, own) if head_record else None
         if head is None:
             row.update(status="NOT_COMPARABLE", reason="Head report missing or unreadable")
             continue
@@ -262,11 +267,11 @@ def existing_status(bundle, suite, base):
             else:
                 row["reason"] = "Passes on head; no usable base run"
             continue
-        before = existing_tests(bundle / "base", entry["id"], "base", base_record, tags)
+        before = existing_tests(bundle / "base", entry["id"], "base", base_record, own)
         if before is None:
             row.update(status="NOT_COMPARABLE", reason="Base report missing or unreadable")
             continue
-        rerun = existing_tests(bundle, entry["id"], "rerun", rerun_record, tags) if rerun_record else None
+        rerun = existing_tests(bundle, entry["id"], "rerun", rerun_record, own) if rerun_record else None
         row["tests"] = compare_existing(before, head, rerun)
         if not head_record["report"] and head.get(SUITE_EXIT) == before.get(SUITE_EXIT) == "failed":
             row.update(status="NOT_COMPARABLE", reason="Both revisions exit non-zero and the suite writes no per-test report", tests={})
