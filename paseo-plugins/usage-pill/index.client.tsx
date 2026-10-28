@@ -5,9 +5,13 @@ import type {
 } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import type { ComponentType } from "react";
+import { ompUsage } from "./shared/omp-usage";
 
 type UsageResult = Awaited<ReturnType<PluginClientContext["paseo"]["providers"]["listUsage"]>>;
 type ProviderUsage = UsageResult["providers"][number];
+
+type OmpWindows = Awaited<ReturnType<typeof readOmp>>["windows"];
+const readOmp = (client: PluginClientContext, model: string) => client.rpc(ompUsage, { model });
 
 type Agent = Awaited<ReturnType<PluginClientContext["paseo"]["agents"]["list"]>>["entries"][number]["agent"];
 
@@ -53,22 +57,39 @@ function formatReset(resetsAt: string | null | undefined) {
   return ` · resets ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
-function describe(entry: ProviderUsage | undefined) {
-  if (!entry || entry.status !== "available") return null;
-  const windows = entry.windows.filter((window) => window.usedPct != null);
+type UsageWindow = { label: string; usedPct: number; resetsAt?: string | null };
+
+function describeWindows(name: string, heading: string, windows: UsageWindow[]) {
   if (windows.length === 0) return null;
   return {
-    icon: levelIcon("Timer", levelOf(Math.max(...windows.map((window) => window.usedPct!)))),
+    icon: levelIcon("Timer", levelOf(Math.max(...windows.map((window) => window.usedPct)))),
     // Paseo truncates pill labels at a fixed width, so keep the label compact and put details in the tooltip.
-    // Personal accounts append the email to displayName, so drop any "(...)" suffix from the pill label.
-    label: `${entry.displayName.replace(/\s*\(.*\)\s*$/, "")} ${windows.map((window) => `${Math.round(window.usedPct!)}%`).join("/")}`,
+    label: `${name} ${windows.map((window) => `${Math.round(window.usedPct)}%`).join("/")}`,
     title: [
-      entry.planLabel ? `${entry.displayName} (${entry.planLabel})` : entry.displayName,
+      heading,
       ...windows.map(
-        (window) => `${window.label}: ${Math.round(window.usedPct!)}%${formatReset(window.resetsAt)}`,
+        (window) => `${window.label}: ${Math.round(window.usedPct)}%${formatReset(window.resetsAt)}`,
       ),
     ].join("\n"),
   };
+}
+
+function describe(entry: ProviderUsage | undefined) {
+  if (!entry || entry.status !== "available") return null;
+  return describeWindows(
+    // Personal accounts append the email to displayName, so drop any "(...)" suffix from the pill label.
+    entry.displayName.replace(/\s*\(.*\)\s*$/, ""),
+    entry.planLabel ? `${entry.displayName} (${entry.planLabel})` : entry.displayName,
+    entry.windows.flatMap((window) =>
+      window.usedPct == null ? [] : [{ ...window, usedPct: window.usedPct }],
+    ),
+  );
+}
+
+// OMP has no Paseo usage report; its quota belongs to the provider of the model it runs.
+function describeOmp(model: string | null | undefined, windows: OmpWindows | undefined) {
+  if (!model || !windows) return null;
+  return describeWindows("OMP", `OMP · ${model}`, windows);
 }
 
 function formatTokens(tokens: number) {
@@ -99,21 +120,44 @@ function show(pill: TrackedPill, info: PillInfo) {
 }
 
 export default function contribute(client: PluginClientContext) {
-  const pills = new Map<string, { provider: string; usage: TrackedPill; context: TrackedPill }>();
+  type Entry = { provider: string; model?: string | null; usage: TrackedPill; context: TrackedPill };
+  const pills = new Map<string, Entry>();
   const lifetime = new AbortController();
   let usage: UsageResult | null = null;
+  const omp = new Map<string, OmpWindows>();
   let stopped = false;
 
+  const usageInfo = (entry: Entry) =>
+    entry.provider === "omp"
+      ? describeOmp(entry.model, entry.model ? omp.get(entry.model) : undefined)
+      : describe(findUsage(usage, entry.provider));
+
+  const showAll = () => {
+    if (stopped) return;
+    for (const entry of pills.values()) show(entry.usage, usageInfo(entry));
+  };
+
+  const refreshOmp = async (model: string) => {
+    try {
+      omp.set(model, (await readOmp(client, model)).windows);
+    } catch (error) {
+      console.error("[usage-pill] omp usage failed", error);
+      return;
+    }
+    showAll();
+  };
 
   const refresh = async () => {
+    const models = new Set<string>();
+    for (const entry of pills.values()) if (entry.provider === "omp" && entry.model) models.add(entry.model);
+    for (const model of models) void refreshOmp(model);
     try {
       usage = await client.paseo.providers.listUsage();
     } catch (error) {
       console.error("[usage-pill] listUsage failed", error);
       return;
     }
-    if (stopped) return;
-    for (const entry of pills.values()) show(entry.usage, describe(findUsage(usage, entry.provider)));
+    showAll();
   };
 
   const register = (agent: Agent) => {
@@ -153,8 +197,12 @@ export default function contribute(client: PluginClientContext) {
         context: { registration: contextPill },
       };
       pills.set(agent.id, entry);
-      show(entry.usage, describe(findUsage(usage, agent.provider)));
     }
+    if (entry.model !== agent.model) {
+      entry.model = agent.model;
+      if (entry.provider === "omp" && entry.model && !omp.has(entry.model)) void refreshOmp(entry.model);
+    }
+    show(entry.usage, usageInfo(entry));
     show(entry.context, describeContext(agent.lastUsage));
   };
 
