@@ -124,6 +124,8 @@ Do not freeze an implementation detail unless it identifies the production path 
 
 Report the generated determinism limits, or that determinism was not declared, among the run's limits.
 
+`run` also writes `report.html` in the bundle, one offline file for the human reviewer. To add cause explanations, write them to a notes JSON outside the bundle (`{"<case ID>": "...", "general": "..."}`) and regenerate with `scripts/evidence.py report <run-dir> --notes <file>`; they appear labeled as agent inference. In chat, give a short Markdown summary and the report's path.
+
 Report the impact map and sweep from the generated summary: selected routes with their reasons, routes found but not tested and why, shared surfaces and untraced files, and every swept route that differs, with both screenshots. A sweep difference is a finding for the human, also when it is marked "may belong to intent"; never call it expected yourself.
 
 A degraded base run is reported with the reason the tool recorded; never compare against nothing or describe a degraded run as proven.
@@ -158,7 +160,7 @@ Never copy secrets, tokens, cookies, passwords, or production-sensitive payloads
 
 ## Human sign-off
 
-Keep human review small. The reviewer checks:
+Keep human review small: point the reviewer to the bundle's `report.html`. The reviewer checks:
 
 1. Summary counts and release blockers.
 2. `Runtime path` versus `Actual path` for important cases.

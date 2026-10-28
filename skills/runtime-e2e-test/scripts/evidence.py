@@ -718,7 +718,9 @@ def summary(result):
 def inventory(bundle):
     if any(p.is_symlink() for p in bundle.rglob("*")):
         raise ValueError("Evidence bundle must not contain symlinks")
-    return {str(p.relative_to(bundle)): digest(p) for p in sorted(bundle.rglob("*")) if p.is_file() and p.name != "integrity.json"}
+    # report.html is a view regenerated from the bundle (evidence.py report), not evidence.
+    return {str(p.relative_to(bundle)): digest(p) for p in sorted(bundle.rglob("*"))
+            if p.is_file() and str(p.relative_to(bundle)) not in ("integrity.json", "report.html")}
 
 
 def audit(bundle):
@@ -879,14 +881,24 @@ def run_base(bundle, root, data, run_id):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["validate", "approve", "run", "audit"])
+    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report"])
     parser.add_argument("target", type=Path)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--reviewer")
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--notes", type=Path, help="report: JSON of agent inference by case ID or 'general', shown labeled as inference")
     args = parser.parse_args()
     if args.mode == "audit":
         return audit(args.target.resolve())
+    if args.mode == "report":
+        import report
+        bundle = args.target.resolve()
+        audit(bundle)  # refuses an inconsistent bundle before rendering it
+        notes = load(args.notes) if args.notes else {}
+        if not isinstance(notes, dict) or any(not isinstance(v, str) for v in notes.values()):
+            raise ValueError("--notes must map case IDs or 'general' to text")
+        print(f"Report: {report.write(bundle, notes)}")
+        return 0
     root, suite = args.root.resolve(), args.target.resolve()
     data, hashes = contract(suite, root)
     approval_path = suite.with_name(suite.name + ".approval.json")
@@ -945,7 +957,10 @@ def main():
     write(bundle / "results.json", result)
     (bundle / "summary.md").write_text(summary(result), encoding="utf-8")
     write(bundle / "integrity.json", inventory(bundle))
-    return audit(bundle)
+    code = audit(bundle)
+    import report
+    print(f"Report: {report.write(bundle)}")
+    return code
 
 
 if __name__ == "__main__":

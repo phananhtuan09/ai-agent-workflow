@@ -1250,6 +1250,23 @@ test("runtime E2E records the impact map and compares swept routes between base 
     // The audit recomputes the same report from the stored map and captures.
     assert.strictEqual(fixture.audit(run.out).status, 1);
 
+    // The HTML report is a view of the bundle: one offline file, outside the integrity inventory.
+    const reportPath = path.join(run.out, "report.html");
+    const page = fs.readFileSync(reportPath, "utf8");
+    assert.ok(!/(src|href)=["']https?:/.test(page), "report must not load remote resources");
+    assert.strictEqual((page.match(/src="data:image\/png;base64,/g) || []).length, 2);
+    assert.ok(page.includes("SWEEP-1") && page.includes("/report"));
+    const evidenceTool = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
+    const notesPath = path.join(fixture.root, "notes.json");
+    fs.writeFileSync(notesPath, JSON.stringify({ "E2E-02": "Probably a stale label cache" }));
+    const rendered = spawnSync("python3", [evidenceTool, "report", run.out, "--notes", notesPath], { encoding: "utf8" });
+    assert.strictEqual(rendered.status, 0, rendered.stderr);
+    const noted = fs.readFileSync(reportPath, "utf8");
+    assert.ok(/Agent inference, not evidence:<\/b> Probably a stale label cache/.test(noted));
+    fs.appendFileSync(path.join(run.out, "summary.md"), "edited\n");
+    const refused = spawnSync("python3", [evidenceTool, "report", run.out], { encoding: "utf8" });
+    assert.strictEqual(refused.status, 2);
+
     const covered = fixture.run(planned(["/report"]), "impact-covered");
     assert.deepStrictEqual(covered.results.regression.missing, []);
 

@@ -231,6 +231,7 @@ python3 <skill-root>/scripts/evidence.py validate <suite.json> --root <project>
 python3 <skill-root>/scripts/evidence.py approve <suite.json> --root <project> --reviewer <human-id>
 python3 <skill-root>/scripts/evidence.py run <suite.json> --root <project> --out <new-run-directory>
 python3 <skill-root>/scripts/evidence.py audit <run-directory>
+python3 <skill-root>/scripts/evidence.py report <run-directory> [--notes <notes.json>]
 ```
 
 `approve` snapshots the suite and declared files in `<suite.json>.approval.json` by hash.
@@ -244,6 +245,9 @@ The bundle includes `inputs/`, `approval.json`, `run-manifest.json`, `native.jso
 With a base, `base/` holds the base run's manifest, native results, artifacts, and logs.
 `existing/<id>/` holds each existing suite's head and rerun report and log; `base/existing/<id>/` holds the base ones. Their exit codes are in the two manifests.
 `impact-map.json` holds the impact map when the suite declares `regression`.
+`report.html` is a single offline file that `run` writes after the audit and `report` regenerates; it is a view of the bundle, outside `integrity.json`, and `report` refuses a bundle that fails the audit.
+It holds the claims table, the items needing a decision, the impact map, sweep differences side by side with the changed area outlined, existing suites, one card per case (checks with expected, head and base values, steps and frames read from the Playwright trace, with the target of clicks and fills outlined, and the last base and head frames), limits, and what needs human confirmation.
+`--notes` takes a JSON object of agent explanations by case ID or `general`; the report shows each one labeled as agent inference, never as evidence.
 Snapshots make the audit independent of later working-tree changes.
 Attachment paths in native results are normalized to bundle-relative locations.
 Only per-run artifact files and inline observations are accepted as attachments.

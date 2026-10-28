@@ -4,6 +4,7 @@ import struct
 import sys
 import tempfile
 import unittest
+import zipfile
 import zlib
 from pathlib import Path
 
@@ -12,6 +13,8 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills/runtime-e2e-test/scripts"))
 import evidence  # noqa: E402
 import impact  # noqa: E402
+
+import report  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills/runtime-e2e-test"))
 import validate_test_plan  # noqa: E402
@@ -173,6 +176,68 @@ class Screenshots(unittest.TestCase):
             resized = Path(folder, "resized.png")
             resized.write_bytes(png(8, 7, gradient, [0]))
             self.assertIsNone(evidence.changed_pixels(base, resized))
+
+
+def trace_zip(path):
+    """A Playwright-shaped trace: test steps, the library calls behind them, screencast frames and an input box."""
+    test = [
+        {"type": "before", "callId": "hook@1", "method": "hook", "title": "Before Hooks", "startTime": 1},
+        {"type": "before", "callId": "pw:api@2", "parentId": "hook@1", "method": "pw:api", "title": "Create page", "startTime": 2},
+        {"type": "after", "callId": "pw:api@2", "endTime": 3},
+        {"type": "after", "callId": "hook@1", "endTime": 4},
+        {"type": "before", "callId": "pw:api@5", "method": "pw:api", "title": "Navigate", "subtitle": "/label", "startTime": 10},
+        {"type": "after", "callId": "pw:api@5", "endTime": 20},
+        {"type": "before", "callId": "pw:api@8", "method": "pw:api", "title": "Fill \"s3cret\"", "subtitle": "getByLabel('Password')", "startTime": 20},
+        {"type": "after", "callId": "pw:api@8", "endTime": 20},
+        {"type": "before", "callId": "pw:api@6", "method": "pw:api", "title": "Click", "subtitle": "getByRole('button')", "startTime": 21},
+        {"type": "after", "callId": "pw:api@6", "endTime": 30},
+        {"type": "before", "callId": "expect@7", "method": "expect", "title": "Expect \"toHaveText\"", "subtitle": "getByRole('heading')", "startTime": 31},
+        {"type": "after", "callId": "expect@7", "endTime": 32, "error": {"message": "expected new, got old"}},
+    ]
+    library = [
+        {"type": "before", "callId": "call@1", "stepId": "pw:api@6", "method": "click"},
+        {"type": "input", "callId": "call@1", "box": {"x": 10, "y": 20, "width": 30, "height": 40}},
+        {"type": "screencast-frame", "file": "screencast/a.jpeg", "timestamp": 15, "width": 100, "height": 50},
+        {"type": "screencast-frame", "file": "screencast/b.jpeg", "timestamp": 25, "width": 100, "height": 50},
+    ]
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("test.trace", "\n".join(json.dumps(e) for e in test))
+        archive.writestr("1-trace.trace", "\n".join(json.dumps(e) for e in library))
+        archive.writestr("screencast/a.jpeg", b"frame-a")
+        archive.writestr("screencast/b.jpeg", b"frame-b")
+
+
+class Report(unittest.TestCase):
+    def test_trace_steps_come_from_the_trace_with_frames_and_target_boxes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder, "trace.zip")
+            trace_zip(path)
+            steps = report.trace_steps(path)
+        # Hooks and fixtures are setup, not the case's steps.
+        # Typed values never reach the report.
+        self.assertEqual([s["title"] for s in steps], ["Navigate", "Fill (value hidden)", "Click", 'Expect "toHaveText"'])
+        self.assertEqual(steps[2]["box"], (10, 20, 30, 40))
+        self.assertEqual(steps[0]["image"][0], b"frame-a")
+        self.assertEqual(steps[2]["image"][0], b"frame-b")
+        # The assertion ended on the same frame as the click, so it is not embedded twice.
+        self.assertIsNone(steps[3]["image"])
+        self.assertEqual(steps[3]["error"], "expected new, got old")
+
+    def test_a_broken_trace_yields_no_steps(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder, "trace.zip")
+            path.write_bytes(b"not a zip")
+            self.assertEqual(report.trace_steps(path), [])
+
+    def test_changed_box_bounds_every_changed_pixel(self):
+        flat = lambda x, y: (255, 255, 255, 255)
+        marked = lambda x, y: (0, 0, 0, 255) if (x, y) in {(2, 1), (5, 4)} else flat(x, y)
+        with tempfile.TemporaryDirectory() as folder:
+            base, head = Path(folder, "base.png"), Path(folder, "head.png")
+            base.write_bytes(png(8, 6, flat, [0]))
+            head.write_bytes(png(8, 6, marked, [0]))
+            self.assertEqual(report.changed_box(base, head), ((2, 1, 4, 4), (8, 6)))
+            self.assertEqual(report.changed_box(base, base), (None, (8, 6)))
 
 
 class Completion(unittest.TestCase):
