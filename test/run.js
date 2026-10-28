@@ -1024,6 +1024,17 @@ test("runtime E2E validator checks the ledger's run identity and time against th
     assert.strictEqual(unzoned.status, 1);
     assert.ok(unzoned.stderr.includes("must be an ISO 8601 time with a zone"));
 
+    const manifestPath = path.join(run.out, "run-manifest.json");
+    fs.writeFileSync(manifestPath, JSON.stringify({ ...manifest, finishedAt: undefined }));
+    const unfinished = ledger({});
+    assert.strictEqual(unfinished.status, 1);
+    assert.ok(unfinished.stderr.includes("the run did not complete"));
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const partialSha = ledger({ revisions: `head x${manifest.gitHead.slice(0, 7)}; base ${fixture.base.slice(0, 7)}` });
+    assert.strictEqual(partialSha.status, 1);
+    assert.ok(partialSha.stderr.includes("recorded head commit"));
+
     // The future check needs no bundle: an estimated, rounded-up time is rejected on its own.
     const future = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     fs.writeFileSync(planPath, runtimePlan(["E2E-01"]).replace("2026-01-01T00:00:00Z", future));

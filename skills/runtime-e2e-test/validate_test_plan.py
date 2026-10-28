@@ -123,13 +123,15 @@ def check_bundle(text: str, top_end: int, bundle: Path) -> list[str]:
     revisions = top_field(text, "Tested revisions", top_end) or ""
     for label, manifest in (("head", head), ("base", base)):
         sha = (manifest or {}).get("gitHead", "")[:7]
-        if sha and not (manifest or {}).get("degraded") and sha not in revisions:
+        if sha and not (manifest or {}).get("degraded") and not re.search(rf"\b{sha}", revisions):
             errors.append(f"Tested revisions must name the recorded {label} commit {sha}.")
     finished = [parse_time(m.get("finishedAt")) for m in (head, base) if m and m.get("finishedAt")]
     updated = parse_time(top_field(text, "Last updated", top_end))
-    if updated is None:
+    if parse_time(head.get("finishedAt")) is None:
+        errors.append("The bundle has no finish time; the run did not complete, so its ledger cannot be validated.")
+    elif updated is None:
         errors.append("Last updated must be an ISO 8601 time with a zone, e.g. 2026-01-01T00:00:00Z.")
-    elif finished and None not in finished and updated < max(finished):
+    elif None not in finished and updated < max(finished):
         errors.append(
             f"Last updated {updated.isoformat()} is before the run finished at {max(finished).isoformat()}; "
             "use the time the ledger was written."
