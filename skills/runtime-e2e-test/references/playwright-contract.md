@@ -32,7 +32,7 @@ Paths below are relative to the project root; suite files live beside the Markdo
   "regression": {
     "sources": ["src"],
     "aliases": {"@/": "src/"},
-    "routes": [{"route": "/orders", "file": "src/pages/OrdersPage.tsx"}, {"route": "/orders/:id", "file": "src/pages/OrderDetailPage.tsx"}],
+    "routes": [{"route": "/invoices", "file": "src/pages/InvoicesPage.tsx"}, {"route": "/invoices/:id", "file": "src/pages/InvoicePage.tsx"}],
     "shared": ["src/styles/**", "src/i18n/**"],
     "fanIn": 3,
     "budget": 5
@@ -47,13 +47,13 @@ Paths below are relative to the project root; suite files live beside the Markdo
         {"id": "saved_staff", "expected": "staff-b persisted", "source": "fresh API read"},
         {"id": "total", "expected": "unchanged from captured baseline", "source": "fresh API read"}
       ],
-      "routes": ["/orders/:id"]
+      "routes": ["/invoices/:id"]
     },
     {
       "id": "SWEEP-01",
       "kind": "sweep",
       "classification": "invariant",
-      "routes": ["/orders", "/orders/:id"]
+      "routes": ["/invoices", "/invoices/:id"]
     },
     {
       "id": "PR-01",
@@ -144,7 +144,7 @@ The script reads the files under `sources` (test files excluded), follows `impor
 - Changed files matching `shared` (global CSS, i18n, store, API client) are listed as shared surfaces, and changed source files that reach no key route as `untraced`; both call for a sweep case, because the import graph cannot place them.
 - Changed files outside `sources` (server code, tests, config) are listed in `outsideSources`.
 
-Each selected route carries its reason, such as `src/pages/OrderDetailPage.tsx imports src/lib/format.ts (changed)`.
+Each selected route carries its reason, such as `src/pages/InvoicePage.tsx imports src/lib/money.ts (changed)`.
 A selected route without a case that lists it keeps the run from completing; cover it with an invariant case on that route, normally a flow that existed before the change.
 
 ## Visual sweep
@@ -156,7 +156,7 @@ Its single test, titled `[SWEEP-01] ...`, visits each route and attaches one `ru
 test('[SWEEP-01] key routes', async ({ page }, testInfo) => {
   const routes = [];
   // Each key route with a concrete URL to open; the key route is what the case lists.
-  for (const [route, url] of [['/orders', '/orders'], ['/orders/:id', '/orders/1']]) {
+  for (const [route, url] of [['/invoices', '/invoices'], ['/invoices/:id', '/invoices/1']]) {
     const requests: string[] = [];
     const consoleErrors: string[] = [];
     // Record synchronously, and only data and document requests: script and style URLs vary with the dev server.

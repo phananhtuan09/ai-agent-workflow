@@ -143,8 +143,8 @@ Copied into a suite's `regression`; `scripts/impact.py` walks the import graph f
 
 | Key route | Page file | URL to open in the sweep |
 | --- | --- | --- |
-| `<e.g. /orders>` | `<e.g. src/pages/OrdersPage.tsx>` | `<e.g. /orders>` |
-| `<e.g. /orders/:id>` | `<e.g. src/pages/OrderDetailPage.tsx>` | `<e.g. /orders/1 with seed data>` |
+| `<e.g. /invoices>` | `<e.g. src/pages/InvoicesPage.tsx>` | `<e.g. /invoices>` |
+| `<e.g. /invoices/:id>` | `<e.g. src/pages/InvoicePage.tsx>` | `<e.g. /invoices/1 with seed data>` |
 
 ## Determinism
 

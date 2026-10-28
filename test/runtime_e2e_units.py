@@ -17,26 +17,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills/runtime-e2e
 import validate_test_plan  # noqa: E402
 
 ROUTES = [
-    {"route": "/orders", "file": "src/pages/Orders.tsx"},
-    {"route": "/orders/:id", "file": "src/pages/Detail.tsx"},
-    {"route": "/orders/new", "file": "src/pages/Form.tsx"},
-    {"route": "/orders/:id/edit", "file": "src/pages/Form.tsx"},
+    {"route": "/invoices", "file": "src/pages/Invoices.tsx"},
+    {"route": "/invoices/:id", "file": "src/pages/Invoice.tsx"},
+    {"route": "/invoices/new", "file": "src/pages/Form.tsx"},
+    {"route": "/invoices/:id/edit", "file": "src/pages/Form.tsx"},
     {"route": "/reports", "file": "src/pages/Reports.tsx"},
     {"route": "/settings", "file": "src/pages/Settings.tsx"},
 ]
 
-# A small project: every page uses Button; two pages format dates; Reports reaches the date helper only through a widget.
+# A small project: every page uses Button; two pages format money; Reports reaches the money helper only through a widget.
 SOURCES = {
     "src/main.tsx": "import './styles/global.css';\nimport { App } from './App';",
-    "src/App.tsx": "import Orders from './pages/Orders';\nimport Detail from './pages/Detail';\nconst Form = () => import('./pages/Form');",
-    "src/styles/global.css": "@import './tokens.css';\n.table td { overflow-wrap: anywhere; }",
+    "src/App.tsx": "import Invoices from './pages/Invoices';\nimport Invoice from './pages/Invoice';\nconst Form = () => import('./pages/Form');",
+    "src/styles/global.css": "@import './tokens.css';\nbody { margin: 0; }",
     "src/styles/tokens.css": ":root { --gap: 4px; }",
     "src/components/Button.tsx": "export function Button() {}",
     "src/components/index.ts": "export { Button } from './Button';",
-    "src/lib/format.ts": "export const formatDate = () => '';",
-    "src/widgets/Chart.tsx": "import { formatDate } from '@/lib/format';",
-    "src/pages/Orders.tsx": "import { Button } from '../components';\nimport { formatDate } from '../lib/format';\nimport React from 'react';",
-    "src/pages/Detail.tsx": "import { Button } from '../components/Button';\nconst { formatDate } = require('../lib/format');",
+    "src/lib/money.ts": "export const formatMoney = () => '';",
+    "src/widgets/Chart.tsx": "import { formatMoney } from '@/lib/money';",
+    "src/pages/Invoices.tsx": "import { Button } from '../components';\nimport { formatMoney } from '../lib/money';\nimport React from 'react';",
+    "src/pages/Invoice.tsx": "import { Button } from '../components/Button';\nconst { formatMoney } = require('../lib/money');",
     "src/pages/Form.tsx": "import { Button } from '../components';",
     "src/pages/Reports.tsx": "import { Button } from '../components';\nimport Chart from '../widgets/Chart';",
     "src/pages/Settings.tsx": "import { Button } from '../components';",
@@ -59,23 +59,23 @@ class ImportGraph(unittest.TestCase):
 
     def test_resolution_handles_extensions_index_files_aliases_and_packages(self):
         files = set(SOURCES)
-        self.assertEqual(impact.resolve("../components", "src/pages/Orders.tsx", files, {}), "src/components/index.ts")
-        self.assertEqual(impact.resolve("../lib/format", "src/pages/Orders.tsx", files, {}), "src/lib/format.ts")
-        self.assertEqual(impact.resolve("@/lib/format", "src/widgets/Chart.tsx", files, {"@/": "src/"}), "src/lib/format.ts")
-        self.assertIsNone(impact.resolve("react", "src/pages/Orders.tsx", files, {}))
-        self.assertIsNone(impact.resolve("./missing", "src/pages/Orders.tsx", files, {}))
+        self.assertEqual(impact.resolve("../components", "src/pages/Invoices.tsx", files, {}), "src/components/index.ts")
+        self.assertEqual(impact.resolve("../lib/money", "src/pages/Invoices.tsx", files, {}), "src/lib/money.ts")
+        self.assertEqual(impact.resolve("@/lib/money", "src/widgets/Chart.tsx", files, {"@/": "src/"}), "src/lib/money.ts")
+        self.assertIsNone(impact.resolve("react", "src/pages/Invoices.tsx", files, {}))
+        self.assertIsNone(impact.resolve("./missing", "src/pages/Invoices.tsx", files, {}))
 
     def test_graph_links_dynamic_imports_requires_and_css(self):
         graph = edges()
         self.assertIn("src/pages/Form.tsx", graph["src/App.tsx"])
-        self.assertIn("src/lib/format.ts", graph["src/pages/Detail.tsx"])
+        self.assertIn("src/lib/money.ts", graph["src/pages/Invoice.tsx"])
         self.assertEqual(graph["src/styles/global.css"], ["src/styles/tokens.css"])
 
 
 class Tiers(unittest.TestCase):
     def test_low_fan_in_change_selects_every_consumer_route_with_its_chain(self):
-        found = impact.impact(edges(), ["src/lib/format.ts"], config())
-        self.assertEqual([r["route"] for r in found["selected"]], ["/orders", "/orders/:id", "/reports"])
+        found = impact.impact(edges(), ["src/lib/money.ts"], config())
+        self.assertEqual([r["route"] for r in found["selected"]], ["/invoices", "/invoices/:id", "/reports"])
         self.assertEqual({r["tier"] for r in found["selected"]}, {"direct"})
         reports = next(r for r in found["selected"] if r["route"] == "/reports")
         self.assertIn("src/widgets/Chart.tsx", reports["reason"])
@@ -88,19 +88,19 @@ class Tiers(unittest.TestCase):
         self.assertEqual({r["tier"] for r in found["selected"]}, {"shared"})
         selected = {r["route"] for r in found["selected"]}
         listed = {r["route"] for r in found["notTested"]}
-        self.assertEqual(selected | listed, {"/orders", "/orders/:id", "/orders/new", "/orders/:id/edit", "/reports", "/settings"})
+        self.assertEqual(selected | listed, {"/invoices", "/invoices/:id", "/invoices/new", "/invoices/:id/edit", "/reports", "/settings"})
         self.assertFalse(selected & listed)
 
     def test_a_direct_reason_outranks_a_shared_one(self):
-        found = impact.impact(edges(), ["src/components/Button.tsx", "src/lib/format.ts"], config())
+        found = impact.impact(edges(), ["src/components/Button.tsx", "src/lib/money.ts"], config())
         tiers = {r["route"]: r["tier"] for r in found["selected"]}
-        self.assertEqual(tiers["/orders"], "direct")
-        self.assertEqual(tiers["/orders/:id"], "direct")
+        self.assertEqual(tiers["/invoices"], "direct")
+        self.assertEqual(tiers["/invoices/:id"], "direct")
         self.assertEqual(sum(t == "shared" for t in tiers.values()), 2)
 
     def test_one_page_serving_two_routes_reaches_both(self):
         found = impact.impact(edges(), ["src/pages/Form.tsx"], config())
-        self.assertEqual([r["route"] for r in found["selected"]], ["/orders/:id/edit", "/orders/new"])
+        self.assertEqual([r["route"] for r in found["selected"]], ["/invoices/:id/edit", "/invoices/new"])
 
     def test_global_css_is_a_shared_surface_the_graph_cannot_place(self):
         found = impact.impact(edges(), ["src/styles/tokens.css"], config())
@@ -110,12 +110,12 @@ class Tiers(unittest.TestCase):
         self.assertTrue(found["warnings"])
 
     def test_direct_tier_over_budget_is_kept_with_a_warning(self):
-        found = impact.impact(edges(), ["src/lib/format.ts"], config(budget=1))
+        found = impact.impact(edges(), ["src/lib/money.ts"], config(budget=1))
         self.assertEqual(len(found["selected"]), 3)
         self.assertEqual(len(found["warnings"]), 1)
 
     def test_result_does_not_depend_on_input_order(self):
-        changed = ["src/lib/format.ts", "src/components/Button.tsx"]
+        changed = ["src/lib/money.ts", "src/components/Button.tsx"]
         reordered = dict(reversed(list(SOURCES.items())))
         self.assertEqual(impact.impact(edges(), changed, config()),
                          impact.impact(impact.graph(reordered, {"@/": "src/"}), list(reversed(changed)), config()))
