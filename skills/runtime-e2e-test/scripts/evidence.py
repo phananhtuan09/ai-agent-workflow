@@ -374,7 +374,13 @@ def audit(bundle):
     if result != load(bundle / "results.json") or summary(result) != (bundle / "summary.md").read_text():
         raise ValueError("Generated report disagrees with native evidence")
     print(summary(result))
-    return 0 if result["exitCode"] == 0 and not result["nativeErrors"] and all(c["result"] == "PASS" and c["proof"] != "NON_PROVING" for c in result["cases"]) else 1
+    unresolved = [c["caseId"] for c in result["cases"] if c["result"] != "PASS" or c["proof"] == "NON_PROVING"]
+    problems = [f"unresolved: {', '.join(unresolved)}"] if unresolved else []
+    if result["exitCode"] != 0 or result["nativeErrors"]:
+        problems.append(f"native run exit code {result['exitCode']}, {len(result['nativeErrors'])} global error(s)")
+    # Exit 1 means the evidence is consistent but the suite is not done; inconsistent evidence exits 2.
+    print("Audit: evidence consistent; " + ("; ".join(problems) or "all cases resolved"))
+    return 1 if problems else 0
 
 
 def normalize(run, native, root):
