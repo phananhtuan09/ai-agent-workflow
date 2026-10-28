@@ -73,6 +73,7 @@ The fixed constraints are:
 1. Read the project runtime reference, current request, and the smallest relevant product, domain, architecture, code, configuration, and runtime surfaces.
 2. Derive cases from observable behavior, boundaries, failures, and material negative paths. Classify each case as `new-behavior` (must fail on base) or `invariant` (expected to pass on base too); keep at least one `invariant` case as a base health probe.
 3. When validating a change, list the tests the change adds or modifies and declare each as a `pr-test` case so the run shows whether it can fail on base. A PR test never replaces a runtime case; it only proves or disproves its own ability to fail.
+   When the reference has a `## Regression` section, declare `regression` from it and run `scripts/impact.py <suite.json>`. Add an `invariant` case for each selected route that no case covers yet, listing it in the case's `routes`; derive it from what the route already did before the change, and state the map's reason for it in the case's notes. Keep the map's `notTested` routes and warnings as they are; never trim them. Add one `sweep` case over the reference's key routes.
 4. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
 5. Separate agent-verifiable behavior from subjective human judgment.
 6. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
@@ -122,6 +123,8 @@ Do not freeze an implementation detail unless it identifies the production path 
 11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Copy the audit's `Audit:` line into the run summary and report it as written: exit 1 means the evidence is consistent and cases remain unresolved; only exit 2 means the evidence is inconsistent or unreadable. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle` (`--mode plan` for a `FAILED` or `BLOCKED` ledger).
 
 Report the generated determinism limits, or that determinism was not declared, among the run's limits.
+
+Report the impact map and sweep from the generated summary: selected routes with their reasons, routes found but not tested and why, shared surfaces and untraced files, and every swept route that differs, with both screenshots. A sweep difference is a finding for the human, also when it is marked "may belong to intent"; never call it expected yourself.
 
 A degraded base run is reported with the reason the tool recorded; never compare against nothing or describe a degraded run as proven.
 
