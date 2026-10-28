@@ -37,6 +37,7 @@ ALLOWED_CAN_FAIL = {
     "NOT_RUN",
 }
 CLOCK_SKEW = timedelta(minutes=1)
+# Matches e.g. "- `npm test`: PASS — 12 passed" or "- `npm run lint`: NOT_RUN — no lint config".
 SUPPORTING_CHECK = re.compile(r"^- (?P<check>.+?):\s*(?P<result>[A-Z_]+)\b\s*[—-]?\s*(?P<note>.*?)\s*$")
 CASE_HEADING = re.compile(
     r"^## Case (?P<id>[A-Za-z0-9][A-Za-z0-9_.-]*)\s+[—-]\s+(?P<title>.+?)\s*$",
@@ -129,6 +130,8 @@ def check_supporting(text: str, after_run: bool) -> list[str]:
             errors.append(
                 f"Supporting check {line[2:]!r} must read '- <check>: PASS|FAIL|NOT_RUN — <evidence or reason>'."
             )
+        elif after_run and (match.group("check").startswith("`<") or re.fullmatch(r"<.*>", match.group("note"))):
+            errors.append(f"Supporting check {line[2:]!r} is still the template placeholder.")
         elif after_run and match.group("result") == "NOT_RUN" and not match.group("note"):
             errors.append(f"Supporting check {match.group('check')!r} was not run; state why.")
     return errors
@@ -138,9 +141,9 @@ def check_cases(cases: list[Case], bundle: Path) -> list[str]:
     """Compare each case's ledger entry with the generated results."""
     try:
         rows = json.loads((bundle / "results.json").read_text(encoding="utf-8"))["cases"]
-    except (OSError, ValueError, KeyError) as error:
+        rows = {row["caseId"]: row for row in rows}
+    except (OSError, ValueError, KeyError, TypeError) as error:
         return [f"Cannot read results in {bundle}: {error}"]
-    rows = {row["caseId"]: row for row in rows}
     errors = []
     for case in cases:
         prefix = f"Case {case.case_id}"
@@ -152,8 +155,8 @@ def check_cases(cases: list[Case], bundle: Path) -> list[str]:
             if result != "NOT_RUN":
                 errors.append(f"{prefix}: Result is {result}, but the bundle has no result for this case.")
             continue
-        if result != row["result"]:
-            errors.append(f"{prefix}: Result is {result}, but the bundle recorded {row['result']}.")
+        if result != row.get("result"):
+            errors.append(f"{prefix}: Result is {result}, but the bundle recorded {row.get('result')}.")
         can_fail = case.field("Can-fail")
         if not missing_value(can_fail) and can_fail != row.get("proof"):
             errors.append(f"{prefix}: Can-fail is {can_fail}, but the bundle recorded {row.get('proof')}.")

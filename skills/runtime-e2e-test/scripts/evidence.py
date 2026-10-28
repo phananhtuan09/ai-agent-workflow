@@ -375,11 +375,12 @@ def audit(bundle):
         raise ValueError("Generated report disagrees with native evidence")
     print(summary(result))
     unresolved = [c["caseId"] for c in result["cases"] if c["result"] != "PASS" or c["proof"] == "NON_PROVING"]
-    clean = result["exitCode"] == 0 and not result["nativeErrors"] and not unresolved
+    problems = [f"unresolved: {', '.join(unresolved)}"] if unresolved else []
+    if result["exitCode"] != 0 or result["nativeErrors"]:
+        problems.append(f"native run exit code {result['exitCode']}, {len(result['nativeErrors'])} global error(s)")
     # Exit 1 means the evidence is consistent but the suite is not done; inconsistent evidence exits 2.
-    print("Audit: evidence consistent; " + ("all cases resolved" if clean else
-          f"unresolved: {', '.join(unresolved) or 'native exit code or global errors'}"))
-    return 0 if clean else 1
+    print("Audit: evidence consistent; " + ("; ".join(problems) or "all cases resolved"))
+    return 1 if problems else 0
 
 
 def normalize(run, native, root):

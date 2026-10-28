@@ -999,11 +999,12 @@ test("runtime E2E validator checks the ledger's run identity and time against th
         actualPath: "GET /label",
         canFail: "PROVEN",
         supporting: "",
+        id: "E2E-01",
         ...fields,
       };
       fs.writeFileSync(
         planPath,
-        runtimePlan(["E2E-01"])
+        runtimePlan([values.id])
           .replace("- Run ID: NOT_STARTED", `- Run ID: ${values.runId}`)
           .replace("- Tested revisions: NOT_STARTED", `- Tested revisions: ${values.revisions}`)
           .replace("- Last updated: 2026-01-01T00:00:00Z", `- Last updated: ${values.updated}`)
@@ -1072,6 +1073,29 @@ test("runtime E2E validator checks the ledger's run identity and time against th
     const prose = ledger({ supporting: "## Supporting checks\n\n- `npm test` supports the PR's unit tests\n\n" });
     assert.strictEqual(prose.status, 1);
     assert.ok(prose.stderr.includes("must read '- <check>: PASS|FAIL|NOT_RUN"));
+
+    const placeholder = ledger({
+      supporting: "## Supporting checks\n\n- `<command>`: NOT_RUN — <evidence after the run, or why it was not run>\n\n",
+    });
+    assert.strictEqual(placeholder.status, 1);
+    assert.ok(placeholder.stderr.includes("is still the template placeholder"));
+
+    // An invalidated case and a PR test without observations keep their own wording.
+    for (const fields of [
+      { result: "INVALIDATED", actualPath: "superseded by the new label rule" },
+      { id: "PR-01", canFail: "NON_PROVING", actualPath: "e2e/label.spec.ts › renders a label" },
+    ]) {
+      const free = ledger(fields);
+      assert.ok(!free.stderr.includes("bundle recorded") && !free.stderr.includes("recorded path"), free.stderr);
+    }
+
+    // Before a run, a listed check may still be unrun without a reason.
+    fs.writeFileSync(
+      planPath,
+      runtimePlan(["E2E-01"]).replace("## Human sign-off", "## Supporting checks\n\n- `npm test`: NOT_RUN\n\n## Human sign-off")
+    );
+    const planned = spawnSync("python3", [validator, planPath], { encoding: "utf8" });
+    assert.strictEqual(planned.status, 0, planned.stderr || planned.stdout);
 
     // The future check needs no bundle: an estimated, rounded-up time is rejected on its own.
     const future = new Date(Date.now() + 10 * 60 * 1000).toISOString();
