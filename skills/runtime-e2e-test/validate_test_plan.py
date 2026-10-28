@@ -28,6 +28,8 @@ ALLOWED_HUMAN_JUDGMENT = {"YES", "NO"}
 ALLOWED_PATH_MATCH = {"NOT_RUN", "YES", "NO"}
 ALLOWED_DECISIONS = {"PENDING", "ACCEPTED", "REJECTED"}
 ALLOWED_SUPPORTING = {"PASS", "FAIL", "NOT_RUN"}
+# Existing-suite statuses that need a human before completion; NEW_FAILURE blocks it outright.
+REVIEW_EXISTING = {"NEEDS_REVIEW", "NOT_COMPARABLE"}
 ALLOWED_CAN_FAIL = {
     "PROVEN",
     "NON_PROVING",
@@ -169,6 +171,34 @@ def check_cases(cases: list[Case], bundle: Path) -> list[str]:
     return errors
 
 
+def existing_rows(bundle: Path) -> list[dict] | None:
+    try:
+        existing = json.loads((bundle / "results.json").read_text(encoding="utf-8")).get("existing")
+        return None if existing is None else list(existing["suites"])
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def check_existing(text: str, rows: list[dict]) -> list[str]:
+    """Each of the project's own suites is reported with the status the tool generated."""
+    section = top_section(text, "Existing suites")
+    if section is None:
+        return ["Missing '## Existing suites': list each existing suite's generated status, or why none ran."] if rows else []
+    reported = {}
+    for line in (line for line in section.splitlines() if line.startswith("- ")):
+        match = SUPPORTING_CHECK.match(line)
+        if match:
+            reported[match.group("check").strip("`")] = match.group("result")
+    errors = []
+    for row in rows:
+        status = reported.get(row.get("id"))
+        if status is None:
+            errors.append(f"Existing suite {row.get('id')!r} must read '- {row.get('id')}: {row.get('status')} — <note>'.")
+        elif status != row.get("status"):
+            errors.append(f"Existing suite {row.get('id')!r} is {status}, but the bundle recorded {row.get('status')}.")
+    return errors
+
+
 def check_bundle(text: str, top_end: int, bundle: Path) -> list[str]:
     """Compare the ledger's run identity with what the evidence tool recorded."""
     try:
@@ -233,9 +263,13 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
             f"Last updated {updated.isoformat()} is in the future (now {now.isoformat(timespec='seconds')}); "
             "use the current UTC time."
         )
+    existing = (existing_rows(bundle) or []) if bundle is not None else []
     if bundle is not None:
         errors.extend(check_bundle(text, top_end, bundle))
         errors.extend(check_cases(cases, bundle))
+        errors.extend(check_existing(text, existing))
+    new_failures = [row.get("id") for row in existing if row.get("status") == "NEW_FAILURE"]
+    review = [row.get("id") for row in existing if row.get("status") in REVIEW_EXISTING]
     errors.extend(check_supporting(text, bundle is not None or mode == "completion"))
     if not cases:
         errors.append("No cases found. Use headings like '## Case D2 — Title'.")
@@ -362,14 +396,16 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
             )
         if release_pass != release_total:
             errors.append("Every release-blocking case must PASS before completion.")
+        if new_failures:
+            errors.append(f"Existing suites fail on head but pass on base: {', '.join(new_failures)}.")
         if status == "AWAITING_HUMAN":
-            if human_cases == 0:
+            if human_cases == 0 and not review:
                 errors.append(
-                    "AWAITING_HUMAN requires at least one case with Human judgment: YES."
+                    "AWAITING_HUMAN requires a case with Human judgment: YES or an existing suite needing review."
                 )
             if decision != "PENDING":
                 errors.append("AWAITING_HUMAN requires Decision: PENDING.")
-        if status == "COMPLETED" and human_cases > 0:
+        if status == "COMPLETED" and (human_cases > 0 or review):
             if decision != "ACCEPTED":
                 errors.append(
                     "COMPLETED requires Decision: ACCEPTED when human judgment is required."
@@ -392,7 +428,7 @@ def main() -> int:
     parser.add_argument(
         "--bundle",
         type=Path,
-        help="Evidence run directory; checks Run ID, Tested revisions, Last updated and each case's Result, Can-fail and Actual path against it.",
+        help="Evidence run directory; checks the ledger's run identity, case fields and existing suites against it.",
     )
     args = parser.parse_args()
 

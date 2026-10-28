@@ -780,6 +780,26 @@ Path(os.environ["PLAYWRIGHT_JSON_OUTPUT_NAME"]).write_text(json.dumps({"suites":
 sys.exit(0 if all(r["status"] == "passed" for s in specs for t in s["tests"] for r in t["results"]) else 1)
 `;
 
+const FAKE_JUNIT = `import json, sys
+from pathlib import Path
+from xml.sax.saxutils import quoteattr
+# Stand-in for a project's own unit suite: per-revision outcomes, written as a JUnit report.
+revision = Path("app.txt").read_text().strip()
+rerun = sys.argv[1].endswith("rerun.xml")
+# Each revision must run its own committed spec, not a file copied from the head snapshot.
+own = Path("e2e/label.spec.ts").read_text().strip() == {"old": "base spec", "new": "head spec"}[revision]
+rows, failed = [f"<testcase classname='unit.test.ts' name='reads its own spec'>{'' if own else '<failure/>'}</testcase>"], not own
+for item in json.loads(Path("unit-cases.json").read_text()):
+    status = item.get("rerun") if rerun and "rerun" in item else item.get(revision)
+    if status is None:
+        continue
+    failed = failed or status == "failed"
+    body = {"failed": "<failure message='boom'/>", "skipped": "<skipped/>"}.get(status, "")
+    rows.append(f"<testcase classname='unit.test.ts' name={quoteattr(item['name'])}>{body}</testcase>")
+Path(sys.argv[1]).write_text("<testsuites><testsuite name='unit'>" + "".join(rows) + "</testsuite></testsuites>")
+sys.exit(1 if failed else 0)
+`;
+
 function runtimePlan(ids) {
   const cases = ids
     .map(
@@ -835,7 +855,7 @@ The label matches the requested behavior.
 ${cases}`;
 }
 
-function createBaseHeadFixture() {
+function createBaseHeadFixture({ unitCases = [] } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-base-head-"));
   const git = (...args) => {
     const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -848,6 +868,8 @@ function createBaseHeadFixture() {
   fs.writeFileSync(path.join(root, "app.txt"), "old\n");
   fs.mkdirSync(path.join(root, "e2e"));
   fs.writeFileSync(path.join(root, "e2e/label.spec.ts"), "base spec\n");
+  fs.writeFileSync(path.join(root, "unit.py"), FAKE_JUNIT);
+  fs.writeFileSync(path.join(root, "unit-cases.json"), JSON.stringify(unitCases));
   git("add", ".");
   git("commit", "-qm", "base");
   const base = git("rev-parse", "HEAD");
@@ -877,6 +899,7 @@ function createBaseHeadFixture() {
     environment: "isolated-local",
     revision: "head",
     base: { revision: base, env: { WEB_PORT: "5301" } },
+    existing: { suites: [], reason: "The fixture project has no test suite of its own" },
     cases: [
       { id: "E2E-01", kind: "api", classification: "new-behavior", checks: [check] },
       { id: "E2E-02", kind: "api", classification: "invariant", checks: [check] },
@@ -978,6 +1001,92 @@ test("runtime E2E base run proves new-behavior cases can fail", () => {
     const audit = fixture.audit(run.out);
     assert.strictEqual(audit.status, 2, audit.stderr || audit.stdout);
     assert.ok(audit.stderr.includes("Generated report disagrees"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E compares the project's own suites between base and head", () => {
+  const fixture = createBaseHeadFixture({
+    unitCases: [
+      { name: "keeps totals", old: "passed", new: "passed" },
+      { name: "rounds half cents", old: "failed", new: "failed" },
+      { name: "formats dates", old: "passed", new: "failed" },
+      { name: "loads slowly", old: "passed", new: "failed", rerun: "passed" },
+      { name: "old helper", old: "passed" },
+      { name: "[E2E-01] a runtime case in the same project", new: "failed" },
+    ],
+  });
+  const validator = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/validate_test_plan.py");
+  try {
+    const declared = (suite) => {
+      suite.existing = {
+        suites: [
+          { id: "unit", command: ["python3", "unit.py", "{report}"] },
+          { id: "lint", command: ["python3", "-c", "import sys; sys.exit(1)"] },
+        ],
+      };
+    };
+    const run = fixture.run(declared, "existing-suites");
+    assert.strictEqual(run.status, 1, run.stderr || run.stdout);
+    const [unit, lint] = run.results.existing.suites;
+    assert.strictEqual(unit.status, "NEW_FAILURE");
+    assert.deepStrictEqual(unit.tests, {
+      NEW_FAILURE: ["unit.test.ts > formats dates"],
+      PRE_EXISTING: ["unit.test.ts > rounds half cents"],
+      UNSTABLE: ["unit.test.ts > loads slowly"],
+      REMOVED: ["unit.test.ts > old helper"],
+    });
+    assert.deepStrictEqual(unit.exitCodes, { base: 1, head: 1, rerun: 1 });
+    // Without a per-test report, two red runs cannot separate new failures from old ones.
+    assert.strictEqual(lint.status, "NOT_COMPARABLE");
+    assert.ok(run.stdout.includes("existing suites with new failures: unit; existing suites not comparable: lint"), run.stdout);
+    assert.strictEqual(fixture.audit(run.out).status, 1);
+
+    const planPath = path.join(fixture.root, "docs/testing/active/existing.md");
+    const ledger = (section, mode = "plan") => {
+      fs.writeFileSync(planPath, runtimePlan(["E2E-01"]).replace("## Human sign-off", `${section}## Human sign-off`));
+      return spawnSync("python3", [validator, planPath, "--mode", mode, "--bundle", run.out], { encoding: "utf8" });
+    };
+    const reported = ledger("## Existing suites\n\n- `unit`: NEW_FAILURE — formats dates\n- lint: NOT_COMPARABLE — no report\n\n");
+    assert.ok(!reported.stderr.includes("Existing suite"), reported.stderr);
+    const wrong = ledger("## Existing suites\n\n- unit: PRE_EXISTING — only old failures\n- lint: NOT_COMPARABLE — no report\n\n");
+    assert.ok(wrong.stderr.includes("Existing suite 'unit' is PRE_EXISTING, but the bundle recorded NEW_FAILURE"), wrong.stderr);
+    const missing = ledger("");
+    assert.ok(missing.stderr.includes("Missing '## Existing suites'"), missing.stderr);
+    const completion = ledger("## Existing suites\n\n- unit: NEW_FAILURE — formats dates\n- lint: NOT_COMPARABLE — no report\n\n", "completion");
+    assert.ok(completion.stderr.includes("Existing suites fail on head but pass on base: unit"), completion.stderr);
+
+    const unitOnly = (suite) => {
+      suite.existing = { suites: [{ id: "unit", command: ["python3", "unit.py", "{report}"] }] };
+    };
+    fs.writeFileSync(
+      path.join(fixture.root, "unit-cases.json"),
+      JSON.stringify([{ name: "rounds half cents", old: "failed", new: "failed" }])
+    );
+    spawnSync("git", ["commit", "-qam", "only an old failure"], { cwd: fixture.root });
+    const older = fixture.run((suite) => {
+      unitOnly(suite);
+      suite.base.revision = spawnSync("git", ["rev-parse", "HEAD"], { cwd: fixture.root, encoding: "utf8" }).stdout.trim();
+    }, "pre-existing-only");
+    assert.strictEqual(older.results.existing.suites[0].status, "PRE_EXISTING");
+    assert.ok(!older.stdout.includes("existing suites"), older.stdout);
+
+    const noBase = fixture.run((suite) => {
+      unitOnly(suite);
+      delete suite.base;
+    }, "existing-without-base");
+    assert.strictEqual(noBase.results.existing.suites[0].status, "NOT_COMPARABLE");
+    assert.ok(noBase.results.existing.suites[0].reason.includes("No usable base run"));
+
+    const undeclared = fixture.validate((suite) => delete suite.existing);
+    assert.strictEqual(undeclared.status, 2);
+    assert.ok(undeclared.stderr.includes("must declare existing"));
+    const noReason = fixture.validate((suite) => {
+      suite.existing = { suites: [] };
+    });
+    assert.strictEqual(noReason.status, 2);
+    assert.ok(noReason.stderr.includes("or a reason why the project has none"));
   } finally {
     fixture.cleanup();
   }

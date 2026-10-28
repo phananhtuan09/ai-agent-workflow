@@ -23,6 +23,12 @@ Paths below are relative to the project root; suite files live beside the Markdo
     "normalize": [{"pattern": "ord_[0-9a-f]{8}", "replacement": "ord_<ID>"}],
     "limits": ["Server-generated UUIDs are not seeded"]
   },
+  "existing": {
+    "suites": [
+      {"id": "unit", "command": ["npx", "--no-install", "vitest", "run", "--reporter=junit", "--outputFile={report}"]},
+      {"id": "e2e", "command": ["npx", "--no-install", "playwright", "test", "--reporter=junit"], "env": {"PLAYWRIGHT_JUNIT_OUTPUT_NAME": "{report}"}}
+    ]
+  },
   "cases": [
     {
       "id": "E2E-01",
@@ -70,6 +76,32 @@ Copy its settings from the project runtime reference.
 - `env`: non-secret variables that freeze time, seed data, or stub randomness where the app supports it. Both the head and base runs, and base setup, receive them; `base.env` must not override them.
 - `normalize`: regular-expression rules applied to observed values before head and base are compared, for IDs, timestamps, and other values that differ between two correct instances. Normalize only noise; a rule that hides the behavior under test makes every case unprovable.
 - `limits`: what the app cannot make deterministic. They appear in the summary and belong in the report's limits.
+
+## Existing suites
+
+`existing` lists the project's own test suites (unit, integration, e2e), copied from the project runtime reference.
+A suite with a `base` must declare it; when the project has no suites of its own, write `"existing": {"suites": [], "reason": "<why>"}`.
+`run` runs each suite on head in the project root and on base in the base worktree, after putting every file it copied from the head snapshot back to its base version, so each revision runs its own tests. Base runs also receive `base.env`; neither receives `determinism.env`.
+Write `{report}` where the suite takes its JUnit XML output path, in an argument or an `env` value; the tool replaces it with a file in the bundle.
+With a report the tool compares each test; without one it compares exit codes only.
+Tests whose name carries one of the plan's case tags (`[E2E-01]`) are left out: the plan's own cases are judged as cases.
+A test that passes on base and fails on head is run once more on head, with the whole suite, before it counts as a new failure.
+
+Each test is classified from its base and head outcomes:
+
+- `NEW_FAILURE`: fails on head on both attempts, and passed or did not exist on base.
+- `UNSTABLE`: fails on head, then passes on the rerun.
+- `PRE_EXISTING`: fails on base and head; not caused by the change.
+- `FIXED`: fails on base, passes on head.
+- `REMOVED`: passes on base, missing or skipped on head.
+
+Each suite gets one status:
+
+- `NEW_FAILURE`: at least one new failure. The suite cannot complete.
+- `NEEDS_REVIEW`: an unstable or removed test and no new failure. Completion needs an accepted human sign-off.
+- `PRE_EXISTING`: only failures that base has too. Report them apart from the change's results; they do not block it.
+- `NOT_COMPARABLE`: a report is missing or unreadable, there was no usable base and head has failures, or both revisions exit non-zero without a per-test report. Completion needs an accepted human sign-off.
+- `PASS`: none of the above.
 
 When the app has no server-side clock control, freeze browser time in the test with `page.clock.setFixedTime()` or `page.clock.install()` and say so in `limits` if server time still varies.
 Read rendered values only after a web-first assertion (for example `await expect(row).toBeVisible()`) has confirmed the data loaded; `innerText()` and `textContent()` do not wait for data and make results timing-dependent.
@@ -143,6 +175,7 @@ Do not permit tests to write generated output into approved files.
 
 The bundle includes `inputs/`, `approval.json`, `run-manifest.json`, `native.json`, `artifacts/`, `stdout.log`, `stderr.log`, `results.json`, `summary.md`, and `integrity.json`.
 With a base, `base/` holds the base run's manifest, native results, artifacts, and logs.
+`existing/<id>/` holds each existing suite's head and rerun report and log; `base/existing/<id>/` holds the base ones. Their exit codes are in the two manifests.
 Snapshots make the audit independent of later working-tree changes.
 Attachment paths in native results are normalized to bundle-relative locations.
 Only per-run artifact files and inline observations are accepted as attachments.
@@ -165,7 +198,7 @@ Each case also gets a `proof` value, computed from the head and base results:
 
 When both runs recorded observations, `baseDiff` lists the checks whose actual values still differ between base and head after normalization.
 A base failure counts as proof only when the base run itself was not degraded; the reason names the base error or mismatched checks so an auditor can confirm the failure came from the behavior, not the environment.
-`run` and `audit` exit nonzero when any case is `NON_PROVING`.
+`run` and `audit` exit nonzero when any case is `NON_PROVING`, and when an existing suite is `NEW_FAILURE`, `NEEDS_REVIEW`, or `NOT_COMPARABLE`.
 
 The tool exits nonzero for any result other than PASS or an execution failure.
 It records all attempts, and rejects duplicate/undeclared tests rather than silently broadening coverage.

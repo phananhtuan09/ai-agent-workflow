@@ -119,6 +119,17 @@ Used when a suite declares `base` to prove that new-behavior tests can fail.
 - Base setup: `<argument arrays run in the base worktree, e.g. dependency install, or NONE>`
 - Base start limitations: `<revisions that cannot start, missing migrations, or NONE>`
 
+## Existing test suites
+
+Copied into a suite's `existing`; each suite runs on base and head so new failures are told apart from earlier ones.
+
+| ID | Command (argument array) | Env | JUnit report |
+| --- | --- | --- | --- |
+| `<unit>` | `<e.g. ["npx", "vitest", "run", "--reporter=junit", "--outputFile={report}"]>` | `<names and values, or NONE>` | `<how {report} is passed, or NOT_SUPPORTED>` |
+| `<e2e>` | `<e.g. ["npx", "playwright", "test", "--reporter=junit"]>` | `<e.g. PLAYWRIGHT_JUNIT_OUTPUT_NAME={report}>` | `<how {report} is passed, or NOT_SUPPORTED>` |
+
+- No suites: `<why the project has none, or NOT_APPLICABLE>`
+
 ## Determinism
 
 Copied into a suite's `determinism` so base and head differ only in behavior.
