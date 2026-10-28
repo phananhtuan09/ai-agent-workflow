@@ -21,7 +21,7 @@ python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode plan
 python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode completion --bundle <run-dir>
 ```
 
-After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run.
+After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run. Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
 
 Runtime adapters rewrite the skill path when installed.
 
@@ -114,7 +114,7 @@ Do not freeze an implementation detail unless it identifies the production path 
    - `FAILED` or `BLOCKED` while material cases remain unresolved.
    - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review remains.
    - `COMPLETED` only after required human sign-off is accepted.
-11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle`.
+11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle` (`--mode plan` for a `FAILED` or `BLOCKED` ledger).
 
 Report the generated determinism limits, or that determinism was not declared, among the run's limits.
 
