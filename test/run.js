@@ -981,6 +981,71 @@ test("runtime E2E base run proves new-behavior cases can fail", () => {
   }
 });
 
+test("runtime E2E validator checks the ledger's run identity and time against the bundle", () => {
+  const fixture = createBaseHeadFixture();
+  const validator = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/validate_test_plan.py");
+  const planPath = path.join(fixture.root, "docs/testing/active/ledger.md");
+  try {
+    const run = fixture.run(null, "ledger-identity");
+    const manifest = JSON.parse(fs.readFileSync(path.join(run.out, "run-manifest.json"), "utf8"));
+    const ledger = (fields) => {
+      const values = {
+        runId: manifest.runId,
+        revisions: `head ${manifest.gitHead.slice(0, 7)}; base ${fixture.base.slice(0, 7)}`,
+        updated: new Date().toISOString(),
+        ...fields,
+      };
+      fs.writeFileSync(
+        planPath,
+        runtimePlan(["E2E-01"])
+          .replace("- Run ID: NOT_STARTED", `- Run ID: ${values.runId}`)
+          .replace("- Tested revisions: NOT_STARTED", `- Tested revisions: ${values.revisions}`)
+          .replace("- Last updated: 2026-01-01T00:00:00Z", `- Last updated: ${values.updated}`)
+      );
+      return spawnSync("python3", [validator, planPath, "--bundle", run.out], { encoding: "utf8" });
+    };
+
+    const valid = ledger({});
+    assert.strictEqual(valid.status, 0, valid.stderr || valid.stdout);
+
+    const wrongId = ledger({ runId: "03ab87b8" });
+    assert.strictEqual(wrongId.status, 1);
+    assert.ok(wrongId.stderr.includes(`the bundle recorded '${manifest.runId}'`));
+
+    const noBase = ledger({ revisions: `head ${manifest.gitHead.slice(0, 7)}` });
+    assert.strictEqual(noBase.status, 1);
+    assert.ok(noBase.stderr.includes(`recorded base commit ${fixture.base.slice(0, 7)}`));
+
+    const beforeRun = ledger({ updated: manifest.startedAt.replace(/^\d{4}/, "2020") });
+    assert.strictEqual(beforeRun.status, 1);
+    assert.ok(beforeRun.stderr.includes("is before the run finished"));
+
+    const unzoned = ledger({ updated: "2026-10-28 02:00" });
+    assert.strictEqual(unzoned.status, 1);
+    assert.ok(unzoned.stderr.includes("must be an ISO 8601 time with a zone"));
+
+    const manifestPath = path.join(run.out, "run-manifest.json");
+    fs.writeFileSync(manifestPath, JSON.stringify({ ...manifest, finishedAt: undefined }));
+    const unfinished = ledger({});
+    assert.strictEqual(unfinished.status, 1);
+    assert.ok(unfinished.stderr.includes("the run did not complete"));
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const partialSha = ledger({ revisions: `head x${manifest.gitHead.slice(0, 7)}; base ${fixture.base.slice(0, 7)}` });
+    assert.strictEqual(partialSha.status, 1);
+    assert.ok(partialSha.stderr.includes("recorded head commit"));
+
+    // The future check needs no bundle: an estimated, rounded-up time is rejected on its own.
+    const future = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    fs.writeFileSync(planPath, runtimePlan(["E2E-01"]).replace("2026-01-01T00:00:00Z", future));
+    const ahead = spawnSync("python3", [validator, planPath], { encoding: "utf8" });
+    assert.strictEqual(ahead.status, 1);
+    assert.ok(ahead.stderr.includes("is in the future"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("runtime E2E labels cases without a usable base as not proven", () => {
   const fixture = createBaseHeadFixture();
   try {

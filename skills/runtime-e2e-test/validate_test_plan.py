@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -33,6 +35,7 @@ ALLOWED_CAN_FAIL = {
     "NOT_EVALUATED",
     "NOT_RUN",
 }
+CLOCK_SKEW = timedelta(minutes=1)
 CASE_HEADING = re.compile(
     r"^## Case (?P<id>[A-Za-z0-9][A-Za-z0-9_.-]*)\s+[—-]\s+(?P<title>.+?)\s*$",
     re.MULTILINE,
@@ -97,7 +100,46 @@ def parse_count(text: str, label: str, stop: int | None) -> int | None:
     return int(value)
 
 
-def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
+def parse_time(value: str | None) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat((value or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else None
+
+
+def check_bundle(text: str, top_end: int, bundle: Path) -> list[str]:
+    """Compare the ledger's run identity with what the evidence tool recorded."""
+    try:
+        head = json.loads((bundle / "run-manifest.json").read_text(encoding="utf-8"))
+        base_path = bundle / "base" / "run-manifest.json"
+        base = json.loads(base_path.read_text(encoding="utf-8")) if base_path.exists() else None
+    except (OSError, ValueError) as error:
+        return [f"Cannot read run manifest in {bundle}: {error}"]
+    errors = []
+    run_id = top_field(text, "Run ID", top_end)
+    if run_id != head.get("runId"):
+        errors.append(f"Run ID is {run_id!r}, but the bundle recorded {head.get('runId')!r}.")
+    revisions = top_field(text, "Tested revisions", top_end) or ""
+    for label, manifest in (("head", head), ("base", base)):
+        sha = (manifest or {}).get("gitHead", "")[:7]
+        if sha and not (manifest or {}).get("degraded") and not re.search(rf"\b{sha}", revisions):
+            errors.append(f"Tested revisions must name the recorded {label} commit {sha}.")
+    finished = [parse_time(m.get("finishedAt")) for m in (head, base) if m and m.get("finishedAt")]
+    updated = parse_time(top_field(text, "Last updated", top_end))
+    if parse_time(head.get("finishedAt")) is None:
+        errors.append("The bundle has no finish time; the run did not complete, so its ledger cannot be validated.")
+    elif updated is None:
+        errors.append("Last updated must be an ISO 8601 time with a zone, e.g. 2026-01-01T00:00:00Z.")
+    elif None not in finished and updated < max(finished):
+        errors.append(
+            f"Last updated {updated.isoformat()} is before the run finished at {max(finished).isoformat()}; "
+            "use the time the ledger was written."
+        )
+    return errors
+
+
+def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[str], list[str]]:
     text = path.read_text(encoding="utf-8")
     cases = parse_cases(text)
     errors: list[str] = []
@@ -123,6 +165,15 @@ def validate(path: Path, mode: str) -> tuple[list[str], list[str]]:
     for field_name in ("Environment", "Last updated"):
         if missing_value(top_field(text, field_name, top_end)):
             errors.append(f"Top-level field '{field_name}' must be concrete.")
+    updated = parse_time(top_field(text, "Last updated", top_end))
+    now = datetime.now(timezone.utc)
+    if updated is not None and updated > now + CLOCK_SKEW:
+        errors.append(
+            f"Last updated {updated.isoformat()} is in the future (now {now.isoformat(timespec='seconds')}); "
+            "use the current UTC time."
+        )
+    if bundle is not None:
+        errors.extend(check_bundle(text, top_end, bundle))
     if not cases:
         errors.append("No cases found. Use headings like '## Case D2 — Title'.")
         return errors, warnings
@@ -275,13 +326,18 @@ def main() -> int:
     )
     parser.add_argument("plan", type=Path)
     parser.add_argument("--mode", choices=("plan", "completion"), default="plan")
+    parser.add_argument(
+        "--bundle",
+        type=Path,
+        help="Evidence run directory; checks Run ID, Tested revisions and Last updated against it.",
+    )
     args = parser.parse_args()
 
     if not args.plan.is_file():
         print(f"ERROR: plan not found: {args.plan}", file=sys.stderr)
         return 2
 
-    errors, warnings = validate(args.plan, args.mode)
+    errors, warnings = validate(args.plan, args.mode, args.bundle)
     for warning in warnings:
         print(f"WARNING: {warning}")
     if errors:

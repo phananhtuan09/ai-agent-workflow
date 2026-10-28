@@ -18,8 +18,10 @@ Validate the artifact with:
 
 ```bash
 python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode plan
-python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode completion
+python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode completion --bundle <run-dir>
 ```
+
+After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run. Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
 
 Runtime adapters rewrite the skill path when installed.
 
@@ -91,7 +93,7 @@ Do not freeze an implementation detail unless it identifies the production path 
 
 1. Read the entire plan, project runtime reference, and current repository authority.
 2. Run the documented preflight where needed; do not start against a prohibited or unidentified environment.
-3. Record the tested revisions, environment, configuration identity, and a unique run ID without storing secrets.
+3. Record the environment and configuration identity without storing secrets. The tool generates the run ID and records the head and base commits and start/finish times in `run-manifest.json`. Copy them from there into the ledger.
 4. Check approval and snapshot approved files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session. When the suite declares a base, the tool runs the same approved tests against the base revision in a separate worktree and app instance.
 5. Let Playwright drive the declared path and assert observable outcomes. Fresh contexts isolate sessions; run-marked fixtures isolate data. Serialize shared mutations or acquire the project lock before execution.
 6. Use the tool-generated native results, observations, attempts, trace, cleanup, and summary. Never hand-edit evidence or generated reports.
@@ -112,7 +114,7 @@ Do not freeze an implementation detail unless it identifies the production path 
    - `FAILED` or `BLOCKED` while material cases remain unresolved.
    - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review remains.
    - `COMPLETED` only after required human sign-off is accepted.
-11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations or counts.
+11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle` (`--mode plan` for a `FAILED` or `BLOCKED` ledger).
 
 Report the generated determinism limits, or that determinism was not declared, among the run's limits.
 
