@@ -129,6 +129,22 @@ Copied into a suite's `existing`; each suite runs on base and head so new failur
 | `<e2e>` | `<e.g. ["npx", "playwright", "test", "--reporter=junit"]>` | `<e.g. PLAYWRIGHT_JUNIT_OUTPUT_NAME={report}>` | `<how {report} is passed, or NOT_SUPPORTED>` |
 
 - No suites: `<why the project has none, or NOT_APPLICABLE>`
+- Smoke suite: `<ID of the existing suite that is the smoke suite, or NONE>`; existing suites run on every base comparison, so the smoke suite always runs.
+
+## Regression
+
+Copied into a suite's `regression`; `scripts/impact.py` walks the import graph from changed files back to these routes.
+
+- Sources: `<directories with application code, e.g. ["src"]>`
+- Import aliases: `<e.g. {"@/": "src/"}, or NONE>`
+- Shared surfaces: `<globs for global CSS, i18n, store, API client, config, e.g. ["src/styles/**", "src/i18n/**"]>`
+- Fan-in threshold: `<a changed file reaching more key routes than this is shared code, e.g. 3>`
+- Regression budget: `<maximum shared-tier routes tested per run, e.g. 5>`
+
+| Key route | Page file | URL to open in the sweep |
+| --- | --- | --- |
+| `<e.g. /invoices>` | `<e.g. src/pages/InvoicesPage.tsx>` | `<e.g. /invoices>` |
+| `<e.g. /invoices/:id>` | `<e.g. src/pages/InvoicePage.tsx>` | `<e.g. /invoices/1 with seed data>` |
 
 ## Determinism
 

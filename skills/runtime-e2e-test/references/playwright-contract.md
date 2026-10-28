@@ -29,6 +29,14 @@ Paths below are relative to the project root; suite files live beside the Markdo
       {"id": "e2e", "command": ["npx", "--no-install", "playwright", "test", "--reporter=junit"], "env": {"PLAYWRIGHT_JUNIT_OUTPUT_NAME": "{report}"}}
     ]
   },
+  "regression": {
+    "sources": ["src"],
+    "aliases": {"@/": "src/"},
+    "routes": [{"route": "/invoices", "file": "src/pages/InvoicesPage.tsx"}, {"route": "/invoices/:id", "file": "src/pages/InvoicePage.tsx"}],
+    "shared": ["src/styles/**", "src/i18n/**"],
+    "fanIn": 3,
+    "budget": 5
+  },
   "cases": [
     {
       "id": "E2E-01",
@@ -38,7 +46,14 @@ Paths below are relative to the project root; suite files live beside the Markdo
         {"id": "ui_staff", "expected": "Staff B after reload", "source": "rendered DOM"},
         {"id": "saved_staff", "expected": "staff-b persisted", "source": "fresh API read"},
         {"id": "total", "expected": "unchanged from captured baseline", "source": "fresh API read"}
-      ]
+      ],
+      "routes": ["/invoices/:id"]
+    },
+    {
+      "id": "SWEEP-01",
+      "kind": "sweep",
+      "classification": "invariant",
+      "routes": ["/invoices", "/invoices/:id"]
     },
     {
       "id": "PR-01",
@@ -54,7 +69,8 @@ Paths below are relative to the project root; suite files live beside the Markdo
 Include at least one `invariant` case when declaring a base: invariant cases double as a base health probe, and if none of them passes on base the base run is treated as degraded.
 A `pr-test` case runs a test the change itself added or modified, matched by file and title; it needs no tag or observations and its PASS is a native result only.
 List PR test files in `files` (the tool rejects a `pr-test` whose file is not listed) and target them in `command` like any other test.
-A suite needs at least one runtime case besides `pr-test` cases.
+A suite needs at least one runtime case besides `pr-test` and `sweep` cases.
+`routes` on a case names the key routes from `regression.routes` it exercises; it is how impact-map routes count as covered.
 
 ## Base revision
 
@@ -84,7 +100,8 @@ A suite with a `base` must declare it; when the project has no suites of its own
 `run` runs each suite on head in the project root and on base in the base worktree, after putting every file it copied from the head snapshot back to its base version, so each revision runs its own tests. Base runs also receive `base.env`; neither receives `determinism.env`.
 Write `{report}` where the suite takes its JUnit XML output path, in an argument or an `env` value; the tool replaces it with a file in the bundle.
 With a report the tool compares each test; without one it compares exit codes only.
-Tests whose name carries one of the plan's case tags (`[E2E-01]`) are left out: the plan's own cases are judged as cases.
+Tests in one of the suite's `files` whose name carries one of the plan's case tags (`[E2E-01]`) are left out: the plan's own cases are judged as cases. Tagged tests in other files, such as earlier plans' committed specs, stay existing tests.
+A red exit with no failing test in the report, the plan's own included, counts as a failure of the whole suite.
 A test that passes on base and fails on head is run once more on head, with the whole suite, before it counts as a new failure.
 
 Each test is classified from its base and head outcomes:
@@ -114,6 +131,56 @@ Do not use `test.fail`, conditional skips, or retries to turn an unmet outcome i
 Configure `trace: 'on'` for browser cases after reviewing privacy implications.
 The evidence tool adds native JSON reporting and a per-run output directory.
 The environment label and revision are declarations; record actual service versions/config identity separately when they differ from the checkout.
+
+## Regression impact map
+
+`regression` comes from the project runtime reference and needs a `base`.
+`scripts/impact.py <suite.json> --root <project>` prints the map during planning; `evidence.py validate` prints the selected routes that no case covers yet; `run` computes the same map against the resolved base commit and stores it as `impact-map.json`.
+The script reads the files under `sources` (test files excluded), follows `import`, `export ... from`, dynamic `import()`, `require()` and CSS `@import` through relative paths and `aliases`, and walks back from each changed file to the files in `routes`.
+
+- A changed file that reaches at most `fanIn` key routes puts those routes in the `direct` tier; every direct route is selected, and a warning says so when they exceed `budget`.
+- A changed file that reaches more routes is shared code; its routes form the `shared` tier, closest first, and at most `budget` of them are selected.
+- Shared-tier routes over the budget are listed in `notTested` with the reason; nothing found is dropped.
+- Changed files matching `shared` (global CSS, i18n, store, API client) are listed as shared surfaces, and changed source files that reach no key route as `untraced`; both call for a sweep case, because the import graph cannot place them.
+- Changed files outside `sources` (server code, tests, config) are listed in `outsideSources`.
+
+Each selected route carries its reason, such as `src/pages/InvoicePage.tsx imports src/lib/money.ts (changed)`.
+A selected route without a case that lists it keeps the run from completing; cover it with an invariant case on that route, normally a flow that existed before the change.
+
+## Visual sweep
+
+A `sweep` case captures the key routes it lists on base and head; it has no checks and is never scored PASS or FAIL on what it sees.
+Its single test, titled `[SWEEP-01] ...`, visits each route and attaches one `runtime-sweep` JSON document plus one screenshot per route:
+
+```ts
+test('[SWEEP-01] key routes', async ({ page }, testInfo) => {
+  const routes = [];
+  // Each key route with a concrete URL to open; the key route is what the case lists.
+  for (const [route, url] of [['/invoices', '/invoices'], ['/invoices/:id', '/invoices/1']]) {
+    const requests: string[] = [];
+    const consoleErrors: string[] = [];
+    // Record synchronously, and only data and document requests: script and style URLs vary with the dev server.
+    page.on('response', (r) => ['fetch', 'xhr', 'document'].includes(r.request().resourceType()) &&
+      requests.push(`${r.request().method()} ${new URL(r.url()).pathname} ${r.status()}`));
+    page.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text()));
+    await page.goto(url);
+    await expect(page.locator('main')).toBeVisible(); // a web-first wait for the loaded page
+    const name = `sweep${url.replaceAll('/', '-')}`;
+    const file = testInfo.outputPath(`${name}.png`);
+    await page.screenshot({ path: file, fullPage: true, animations: 'disabled' });
+    await testInfo.attach(name, { path: file, contentType: 'image/png' });
+    routes.push({ route, text: await page.locator('body').innerText(), requests, consoleErrors, screenshot: name });
+    page.removeAllListeners('response');
+    page.removeAllListeners('console');
+  }
+  await testInfo.attach('runtime-sweep', { body: JSON.stringify({ routes }), contentType: 'application/json' });
+});
+```
+
+Screenshots must be file attachments under the test's output path; an attachment with a `body` stays inline in the JSON report and blocks the sweep.
+Log in and seed data as the project's other tests do, with the same frozen time; the `route` values must equal the case's `routes`.
+The tool compares each route between base and head after the suite's normalization rules: visible text lines removed and added, the set of requests, console errors new on head, and the screenshot's changed pixel count, counting a pixel only when a channel moves by more than 16 of 255, so rendering jitter is ignored (a resized or undecodable screenshot counts as changed).
+Every difference is reported with both screenshots for human review; a route that a `new-behavior` case also covers is marked "may belong to intent", but nothing is excused automatically.
 
 ## Structured observations
 
@@ -164,6 +231,7 @@ python3 <skill-root>/scripts/evidence.py validate <suite.json> --root <project>
 python3 <skill-root>/scripts/evidence.py approve <suite.json> --root <project> --reviewer <human-id>
 python3 <skill-root>/scripts/evidence.py run <suite.json> --root <project> --out <new-run-directory>
 python3 <skill-root>/scripts/evidence.py audit <run-directory>
+python3 <skill-root>/scripts/evidence.py report <run-directory> [--notes <notes.json>]
 ```
 
 `approve` snapshots the suite and declared files in `<suite.json>.approval.json` by hash.
@@ -176,6 +244,10 @@ Do not permit tests to write generated output into approved files.
 The bundle includes `inputs/`, `approval.json`, `run-manifest.json`, `native.json`, `artifacts/`, `stdout.log`, `stderr.log`, `results.json`, `summary.md`, and `integrity.json`.
 With a base, `base/` holds the base run's manifest, native results, artifacts, and logs.
 `existing/<id>/` holds each existing suite's head and rerun report and log; `base/existing/<id>/` holds the base ones. Their exit codes are in the two manifests.
+`impact-map.json` holds the impact map when the suite declares `regression`.
+`report.html` is a single offline file that `run` writes after the audit and `report` regenerates; it is a view of the bundle, outside `integrity.json`, and `report` refuses a bundle that fails the audit.
+It holds the claims table, the items needing a decision, the impact map, sweep differences side by side with the changed area outlined, existing suites, one card per case (checks with expected, head and base values, steps and frames read from the Playwright trace, with the target of clicks and fills outlined, and the last base and head frames), limits, and what needs human confirmation.
+`--notes` takes a JSON object of agent explanations by case ID or `general`; the report shows each one labeled as agent inference, never as evidence.
 Snapshots make the audit independent of later working-tree changes.
 Attachment paths in native results are normalized to bundle-relative locations.
 Only per-run artifact files and inline observations are accepted as attachments.
@@ -198,7 +270,9 @@ Each case also gets a `proof` value, computed from the head and base results:
 
 When both runs recorded observations, `baseDiff` lists the checks whose actual values still differ between base and head after normalization.
 A base failure counts as proof only when the base run itself was not degraded; the reason names the base error or mismatched checks so an auditor can confirm the failure came from the behavior, not the environment.
-`run` and `audit` exit nonzero when any case is `NON_PROVING`, and when an existing suite is `NEW_FAILURE`, `NEEDS_REVIEW`, or `NOT_COMPARABLE`.
+`run` and `audit` exit nonzero when any case is `NON_PROVING`, when an existing suite is `NEW_FAILURE`, `NEEDS_REVIEW`, or `NOT_COMPARABLE`, when a selected impact-map route has no case or the map could not be computed, and when a swept route differs from base or could not be compared.
+A `sweep` case's `proof` is `NOT_REQUIRED`; its findings are in the `sweep` section of the results.
+Impact-map routes without a case block completion; sweep differences need an accepted human sign-off, like an existing suite needing review.
 
 The tool exits nonzero for any result other than PASS or an execution failure.
 It records all attempts, and rejects duplicate/undeclared tests rather than silently broadening coverage.

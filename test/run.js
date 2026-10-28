@@ -770,6 +770,17 @@ for item in tests:
                 "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": actual}]}
     attachments = [] if item.get("existing") else [{"name": "runtime-observations", "contentType": "application/json",
                     "body": base64.b64encode(json.dumps(observed).encode()).decode()}]
+    if "sweep" in item:
+        # A sweep test attaches its per-revision capture and one screenshot file per route, as given.
+        side = "base" if os.environ.get("WEB_PORT") else "head"
+        out = Path(next(a for a in sys.argv if a.startswith("--output="))[len("--output="):]) / item["title"][1:9]
+        out.mkdir(parents=True, exist_ok=True)
+        attachments = [{"name": "runtime-sweep", "contentType": "application/json",
+                        "body": base64.b64encode(json.dumps(item["sweep"][side]).encode()).decode()}]
+        for page in item["sweep"][side]["routes"]:
+            shot = out / (page["screenshot"] + ".png")
+            shot.write_bytes(base64.b64decode(item["png"][side]))
+            attachments.append({"name": page["screenshot"], "contentType": "image/png", "path": str(shot)})
     results = [{"status": "passed" if passed else "failed", "attachments": attachments,
                 **({} if passed else {"error": {"message": f"expected {item['expect']}, got {app}"}})}]
     if item.get("flaky") and not passed:
@@ -795,7 +806,7 @@ for item in json.loads(Path("unit-cases.json").read_text()):
         continue
     failed = failed or status == "failed"
     body = {"failed": "<failure message='boom'/>", "skipped": "<skipped/>"}.get(status, "")
-    rows.append(f"<testcase classname='unit.test.ts' name={quoteattr(item['name'])}>{body}</testcase>")
+    rows.append(f"<testcase classname={quoteattr(item.get('file', 'unit.test.ts'))} name={quoteattr(item['name'])}>{body}</testcase>")
 Path(sys.argv[1]).write_text("<testsuites><testsuite name='unit'>" + "".join(rows) + "</testsuite></testsuites>")
 sys.exit(1 if failed else 0)
 `;
@@ -1014,7 +1025,9 @@ test("runtime E2E compares the project's own suites between base and head", () =
       { name: "formats dates", old: "passed", new: "failed" },
       { name: "loads slowly", old: "passed", new: "failed", rerun: "passed" },
       { name: "old helper", old: "passed" },
-      { name: "[E2E-01] a runtime case in the same project", new: "failed" },
+      { name: "[E2E-01] a runtime case in the same project", file: "tests/cases.json", new: "failed" },
+      // An earlier plan's committed spec reuses the ID; it is an existing test, not this plan's case.
+      { name: "[E2E-02] an earlier plan's case", file: "runtime/earlier.spec.ts", old: "passed", new: "failed" },
     ],
   });
   const validator = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/validate_test_plan.py");
@@ -1032,7 +1045,7 @@ test("runtime E2E compares the project's own suites between base and head", () =
     const [unit, lint] = run.results.existing.suites;
     assert.strictEqual(unit.status, "NEW_FAILURE");
     assert.deepStrictEqual(unit.tests, {
-      NEW_FAILURE: ["unit.test.ts > formats dates"],
+      NEW_FAILURE: ["runtime/earlier.spec.ts > [E2E-02] an earlier plan's case", "unit.test.ts > formats dates"],
       PRE_EXISTING: ["unit.test.ts > rounds half cents"],
       UNSTABLE: ["unit.test.ts > loads slowly"],
       REMOVED: ["unit.test.ts > old helper"],
@@ -1091,6 +1104,20 @@ test("runtime E2E compares the project's own suites between base and head", () =
     assert.strictEqual(noBase.results.existing.suites[0].status, "NOT_COMPARABLE");
     assert.ok(noBase.results.existing.suites[0].reason.includes("No usable base run"));
 
+    // Only the plan's own case fails on head: the red exit is explained by it, not a new failure.
+    fs.writeFileSync(
+      path.join(fixture.root, "unit-cases.json"),
+      JSON.stringify([
+        { name: "keeps totals", old: "passed", new: "passed" },
+        { name: "[E2E-01] a runtime case in the same project", file: "tests/cases.json", new: "failed" },
+      ])
+    );
+    spawnSync("git", ["commit", "-qam", "only the plan's own case fails"], { cwd: fixture.root });
+    // The base revision has no failing test, as when the plan's spec does not exist before the change.
+    const ownOnly = fixture.run(unitOnly, "own-case-only");
+    // The base commit's other tests are gone on head (REMOVED); what matters is no new failure.
+    assert.deepStrictEqual(Object.keys(ownOnly.results.existing.suites[0].tests), ["REMOVED"]);
+
     const undeclared = fixture.validate((suite) => delete suite.existing);
     assert.strictEqual(undeclared.status, 2);
     assert.ok(undeclared.stderr.includes("must declare existing"));
@@ -1099,6 +1126,154 @@ test("runtime E2E compares the project's own suites between base and head", () =
     });
     assert.strictEqual(noReason.status, 2);
     assert.ok(noReason.stderr.includes("or a reason why the project has none"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E impact map and screenshot comparison unit tests pass", () => {
+  const units = spawnSync("python3", [path.join(SOURCE_ROOT, "test/runtime_e2e_units.py")], { encoding: "utf8" });
+  assert.strictEqual(units.status, 0, units.stderr);
+});
+
+function png(width, height, marked = []) {
+  // Unfiltered RGBA rows; marked pixels are red on white.
+  const rows = [];
+  for (let y = 0; y < height; y += 1) {
+    const row = [0];
+    for (let x = 0; x < width; x += 1) {
+      row.push(...(marked.some(([mx, my]) => mx === x && my === y) ? [255, 0, 0, 255] : [255, 255, 255, 255]));
+    }
+    rows.push(...row);
+  }
+  const zlib = require("zlib");
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buffer) => {
+    let c = 0xffffffff;
+    for (const byte of buffer) c = crcTable[(c ^ byte) & 255] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (kind, body) => {
+    const head = Buffer.alloc(4);
+    head.writeUInt32BE(body.length);
+    const tail = Buffer.alloc(4);
+    tail.writeUInt32BE(crc(Buffer.concat([Buffer.from(kind), body])));
+    return Buffer.concat([head, Buffer.from(kind), body, tail]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 6, 0, 0, 0], 8);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", zlib.deflateSync(Buffer.from(rows))),
+    chunk("IEND", Buffer.alloc(0)),
+  ]).toString("base64");
+}
+
+test("runtime E2E records the impact map and compares swept routes between base and head", () => {
+  const fixture = createBaseHeadFixture();
+  const git = (...args) => spawnSync("git", args, { cwd: fixture.root, encoding: "utf8" });
+  try {
+    // The change touches a helper two pages use; one reaches it only through a widget.
+    const write = (name, text) => {
+      fs.mkdirSync(path.dirname(path.join(fixture.root, name)), { recursive: true });
+      fs.writeFileSync(path.join(fixture.root, name), text);
+    };
+    write("src/lib/label.ts", "export const label = 'old';\n");
+    write("src/widgets/Badge.tsx", "import { label } from '../lib/label';\n");
+    write("src/pages/Label.tsx", "import { label } from '../lib/label';\n");
+    write("src/pages/Report.tsx", "import Badge from '../widgets/Badge';\n");
+    write("src/pages/Help.tsx", "export default 'help';\n");
+    git("add", ".");
+    git("commit", "-qm", "pages");
+    const base = git("rev-parse", "HEAD").stdout.trim();
+    write("src/lib/label.ts", "export const label = 'new';\n");
+    git("commit", "-qam", "change the label helper");
+    const capture = (text, errors) => ({
+      routes: [{ route: "/label", text, requests: ["GET /api/label 200"], consoleErrors: errors, screenshot: "label-shot" }],
+    });
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "new" },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+      { title: "renders a label", file: "e2e/label.spec.ts", expect: "*", existing: true },
+      {
+        title: "[SWEEP-1] key routes",
+        expect: "*",
+        sweep: { base: capture("Label\nold", []), head: capture("Label\nnew", ["TypeError: x"]) },
+        png: { base: png(4, 3), head: png(4, 3, [[1, 2]]) },
+      },
+    ]);
+    const regression = {
+      sources: ["src"],
+      routes: [
+        { route: "/label", file: "src/pages/Label.tsx" },
+        { route: "/report", file: "src/pages/Report.tsx" },
+        { route: "/help", file: "src/pages/Help.tsx" },
+      ],
+      shared: [],
+      fanIn: 3,
+      budget: 2,
+    };
+    const planned = (routes) => (suite) => {
+      suite.base.revision = base;
+      suite.regression = regression;
+      suite.cases[0].routes = ["/label"];
+      suite.cases[1].routes = routes;
+      suite.cases.push({ id: "SWEEP-1", kind: "sweep", classification: "invariant", routes: ["/label"] });
+      fs.writeFileSync(
+        path.join(fixture.root, suite.plan),
+        runtimePlan(["E2E-01", "E2E-02", "PR-01", "SWEEP-1"])
+      );
+    };
+    const run = fixture.run(planned(["/label"]), "impact");
+    assert.strictEqual(run.status, 1, run.stderr || run.stdout);
+    const found = run.results.regression;
+    assert.deepStrictEqual(found.selected.map((r) => r.route), ["/label", "/report"]);
+    assert.ok(found.selected[1].reason.includes("src/widgets/Badge.tsx"));
+    assert.deepStrictEqual(found.missing, ["/report"]);
+    const sweep = run.results.sweep;
+    assert.deepStrictEqual(sweep.notCompared, []);
+    assert.deepStrictEqual(sweep.routes[0].differs, ["text", "consoleErrors", "screenshot"]);
+    assert.strictEqual(sweep.routes[0].changedPixels, 1);
+    assert.strictEqual(sweep.routes[0].mayBelongToIntent, true);
+    assert.deepStrictEqual(sweep.routes[0].text, { removed: ["old"], added: ["new"] });
+    const sweepRow = run.results.cases.find((r) => r.caseId === "SWEEP-1");
+    assert.deepStrictEqual([sweepRow.result, sweepRow.proof], ["PASS", "NOT_REQUIRED"]);
+    assert.ok(fs.existsSync(path.join(run.out, sweep.routes[0].screenshots.base)));
+    assert.ok(fs.existsSync(path.join(run.out, sweep.routes[0].screenshots.head)));
+    // The audit recomputes the same report from the stored map and captures.
+    assert.strictEqual(fixture.audit(run.out).status, 1);
+
+    // The HTML report is a view of the bundle: one offline file, outside the integrity inventory.
+    const reportPath = path.join(run.out, "report.html");
+    const page = fs.readFileSync(reportPath, "utf8");
+    assert.ok(!/(src|href)=["']https?:/.test(page), "report must not load remote resources");
+    assert.strictEqual((page.match(/src="data:image\/png;base64,/g) || []).length, 2);
+    assert.ok(page.includes("SWEEP-1") && page.includes("/report"));
+    const evidenceTool = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
+    const notesPath = path.join(fixture.root, "notes.json");
+    fs.writeFileSync(notesPath, JSON.stringify({ "E2E-02": "Probably a stale label cache" }));
+    const rendered = spawnSync("python3", [evidenceTool, "report", run.out, "--notes", notesPath], { encoding: "utf8" });
+    assert.strictEqual(rendered.status, 0, rendered.stderr);
+    const noted = fs.readFileSync(reportPath, "utf8");
+    assert.ok(/Agent inference, not evidence:<\/b> Probably a stale label cache/.test(noted));
+    fs.appendFileSync(path.join(run.out, "summary.md"), "edited\n");
+    const refused = spawnSync("python3", [evidenceTool, "report", run.out], { encoding: "utf8" });
+    assert.strictEqual(refused.status, 2);
+
+    const covered = fixture.run(planned(["/report"]), "impact-covered");
+    assert.deepStrictEqual(covered.results.regression.missing, []);
+
+    const unknown = fixture.validate((suite) => {
+      planned(["/nowhere"])(suite);
+    });
+    assert.strictEqual(unknown.status, 2);
   } finally {
     fixture.cleanup();
   }

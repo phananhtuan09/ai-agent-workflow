@@ -185,6 +185,21 @@ def existing_rows(bundle: Path) -> tuple[list[dict], list[str]]:
     return suites, []
 
 
+def regression_open(bundle: Path) -> tuple[list[str], list[str]]:
+    """Impact-map routes without a case, and swept routes that differ from base, from the generated results."""
+    try:
+        results = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return [], []
+    if not isinstance(results, dict):
+        return [], []
+    found = results.get("regression") or {}
+    missing = ["impact map not available"] if "error" in found else list(found.get("missing", []))
+    sweep = results.get("sweep") or {}
+    review = [row.get("route") for row in sweep.get("routes", []) if row.get("differs")] + list(sweep.get("notCompared", []))
+    return missing, review
+
+
 def check_existing(text: str, rows: list[dict]) -> list[str]:
     """Each of the project's own suites is reported with the status the tool generated."""
     section = top_section(text, "Existing suites")
@@ -276,6 +291,8 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
         errors.extend(unreadable or check_existing(text, existing))
     new_failures = [row.get("id") for row in existing if row.get("status") == "NEW_FAILURE"]
     review = [row.get("id") for row in existing if row.get("status") in REVIEW_EXISTING]
+    uncovered, swept = regression_open(bundle) if bundle is not None else ([], [])
+    review += swept
     errors.extend(check_supporting(text, bundle is not None or mode == "completion"))
     if not cases:
         errors.append("No cases found. Use headings like '## Case D2 — Title'.")
@@ -404,10 +421,12 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
             errors.append("Every release-blocking case must PASS before completion.")
         if new_failures:
             errors.append(f"Existing suites fail on head but pass on base: {', '.join(new_failures)}.")
+        if uncovered:
+            errors.append(f"Impact-map routes have no case: {', '.join(uncovered)}.")
         if status == "AWAITING_HUMAN":
             if human_cases == 0 and not review:
                 errors.append(
-                    "AWAITING_HUMAN requires a case with Human judgment: YES or an existing suite needing review."
+                    "AWAITING_HUMAN requires a case with Human judgment: YES, an existing suite needing review, or a sweep difference."
                 )
             if decision != "PENDING":
                 errors.append("AWAITING_HUMAN requires Decision: PENDING.")

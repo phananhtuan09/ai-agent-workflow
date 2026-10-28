@@ -12,13 +12,21 @@ import sys
 import tempfile
 import uuid
 import xml.etree.ElementTree as ET
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-KINDS = {"browser", "api", "pr-test"}
+# Importing the sibling impact module must not leave __pycache__ in the installed skill directory.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import impact  # noqa: E402
+
+KINDS = {"browser", "api", "pr-test", "sweep"}
 CLASSIFICATIONS = {"new-behavior", "invariant"}
 SETUP_TIMEOUT = 1800
 SUITE_EXIT = "(suite exit code)"
+# Rendering jitter moves channels by a few units between two identical pages; real changes move them far more.
+PIXEL_TOLERANCE = 16
 
 
 def load(path):
@@ -84,17 +92,29 @@ def contract(suite, root):
         if not isinstance(limits, list) or any(not isinstance(x, str) or not x.strip() for x in limits):
             raise ValueError("determinism limits must be nonempty strings")
     existing_contract(data)
+    keys = set()
+    if data.get("regression") is not None:
+        if base is None:
+            raise ValueError("regression needs a base: the impact map is the change between base and head")
+        keys = {r["route"] for r in impact.config_of(data["regression"])["routes"]}
     cases = data.get("cases", [])
     ids = [c["id"] for c in cases]
     if not ids or len(ids) != len(set(ids)):
         raise ValueError("Cases must have unique IDs")
-    if all(c.get("kind") == "pr-test" for c in cases):
-        raise ValueError("A suite needs at least one runtime case besides pr-test cases")
+    if all(c.get("kind") in ("pr-test", "sweep") for c in cases):
+        raise ValueError("A suite needs at least one runtime case besides pr-test and sweep cases")
     for case in cases:
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", case["id"]) or case.get("kind") not in KINDS:
             raise ValueError("Invalid case ID/kind")
         if case.get("classification", "new-behavior") not in CLASSIFICATIONS:
             raise ValueError("classification must be new-behavior or invariant")
+        routes = case.get("routes", [])
+        if not isinstance(routes, list) or any(not isinstance(r, str) for r in routes) or set(routes) - keys:
+            raise ValueError("case routes must name key routes from the regression block")
+        if case["kind"] == "sweep":
+            if not routes or "checks" in case:
+                raise ValueError("A sweep case lists the key routes it captures and has no checks")
+            continue
         if case["kind"] == "pr-test":
             test = case.get("test", {})
             if not isinstance(test, dict) or any(not isinstance(test.get(k), str) or not test[k] for k in ("file", "title")):
@@ -176,7 +196,7 @@ def run_existing(run, cwd, entry, extra_env, label):
 
 
 def junit(path):
-    """Map each test in a JUnit XML report to passed, failed, or skipped; None when the report is missing or unreadable."""
+    """Map each test in a JUnit XML report to (file, title, outcome); None when the report is missing or unreadable."""
     try:
         tree = ET.parse(path)
     except (OSError, ET.ParseError):
@@ -188,24 +208,29 @@ def junit(path):
         seen[name] = seen.get(name, 0) + 1
         key = name if seen[name] == 1 else f"{name} #{seen[name]}"
         if case.find("failure") is not None or case.find("error") is not None:
-            tests[key] = "failed"
+            outcome = "failed"
         elif case.find("skipped") is not None:
-            tests[key] = "skipped"
+            outcome = "skipped"
         else:
-            tests[key] = "passed"
+            outcome = "passed"
+        tests[key] = (case.get("classname", ""), case.get("name", ""), outcome)
     return tests
 
 
-def existing_tests(run, suite_id, label, record, tags):
-    """Test outcomes of one execution, without the plan's own tagged cases; None when they cannot be read."""
+def existing_tests(run, suite_id, label, record, own):
+    """Test outcomes of one execution, without the plan's own cases; None when they cannot be read."""
     tests = {}
     if record["report"]:
         parsed = junit(run / "existing" / suite_id / f"{label}.xml")
         if parsed is None:
             return None
         # The plan's own runtime cases live in the same project; they are judged as cases, not as existing tests.
-        tests = {k: v for k, v in parsed.items() if not any(tag in k for tag in tags)}
-        if record["exitCode"] != 0 and "failed" not in tests.values():
+        # A case is the plan's own only in an approved file: earlier plans' specs reuse the same IDs.
+        tags, files = own
+        tests = {k: outcome for k, (file, title, outcome) in parsed.items()
+                 if not (any(tag in title for tag in tags) and any(same_file(f, file) for f in files))}
+        # A red exit explained by any failing test, the plan's own included, is not a separate failure.
+        if record["exitCode"] != 0 and all(outcome != "failed" for _, _, outcome in parsed.values()):
             tests[SUITE_EXIT] = "failed"
     else:
         tests[SUITE_EXIT] = "passed" if record["exitCode"] == 0 else "failed"
@@ -242,7 +267,7 @@ def existing_status(bundle, suite, base):
     head_records = load(bundle / "run-manifest.json").get("existing", {})
     base_path = bundle / "base" / "run-manifest.json"
     base_records = load(base_path).get("existing", {}) if base is not None and base_path.exists() else {}
-    tags = [f"[{c['id']}]" for c in suite["cases"] if c["kind"] != "pr-test"]
+    own = ([f"[{c['id']}]" for c in suite["cases"] if c["kind"] != "pr-test"], suite["files"])
     rows = []
     for entry in existing.get("suites", []):
         records = head_records.get(entry["id"], {})
@@ -251,7 +276,7 @@ def existing_status(bundle, suite, base):
                "exitCodes": {"base": (base_record or {}).get("exitCode"), "head": (head_record or {}).get("exitCode"),
                              "rerun": (rerun_record or {}).get("exitCode")}}
         rows.append(row)
-        head = existing_tests(bundle, entry["id"], "head", head_record, tags) if head_record else None
+        head = existing_tests(bundle, entry["id"], "head", head_record, own) if head_record else None
         if head is None:
             row.update(status="NOT_COMPARABLE", reason="Head report missing or unreadable")
             continue
@@ -262,11 +287,11 @@ def existing_status(bundle, suite, base):
             else:
                 row["reason"] = "Passes on head; no usable base run"
             continue
-        before = existing_tests(bundle / "base", entry["id"], "base", base_record, tags)
+        before = existing_tests(bundle / "base", entry["id"], "base", base_record, own)
         if before is None:
             row.update(status="NOT_COMPARABLE", reason="Base report missing or unreadable")
             continue
-        rerun = existing_tests(bundle, entry["id"], "rerun", rerun_record, tags) if rerun_record else None
+        rerun = existing_tests(bundle, entry["id"], "rerun", rerun_record, own) if rerun_record else None
         row["tests"] = compare_existing(before, head, rerun)
         if not head_record["report"] and head.get(SUITE_EXIT) == before.get(SUITE_EXIT) == "failed":
             row.update(status="NOT_COMPARABLE", reason="Both revisions exit non-zero and the suite writes no per-test report", tests={})
@@ -333,6 +358,133 @@ def observation_document(run, attempt):
     return observed if isinstance(observed, dict) else None
 
 
+def sweep_document(run, attempt, case):
+    """The runtime-sweep capture of a sweep test with screenshot names replaced by bundle paths, or (None, why not)."""
+    observed = [a for a in attempt.get("attachments", []) if a.get("name") == "runtime-sweep"]
+    if len(observed) != 1:
+        return None, "Missing a unique runtime-sweep attachment"
+    try:
+        doc = json.loads(attachment(run, observed[0]))
+    except ValueError:
+        return None, "Unreadable runtime-sweep attachment"
+    pages = doc.get("routes") if isinstance(doc, dict) else None
+    if not isinstance(pages, list) or sorted(str(p.get("route")) for p in pages if isinstance(p, dict)) != sorted(case["routes"]):
+        return None, "runtime-sweep routes do not match the case's routes"
+    shots = {a.get("name"): a for a in attempt.get("attachments", [])}
+    captured = []
+    for page in pages:
+        if not isinstance(page.get("text"), str) or any(
+            not isinstance(page.get(k), list) or any(not isinstance(x, str) for x in page[k]) for k in ("requests", "consoleErrors")
+        ):
+            return None, f"runtime-sweep entry for {page['route']} needs text, requests and consoleErrors"
+        shot = shots.get(page.get("screenshot"), {})
+        if not shot.get("path"):
+            # Inline bodies live only inside native.json; a reviewer needs the image as a file.
+            return None, f"Screenshot for {page['route']} must be a file attachment (attach with path, not body)"
+        captured.append({"route": page["route"], "text": page["text"], "requests": sorted(page["requests"]),
+                         "consoleErrors": sorted(page["consoleErrors"]), "screenshot": shot["path"]})
+    return sorted(captured, key=lambda p: p["route"]), ""
+
+
+def png_pixels(path):
+    """Decode an 8-bit, non-interlaced RGB or RGBA PNG (what Playwright writes) to (width, height, rows); None otherwise."""
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    pos, header, chunks = 8, None, []
+    while pos + 8 <= len(data):
+        length, kind = int.from_bytes(data[pos:pos + 4], "big"), data[pos + 4:pos + 8]
+        body = data[pos + 8:pos + 8 + length]
+        if kind == b"IHDR":
+            header = body
+        elif kind == b"IDAT":
+            chunks.append(body)
+        pos += 12 + length
+    if header is None or header[8] != 8 or header[9] not in (2, 6) or header[12] != 0:
+        return None
+    width, height = int.from_bytes(header[0:4], "big"), int.from_bytes(header[4:8], "big")
+    step = 4 if header[9] == 6 else 3
+    try:
+        raw = zlib.decompress(b"".join(chunks))
+    except zlib.error:
+        return None
+    stride, rows, previous = width * step, [], bytearray(width * step)
+    for y in range(height):
+        kind, line = raw[y * (stride + 1)], bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for x in range(stride if kind else 0):
+            left = line[x - step] if x >= step else 0
+            up, corner = previous[x], previous[x - step] if x >= step else 0
+            if kind == 1:
+                line[x] = (line[x] + left) & 255
+            elif kind == 2:
+                line[x] = (line[x] + up) & 255
+            elif kind == 3:
+                line[x] = (line[x] + (left + up) // 2) & 255
+            elif kind == 4:
+                guess = left + up - corner
+                pa, pb, pc = abs(guess - left), abs(guess - up), abs(guess - corner)
+                line[x] = (line[x] + (left if pa <= pb and pa <= pc else up if pb <= pc else corner)) & 255
+        rows.append(bytes(line))
+        previous = line
+    return width, height, rows, step
+
+
+def changed_pixels(base_path, head_path):
+    """Count pixels whose channels differ by more than the tolerance; None when either cannot be decoded or sizes differ."""
+    base, head = png_pixels(base_path), png_pixels(head_path)
+    if base is None or head is None or base[:2] != head[:2]:
+        return None
+    step = base[3]
+    if head[3] != step:
+        return None
+    return sum(1 for a, b in zip(base[2], head[2]) if a != b for x in range(0, len(a), step)
+               if a[x:x + step] != b[x:x + step] and max(abs(i - j) for i, j in zip(a[x:x + step], b[x:x + step])) > PIXEL_TOLERANCE)
+
+
+def sweep_status(bundle, suite, head, base_rows, rules):
+    """Compare each swept route between base and head: visible text, requests, console errors, screenshot."""
+    intent = {r for c in suite["cases"] if c["kind"] != "sweep" and c.get("classification", "new-behavior") == "new-behavior" for r in c.get("routes", [])}
+    routes, missing = [], []
+    for case in (c for c in suite["cases"] if c["kind"] == "sweep"):
+        now, before = head[case["id"]].get("sweep"), base_rows.get(case["id"], {}).get("sweep")
+        if now is None or before is None:
+            missing.append(case["id"])
+            continue
+        for page, old in zip(now, before):
+            text, old_text = normalized(page["text"], rules), normalized(old["text"], rules)
+            requests, old_requests = set(normalized(page["requests"], rules)), set(normalized(old["requests"], rules))
+            errors, old_errors = set(normalized(page["consoleErrors"], rules)), set(normalized(old["consoleErrors"], rules))
+            pixels = changed_pixels(bundle / "base" / old["screenshot"], bundle / page["screenshot"])
+            found = {"route": page["route"], "differs": [], "screenshots": {"base": "base/" + old["screenshot"], "head": page["screenshot"]},
+                     "changedPixels": pixels, "mayBelongToIntent": page["route"] in intent}
+            if text != old_text:
+                lines, old_lines = text.splitlines(), old_text.splitlines()
+                found["differs"].append("text")
+                found["text"] = {"removed": [x for x in old_lines if x not in lines][:5], "added": [x for x in lines if x not in old_lines][:5]}
+            if requests != old_requests:
+                found["differs"].append("requests")
+                found["requests"] = {"removed": sorted(old_requests - requests), "added": sorted(requests - old_requests)}
+            if errors - old_errors:
+                found["differs"].append("consoleErrors")
+                found["consoleErrors"] = sorted(errors - old_errors)
+            if pixels is None or pixels:
+                found["differs"].append("screenshot")
+            routes.append(found)
+    return {"routes": routes, "notCompared": missing}
+
+
+def regression_status(bundle, suite):
+    """Which impact-map routes the plan covers; the map itself is computed by impact.py when the run starts."""
+    path = bundle / "impact-map.json"
+    if not path.exists():
+        return {"error": "Impact map was not computed", "missing": []}
+    found = load(path)
+    if "error" in found:
+        return {**found, "missing": []}
+    covered = {r for c in suite["cases"] if c["kind"] not in ("pr-test", "sweep") for r in c.get("routes", [])}
+    return {**found, "missing": [r["route"] for r in found["selected"] if r["route"] not in covered]}
+
+
 def checks_of(row):
     checks = (row.get("observations") or {}).get("checks")
     if not isinstance(checks, list):
@@ -394,6 +546,13 @@ def score_run(run, suite):
         if case["kind"] == "pr-test":
             row.update(result="PASS", reasons=["Existing PR test; native result only, no runtime observations"])
             continue
+        if case["kind"] == "sweep":
+            captured, problem = sweep_document(run, attempts[0], case)
+            if captured is None:
+                row.update(result="BLOCKED", reasons=[problem])
+            else:
+                row.update(result="PASS", reasons=["Sweep captured; differences from base are reported for review, not scored"], sweep=captured)
+            continue
         observations = [a for a in attachments if a["name"] == "runtime-observations"]
         if len(observations) != 1:
             row.update(result="BLOCKED", reasons=["Missing unique structured observations"])
@@ -429,7 +588,8 @@ def base_status(bundle, suite):
     manifest = load(base / "run-manifest.json")
     degraded = manifest.get("degraded")
     rows, errors = ({}, []) if degraded else score_run(base, suite)
-    probes = [c["id"] for c in suite["cases"] if c.get("classification") == "invariant"]
+    # A sweep passes on any page that loads, so it is not evidence that the base app really ran.
+    probes = [c["id"] for c in suite["cases"] if c.get("classification") == "invariant" and c["kind"] != "sweep"]
     if not degraded and probes and not any(rows[i]["result"] == "PASS" for i in probes):
         # Invariant cases double as a health probe: if none passes, the base app was not really exercised.
         degraded = "No invariant case passed on base; the base runtime may not have run"
@@ -443,6 +603,8 @@ def proof(case, head, base, base_rows, rules):
     """Classify whether a passing head case is shown able to fail on base."""
     if head["result"] != "PASS":
         return "NOT_EVALUATED", "Head result is not PASS"
+    if case["kind"] == "sweep":
+        return "NOT_REQUIRED", "Sweep case; base and head are compared, not scored"
     if case.get("classification", "new-behavior") == "invariant":
         return "NOT_REQUIRED", "Invariant case; expected to pass on base too"
     if base is None:
@@ -485,6 +647,10 @@ def score(bundle):
     # Bundles from before existing suites were declared keep their original report, so they still audit.
     if suite.get("existing") is not None:
         result["existing"] = existing_status(bundle, suite, base)
+    if suite.get("regression") is not None:
+        result["regression"] = regression_status(bundle, suite)
+    if any(c["kind"] == "sweep" for c in suite["cases"]):
+        result["sweep"] = sweep_status(bundle, suite, head, base_rows, rules)
     return result
 
 
@@ -520,13 +686,41 @@ def summary(result):
         for kind, keys in row["tests"].items():
             more = f" and {len(keys) - 10} more" if len(keys) > 10 else ""
             lines.append(f"  - {kind}: {'; '.join(keys[:10])}{more}")
+    found = result.get("regression")
+    if found is not None and "error" in found:
+        lines.append(f"Impact map: not available; {found['error']}")
+    elif found is not None:
+        lines.append(f"Impact map: {len(found['changed'])} changed source file(s); {len(found['selected'])} route(s) selected, {len(found['notTested'])} not tested")
+        for row in found["selected"]:
+            lines.append(f"  - {row['route']} ({row['tier']}): {row['reason']}{'; NO CASE' if row['route'] in found['missing'] else ''}")
+        for row in found["notTested"]:
+            lines.append(f"  - {row['route']}: found, not tested; {row['reason']}")
+        for label, key in (("Shared surfaces changed", "shared"), ("Changed files reaching no key route", "untraced"), ("Changed files outside sources", "outsideSources")):
+            if found.get(key):
+                lines.append(f"{label}: {', '.join(found[key])}")
+        lines += [f"Impact warning: {w}" for w in found["warnings"]]
+    sweep = result.get("sweep")
+    if sweep is not None:
+        differing = [r for r in sweep["routes"] if r["differs"]]
+        lines.append(f"Sweep: {len(sweep['routes'])} route(s) compared, {len(differing)} differ{'; not compared: ' + ', '.join(sweep['notCompared']) if sweep['notCompared'] else ''}")
+        for row in differing:
+            hint = "; may belong to intent" if row["mayBelongToIntent"] else ""
+            pixels = "undecodable or resized" if row["changedPixels"] is None else f"{row['changedPixels']} px"
+            lines.append(f"  - {row['route']}: {', '.join(row['differs'])} ({pixels}){hint}; base {row['screenshots']['base']}, head {row['screenshots']['head']}")
+            for key in ("text", "requests"):
+                if key in row:
+                    lines.append(f"    - {key}: removed {json.dumps(row[key]['removed'], ensure_ascii=False)[:200]}, added {json.dumps(row[key]['added'], ensure_ascii=False)[:200]}")
+            if "consoleErrors" in row:
+                lines.append(f"    - new console errors: {json.dumps(row['consoleErrors'], ensure_ascii=False)[:200]}")
     return "\n".join(lines) + "\n"
 
 
 def inventory(bundle):
     if any(p.is_symlink() for p in bundle.rglob("*")):
         raise ValueError("Evidence bundle must not contain symlinks")
-    return {str(p.relative_to(bundle)): digest(p) for p in sorted(bundle.rglob("*")) if p.is_file() and p.name != "integrity.json"}
+    # report.html is a view regenerated from the bundle (evidence.py report), not evidence.
+    return {str(p.relative_to(bundle)): digest(p) for p in sorted(bundle.rglob("*"))
+            if p.is_file() and str(p.relative_to(bundle)) not in ("integrity.json", "report.html")}
 
 
 def audit(bundle):
@@ -567,6 +761,18 @@ def audit(bundle):
         named = [r["id"] for r in suites if r["status"] == status]
         if named:
             problems.append(f"{label}: {', '.join(named)}")
+    found = result.get("regression")
+    if found is not None and "error" in found:
+        problems.append(f"impact map not available: {found['error']}")
+    elif found is not None and found["missing"]:
+        problems.append(f"impact routes without a case: {', '.join(found['missing'])}")
+    sweep = result.get("sweep")
+    if sweep is not None:
+        differing = [r["route"] for r in sweep["routes"] if r["differs"]]
+        if differing:
+            problems.append(f"sweep differences needing review: {', '.join(differing)}")
+        if sweep["notCompared"]:
+            problems.append(f"sweep not compared: {', '.join(sweep['notCompared'])}")
     if result["exitCode"] != 0 or result["nativeErrors"]:
         problems.append(f"native run exit code {result['exitCode']}, {len(result['nativeErrors'])} global error(s)")
     # Exit 1 means the evidence is consistent but the suite is not done; inconsistent evidence exits 2.
@@ -675,19 +881,35 @@ def run_base(bundle, root, data, run_id):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["validate", "approve", "run", "audit"])
+    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report"])
     parser.add_argument("target", type=Path)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--reviewer")
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--notes", type=Path, help="report: JSON of agent inference by case ID or 'general', shown labeled as inference")
     args = parser.parse_args()
     if args.mode == "audit":
         return audit(args.target.resolve())
+    if args.mode == "report":
+        import report
+        bundle = args.target.resolve()
+        audit(bundle)  # refuses an inconsistent bundle before rendering it
+        notes = load(args.notes) if args.notes else {}
+        if not isinstance(notes, dict) or any(not isinstance(v, str) for v in notes.values()):
+            raise ValueError("--notes must map case IDs or 'general' to text")
+        print(f"Report: {report.write(bundle, notes)}")
+        return 0
     root, suite = args.root.resolve(), args.target.resolve()
     data, hashes = contract(suite, root)
     approval_path = suite.with_name(suite.name + ".approval.json")
     if args.mode == "validate":
         print("Suite and Markdown contract valid")
+        if data.get("regression") is not None:
+            # Plan-time view of the same map the run records, so cases can be added before approval.
+            found = impact.build(root, data["base"]["revision"], data["regression"])
+            covered = {r for c in data["cases"] if c["kind"] not in ("pr-test", "sweep") for r in c.get("routes", [])}
+            missing = [r["route"] for r in found["selected"] if r["route"] not in covered]
+            print(f"Impact routes without a case: {', '.join(missing) or 'none'}")
         return 0
     if args.mode == "approve":
         if not args.reviewer:
@@ -717,6 +939,14 @@ def main():
     write(bundle / "run-manifest.json", manifest)
     if data.get("base") is not None:
         run_base(bundle, root, data, run_id)
+    if data.get("regression") is not None:
+        base_head = load(bundle / "base" / "run-manifest.json").get("gitHead")
+        try:
+            if not base_head:
+                raise ValueError("base revision did not resolve")
+            write(bundle / "impact-map.json", impact.build(root, base_head, data["regression"]))
+        except (ValueError, OSError) as error:
+            write(bundle / "impact-map.json", {"error": str(error)[:300]})
     # A test that passes on base and fails on head is run once more on head before it counts as a new failure.
     for row in (existing_status(bundle, data, {}) or {}).get("suites", []):
         if "NEW_FAILURE" in row["tests"]:
@@ -727,7 +957,10 @@ def main():
     write(bundle / "results.json", result)
     (bundle / "summary.md").write_text(summary(result), encoding="utf-8")
     write(bundle / "integrity.json", inventory(bundle))
-    return audit(bundle)
+    code = audit(bundle)
+    import report
+    print(f"Report: {report.write(bundle)}")
+    return code
 
 
 if __name__ == "__main__":
