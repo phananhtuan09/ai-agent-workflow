@@ -11,12 +11,14 @@ import subprocess
 import sys
 import tempfile
 import uuid
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
 KINDS = {"browser", "api", "pr-test"}
 CLASSIFICATIONS = {"new-behavior", "invariant"}
 SETUP_TIMEOUT = 1800
+SUITE_EXIT = "(suite exit code)"
 
 
 def load(path):
@@ -81,6 +83,7 @@ def contract(suite, root):
         limits = det.get("limits", [])
         if not isinstance(limits, list) or any(not isinstance(x, str) or not x.strip() for x in limits):
             raise ValueError("determinism limits must be nonempty strings")
+    existing_contract(data)
     cases = data.get("cases", [])
     ids = [c["id"] for c in cases]
     if not ids or len(ids) != len(set(ids)):
@@ -119,6 +122,171 @@ def contract(suite, root):
     if checked.returncode:
         raise ValueError(checked.stderr or checked.stdout)
     return data, hashes
+
+
+def existing_contract(data):
+    """The project's own test suites, run on base and head so new failures are told apart from old ones."""
+    existing = data.get("existing")
+    if existing is None:
+        if data.get("base") is not None:
+            raise ValueError("A suite with a base must declare existing: the project's own test suites, or none with a reason")
+        return
+    if not isinstance(existing, dict) or set(existing) - {"suites", "reason"}:
+        raise ValueError("existing takes only suites and reason")
+    suites = existing.get("suites", [])
+    if not isinstance(suites, list):
+        raise ValueError("existing suites must be a list")
+    if not suites and (not isinstance(existing.get("reason"), str) or not existing["reason"].strip()):
+        raise ValueError("existing needs suites, or a reason why the project has none")
+    for entry in suites:
+        if not isinstance(entry, dict) or set(entry) - {"id", "command", "env"}:
+            raise ValueError("Each existing suite takes only id, command, and env")
+        if not isinstance(entry.get("id"), str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", entry["id"]):
+            raise ValueError("Each existing suite needs an ID")
+        command = entry.get("command")
+        if not isinstance(command, list) or not command or any(not isinstance(x, str) or not x for x in command):
+            raise ValueError("existing suite command must be a nonempty argument array")
+        env = entry.get("env", {})
+        if not isinstance(env, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
+            raise ValueError("existing suite env must map names to string values")
+    ids = [entry["id"] for entry in suites]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Existing suite IDs must be unique")
+
+
+def run_existing(run, cwd, entry, extra_env, label):
+    """Run one of the project's own suites; {report} in its command or env names the JUnit file it writes."""
+    folder = run / "existing" / entry["id"]
+    folder.mkdir(parents=True, exist_ok=True)
+    report = folder / f"{label}.xml"
+    fill = lambda value: value.replace("{report}", str(report))
+    env = {**os.environ, **extra_env, **{k: fill(v) for k, v in entry.get("env", {}).items()}}
+    uses_report = any("{report}" in x for x in [*entry["command"], *entry.get("env", {}).values()])
+    with (folder / f"{label}.log").open("w", encoding="utf-8") as log:
+        try:
+            # Existing suite commands are human-approved argument arrays (hashed with the suite) and run without a shell.
+            done = subprocess.run([fill(x) for x in entry["command"]], cwd=cwd, env=env, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+            code, output = done.returncode, done.stdout + done.stderr
+        except subprocess.TimeoutExpired:
+            code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
+        except OSError as error:
+            code, output = 127, str(error)
+        log.write(output)
+    return {"command": entry["command"], "exitCode": code, "report": uses_report}
+
+
+def junit(path):
+    """Map each test in a JUnit XML report to passed, failed, or skipped; None when the report is missing or unreadable."""
+    try:
+        tree = ET.parse(path)
+    except (OSError, ET.ParseError):
+        return None
+    tests, seen = {}, {}
+    for case in tree.iter("testcase"):
+        name = f"{case.get('classname', '')} > {case.get('name', '')}"
+        # The same title can run more than once, e.g. once per browser project.
+        seen[name] = seen.get(name, 0) + 1
+        key = name if seen[name] == 1 else f"{name} #{seen[name]}"
+        if case.find("failure") is not None or case.find("error") is not None:
+            tests[key] = "failed"
+        elif case.find("skipped") is not None:
+            tests[key] = "skipped"
+        else:
+            tests[key] = "passed"
+    return tests
+
+
+def existing_tests(run, suite_id, label, record, tags):
+    """Test outcomes of one execution, without the plan's own tagged cases; None when they cannot be read."""
+    tests = {}
+    if record["report"]:
+        parsed = junit(run / "existing" / suite_id / f"{label}.xml")
+        if parsed is None:
+            return None
+        # The plan's own runtime cases live in the same project; they are judged as cases, not as existing tests.
+        tests = {k: v for k, v in parsed.items() if not any(tag in k for tag in tags)}
+        if record["exitCode"] != 0 and "failed" not in tests.values():
+            tests[SUITE_EXIT] = "failed"
+    else:
+        tests[SUITE_EXIT] = "passed" if record["exitCode"] == 0 else "failed"
+    return tests
+
+
+def compare_existing(base, head, rerun):
+    """Classify each test by its base and head outcomes; a head failure that passes on rerun is unstable."""
+    found = {}
+    for key in sorted(set(base) | set(head)):
+        before, after = base.get(key), head.get(key)
+        if after == "failed":
+            if before == "failed":
+                kind = "PRE_EXISTING"
+            elif rerun is not None and rerun.get(key) == "passed":
+                kind = "UNSTABLE"
+            else:
+                kind = "NEW_FAILURE"
+        elif after == "passed" and before == "failed":
+            kind = "FIXED"
+        elif after in (None, "skipped") and before == "passed":
+            kind = "REMOVED"
+        else:
+            continue
+        found.setdefault(kind, []).append(key)
+    return found
+
+
+def existing_status(bundle, suite, base):
+    """Compare the project's own suites between base and head."""
+    existing = suite.get("existing")
+    if existing is None:
+        return None
+    head_records = load(bundle / "run-manifest.json").get("existing", {})
+    base_path = bundle / "base" / "run-manifest.json"
+    base_records = load(base_path).get("existing", {}) if base is not None and base_path.exists() else {}
+    tags = [f"[{c['id']}]" for c in suite["cases"] if c["kind"] != "pr-test"]
+    rows = []
+    for entry in existing.get("suites", []):
+        records = head_records.get(entry["id"], {})
+        head_record, rerun_record, base_record = records.get("head"), records.get("rerun"), base_records.get(entry["id"])
+        row = {"id": entry["id"], "status": "PASS", "reason": "", "tests": {},
+               "exitCodes": {"base": (base_record or {}).get("exitCode"), "head": (head_record or {}).get("exitCode"),
+                             "rerun": (rerun_record or {}).get("exitCode")}}
+        rows.append(row)
+        head = existing_tests(bundle, entry["id"], "head", head_record, tags) if head_record else None
+        if head is None:
+            row.update(status="NOT_COMPARABLE", reason="Head report missing or unreadable")
+            continue
+        if base_record is None:
+            if "failed" in head.values():
+                row.update(status="NOT_COMPARABLE", reason="No usable base run; head failures cannot be told apart from earlier ones",
+                           tests={"HEAD_FAILURE": sorted(k for k, v in head.items() if v == "failed")})
+            else:
+                row["reason"] = "Passes on head; no usable base run"
+            continue
+        before = existing_tests(bundle / "base", entry["id"], "base", base_record, tags)
+        if before is None:
+            row.update(status="NOT_COMPARABLE", reason="Base report missing or unreadable")
+            continue
+        rerun = existing_tests(bundle, entry["id"], "rerun", rerun_record, tags) if rerun_record else None
+        row["tests"] = compare_existing(before, head, rerun)
+        if not head_record["report"] and head.get(SUITE_EXIT) == before.get(SUITE_EXIT) == "failed":
+            row.update(status="NOT_COMPARABLE", reason="Both revisions exit non-zero and the suite writes no per-test report", tests={})
+        elif "NEW_FAILURE" in row["tests"]:
+            row.update(status="NEW_FAILURE", reason="Passes on base, fails on head")
+        elif {"UNSTABLE", "REMOVED"} & set(row["tests"]):
+            row.update(status="NEEDS_REVIEW", reason="Head failure that passed on rerun, or a passing base test missing or skipped on head")
+        elif "PRE_EXISTING" in row["tests"]:
+            row.update(status="PRE_EXISTING", reason="Fails on base too; not caused by this change")
+    return {"suites": rows, "reason": existing.get("reason", "")}
+
+
+def restore_base(tree, names):
+    """Put files copied from the head snapshot back to their base version, so the project's own suites see base only."""
+    for name in names:
+        tracked = subprocess.run(["git", "cat-file", "-e", f"HEAD:{name}"], cwd=tree, capture_output=True)
+        if tracked.returncode:
+            local(tree, name).unlink(missing_ok=True)
+        else:
+            subprocess.run(["git", "checkout", "HEAD", "--", name], cwd=tree, capture_output=True)
 
 
 def specs(node):
@@ -313,7 +481,11 @@ def score(bundle):
             if "observations" in row and "observations" in base_rows[case["id"]]:
                 row["baseDiff"] = base_diff(row, base_rows[case["id"]], rules)
         rows.append(row)
-    return {"cases": rows, "exitCode": manifest["exitCode"], "nativeErrors": errors, "base": base, "determinism": det}
+    result = {"cases": rows, "exitCode": manifest["exitCode"], "nativeErrors": errors, "base": base, "determinism": det}
+    # Bundles from before existing suites were declared keep their original report, so they still audit.
+    if suite.get("existing") is not None:
+        result["existing"] = existing_status(bundle, suite, base)
+    return result
 
 
 def summary(result):
@@ -339,6 +511,15 @@ def summary(result):
         lines.append(f"Determinism limits: {'; '.join(det.get('limits', [])) or 'none stated'}")
     non_proving = [r["caseId"] for r in result["cases"] if r["proof"] == "NON_PROVING"]
     lines.append(f"Non-proving PASS: {', '.join(non_proving) if non_proving else 'none'}")
+    existing = result.get("existing") or {"suites": []}
+    if "existing" in result and not existing["suites"]:
+        lines.append(f"Existing suites: none; {existing['reason']}")
+    for row in existing["suites"]:
+        codes = ", ".join(f"{k} exit {v}" for k, v in row["exitCodes"].items() if v is not None)
+        lines.append(f"Existing suite {row['id']}: {row['status']}; {row['reason'] or 'no failures'} ({codes})")
+        for kind, keys in row["tests"].items():
+            more = f" and {len(keys) - 10} more" if len(keys) > 10 else ""
+            lines.append(f"  - {kind}: {'; '.join(keys[:10])}{more}")
     return "\n".join(lines) + "\n"
 
 
@@ -361,12 +542,17 @@ def audit(bundle):
         raise ValueError("Recorded command disagrees with approved command")
     if any(manifest[k] != suite[k] for k in ("environment", "revision")):
         raise ValueError("Recorded environment/revision disagrees with approved suite")
+    approved_existing = {e["id"]: e["command"] for e in (suite.get("existing") or {}).get("suites", [])}
+    recorded_existing = [(i, r) for i, runs in manifest.get("existing", {}).items() for r in runs.values()]
     if suite.get("base") is not None:
         base = load(bundle / "base" / "run-manifest.json")
         if base["revision"] != suite["base"]["revision"]:
             raise ValueError("Recorded base revision disagrees with approved suite")
         if "command" in base and (base["command"][:-2] != suite["command"] or base["command"][-2] != "--reporter=json"):
             raise ValueError("Recorded base command disagrees with approved command")
+        recorded_existing += list(base.get("existing", {}).items())
+    if any(r.get("command") != approved_existing.get(i) for i, r in recorded_existing):
+        raise ValueError("Recorded existing suite command disagrees with approved command")
     for name, value in approval["hashes"].items():
         if digest(local(bundle / "inputs", name)) != value:
             raise ValueError("Approved input snapshot mismatch")
@@ -376,6 +562,11 @@ def audit(bundle):
     print(summary(result))
     unresolved = [c["caseId"] for c in result["cases"] if c["result"] != "PASS" or c["proof"] == "NON_PROVING"]
     problems = [f"unresolved: {', '.join(unresolved)}"] if unresolved else []
+    suites = (result.get("existing") or {}).get("suites", [])
+    for status, label in (("NEW_FAILURE", "existing suites with new failures"), ("NEEDS_REVIEW", "existing suites needing review"), ("NOT_COMPARABLE", "existing suites not comparable")):
+        named = [r["id"] for r in suites if r["status"] == status]
+        if named:
+            problems.append(f"{label}: {', '.join(named)}")
     if result["exitCode"] != 0 or result["nativeErrors"]:
         problems.append(f"native run exit code {result['exitCode']}, {len(result['nativeErrors'])} global error(s)")
     # Exit 1 means the evidence is consistent but the suite is not done; inconsistent evidence exits 2.
@@ -470,6 +661,8 @@ def run_base(bundle, root, data, run_id):
             execute(run, tree, data["command"], {**fixed, **base["env"], "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
         except ValueError as error:
             manifest["degraded"] = f"Base native report unusable: {error}"[:300]
+        restore_base(tree, [name for name in data["files"] if name not in base.get("keep", [])])
+        manifest["existing"] = {e["id"]: run_existing(run, tree, e, base["env"], "base") for e in (data.get("existing") or {}).get("suites", [])}
     finally:
         removed = subprocess.run(["git", "worktree", "remove", "--force", str(tree)], cwd=root, capture_output=True, text=True)
         shutil.rmtree(tree, ignore_errors=True)
@@ -519,8 +712,17 @@ def main():
     manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout}
     fixed = (data.get("determinism") or {}).get("env", {})
     execute(bundle, root, data["command"], {**fixed, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
+    entries = (data.get("existing") or {}).get("suites", [])
+    manifest["existing"] = {e["id"]: {"head": run_existing(bundle, root, e, {}, "head")} for e in entries}
+    write(bundle / "run-manifest.json", manifest)
     if data.get("base") is not None:
         run_base(bundle, root, data, run_id)
+    # A test that passes on base and fails on head is run once more on head before it counts as a new failure.
+    for row in (existing_status(bundle, data, {}) or {}).get("suites", []):
+        if "NEW_FAILURE" in row["tests"]:
+            entry = next(e for e in entries if e["id"] == row["id"])
+            manifest["existing"][row["id"]]["rerun"] = run_existing(bundle, root, entry, {}, "rerun")
+    write(bundle / "run-manifest.json", manifest)
     result = score(bundle)
     write(bundle / "results.json", result)
     (bundle / "summary.md").write_text(summary(result), encoding="utf-8")

@@ -21,7 +21,7 @@ python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode plan
 python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode completion --bundle <run-dir>
 ```
 
-After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run, and each case's `Result`, `Can-fail` and `Actual path` against the generated results. Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
+After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run, each case's `Result`, `Can-fail` and `Actual path`, and each existing suite's status against the generated results. Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
 
 Runtime adapters rewrite the skill path when installed.
 
@@ -58,7 +58,7 @@ Use this capability when verification has multiple cases, crosses runtime bounda
 
 Do not create a durable plan for a small same-session check that can be reproduced and proved directly.
 
-A runtime case exercises the running system through its real user or operational entrypoint. Unit, widget, mocked, static-analysis, build, and source-inspection checks may supplement a run, but they never make a runtime case pass. List each one under `## Supporting checks` with its own result (`PASS`, `FAIL`, or `NOT_RUN` with the reason), never only in prose, and report every listed check that did not run.
+A runtime case exercises the running system through its real user or operational entrypoint. Unit, widget, mocked, static-analysis, build, and source-inspection checks may supplement a run, but they never make a runtime case pass. List each one under `## Supporting checks` with its own result (`PASS`, `FAIL`, or `NOT_RUN` with the reason), never only in prose, and report every listed check that did not run. The project's own test suites are not supporting checks: declare them as existing suites so the tool runs them on base and head.
 
 Interactive browser tools may discover selectors or debug a failure, but cannot replace script execution or score an automated case.
 The fixed constraints are:
@@ -76,7 +76,7 @@ The fixed constraints are:
 4. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
 5. Separate agent-verifiable behavior from subjective human judgment.
 6. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
-7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit.
+7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit. Declare `existing` from the reference too: every test suite the project has (unit, integration, e2e), whole and unfiltered, with a JUnit report where the runner supports one; only when it has none, the reason.
 8. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
 9. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
 10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries.
@@ -108,11 +108,16 @@ Do not freeze an implementation detail unless it identifies the production path 
    - `NON_PROVING`: a `new-behavior` case that passes on base too. It is not a passing case and keeps the suite from completing; report it as a test that does not prove the change. Strengthening the test or reclassifying the case requires reapproval.
    - `NOT_PROVEN`: no base was declared, the base run degraded, the case was flaky on base, or the base failure disappears once IDs and timestamps are normalized; state "ability to fail not proven" and the reason. For the normalization cause, check that the normalized field is noise and not the behavior under test; if a rule hides the behavior, narrow the rule and reapprove.
    - `NOT_REQUIRED`: an `invariant` case.
+
+   Copy each existing suite's generated status into `## Existing suites` as `- <id>: <status> — <note>`, naming its new, unstable, removed and pre-existing tests:
+   - `NEW_FAILURE`: passes on base, fails on head twice. Report it as a failure of the change; the suite status is `FAILED`.
+   - `NEEDS_REVIEW` or `NOT_COMPARABLE`: an unstable or removed test, or results that cannot be compared. Report them for the human; completion needs an accepted sign-off.
+   - `PRE_EXISTING`: fails on base too. Report it separately as an earlier failure, never as a failure of the change, and never hide it.
 8. Do not fix application code in this mode. Preserve failures and report them for a separate authorized fix. Test/config changes require reapproval and a new run; rerun the same case after a fix.
 9. Complete cleanup and record its status.
 10. Update the run summary and set the suite status:
    - `FAILED` or `BLOCKED` while material cases remain unresolved.
-   - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review remains.
+   - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review or an existing suite's review remains.
    - `COMPLETED` only after required human sign-off is accepted.
 11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Copy the audit's `Audit:` line into the run summary and report it as written: exit 1 means the evidence is consistent and cases remain unresolved; only exit 2 means the evidence is inconsistent or unreadable. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle` (`--mode plan` for a `FAILED` or `BLOCKED` ledger).
 
