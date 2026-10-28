@@ -192,8 +192,8 @@ def case_card(case, row, base_row, titles, head_test, base_test, bundle, notes):
     if steps:
         parts.append(f"<details open><summary>Steps from the head trace ({len(steps)})</summary><ol class='steps'>")
         for step in steps:
-            parts.append(f"<li><b>{esc(step['title'])}</b> <code>{esc(step['subtitle'])}</code>"
-                         f"{' <span class="badge FAIL">' + esc(step['error'][:200]) + '</span>' if step['error'] else ''}")
+            error = f" <span class='badge FAIL'>{esc(step['error'][:200])}</span>" if step["error"] else ""
+            parts.append(f"<li><b>{esc(step['title'])}</b> <code>{esc(step['subtitle'])}</code>{error}")
             if step["image"]:
                 parts.append(shot(step["image"][0], "image/jpeg", step["box"], step["image"][1]))
             parts.append("</li>")
