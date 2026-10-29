@@ -3355,12 +3355,22 @@ function createSurfaceFixture() {
 }
 
 test("surface scan reports only added lines, groups by rule, caps output, and reads the editable rules", () => {
-  const script = path.join(SOURCE_ROOT, "skills/quality-code-check/scripts/surface-scan.js");
+  const script = path.join(SOURCE_ROOT, "skills/quality-code-check/scripts/surface-scan.cjs");
   const fixture = createSurfaceFixture();
   const scan = (...args) => spawnSync(process.execPath, [script, "--root", fixture.root, "--base", fixture.base, ...args], { cwd: fixture.root, encoding: "utf8" });
   try {
     const result = scan();
     assert.strictEqual(result.status, 0, result.stderr);
+    // An installed copy runs inside the project, whose package.json may declare ES modules.
+    fs.writeFileSync(path.join(fixture.root, "package.json"), '{ "type": "module" }\n');
+    const installed = path.join(fixture.root, ".claude/skills/quality-code-check/scripts/surface-scan.cjs");
+    fs.mkdirSync(path.dirname(installed), { recursive: true });
+    fs.copyFileSync(script, installed);
+    fs.mkdirSync(path.join(fixture.root, ".claude/skills/quality-code-check/references"), { recursive: true });
+    fs.copyFileSync(path.join(path.dirname(script), "../references/surface-rules.md"), path.join(fixture.root, ".claude/skills/quality-code-check/references/surface-rules.md"));
+    const esmProject = spawnSync(process.execPath, [installed, "--root", fixture.root, "--base", fixture.base], { cwd: fixture.root, encoding: "utf8" });
+    assert.strictEqual(esmProject.status, 0, esmProject.stderr);
+    assert.deepStrictEqual(JSON.parse(esmProject.stdout).findings, JSON.parse(result.stdout).findings);
     const report = JSON.parse(result.stdout);
     const at = (rule) => report.findings.filter((item) => item.rule === rule).map((item) => `${item.file}:${item.line}`);
     assert.deepStrictEqual(at("commented-out-code"), ["src/Panel.tsx:5"]);
@@ -3462,7 +3472,7 @@ test("installed quality-code-check includes the surface scan and its rules", () 
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const skillRoot = path.join(result.workspace, ".claude/skills/quality-code-check");
-    assert.ok(fs.existsSync(path.join(skillRoot, "scripts/surface-scan.js")));
+    assert.ok(fs.existsSync(path.join(skillRoot, "scripts/surface-scan.cjs")));
     assert.ok(fs.readFileSync(path.join(skillRoot, "references/surface-rules.md"), "utf8").includes("| `pattern-inconsistency` |"));
     assert.ok(fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8").includes("## Bề mặt code"));
   } finally {
@@ -3695,6 +3705,28 @@ test("validate-change report checks the run files and computes one status from t
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("suite case E2E-02: refs must list known ids"), result.stderr);
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
+
+    // An expectation whose case fails is reported as failed, not again as unproven.
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "something else" },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+    ]);
+    const failing = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.cases[0].expects = ["K1"];
+      suite.cases[0].flows = ["F1"];
+      suite.cases[1].expects = ["K2"];
+    }, "label/runs/failing");
+    assert.strictEqual(failing.status, 1, failing.stderr || failing.stdout);
+    result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/failing"; });
+    assert.strictEqual(result.status, 1, result.stderr);
+    assert.strictEqual(read("status.json").overall, "FAILED");
+    assert.ok(!read("status.json").sections.some((s) => s.reason.includes("chưa được chứng minh đủ")), JSON.stringify(read("status.json").sections));
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("| E2E-01 | FAILED |"));
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "new" },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+    ]);
 
     // Expectations edited after the risk step can add a gate, and an unconfirmed agent-intent item needs a question.
     const agentOnly = items.map((i) => ({ ...i, source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined, default: undefined }));

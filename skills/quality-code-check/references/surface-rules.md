@@ -1,7 +1,7 @@
 # Surface rules
 
 This file is project-customizable: add, remove, or reword rules, change a level, or tune a setting. An edited copy is kept by `update --apply`.
-`scripts/surface-scan.js` reads the settings and the rules table below; editing them changes the next scan without touching `SKILL.md`.
+`scripts/surface-scan.cjs` reads the settings and the rules table below; editing them changes the next scan without touching `SKILL.md`.
 
 Every rule applies to added diff lines only and never to pre-existing code.
 A `regex` check is a JavaScript regular expression matched against each added line; start it with `(?i)` to ignore case, and write a literal `|` as `\|` inside the table.

@@ -111,7 +111,7 @@ Lint, type checks, and builds do not catch surface problems that AI implementers
 - A finding is `Nên sửa` or `Tuỳ chọn`, never a merge blocker by itself.
 
 **Two layers, both driven by `references/surface-rules.md`:**
-- *Deterministic scan* (no tokens): `node <skill-dir>/scripts/surface-scan.js --root . --base <base-ref>` reads the change's diff (or `--diff <file>`, `-` for stdin) and applies the rules whose check is a regex or a `builtin:` scan, such as commented-out code, changelog-style comments, debug statements, `as any` and non-null `!`, new suppressions, TODOs without an owner, oversized functions and files, magic numbers, hardcoded colors or spacing when the project defines design tokens, hardcoded UI text when the project uses i18n, and whitespace-only edits or moved imports. Add `--format md` for the report section. Without `--base` or `--diff` it scans the uncommitted changes against `HEAD`; untracked files are not in a diff, so stage them with `git add -N` first.
+- *Deterministic scan* (no tokens): `node <skill-dir>/scripts/surface-scan.cjs --root . --base <base-ref>` reads the change's diff (or `--diff <file>`, `-` for stdin) and applies the rules whose check is a regex or a `builtin:` scan, such as commented-out code, changelog-style comments, debug statements, `as any` and non-null `!`, new suppressions, TODOs without an owner, oversized functions and files, magic numbers, hardcoded colors or spacing when the project defines design tokens, hardcoded UI text when the project uses i18n, and whitespace-only edits or moved imports. Add `--format md` for the report section. Without `--base` or `--diff` it scans the uncommitted changes against `HEAD`; untracked files are not in a diff, so stage them with `git add -N` first.
 - *Judgment layer:* walk the rules whose check is `judgment` while reading the diff (comments restating code, unnecessary abstraction, impossible defensive checks, log-and-rethrow, error-hiding fallbacks, `useMemo`/`useCallback` overuse, pattern inconsistency, reinvented helpers). The scan lists them in its output.
 
 The scan is a lead, not a verdict: drop a scan item that the surrounding code shows is intended, such as a command-line tool that prints on purpose, and say so in one line.
@@ -253,7 +253,7 @@ mvn compile
    - Target: Build succeeds without critical errors
 
 5. **Run the surface review when the request covers code quality or AI-written code**
-   - Run `scripts/surface-scan.js` on the change's diff, then walk the judgment rules
+   - Run `scripts/surface-scan.cjs` on the change's diff, then walk the judgment rules
    - Keep only findings with the evidence their rule names
    - Report it after lint, types, and build; it never changes their results or blocks on its own
 
