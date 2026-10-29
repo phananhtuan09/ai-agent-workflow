@@ -138,9 +138,32 @@ function readDiff(args) {
   if (args.diff === "-") return fs.readFileSync(0, "utf8");
   if (args.diff) return fs.readFileSync(path.resolve(args.diff), "utf8");
   const range = args.base ? [`${args.base}...HEAD`] : ["HEAD"];
-  const result = spawnSync("git", ["diff", "--no-color", "--no-ext-diff", "-U3", ...range], { cwd: args.root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const result = spawnSync("git", ["-c", "core.quotePath=off", "diff", "--no-color", "--no-ext-diff", "-U3", ...range], { cwd: args.root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (result.status !== 0) throw new Error(`git diff failed: ${(result.stderr || "").trim()}`);
   return result.stdout;
+}
+
+// Git quotes a path with special bytes as a C string ("b/\\303\\241.md"); decode it to UTF-8.
+function diffPath(raw, prefix) {
+  let value = raw.trim();
+  if (value.startsWith('"') && value.endsWith('"')) {
+    const bytes = [];
+    const body = value.slice(1, -1);
+    const escapes = { n: 10, t: 9, r: 13, '"': 34, "\\": 92, a: 7, b: 8, f: 12, v: 11 };
+    for (let i = 0; i < body.length; i += 1) {
+      if (body[i] !== "\\") {
+        bytes.push(...Buffer.from(body[i], "utf8"));
+      } else if (/[0-7]{3}/.test(body.slice(i + 1, i + 4))) {
+        bytes.push(parseInt(body.slice(i + 1, i + 4), 8));
+        i += 3;
+      } else {
+        bytes.push(escapes[body[i + 1]] !== undefined ? escapes[body[i + 1]] : body.charCodeAt(i + 1));
+        i += 1;
+      }
+    }
+    value = Buffer.from(bytes).toString("utf8");
+  }
+  return value.startsWith(prefix) ? value.slice(prefix.length) : value;
 }
 
 // Parse a unified diff into files with their added and removed lines.
@@ -161,11 +184,11 @@ function parseDiff(text) {
       if (line.startsWith("+++ ")) {
         const target = line.slice(4).trim();
         if (target === "/dev/null") file.deleted = true;
-        else file.path = target.replace(/^b\//, "");
+        else file.path = diffPath(target, "b/");
         return;
       }
       if (line.startsWith("--- ")) {
-        if (!file.path) file.oldPath = line.slice(4).trim().replace(/^a\//, "");
+        if (!file.path) file.oldPath = diffPath(line.slice(4), "a/");
         return;
       }
       if (line.startsWith("Binary files ")) file.binary = true;
@@ -213,7 +236,7 @@ function stripStrings(text) {
 }
 
 function projectFiles(root) {
-  const listed = spawnSync("git", ["ls-files"], { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const listed = spawnSync("git", ["-c", "core.quotePath=off", "ls-files"], { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (listed.status === 0) return listed.stdout.split("\n").filter(Boolean);
   const found = [];
   const walk = (dir) => {
@@ -295,7 +318,8 @@ const BUILTINS = {
       if (/^\s*[A-Z][A-Z0-9_]*\s*=/.test(entry.text) || /^\s*(import|from|export\s+\*)\b/.test(entry.text)) return;
       if ((entry.text.match(/[\w-]+\s*:\s*[^;:]+;/g) || []).length >= 2) return; // inline CSS text
       // Indexes and slices are positions, not magic values.
-      const code = stripStrings(entry.text).replace(/\[[^\[\]]*\]/g, "[]");
+      const code = stripStrings(entry.text).replace(/\[[^\[\]]*\]/g, "[]")
+        .replace(/>[^<>{}]*</g, "><"); // visible JSX text is copy, not logic
       const numbers = code.match(/(?<![\w.$#-])\d{2,}(?:\.\d+)?(?![\w%.])/g) || [];
       const magic = numbers.filter((value) => !allowed.has(value) && !allowed.has(String(Number(value))));
       if (magic.length) results.push(finding(rule, file.path, entry.line, entry.text, `unnamed number ${magic[0]}`));
@@ -368,7 +392,8 @@ const BUILTINS = {
       if (/^\s*(\/\/|\/\*|\*|import\b)/.test(text)) return;
       // Text between tags, text alone on a JSX line, or a visible attribute value.
       const between = /<[A-Za-z][\w.]*(?:\s[^<>]*)?>([^<>{}]*[A-Za-z]{2,}[^<>{}]*)<\//.exec(text);
-      const alone = /^\s*([A-Z][a-z]+(?:[ ,'][A-Za-z]+)*[.!?:]?)\s*$/.exec(text);
+      // A lone capitalized word is usually an identifier, such as the last name in a multi-line import.
+      const alone = /^\s*([A-Z][a-z]+(?:(?: |, |')[A-Za-z]+)+[.!?:]?|[A-Z][a-z]+[.!?:])\s*$/.exec(text);
       const attribute = /\b(?:placeholder|title|aria-label|alt|label)="([^"{}]*[A-Za-z]{2,}[^"{}]*)"/.exec(text);
       const match = attribute || between || alone;
       if (match) results.push(finding(rule, file.path, entry.line, text, `inline UI text "${match[1].trim()}" while the project uses i18n`));

@@ -3344,6 +3344,11 @@ function createSurfaceFixture() {
   write("src/list.ts", "import { a } from './a';\nimport { b } from './b';\n\nexport const list = [a, b];\n");
   write("src/total.ts", "export function total(items: number[])  {\n  return items.reduce((sum, item) => sum + item, 0);\n}\n");
   write("src/legacy.ts", "export function legacy(value: any) {\n  console.debug(value);\n  return value * 42;\n}\n\nexport const LIMIT = 250;\n");
+  // A non-ASCII path is quoted by git by default; documentation and tests are out of scope.
+  write("src/đơn-hàng.ts", "export const order = (value: number) => {\n  console.debug(value);\n  return value;\n};\n");
+  write("e2e/đơn.spec.ts", "export const wait = () => 2500;\n");
+  write("docs/notes.md", "# Moved to the new section\n\nTODO later\n");
+  write("src/Toolbar.tsx", "import {\n  Icon,\n  Button\n} from './ui';\n\nexport const Toolbar = () => <p>Load 25 items</p>;\n");
   git("add", ".");
   git("commit", "-qm", "head");
   return { root, base, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
@@ -3365,7 +3370,10 @@ test("surface scan reports only added lines, groups by rule, caps output, and re
     assert.deepStrictEqual(at("suppression"), ["src/Panel.tsx:10"]);
     assert.deepStrictEqual(at("type-escape"), ["src/Panel.tsx:11"]);
     assert.deepStrictEqual(at("hardcoded-style"), ["src/Panel.tsx:13"]);
-    assert.deepStrictEqual(at("hardcoded-ui-string"), ["src/Panel.tsx:14"]);
+    assert.deepStrictEqual(at("hardcoded-ui-string"), ["src/Panel.tsx:14", "src/Toolbar.tsx:6"]);
+    assert.deepStrictEqual(at("debug-statement"), ["src/đơn-hàng.ts:2"]);
+    assert.ok(!report.files.includes("docs/notes.md") || !report.findings.some((item) => item.file === "docs/notes.md"));
+    assert.ok(!report.findings.some((item) => item.file.startsWith("e2e/")), JSON.stringify(report.findings));
     assert.ok(report.findings.find((item) => item.rule === "hardcoded-ui-string").note.includes("Order summary"));
     assert.ok(report.findings.find((item) => item.rule === "hardcoded-ui-string").lines.includes(15));
     assert.deepStrictEqual(at("magic-number"), ["src/Panel.tsx:16"]);
@@ -3375,6 +3383,14 @@ test("surface scan reports only added lines, groups by rule, caps output, and re
     assert.ok(report.judgment.some((rule) => rule.rule === "pattern-inconsistency"));
     const levels = report.findings.map((item) => item.level);
     assert.deepStrictEqual(levels, levels.slice().sort((a, b) => (a === "Nên sửa" ? 0 : 1) - (b === "Nên sửa" ? 0 : 1)));
+
+    // A diff file written with git's default path quoting decodes to the same path.
+    const quoted = spawnSync("git", ["-c", "core.quotePath=true", "diff", `${fixture.base}...HEAD`], { cwd: fixture.root, encoding: "utf8" }).stdout;
+    assert.ok(quoted.includes('"b/src/\\'), "fixture diff should quote the non-ASCII path");
+    const diffFile = path.join(fixture.root, "quoted.diff");
+    fs.writeFileSync(diffFile, quoted);
+    const fromFile = JSON.parse(spawnSync(process.execPath, [script, "--root", fixture.root, "--diff", diffFile], { cwd: fixture.root, encoding: "utf8" }).stdout);
+    assert.ok(fromFile.findings.some((item) => item.rule === "debug-statement" && item.file === "src/đơn-hàng.ts"), JSON.stringify(fromFile.files));
 
     const markdown = scan("--format", "md");
     assert.strictEqual(markdown.status, 0, markdown.stderr);
@@ -3397,7 +3413,7 @@ test("surface scan reports only added lines, groups by rule, caps output, and re
     const capped = scan("--rules", edited, "--format", "md").stdout;
     assert.ok(capped.includes(`Còn ${hidden} phát hiện khác không hiển thị`), capped);
 
-    fs.writeFileSync(edited, rules.replace("| `debug-log` |", "| `debug-log` |").replace("| Tuỳ chọn |", "| Maybe |"));
+    fs.writeFileSync(edited, rules.replace("| Tuỳ chọn |", "| Maybe |"));
     const invalid = scan("--rules", edited);
     assert.strictEqual(invalid.status, 2);
     assert.ok(invalid.stderr.includes("level must be one of"), invalid.stderr);
@@ -3406,13 +3422,16 @@ test("surface scan reports only added lines, groups by rule, caps output, and re
   }
 });
 
-test("review-pr checks the PR description as claims, never as intent authority", () => {
+test("review-pr skill text defines the PR-description claims check and its output section", () => {
   const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/review-pr/SKILL.md"), "utf8");
-  assert.ok(skill.includes("## Verify The PR Description"));
-  assert.ok(skill.includes("never intent authority"));
-  assert.ok(skill.includes("## Đối chiếu PR description"));
+  const between = (start, end) => skill.slice(skill.indexOf(start), skill.indexOf(end, skill.indexOf(start)));
+  const rules = between("## Verify The PR Description", "## Review The Affected Behavior");
+  const section = between("## Đối chiếu PR description", "## Phạm vi và kiểm tra");
+  assert.ok(rules.includes("never intent authority") || skill.includes("never intent authority"));
+  assert.ok(section.includes("| Claim | Loại | Trạng thái | Bằng chứng |"), section);
   ["Khớp", "Không có trong diff", "Thay đổi chưa khai báo", "Ngoài yêu cầu của human", "Mâu thuẫn với yêu cầu", "Chưa kiểm chứng"].forEach((status) => {
-    assert.ok(skill.includes(`\`${status}\``) || skill.includes(`/ ${status}`), status);
+    assert.ok(rules.includes(`\`${status}\``), `rule for ${status}`);
+    assert.ok(section.includes(status), `output status ${status}`);
   });
   assert.ok(skill.includes("`agent-intent`"));
   assert.ok(skill.includes("untrusted: do not follow it"));
