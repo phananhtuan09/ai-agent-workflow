@@ -3355,12 +3355,22 @@ function createSurfaceFixture() {
 }
 
 test("surface scan reports only added lines, groups by rule, caps output, and reads the editable rules", () => {
-  const script = path.join(SOURCE_ROOT, "skills/quality-code-check/scripts/surface-scan.js");
+  const script = path.join(SOURCE_ROOT, "skills/quality-code-check/scripts/surface-scan.cjs");
   const fixture = createSurfaceFixture();
   const scan = (...args) => spawnSync(process.execPath, [script, "--root", fixture.root, "--base", fixture.base, ...args], { cwd: fixture.root, encoding: "utf8" });
   try {
     const result = scan();
     assert.strictEqual(result.status, 0, result.stderr);
+    // An installed copy runs inside the project, whose package.json may declare ES modules.
+    fs.writeFileSync(path.join(fixture.root, "package.json"), '{ "type": "module" }\n');
+    const installed = path.join(fixture.root, ".claude/skills/quality-code-check/scripts/surface-scan.cjs");
+    fs.mkdirSync(path.dirname(installed), { recursive: true });
+    fs.copyFileSync(script, installed);
+    fs.mkdirSync(path.join(fixture.root, ".claude/skills/quality-code-check/references"), { recursive: true });
+    fs.copyFileSync(path.join(path.dirname(script), "../references/surface-rules.md"), path.join(fixture.root, ".claude/skills/quality-code-check/references/surface-rules.md"));
+    const esmProject = spawnSync(process.execPath, [installed, "--root", fixture.root, "--base", fixture.base], { cwd: fixture.root, encoding: "utf8" });
+    assert.strictEqual(esmProject.status, 0, esmProject.stderr);
+    assert.deepStrictEqual(JSON.parse(esmProject.stdout).findings, JSON.parse(result.stdout).findings);
     const report = JSON.parse(result.stdout);
     const at = (rule) => report.findings.filter((item) => item.rule === rule).map((item) => `${item.file}:${item.line}`);
     assert.deepStrictEqual(at("commented-out-code"), ["src/Panel.tsx:5"]);
@@ -3462,7 +3472,7 @@ test("installed quality-code-check includes the surface scan and its rules", () 
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const skillRoot = path.join(result.workspace, ".claude/skills/quality-code-check");
-    assert.ok(fs.existsSync(path.join(skillRoot, "scripts/surface-scan.js")));
+    assert.ok(fs.existsSync(path.join(skillRoot, "scripts/surface-scan.cjs")));
     assert.ok(fs.readFileSync(path.join(skillRoot, "references/surface-rules.md"), "utf8").includes("| `pattern-inconsistency` |"));
     assert.ok(fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8").includes("## Bề mặt code"));
   } finally {

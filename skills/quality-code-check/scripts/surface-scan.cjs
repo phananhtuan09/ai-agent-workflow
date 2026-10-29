@@ -15,7 +15,7 @@ const I18N_PACKAGES = ["i18next", "react-i18next", "react-intl", "vue-i18n", "ne
 
 function usage(message) {
   if (message) process.stderr.write(`ERROR: ${message}\n`);
-  process.stderr.write("usage: surface-scan.js [--root DIR] [--base REF | --diff FILE|-] [--rules FILE] [--format json|md]\n");
+  process.stderr.write("usage: surface-scan.cjs [--root DIR] [--base REF | --diff FILE|-] [--rules FILE] [--format json|md]\n");
   process.exit(2);
 }
 
