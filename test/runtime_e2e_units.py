@@ -287,6 +287,8 @@ class BlindSpots(unittest.TestCase):
             ([{"item": "input-empty", "cases": ["E2E-01"], "skipped": "x"}, {"item": "state-error", "skipped": "x"}, {"item": "viewport-mobile", "skipped": "x"}], "one of"),
             ([{"item": "input-empty", "skipped": " "}, {"item": "state-error", "skipped": "x"}, {"item": "viewport-mobile", "skipped": "x"}], "needs text"),
             (None, "Declare blindSpots"),
+            ([{"item": {"a": 1}, "skipped": "x"}], "as a string"),
+            ([{"item": "input-empty", "cases": [{"a": 1}]}, {"item": "state-error", "skipped": "x"}, {"item": "viewport-mobile", "skipped": "x"}], "must name suite cases"),
         ]:
             with self.assertRaises(ValueError) as raised:
                 self.check(entries)

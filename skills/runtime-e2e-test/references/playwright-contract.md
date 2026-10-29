@@ -90,6 +90,7 @@ In a light run a strong signal (production-like host, real-looking credential) s
 
 `blindSpots` accounts for every item in the installed `references/blind-spots.md`, by the IDs in its table: `cases` lists the cases that apply it, `skipped` gives the reason it does not apply, and `question` asks the human when the right behavior is undecidable (it may also name cases).
 The tool rejects a suite that misses an item, names an item twice or one the catalog does not have, or names an unknown case. Editing the catalog changes what every new suite must account for.
+A suite written before the catalog existed fails `validate` and `run` until it declares `blindSpots` (and `mode` with `modeReason`); adding them changes the suite, so it needs reapproval like any other edit.
 The results list each applied item with its cases' results, each skipped item with its reason, and each question; a question needs an accepted human sign-off, like a sweep difference.
 
 ## Measuring layout

@@ -1319,6 +1319,12 @@ test("runtime E2E light mode runs without an approval gate, stops on production 
     }, ["validate"]);
     assert.strictEqual(inDocs.status, 2);
     assert.ok(inDocs.stderr.includes("outside docs/testing"), inDocs.stderr);
+    const dotted = fixture.tool((suite) => {
+      light(suite);
+      suite.plan = ".runtime-e2e/../docs/testing/active/label.md";
+    }, ["validate"]);
+    assert.strictEqual(dotted.status, 2);
+    assert.ok(dotted.stderr.includes("outside docs/testing"), dotted.stderr);
     const noReason = fixture.tool((suite) => { light(suite); delete suite.modeReason; }, ["validate"]);
     assert.ok(noReason.stderr.includes("modeReason"), noReason.stderr);
     const approve = fixture.tool(light, ["approve", "--reviewer", "owner"]);
@@ -1365,6 +1371,10 @@ test("runtime E2E light mode runs without an approval gate, stops on production 
       assert.strictEqual(forgedAudit.status, 2);
       assert.ok(forgedAudit.stderr.includes("Approval does not cover"), forgedAudit.stderr);
     }
+
+    const elsewhere = spawnSync("python3", [path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py"), "promote", out,
+      "--root", fixture.root, "--to", "tests/kept"], { encoding: "utf8" });
+    assert.ok(elsewhere.stderr.includes("lives under docs/testing"), elsewhere.stderr);
 
     // Light tests are discarded after the run; promotion restores them from the snapshot without rediscovery.
     const spec = path.join(fixture.root, "e2e/label.spec.ts");

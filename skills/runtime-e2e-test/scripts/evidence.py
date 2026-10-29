@@ -103,8 +103,9 @@ def contract(suite, root):
         if data["mode"] not in MODES or not isinstance(data.get("modeReason"), str) or not data["modeReason"].strip():
             raise ValueError("mode is durable or light, with modeReason naming the signal that chose it")
     if data.get("mode") == "light":
-        for name in (str(suite.resolve().relative_to(root)), data["plan"]):
-            if Path(name).parts[:2] == ("docs", "testing"):
+        # Resolved first, so a path such as x/../docs/testing/... cannot slip past the check.
+        for path in (suite.resolve(), local(root, data["plan"])):
+            if path.relative_to(root.resolve()).parts[:2] == ("docs", "testing"):
                 raise ValueError("A light suite and its plan live outside docs/testing; promote the run to keep them")
     existing_contract(data)
     keys = set()
@@ -176,19 +177,21 @@ def blind_spots_contract(entries, ids, items):
     if not isinstance(entries, list) or any(not isinstance(e, dict) for e in entries):
         raise ValueError(f"Declare blindSpots: every item of {CATALOG.name}, applied, skipped, or asked")
     for entry in entries:
+        if not isinstance(entry.get("item"), str):
+            raise ValueError("Each blindSpots entry names its catalog item as a string")
         outcome = set(entry) & {"cases", "skipped", "question"}
         if set(entry) - {"item", "cases", "skipped", "question"} or len(outcome - {"cases"} if "question" in entry else outcome) != 1:
             raise ValueError("Each blindSpots entry has item and one of cases, skipped, or question (a question may name cases)")
         cases = entry.get("cases", [])
-        if "cases" in entry and (not isinstance(cases, list) or not cases or set(cases) - set(ids)):
+        if "cases" in entry and (not isinstance(cases, list) or not cases or any(not isinstance(c, str) for c in cases) or set(cases) - set(ids)):
             raise ValueError(f"blindSpots {entry.get('item')}: cases must name suite cases")
         for key in ("skipped", "question"):
             if key in entry and (not isinstance(entry[key], str) or not entry[key].strip()):
                 raise ValueError(f"blindSpots {entry.get('item')}: {key} needs text")
     named = [e.get("item") for e in entries]
     if len(named) != len(set(named)) or set(named) != set(items):
-        missing, unknown = sorted(set(items) - set(named)), sorted(set(named) - set(items), key=str)
-        raise ValueError(f"blindSpots must name each catalog item once; missing: {', '.join(missing) or 'none'}; not in the catalog or repeated: {', '.join(map(str, unknown)) or 'repeated'}")
+        missing, unknown = sorted(set(items) - set(named)), sorted(set(named) - set(items))
+        raise ValueError(f"blindSpots must name each catalog item once; missing: {', '.join(missing) or 'none'}; not in the catalog or repeated: {', '.join(unknown) or 'repeated'}")
 
 
 def environment_check(root, data):
@@ -1016,6 +1019,8 @@ def promote(bundle, root, to):
     if suite.get("mode") != "light":
         raise ValueError("Only a light run is promoted; a durable plan is already in docs/testing")
     target = local(root, str(to))
+    if target.relative_to(root).parts[:2] != ("docs", "testing"):
+        raise ValueError("A durable plan lives under docs/testing; pass --to inside it")
     plan_name, suite_name = (target / Path(suite["plan"]).name), (target / Path(manifest["suite"]).name)
     writes = {}
     for name in suite["files"]:
