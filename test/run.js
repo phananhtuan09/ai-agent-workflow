@@ -3556,7 +3556,17 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     const untracked = JSON.parse(fs.readFileSync(path.join(run, "risk.json"), "utf8"));
     assert.deepStrictEqual(untracked.untracked, ["db/migrations/001.sql"]);
     assert.deepStrictEqual(untracked.signals.map((s) => s.rule), ["data-path", "destructive-sql"]);
+    // A file written after the risk step, such as a light test, does not make the recorded risk stale.
+    fs.mkdirSync(path.join(root, "e2e"));
+    fs.writeFileSync(path.join(root, "e2e/light.spec.ts"), "test.skip('later', () => {});\n");
+    const skipped = { status: "SKIPPED", skip: "not-applicable", reason: "risk-only fixture" };
+    writeJson(path.join(run, "run.json"), { schema: "validate-change/run@1", target: { label: "worktree" }, gate: { override: null, answer: "confirmed" },
+      steps: ["quality-code-check", "review-pr", "runtime-e2e-test"].map((skill) => ({ skill, ...skipped })) });
+    const later = validateChange(root, ["report", run]);
+    assert.strictEqual(later.status, 1, later.stderr);
+    assert.ok(!later.stdout.includes("tests-skipped"), later.stdout);
     fs.rmSync(path.join(root, "db"), { recursive: true });
+    fs.rmSync(path.join(root, "e2e"), { recursive: true });
 
     const rules = path.join(root, "rules.md");
     const source = fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/references/risk-rules.md"), "utf8");
