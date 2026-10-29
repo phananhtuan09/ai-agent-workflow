@@ -445,7 +445,7 @@ def check_audit(data, known, bundle):
 
 # ---------- runtime ----------
 
-def runtime_status(bundle, known, review, head):
+def runtime_status(bundle, known, confirmed, review, head):
     """Verify the bundle with the runtime tool, then map its cases to expectations, flows, and suspicions."""
     if not EVIDENCE.is_file():
         raise Inconsistent(f"runtime-e2e-test is not installed beside this skill ({EVIDENCE}); its bundle cannot be verified")
@@ -470,9 +470,31 @@ def runtime_status(bundle, known, review, head):
                       "suspicions": refs(case.get("suspicions", []), suspicions, where) if review else []})
     failed = [c["id"] for c in cases if c["result"] == "FAIL"] + [s["id"] for s in (results.get("existing") or {}).get("suites", []) if s["status"] == "NEW_FAILURE"]
     blocked = [c["id"] for c in cases if c["result"] == "BLOCKED"]
-    status = "FAILED" if failed else "BLOCKED" if blocked else "NEEDS_REVIEW" if audited.returncode else "PASSED"
     line = next((l for l in audited.stdout.splitlines() if l.startswith("Audit:")), "Audit: no line")
-    return {"status": status, "audit": line, "cases": cases, "failed": failed, "blocked": blocked}
+    notes = intent_sweep_notes(line, results, cases, suite, confirmed) if audited.returncode == 1 else []
+    status = "FAILED" if failed else "BLOCKED" if blocked else "NEEDS_REVIEW" if audited.returncode and not notes else "PASSED"
+    return {"status": status, "audit": line, "cases": cases, "failed": failed, "blocked": blocked, "notes": notes}
+
+
+def intent_sweep_notes(line, results, cases, suite, confirmed):
+    """Notes for sweep differences when they are the audit's only open item, add no console error, and each sits on
+    a route that a passing, proving case for a human-confirmed expectation covers; otherwise [] and the run stays
+    NEEDS_REVIEW. Route coverage does not prove every pixel of the page, so the note keeps both screenshots."""
+    problems = line.removeprefix("Audit: evidence consistent; ").split("; ")
+    if len(problems) != 1 or not problems[0].startswith("sweep differences needing review: "):
+        return []
+    passing = {c["id"] for c in cases if c["result"] == "PASS" and c["proof"] != "NON_PROVING" and set(c["expects"]) & confirmed}
+    proving = {}
+    for case in suite["cases"]:
+        if case["id"] in passing:
+            for route in case.get("routes", []):
+                proving.setdefault(route, []).append(case["id"])
+    differing = [r for r in (results.get("sweep") or {}).get("routes", []) if r["differs"]]
+    if not differing or any(r["route"] not in proving or "consoleErrors" in r["differs"] for r in differing):
+        return []
+    return [f"Sweep khác base ở `{r['route']}` ({', '.join(r['differs'])}); trang này có case pass cho kỳ vọng đã xác nhận "
+            f"({', '.join(proving[r['route']])}). Xem ảnh base `{r['screenshots']['base']}` và head `{r['screenshots']['head']}`."
+            for r in differing]
 
 
 def coverage(item, cases):
@@ -574,7 +596,7 @@ def evaluate(root, run_dir, rules_path):
     runtime, bundle = None, None
     if steps["runtime-e2e-test"]["status"] == "RAN":
         bundle = root / steps["runtime-e2e-test"]["artifact"]
-        runtime = runtime_status(bundle, known, review, head)
+        runtime = runtime_status(bundle, known, {i["id"] for i in items if i["confirmed"] != "none"}, review, head)
         if runtime["status"] != "PASSED":
             sections.append((runtime["status"], f"runtime-e2e-test: {runtime['audit']}"))
     covered = {i["id"]: coverage(i["id"], runtime["cases"]) if runtime else ("NOT_RUN", []) for i in items}
@@ -649,6 +671,7 @@ def markdown(state):
         lines += [f"- Câu hỏi cho human ({q['kRef']}): {q['question']}" for q in review.get("questions", [])]
     if runtime:
         lines += ["", "## Runtime", "", f"- {runtime['audit']}"]
+        lines += [f"- Ghi chú: {n}" for n in runtime["notes"]]
         lines += [f"- {c['id']}: {c['result']}, can-fail {c['proof']}" for c in runtime["cases"]]
     lines += ["", "## Cần test riêng", ""]
     lines += [f"- {e['area']}: {e['signal']}{' (evidence: `' + e['evidence'] + '`)' if e.get('evidence') else ''}. Lệnh: `{e['command']}`" for e in run.get("separateTests", [])] or ["- Không có tín hiệu."]
