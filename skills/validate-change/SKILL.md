@@ -73,7 +73,8 @@ It applies `references/risk-rules.md`, a project-editable table of deterministic
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
   - Edited: apply the edits; an item the human adds is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.
   - No human can answer (a headless run): record `answer: no-human`, mark the three steps `SKIPPED` with `skip: no-human`, and report. The status is `NEEDS_HUMAN`; never continue on your own.
-- Gate not required: run straight through. Assumptions stay `confirmed: none` and the report lists them with their defaults; do not ask the human about them after the report either.
+- Gate not required: run straight through. Assumptions stay `confirmed: none` and the report lists them with their defaults.
+  After the report, never ask, advise, or list as a next step that the human confirm or adjust them.
 - `--gate=never` records `override: never`; the report shows it as a human waiver beside the computed risk, which does not change.
 
 The audit in step 6 is required when any `high` signal fired.
@@ -152,5 +153,5 @@ Then run `validate_change.py report <run-dir>`.
 It checks every file against its contract and the current head, verifies the runtime bundle with the runtime tool, and computes the status, worst first: `NEEDS_HUMAN`, `BLOCKED`, `FAILED`, `NEEDS_REVIEW`, `PASSED`.
 Exit 2 means the run files are inconsistent: fix the file it names, never the report.
 
-In chat, give the report's first lines as written (status, reasons, gate, audit), the path to `report.md`, the path to the runtime `report.html`, and the questions the human must answer.
+In chat, give the report's first lines as written (status, reasons, gate, audit), the path to `report.md`, the path to the runtime `report.html`, and the questions the report asks the human; add no others.
 When intent was never confirmed by a human, the report opens with that line; keep it first.
