@@ -1,14 +1,32 @@
 ---
 name: runtime-e2e-test
 description: Plan and run real web and HTTP API runtime E2E acceptance or regression tests using Playwright scripts. Use for multi-case user flows, forms, authentication, permissions, persistence, async integrations, uploads/downloads, and approved visual baselines. Produce a human-reviewed Markdown plan, mapped executable tests, and auditable runtime evidence; never pass cases using screenshots alone, mocks, or source inspection.
-argument-hint: "plan <scope> | run <suite.json>"
+argument-hint: "<scope> | plan <scope> | run <suite.json> | light <scope>"
 ---
 
 # Runtime E2E Test
 
 Encode actions and assertions in native Playwright Test scripts.
 Use judgment to design coverage and investigate failures, not to manually drive or score automated cases.
-There are exactly two modes: `plan` and `run`, with explicit human approval between them.
+
+## Mode selection
+
+Choose the mode first. Both modes plan and run the same way, with the same evidence tool, statuses, and evidence rules; they differ only in two switches, durable storage (plan, `suite.json` and ledger in `docs/testing/`) and a separate human approval gate.
+
+- **Durable** (both on), when any of these holds: the human asks to keep or re-run the tests or to use them for a release; the target is existing features with no change set; the work spans sessions or needs a later audit.
+- **Light** (both off), when a composite validation step invokes this skill, or when there is a change set and the goal is to prove that change now.
+- **Unclear: light.** A wrong light choice is cheap, because its evidence has the same quality and the run can be promoted afterwards; a wrong durable choice costs the human a plan review they did not need.
+
+An explicit human instruction ("keep this test", "quick run only") overrides the choice.
+Declare the choice in the suite as `mode` with `modeReason` naming the signal; the first line of the chat report states the mode and that signal.
+Do not rely on the implementer's summary or PR description for intent or for what was tested; derive both from the human's request and the change itself, as `review-pr` does.
+
+Durable mode is `plan`, then explicit human approval, then `run`. Light mode does the same planning steps and runs straight away:
+
+- The plan Markdown, `suite.json`, and bundle go under the project's evidence root (for example `.runtime-e2e/<slug>/light/`), never in `docs/testing/`; the tool refuses a light suite there. Tests go where the runner finds them, normally the runtime spec directory.
+- There is no `approve` step; the tool refuses one. The run records that nobody approved the tests, and the report says so.
+- The tool checks the environment before a light run, because there is no approval gate to catch it: a production-like host or a real-looking credential in the suite's env or files stops the run. Ask the human; rerun with `--confirm-environment` only after they confirm. Weaker signals, such as a shared staging host, are recorded as limits.
+- After reporting, delete the light tests unless the human wants them kept; the bundle keeps their snapshot. To keep some, `scripts/evidence.py promote <run-dir>` restores the exact files and writes a durable plan and suite in `docs/testing/active/` without rediscovery; remove the unwanted cases, validate, and ask for approval as in durable mode.
 
 ## Source of truth
 
@@ -54,9 +72,7 @@ Reuse existing Playwright config, fixtures, and helpers.
 If setup is absent, propose minimal dependencies/config for approval before installing or changing them.
 Do not build a custom browser runner or JSON action DSL.
 
-Use this capability when verification has multiple cases, crosses runtime boundaries, must survive sessions, needs fixtures or cleanup, includes release blockers, or needs later audit.
-
-Do not create a durable plan for a small same-session check that can be reproduced and proved directly.
+Use this capability when verification has multiple cases, crosses runtime boundaries, must survive sessions, needs fixtures or cleanup, includes release blockers, or needs later audit. Use light mode for proving a change now; create a durable plan only when a durable signal above holds.
 
 A runtime case exercises the running system through its real user or operational entrypoint. Unit, widget, mocked, static-analysis, build, and source-inspection checks may supplement a run, but they never make a runtime case pass. List each one under `## Supporting checks` with its own result (`PASS`, `FAIL`, or `NOT_RUN` with the reason), never only in prose, and report every listed check that did not run. The project's own test suites are not supporting checks: declare them as existing suites so the tool runs them on base and head.
 
@@ -70,19 +86,22 @@ The fixed constraints are:
 
 ## Mode: `plan`
 
+In light mode, follow these steps except the approval in the last one, then continue with `run`.
+
 1. Read the project runtime reference, current request, and the smallest relevant product, domain, architecture, code, configuration, and runtime surfaces.
 2. Derive cases from observable behavior, boundaries, failures, and material negative paths. Classify each case as `new-behavior` (must fail on base) or `invariant` (expected to pass on base too); keep at least one `invariant` case as a base health probe.
+   Then walk `references/blind-spots.md` for the affected flows: apply its generators (input, state, interruption, viewport) and invariants, and declare every catalog item in the suite's `blindSpots` as applied by named cases, skipped with the reason, or a question for the human when the right answer is undecidable (for example truncate or wrap). Never turn an undecidable item into a defect.
 3. When validating a change, list the tests the change adds or modifies and declare each as a `pr-test` case so the run shows whether it can fail on base. A PR test never replaces a runtime case; it only proves or disproves its own ability to fail.
    When the reference has a `## Regression` section, declare `regression` from it and run `scripts/impact.py <suite.json>`. Add an `invariant` case for each selected route that no case covers yet, listing it in the case's `routes`; derive it from what the route already did before the change, and state the map's reason for it in the case's notes. Keep the map's `notTested` routes and warnings as they are; never trim them. Add one `sweep` case over the reference's key routes.
 4. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
 5. Separate agent-verifiable behavior from subjective human judgment.
 6. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
-7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit. Declare `existing` from the reference too: every test suite the project has (unit, integration, e2e), whole and unfiltered, with a JUnit report where the runner supports one; only when it has none, the reason.
+7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit. Declare `mode`, `modeReason`, and `blindSpots` as chosen above. Declare `existing` from the reference too: every test suite the project has (unit, integration, e2e), whole and unfiltered, with a JUnit report where the runner supports one; only when it has none, the reason.
 8. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
 9. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
-10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries.
+10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries. Measure layout, such as whether text wraps, with the helpers in `references/playwright-contract.md`, and record the measured number as the check's actual value.
 11. Mark `READY` only when paths, expectations, scripts, and required evidence are reviewable. Validate the Markdown and suite contracts.
-12. Stop and ask the human to review the plan, tests, fixtures, config, and commands. Record approval only after an explicit decision, using the evidence tool's `approve` command.
+12. Durable mode: stop and ask the human to review the plan, tests, fixtures, config, and commands. Record approval only after an explicit decision, using the evidence tool's `approve` command. Light mode: run now.
 
 Include imported local helpers, fixture modules, relevant dependency lockfiles, config, and visual baselines in approved files.
 Any change to approved files, steps, assertions, or expected values invalidates approval.
@@ -95,7 +114,7 @@ Do not freeze an implementation detail unless it identifies the production path 
 1. Read the entire plan, project runtime reference, and current repository authority.
 2. Run the documented preflight where needed; do not start against a prohibited or unidentified environment.
 3. Record the environment and configuration identity without storing secrets. The tool generates the run ID and records the head and base commits and start/finish times in `run-manifest.json`. Copy them from there into the ledger.
-4. Check approval and snapshot approved files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session. When the suite declares a base, the tool runs the same approved tests against the base revision in a separate worktree and app instance.
+4. Check approval (durable mode) and snapshot the declared files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session. When the suite declares a base, the tool runs the same approved tests against the base revision in a separate worktree and app instance.
 5. Let Playwright drive the declared path and assert observable outcomes. Fresh contexts isolate sessions; run-marked fixtures isolate data. Serialize shared mutations or acquire the project lock before execution.
 6. Use the tool-generated native results, observations, attempts, trace, cleanup, and summary. Never hand-edit evidence or generated reports. Copy each case's `Actual path` from its recorded observations, then set `Path match` by comparing it with the case's `Runtime path`: `YES` only when both name the same entrypoint, boundary and outcome.
 7. Mark:
@@ -118,13 +137,15 @@ Do not freeze an implementation detail unless it identifies the production path 
 9. Complete cleanup and record its status.
 10. Update the run summary and set the suite status:
    - `FAILED` or `BLOCKED` while material cases remain unresolved.
-   - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review or an existing suite's review remains.
+   - `AWAITING_HUMAN` when machine-verifiable cases pass but subjective review, an existing suite's review, a sweep difference, or a blind-spot question remains.
    - `COMPLETED` only after required human sign-off is accepted.
 11. Audit the bundle and run the Markdown validator in `completion` mode before claiming completion. Copy the audit's `Audit:` line into the run summary and report it as written: exit 1 means the evidence is consistent and cases remain unresolved; only exit 2 means the evidence is inconsistent or unreadable. Update the Markdown ledger from generated results, linking the immutable run summary; never invent observations, counts, or times. Set `Last updated` from `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment you write the ledger, then run the validator with `--bundle` (`--mode plan` for a `FAILED` or `BLOCKED` ledger).
 
 Report the generated determinism limits, or that determinism was not declared, among the run's limits.
 
 `run` also writes `report.html` in the bundle, one offline file for the human reviewer. To add cause explanations, write them to a notes JSON outside the bundle (`{"<case ID>": "...", "general": "..."}`) and regenerate with `scripts/evidence.py report <run-dir> --notes <file>`; they appear labeled as agent inference. In chat, give a short Markdown summary and the report's path.
+
+Report the blind spots from the generated summary: items applied with their cases' results, items skipped with the reason, and each question for the human.
 
 Report the impact map and sweep from the generated summary: selected routes with their reasons, routes found but not tested and why, shared surfaces and untraced files, and every swept route that differs, with both screenshots. A sweep difference is a finding for the human, also when it is marked "may belong to intent"; never call it expected yourself.
 

@@ -254,6 +254,80 @@ class Completion(unittest.TestCase):
             results.write_text(json.dumps({"cases": []}))
             self.assertEqual(validate_test_plan.regression_open(Path(folder)), ([], []))
 
+    def test_blind_spot_questions_need_review(self):
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, "results.json").write_text(json.dumps({"blindSpots": {"applied": [], "skipped": [], "questions": [{"item": "viewport-mobile", "question": "Truncate or wrap?", "cases": []}]}}))
+            self.assertEqual(validate_test_plan.regression_open(Path(folder)), ([], ["viewport-mobile"]))
+
+
+class BlindSpots(unittest.TestCase):
+    ITEMS = ["input-empty", "state-error", "viewport-mobile"]
+
+    def check(self, entries, ids=("E2E-01", "E2E-02")):
+        evidence.blind_spots_contract(entries, list(ids), self.ITEMS)
+
+    def test_the_installed_catalog_lists_items_by_id(self):
+        items = evidence.catalog()
+        self.assertIn("interrupt-double-submit", items)
+        self.assertIn("viewport-mobile", items)
+        self.assertEqual(len(items), len(set(items)))
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertIsNone(evidence.catalog(Path(folder, "blind-spots.md")))
+            edited = Path(folder, "blind-spots.md")
+            edited.write_text("| ID | Generator | What |\n| --- | --- | --- |\n| `own-item` | state | Project rule |\n")
+            self.assertEqual(evidence.catalog(edited), ["own-item"])
+
+    def test_every_item_is_applied_skipped_or_asked(self):
+        self.check([{"item": "input-empty", "cases": ["E2E-01"]}, {"item": "state-error", "skipped": "No request changed"},
+                    {"item": "viewport-mobile", "question": "Truncate or wrap long names?", "cases": ["E2E-02"]}])
+        for entries, message in [
+            ([{"item": "input-empty", "cases": ["E2E-01"]}, {"item": "state-error", "skipped": "x"}], "missing: viewport-mobile"),
+            ([{"item": i, "skipped": "x"} for i in self.ITEMS] + [{"item": "made-up", "skipped": "x"}], "made-up"),
+            ([{"item": "input-empty", "cases": ["E2E-09"]}, {"item": "state-error", "skipped": "x"}, {"item": "viewport-mobile", "skipped": "x"}], "must name suite cases"),
+            ([{"item": "input-empty", "cases": ["E2E-01"], "skipped": "x"}, {"item": "state-error", "skipped": "x"}, {"item": "viewport-mobile", "skipped": "x"}], "one of"),
+            ([{"item": "input-empty", "skipped": " "}, {"item": "state-error", "skipped": "x"}, {"item": "viewport-mobile", "skipped": "x"}], "needs text"),
+            (None, "Declare blindSpots"),
+        ]:
+            with self.assertRaises(ValueError) as raised:
+                self.check(entries)
+            self.assertIn(message, str(raised.exception))
+
+    def test_no_catalog_means_no_declaration(self):
+        evidence.blind_spots_contract(None, ["E2E-01"], None)
+        with self.assertRaises(ValueError):
+            evidence.blind_spots_contract([], ["E2E-01"], None)
+
+
+class Environment(unittest.TestCase):
+    def signals(self, env=None, spec=""):
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, "case.spec.ts").write_text(spec)
+            data = {"files": ["case.spec.ts"], "determinism": {"env": env or {}}}
+            return evidence.environment_check(Path(folder), data)
+
+    def test_local_targets_raise_nothing(self):
+        found = self.signals({"BASE_URL": "http://localhost:5173", "API": "http://127.0.0.1:3001/api", "IPV6": "http://[::1]:5173"},
+                             "baseURL: `http://localhost:${webPort}`,\nawait page.goto('http://app.test/orders'); // see https://example.com/docs")
+        self.assertEqual(found, {"strong": [], "weak": []})
+
+    def test_production_hosts_and_real_credentials_are_strong(self):
+        found = self.signals({"BASE_URL": "https://shop.example.com"}, "const key = 'AKIAABCDEFGHIJKLMNOP';\nawait page.goto(`https://admin.example.com/login`);")
+        self.assertEqual(len(found["strong"]), 3, found)
+        self.assertTrue(any("production-like host shop.example.com" in x for x in found["strong"]))
+
+    def test_shared_stages_private_networks_and_named_secrets_are_weak(self):
+        found = self.signals({"BASE_URL": "https://staging.example.com", "API": "http://10.0.0.5:8080", "API_TOKEN": "fixture-token"})
+        self.assertEqual(found["strong"], [])
+        self.assertEqual(len(found["weak"]), 3, found)
+        self.assertEqual(len(self.signals(spec="const url = `https://${host}/api`;")["weak"]), 1)
+
+
+class Measurements(unittest.TestCase):
+    def test_a_missing_actual_is_unmeasured_but_a_recorded_null_is_not(self):
+        observed = {"checks": [{"id": "lines", "expected": 1}, {"id": "title", "expected": "Jan 5, 2026", "actual": None}]}
+        self.assertEqual(evidence.unmeasured_checks(observed), ["lines"])
+        self.assertEqual(evidence.unmeasured_checks({"checks": "broken"}), [])
+
 
 if __name__ == "__main__":
     unittest.main()

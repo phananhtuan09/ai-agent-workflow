@@ -4,7 +4,7 @@ This optional namespace stores durable runtime end-to-end acceptance and regress
 
 ## Admission
 
-Create a plan here only when runtime verification has multiple cases, crosses UI/API/data or operational boundaries, spans sessions, needs fixtures or cleanup, contains release blockers, or must be auditable later. Use direct proof for bounded same-session work.
+Create a plan here only for durable runtime verification: the human asks to keep or re-run the tests or to use them for a release, the target is existing features with no change set, or the work spans sessions or must be auditable later. A light run that proves a change now keeps its plan and evidence outside this namespace; `evidence.py promote` moves a light run here when its tests should be kept.
 
 A plan is execution memory, not product authority. Derive expected behavior from the current request and approved product or decision sources.
 

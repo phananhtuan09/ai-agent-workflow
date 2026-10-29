@@ -125,7 +125,7 @@ See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for s
 
 `plan` mode writes a Markdown plan plus mapped Playwright tests for human approval; `run` mode executes approved scripts against real web or HTTP API boundaries.
 Versioned evidence bundles keep inputs, results, observations, traces, retries, and cleanup for independent audit.
-After installation, complete `<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md` with the project's service commands, readiness checks, fixtures, and safety limits, without secret values.
+After installation, complete `<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md` with the project's service commands, readiness checks, fixtures, and safety limits, without secret values. Adjust `references/blind-spots.md`, the edge-case catalog every plan walks, to the project; an edited copy is kept on update.
 
 ### Design
 

@@ -23,6 +23,14 @@ import impact  # noqa: E402
 
 KINDS = {"browser", "api", "pr-test", "sweep"}
 CLASSIFICATIONS = {"new-behavior", "invariant"}
+MODES = {"durable", "light"}
+CATALOG = Path(__file__).resolve().parents[1] / "references" / "blind-spots.md"
+LOCAL_HOSTS = re.compile(r"(localhost|127(\.\d+){3}|0\.0\.0\.0|\[?::1\]?|host\.docker\.internal|[\w.-]+\.(localhost|local|test|internal))$")
+# Hosts named for a shared non-production stage, or on a private network: recorded, not stopped.
+SHARED_HOSTS = re.compile(r"(^|[.-])(staging|stage|dev|develop|test|qa|uat|sandbox|preview)([.-]|$)|^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\.")
+URL_USES = re.compile(r"""(?:baseURL\s*[:=]\s*|\.goto\(\s*|\.(?:get|post|put|patch|delete|fetch|newContext)\(\s*|=\s*)['"`](https?://[^'"`\s]+)""")
+SECRET_VALUES = re.compile(r"(sk_live_[0-9A-Za-z]{8,}|AKIA[0-9A-Z]{16}|gh[pousr]_[0-9A-Za-z]{30,}|xox[abprs]-[0-9A-Za-z-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)")
+SECRET_NAMES = re.compile(r"(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIAL)", re.I)
 SETUP_TIMEOUT = 1800
 SUITE_EXIT = "(suite exit code)"
 # Rendering jitter moves channels by a few units between two identical pages; real changes move them far more.
@@ -91,6 +99,13 @@ def contract(suite, root):
         limits = det.get("limits", [])
         if not isinstance(limits, list) or any(not isinstance(x, str) or not x.strip() for x in limits):
             raise ValueError("determinism limits must be nonempty strings")
+    if "mode" in data:
+        if data["mode"] not in MODES or not isinstance(data.get("modeReason"), str) or not data["modeReason"].strip():
+            raise ValueError("mode is durable or light, with modeReason naming the signal that chose it")
+    if data.get("mode") == "light":
+        for name in (str(suite.resolve().relative_to(root)), data["plan"]):
+            if Path(name).parts[:2] == ("docs", "testing"):
+                raise ValueError("A light suite and its plan live outside docs/testing; promote the run to keep them")
     existing_contract(data)
     keys = set()
     if data.get("regression") is not None:
@@ -128,6 +143,7 @@ def contract(suite, root):
         for check in checks:
             if any(not check.get(k) for k in ("id", "expected", "source")):
                 raise ValueError("Checks need id, expected, source")
+    blind_spots_contract(data.get("blindSpots"), ids, catalog())
     files = data.get("files", [])
     if not isinstance(files, list) or not files:
         raise ValueError("List test/config/helper files in files")
@@ -142,6 +158,66 @@ def contract(suite, root):
     if checked.returncode:
         raise ValueError(checked.stderr or checked.stdout)
     return data, hashes
+
+
+def catalog(path=CATALOG):
+    """Item IDs of the installed blind-spot catalog, or None when the project has removed the file."""
+    if not path.is_file():
+        return None
+    return re.findall(r"^\|\s*`([A-Za-z0-9_.-]+)`\s*\|", path.read_text(encoding="utf-8"), re.M)
+
+
+def blind_spots_contract(entries, ids, items):
+    """Each catalog item is applied by cases, skipped with a reason, or left to the human as a question."""
+    if items is None:
+        if entries is not None:
+            raise ValueError("blindSpots needs the blind-spot catalog, which is not installed")
+        return
+    if not isinstance(entries, list) or any(not isinstance(e, dict) for e in entries):
+        raise ValueError(f"Declare blindSpots: every item of {CATALOG.name}, applied, skipped, or asked")
+    for entry in entries:
+        outcome = set(entry) & {"cases", "skipped", "question"}
+        if set(entry) - {"item", "cases", "skipped", "question"} or len(outcome - {"cases"} if "question" in entry else outcome) != 1:
+            raise ValueError("Each blindSpots entry has item and one of cases, skipped, or question (a question may name cases)")
+        cases = entry.get("cases", [])
+        if "cases" in entry and (not isinstance(cases, list) or not cases or set(cases) - set(ids)):
+            raise ValueError(f"blindSpots {entry.get('item')}: cases must name suite cases")
+        for key in ("skipped", "question"):
+            if key in entry and (not isinstance(entry[key], str) or not entry[key].strip()):
+                raise ValueError(f"blindSpots {entry.get('item')}: {key} needs text")
+    named = [e.get("item") for e in entries]
+    if len(named) != len(set(named)) or set(named) != set(items):
+        missing, unknown = sorted(set(items) - set(named)), sorted(set(named) - set(items), key=str)
+        raise ValueError(f"blindSpots must name each catalog item once; missing: {', '.join(missing) or 'none'}; not in the catalog or repeated: {', '.join(map(str, unknown)) or 'repeated'}")
+
+
+def environment_check(root, data):
+    """Production-like targets and real-looking credentials in the suite's env and files: strong signals stop a light run."""
+    strong, weak = [], []
+    envs = [("determinism env", (data.get("determinism") or {}).get("env", {})), ("base env", (data.get("base") or {}).get("env", {}))]
+    envs += [(f"existing suite {e['id']} env", e.get("env", {})) for e in (data.get("existing") or {}).get("suites", [])]
+    texts = [(f"{label} {key}", value) for label, env in envs for key, value in env.items()]
+    for name in data["files"]:
+        path = local(root, name)
+        if path.suffix in (".ts", ".js", ".mjs", ".cjs", ".tsx", ".jsx", ".json", ".env") or "config" in path.name:
+            texts.append((name, path.read_text(encoding="utf-8", errors="replace")))
+    for where, text in texts:
+        if SECRET_VALUES.search(text):
+            strong.append(f"{where}: a real-looking credential")
+        urls = [text] if re.fullmatch(r"https?://\S+", text) else URL_USES.findall(text)
+        for url in urls:
+            # The host ends at a port, path, or template placeholder, as in `http://localhost:${port}`.
+            host = re.match(r"https?://(?:[^@/?#]*@)?(\[[^\]]*\]|[^:/?#$`{}]*)", url)[1].lower()
+            if not host:
+                weak.append(f"{where}: host built at runtime in {url[:60]}")
+            elif LOCAL_HOSTS.fullmatch(host):
+                continue
+            else:
+                (weak if SHARED_HOSTS.search(host) else strong).append(f"{where}: {'shared' if SHARED_HOSTS.search(host) else 'production-like'} host {host}")
+    for label, env in envs:
+        weak += [f"{label} {key}: credential-named variable with a value" for key, value in env.items()
+                 if SECRET_NAMES.search(key) and value.strip() and not SECRET_VALUES.search(value)]
+    return {"strong": sorted(set(strong)), "weak": sorted(set(weak))}
 
 
 def existing_contract(data):
@@ -485,6 +561,12 @@ def regression_status(bundle, suite):
     return {**found, "missing": [r["route"] for r in found["selected"] if r["route"] not in covered]}
 
 
+def unmeasured_checks(observed):
+    """Checks with no actual value at all: JSON drops undefined, as when a page function never ran. A recorded null is a measurement."""
+    checks = observed.get("checks") if isinstance(observed, dict) else None
+    return [str(c.get("id")) for c in checks if isinstance(c, dict) and "actual" not in c] if isinstance(checks, list) else []
+
+
 def checks_of(row):
     checks = (row.get("observations") or {}).get("checks")
     if not isinstance(checks, list):
@@ -538,6 +620,9 @@ def score_run(run, suite):
             observed = observation_document(run, attempts[0]) if case["kind"] != "pr-test" else None
             if observed is not None:
                 row["observations"] = observed
+                unmeasured = unmeasured_checks(observed)
+                if unmeasured:
+                    row["reasons"].append(f"No actual value recorded for {', '.join(unmeasured)}: the test did not measure it, so this is a test defect until fixed")
             continue
         attachments = attempts[0].get("attachments", [])
         for item in attachments:
@@ -565,7 +650,8 @@ def score_run(run, suite):
             row.update(result="BLOCKED", reasons=["Observation checks do not match contract"])
             continue
         if any("actual" not in c or "expected" not in c or not c.get("source") for c in checks):
-            row.update(result="BLOCKED", reasons=["Missing expected/actual/source"])
+            unmeasured = unmeasured_checks(observed)
+            row.update(result="BLOCKED", reasons=["Missing expected/actual/source" + (f"; no actual value recorded for {', '.join(unmeasured)}" if unmeasured else "")])
             continue
         if any(c["actual"] != c["expected"] for c in checks):
             row.update(result="FAIL", reasons=["Observed expected/actual mismatch"],
@@ -651,11 +737,36 @@ def score(bundle):
         result["regression"] = regression_status(bundle, suite)
     if any(c["kind"] == "sweep" for c in suite["cases"]):
         result["sweep"] = sweep_status(bundle, suite, head, base_rows, rules)
+    # Older bundles have none of these inputs; leaving the keys out keeps their recomputed report identical.
+    if "mode" in suite:
+        result["mode"] = {"name": suite["mode"], "reason": suite["modeReason"], "approved": suite["mode"] == "durable"}
+    if "environmentCheck" in manifest:
+        result["environment"] = manifest["environmentCheck"]
+    if suite.get("blindSpots") is not None:
+        result["blindSpots"] = blind_spots_status(suite, head)
     return result
+
+
+def blind_spots_status(suite, head):
+    """Catalog items as declared: applied with the result of each case, skipped with the reason, or asked of the human."""
+    applied, skipped, questions = [], [], []
+    for entry in suite["blindSpots"]:
+        cases = [{"caseId": c, "result": head[c]["result"]} for c in entry.get("cases", [])]
+        if "question" in entry:
+            questions.append({"item": entry["item"], "question": entry["question"], "cases": cases})
+        elif "skipped" in entry:
+            skipped.append({"item": entry["item"], "reason": entry["skipped"]})
+        else:
+            applied.append({"item": entry["item"], "cases": cases})
+    return {"applied": applied, "skipped": skipped, "questions": questions}
 
 
 def summary(result):
     lines = ["# Runtime E2E results", "", "Mechanical proof only; semantic audit still required.", ""]
+    mode = result.get("mode")
+    if mode is not None:
+        approval = "human-approved before the run" if mode["approved"] else "no approval gate; not reviewed by a human before the run"
+        lines += [f"Mode: {mode['name']} ({approval}); chosen because {mode['reason']}", ""]
     for row in result["cases"]:
         lines.append(f"- {row['caseId']}: {row['result']} ({row['attempts']} attempt(s)); {'; '.join(row['reasons'])}")
         lines.append(f"  - Can-fail: {row['proof']}; {row['proofReason']}")
@@ -712,6 +823,20 @@ def summary(result):
                     lines.append(f"    - {key}: removed {json.dumps(row[key]['removed'], ensure_ascii=False)[:200]}, added {json.dumps(row[key]['added'], ensure_ascii=False)[:200]}")
             if "consoleErrors" in row:
                 lines.append(f"    - new console errors: {json.dumps(row['consoleErrors'], ensure_ascii=False)[:200]}")
+    env = result.get("environment")
+    if env is not None:
+        confirmed = "; run confirmed by the human" if env.get("confirmed") else ""
+        lines.append(f"Environment check: {len(env['strong'])} strong, {len(env['weak'])} weak signal(s){confirmed}")
+        lines += [f"  - strong: {x}" for x in env["strong"]] + [f"  - weak: {x}" for x in env["weak"]]
+    spots = result.get("blindSpots")
+    if spots is not None:
+        lines.append(f"Blind spots: {len(spots['applied'])} applied, {len(spots['skipped'])} skipped, {len(spots['questions'])} question(s) for the human")
+        for row in spots["applied"]:
+            lines.append(f"  - {row['item']}: applied in {', '.join(c['caseId'] + ' ' + c['result'] for c in row['cases'])}")
+        for row in spots["skipped"]:
+            lines.append(f"  - {row['item']}: skipped; {row['reason']}")
+        for row in spots["questions"]:
+            lines.append(f"  - {row['item']}: question; {row['question']}")
     return "\n".join(lines) + "\n"
 
 
@@ -730,7 +855,8 @@ def audit(bundle):
     manifest = load(bundle / "run-manifest.json")
     suite = load(local(bundle / "inputs", manifest["suite"]))
     required = {manifest["suite"], suite["plan"], *suite["files"]}
-    if set(approval["hashes"]) != required or not approval.get("reviewer"):
+    light = suite.get("mode") == "light"
+    if set(approval["hashes"]) != required or (light != (approval.get("mode") == "light")) or not (light or approval.get("reviewer")):
         raise ValueError("Approval does not cover declared inputs")
     if manifest["command"][:-2] != suite["command"] or manifest["command"][-2] != "--reporter=json":
         raise ValueError("Recorded command disagrees with approved command")
@@ -773,6 +899,9 @@ def audit(bundle):
             problems.append(f"sweep differences needing review: {', '.join(differing)}")
         if sweep["notCompared"]:
             problems.append(f"sweep not compared: {', '.join(sweep['notCompared'])}")
+    questions = [r["item"] for r in (result.get("blindSpots") or {}).get("questions", [])]
+    if questions:
+        problems.append(f"blind-spot questions for the human: {', '.join(questions)}")
     if result["exitCode"] != 0 or result["nativeErrors"]:
         problems.append(f"native run exit code {result['exitCode']}, {len(result['nativeErrors'])} global error(s)")
     # Exit 1 means the evidence is consistent but the suite is not done; inconsistent evidence exits 2.
@@ -879,14 +1008,46 @@ def run_base(bundle, root, data, run_id):
         write(run / "run-manifest.json", manifest)
 
 
+def promote(bundle, root, to):
+    """Turn a light run into a durable plan without rediscovery: restore its exact inputs and hand them over for approval."""
+    audit(bundle)  # an inconsistent bundle raises before anything is written
+    manifest = load(bundle / "run-manifest.json")
+    suite = load(local(bundle / "inputs", manifest["suite"]))
+    if suite.get("mode") != "light":
+        raise ValueError("Only a light run is promoted; a durable plan is already in docs/testing")
+    target = local(root, str(to))
+    plan_name, suite_name = (target / Path(suite["plan"]).name), (target / Path(manifest["suite"]).name)
+    writes = {}
+    for name in suite["files"]:
+        content = local(bundle / "inputs", name).read_bytes()
+        path = local(root, name)
+        if path.exists() and path.read_bytes() != content:
+            raise ValueError(f"{name} changed since the light run; promote refuses to overwrite it")
+        writes[path] = content
+    for path in (plan_name, suite_name):
+        if path.exists():
+            raise ValueError(f"{path.relative_to(root)} already exists")
+    durable = {**suite, "mode": "durable", "plan": str(plan_name.relative_to(root)),
+               "modeReason": f"promoted from light run {manifest['runId']}; human approval still required"}
+    writes[plan_name] = local(bundle / "inputs", suite["plan"]).read_bytes()
+    writes[suite_name] = (json.dumps(durable, indent=2, ensure_ascii=False) + "\n").encode()
+    for path, content in writes.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    print(f"Promoted to {suite_name.relative_to(root)}; remove unwanted cases, validate, then ask the human to approve before a durable run")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report"])
+    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report", "promote"])
     parser.add_argument("target", type=Path)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--reviewer")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--notes", type=Path, help="report: JSON of agent inference by case ID or 'general', shown labeled as inference")
+    parser.add_argument("--confirm-environment", action="store_true", help="run: the human confirmed a light run despite strong environment signals")
+    parser.add_argument("--to", type=Path, default=Path("docs/testing/active"), help="promote: directory for the durable plan and suite")
     args = parser.parse_args()
     if args.mode == "audit":
         return audit(args.target.resolve())
@@ -899,6 +1060,8 @@ def main():
             raise ValueError("--notes must map case IDs or 'general' to text")
         print(f"Report: {report.write(bundle, notes)}")
         return 0
+    if args.mode == "promote":
+        return promote(args.target.resolve(), args.root.resolve(), args.to)
     root, suite = args.root.resolve(), args.target.resolve()
     data, hashes = contract(suite, root)
     approval_path = suite.with_name(suite.name + ".approval.json")
@@ -911,14 +1074,24 @@ def main():
             missing = [r["route"] for r in found["selected"] if r["route"] not in covered]
             print(f"Impact routes without a case: {', '.join(missing) or 'none'}")
         return 0
+    light = data.get("mode") == "light"
     if args.mode == "approve":
+        if light:
+            raise ValueError("A light suite runs without an approval gate; promote its run to get a durable plan to approve")
         if not args.reviewer:
             raise ValueError("Explicit human reviewer required")
         write(approval_path, {"reviewer": args.reviewer, "approvedAt": datetime.now(timezone.utc).isoformat(), "hashes": hashes})
         return 0
-    approval = load(approval_path)
-    if approval["hashes"] != hashes or not approval.get("reviewer"):
-        raise ValueError("Approval missing or stale; human reapproval required")
+    checked = environment_check(root, data)
+    if light and checked["strong"] and not args.confirm_environment:
+        raise ValueError("Strong environment signals stop a light run; ask the human, and rerun with --confirm-environment only after they confirm: " + "; ".join(checked["strong"]))
+    if light:
+        # Light mode has no approval gate; the snapshot hashes still pin exactly what ran.
+        approval = {"mode": "light", "reviewer": None, "approvedAt": None, "hashes": hashes}
+    else:
+        approval = load(approval_path)
+        if approval["hashes"] != hashes or not approval.get("reviewer"):
+            raise ValueError("Approval missing or stale; human reapproval required")
     if args.out is None:
         raise ValueError("--out must name a new run directory")
     bundle = args.out.resolve()
@@ -931,7 +1104,8 @@ def main():
     run_id = str(uuid.uuid4())
     git = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True)
     dirty = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True)
-    manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout}
+    manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout,
+                "environmentCheck": {**checked, "confirmed": bool(args.confirm_environment and checked["strong"])}}
     fixed = (data.get("determinism") or {}).get("env", {})
     execute(bundle, root, data["command"], {**fixed, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
     entries = (data.get("existing") or {}).get("suites", [])
