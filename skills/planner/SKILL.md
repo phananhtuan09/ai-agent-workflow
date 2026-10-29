@@ -78,7 +78,7 @@ If a skill is not installed, apply `docs/WORKFLOW.md` directly and say the skill
 | Reported or discovered bug | None; reproduce the failure first |
 | Lint, type, build, or CI failures | `quality-code-check` |
 | Vague product idea that needs framing | `proposal-designer` |
-| Multi-case user flow or API acceptance that must stay re-runnable | `runtime-e2e-test` |
+| Multi-case user flow or API acceptance, proved now (light) or kept re-runnable (durable) | `runtime-e2e-test` |
 | Hard bug, unclear logic, or technical trade-off to think through | `brainstorm-partner` |
 | Review a PR, branch, or diff | `review-pr` |
 | Task accepted, changed, or invalidated durable knowledge | `manage-project-knowledge` |

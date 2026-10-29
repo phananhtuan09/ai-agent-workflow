@@ -186,7 +186,7 @@ def existing_rows(bundle: Path) -> tuple[list[dict], list[str]]:
 
 
 def regression_open(bundle: Path) -> tuple[list[str], list[str]]:
-    """Impact-map routes without a case, and swept routes that differ from base, from the generated results."""
+    """Impact-map routes without a case, and items for the human (swept routes that differ, blind-spot questions), from the generated results."""
     try:
         results = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -197,6 +197,7 @@ def regression_open(bundle: Path) -> tuple[list[str], list[str]]:
     missing = ["impact map not available"] if "error" in found else list(found.get("missing", []))
     sweep = results.get("sweep") or {}
     review = [row.get("route") for row in sweep.get("routes", []) if row.get("differs")] + list(sweep.get("notCompared", []))
+    review += [row.get("item") for row in (results.get("blindSpots") or {}).get("questions", [])]
     return missing, review
 
 
@@ -426,7 +427,7 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
         if status == "AWAITING_HUMAN":
             if human_cases == 0 and not review:
                 errors.append(
-                    "AWAITING_HUMAN requires a case with Human judgment: YES, an existing suite needing review, or a sweep difference."
+                    "AWAITING_HUMAN requires a case with Human judgment: YES, an existing suite needing review, a sweep difference, or a blind-spot question."
                 )
             if decision != "PENDING":
                 errors.append("AWAITING_HUMAN requires Decision: PENDING.")

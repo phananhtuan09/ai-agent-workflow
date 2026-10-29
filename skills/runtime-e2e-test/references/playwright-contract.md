@@ -1,13 +1,15 @@
 # Playwright plan and evidence contract
 
 Use native Playwright Test files, not a restricted action language.
-Paths below are relative to the project root; suite files live beside the Markdown plan.
+Paths below are relative to the project root; suite files live beside the Markdown plan, in `docs/testing/active/` for a durable plan and under the evidence root for a light one.
 
 ## Suite file
 
 ```json
 {
   "plan": "docs/testing/active/orders.md",
+  "mode": "durable",
+  "modeReason": "the human asked to keep these tests for the release",
   "files": ["tests/orders.spec.ts", "playwright.config.ts", "package-lock.json"],
   "command": ["npx", "--no-install", "playwright", "test", "tests/orders.spec.ts"],
   "environment": "isolated-local",
@@ -37,6 +39,11 @@ Paths below are relative to the project root; suite files live beside the Markdo
     "fanIn": 3,
     "budget": 5
   },
+  "blindSpots": [
+    {"item": "interrupt-double-submit", "cases": ["E2E-01"]},
+    {"item": "viewport-mobile", "question": "Should long staff names truncate or wrap on a phone?"},
+    {"item": "input-unicode", "skipped": "No form field changed"}
+  ],
   "cases": [
     {
       "id": "E2E-01",
@@ -71,6 +78,58 @@ A `pr-test` case runs a test the change itself added or modified, matched by fil
 List PR test files in `files` (the tool rejects a `pr-test` whose file is not listed) and target them in `command` like any other test.
 A suite needs at least one runtime case besides `pr-test` and `sweep` cases.
 `routes` on a case names the key routes from `regression.routes` it exercises; it is how impact-map routes count as covered.
+
+## Mode
+
+`mode` is `durable` or `light`, and `modeReason` names the signal that chose it; both appear first in the summary and the report.
+A durable suite needs `approve` before `run`. A light suite lives with its plan outside `docs/testing/`, refuses `approve`, and runs without approval; its bundle records `approval.json` as `{"mode": "light", "reviewer": null}` with the hashes of what ran, and the audit accepts that only for a light suite.
+Before every run the tool checks the suite's env values and files for production-like hosts (anything but loopback, `.localhost`, `.local`, `.test`, `.internal`), real-looking credentials (live API keys, cloud access keys, tokens, private keys), shared stage hosts (`staging`, `dev`, `qa`, private networks), and credential-named variables with values. It stores the result as `environmentCheck` in `run-manifest.json`.
+In a light run a strong signal (production-like host, real-looking credential) stops the run before anything executes; rerun with `--confirm-environment` only after the human confirms, and the confirmation is recorded. Weak signals are listed among the limits. A durable run records the same check without stopping, because the human approved its environment.
+
+## Blind spots
+
+`blindSpots` accounts for every item in the installed `references/blind-spots.md`, by the IDs in its table: `cases` lists the cases that apply it, `skipped` gives the reason it does not apply, and `question` asks the human when the right behavior is undecidable (it may also name cases).
+The tool rejects a suite that misses an item, names an item twice or one the catalog does not have, or names an unknown case. Editing the catalog changes what every new suite must account for.
+A suite written before the catalog existed fails `validate` and `run` until it declares `blindSpots` (and `mode` with `modeReason`); adding them changes the suite, so it needs reapproval like any other edit.
+The results list each applied item with its cases' results, each skipped item with its reason, and each question; a question needs an accepted human sign-off, like a sweep difference.
+
+## Measuring layout
+
+Record layout as numbers so a check compares JSON values. Count rendered lines with a function, never a string: a string passed to `evaluate` is not called, its result is `undefined`, and JSON drops it.
+
+```ts
+import type { Locator } from '@playwright/test';
+
+// Rendered text lines inside one element; typed by hand so it compiles where the e2e tsconfig has no DOM lib.
+export async function lineCount(locator: Locator): Promise<number> {
+  return locator.evaluate((element) => {
+    const doc = element.ownerDocument;
+    const rects: { top: number; bottom: number; width: number }[] = [];
+    const walker = doc.createTreeWalker(element, 4); // 4 = NodeFilter.SHOW_TEXT: text only, not padded inline boxes
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const range = doc.createRange();
+      range.selectNodeContents(node);
+      rects.push(...Array.from(range.getClientRects() as ArrayLike<{ top: number; bottom: number; width: number }>));
+    }
+    // Rects that overlap vertically share one line, even with mixed font sizes.
+    let lines = 0;
+    let bottom = -Infinity;
+    for (const rect of rects.filter((r) => r.width > 0).sort((a, b) => a.top - b.top)) {
+      if (rect.top >= bottom - 1) {
+        lines += 1;
+        bottom = rect.bottom;
+      } else {
+        bottom = Math.max(bottom, rect.bottom);
+      }
+    }
+    return lines;
+  });
+}
+```
+
+Set the viewport first (`await page.setViewportSize({ width: 375, height: 667 })`), wait for the data with a web-first assertion, then record `{ id: 'heading_lines', expected: 1, actual: await lineCount(heading) }`.
+Horizontal overflow is `await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)` in a project whose e2e tsconfig includes the DOM lib; otherwise compare `element.scrollWidth` and `clientWidth` inside `locator.evaluate`.
+A check with no `actual` value is reported by name as unmeasured: the case is a test defect to fix, not evidence about the app.
 
 ## Base revision
 
@@ -227,15 +286,17 @@ Declared expectations are human-reviewed semantics; the tool cannot infer whethe
 
 ```bash
 python3 <skill-root>/scripts/evidence.py validate <suite.json> --root <project>
-# Only after explicit human approval, never as an agent's own decision:
+# Durable mode, only after explicit human approval, never as an agent's own decision:
 python3 <skill-root>/scripts/evidence.py approve <suite.json> --root <project> --reviewer <human-id>
-python3 <skill-root>/scripts/evidence.py run <suite.json> --root <project> --out <new-run-directory>
+python3 <skill-root>/scripts/evidence.py run <suite.json> --root <project> --out <new-run-directory> [--confirm-environment]
+# Light mode: restore a light run's files and write a durable plan and suite for approval.
+python3 <skill-root>/scripts/evidence.py promote <run-directory> --root <project> [--to docs/testing/active]
 python3 <skill-root>/scripts/evidence.py audit <run-directory>
 python3 <skill-root>/scripts/evidence.py report <run-directory> [--notes <notes.json>]
 ```
 
 `approve` snapshots the suite and declared files in `<suite.json>.approval.json` by hash.
-`run` rejects stale approval, creates a new directory, snapshots approved inputs, records the command/environment/revision and git identity, and executes without a shell.
+`run` rejects stale approval for a durable suite, creates a new directory, snapshots approved inputs, records the command/environment/revision and git identity, and executes without a shell.
 The project must perform authorized preflight and acquire any required shared-state lock before invoking `run`.
 Keep the lock through fixture cleanup; release it using the project's interruption-safe procedure.
 `RUNTIME_E2E_RUN_ID` is available to fixtures, and `PLAYWRIGHT_JSON_OUTPUT_NAME` selects the native result file.
@@ -270,7 +331,8 @@ Each case also gets a `proof` value, computed from the head and base results:
 
 When both runs recorded observations, `baseDiff` lists the checks whose actual values still differ between base and head after normalization.
 A base failure counts as proof only when the base run itself was not degraded; the reason names the base error or mismatched checks so an auditor can confirm the failure came from the behavior, not the environment.
-`run` and `audit` exit nonzero when any case is `NON_PROVING`, when an existing suite is `NEW_FAILURE`, `NEEDS_REVIEW`, or `NOT_COMPARABLE`, when a selected impact-map route has no case or the map could not be computed, and when a swept route differs from base or could not be compared.
+`promote` audits a light run first, then writes its plan and suite (as `durable`) to `--to` and restores each declared file at its path; it refuses to overwrite a file that changed since the run or an existing plan, and never approves.
+`run` and `audit` exit nonzero when any case is `NON_PROVING`, when a blind-spot question awaits the human, when an existing suite is `NEW_FAILURE`, `NEEDS_REVIEW`, or `NOT_COMPARABLE`, when a selected impact-map route has no case or the map could not be computed, and when a swept route differs from base or could not be compared.
 A `sweep` case's `proof` is `NOT_REQUIRED`; its findings are in the `sweep` section of the results.
 Impact-map routes without a case block completion; sweep differences need an accepted human sign-off, like an existing suite needing review.
 

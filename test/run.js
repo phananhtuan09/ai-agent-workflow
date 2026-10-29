@@ -628,6 +628,7 @@ test("Codex installs the testing bundle and runtime E2E namespace", () => {
     assert.ok(fs.existsSync(path.join(runtimeRoot, "validate_test_plan.py")));
     assert.ok(fs.existsSync(path.join(runtimeRoot, "scripts/evidence.py")));
     assert.ok(fs.existsSync(path.join(runtimeRoot, "references/playwright-contract.md")));
+    assert.ok(fs.readFileSync(path.join(runtimeRoot, "references/blind-spots.md"), "utf8").includes("| `viewport-mobile` |"));
     const runtimeReference = path.join(runtimeRoot, "references/project-runtime.md");
     assert.ok(fs.existsSync(runtimeReference));
     assert.ok(fs.readFileSync(runtimeReference, "utf8").includes("- Status: UNCONFIGURED"));
@@ -765,9 +766,12 @@ for item in tests:
         # Per-revision observed values, e.g. a generated ID that differs between the two instances.
         actual = item["actual"]["base" if os.environ.get("WEB_PORT") else "head"]
         passed = actual == item["expect"] and os.environ.get("WEB_PORT") != "dead"
+    if item.get("unmeasured"):
+        # A page function that never ran: JSON drops the undefined actual value.
+        passed = False
     observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED", "port": os.environ.get("WEB_PORT", ""),
                 "now": os.environ.get("FIXED_NOW", ""), "spec": Path("e2e/label.spec.ts").read_text().strip(),
-                "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": actual}]}
+                "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], **({} if item.get("unmeasured") else {"actual": actual})}]}
     attachments = [] if item.get("existing") else [{"name": "runtime-observations", "contentType": "application/json",
                     "body": base64.b64encode(json.dumps(observed).encode()).decode()}]
     if "sweep" in item:
@@ -866,6 +870,12 @@ The label matches the requested behavior.
 ${cases}`;
 }
 
+// Item IDs of the source blind-spot catalog, read the way the evidence tool reads them.
+function blindSpotItems() {
+  const catalog = fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/blind-spots.md"), "utf8");
+  return [...catalog.matchAll(/^\|\s*`([A-Za-z0-9_.-]+)`\s*\|/gm)].map((match) => match[1]);
+}
+
 function createBaseHeadFixture({ unitCases = [] } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-base-head-"));
   const git = (...args) => {
@@ -911,6 +921,7 @@ function createBaseHeadFixture({ unitCases = [] } = {}) {
     revision: "head",
     base: { revision: base, env: { WEB_PORT: "5301" } },
     existing: { suites: [], reason: "The fixture project has no test suite of its own" },
+    blindSpots: blindSpotItems().map((item) => ({ item, skipped: "The fixture has no form, state, or layout" })),
     cases: [
       { id: "E2E-01", kind: "api", classification: "new-behavior", checks: [check] },
       { id: "E2E-02", kind: "api", classification: "invariant", checks: [check] },
@@ -928,6 +939,16 @@ function createBaseHeadFixture({ unitCases = [] } = {}) {
       mutate(data);
       fs.writeFileSync(suitePath, JSON.stringify(data, null, 2));
       return run(["validate", suitePath]);
+    },
+    // Writes the suite without approving it and runs one evidence-tool command on it.
+    tool(mutate, args) {
+      const data = JSON.parse(JSON.stringify(suite));
+      if (mutate) mutate(data);
+      fs.mkdirSync(path.dirname(path.join(root, data.suitePath || "docs/testing/active/label.suite.json")), { recursive: true });
+      const target = path.join(root, data.suitePath || "docs/testing/active/label.suite.json");
+      delete data.suitePath;
+      fs.writeFileSync(target, JSON.stringify(data, null, 2));
+      return run([args[0], target, ...args.slice(1)]);
     },
     writeCases(cases) {
       fs.writeFileSync(path.join(root, "tests/cases.json"), JSON.stringify(cases));
@@ -1274,6 +1295,152 @@ test("runtime E2E records the impact map and compares swept routes between base 
       planned(["/nowhere"])(suite);
     });
     assert.strictEqual(unknown.status, 2);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E light mode runs without an approval gate, stops on production signals, and promotes to a durable plan", () => {
+  const fixture = createBaseHeadFixture();
+  try {
+    const lightPlan = path.join(fixture.root, ".runtime-e2e/light/label.md");
+    fs.mkdirSync(path.dirname(lightPlan), { recursive: true });
+    fs.copyFileSync(path.join(fixture.root, "docs/testing/active/label.md"), lightPlan);
+    const light = (suite) => {
+      suite.mode = "light";
+      suite.modeReason = "a change set to prove now and no request to keep the tests";
+      suite.plan = ".runtime-e2e/light/label.md";
+      suite.suitePath = ".runtime-e2e/light/label.suite.json";
+    };
+    const inDocs = fixture.tool((suite) => {
+      light(suite);
+      suite.plan = "docs/testing/active/label.md";
+      suite.suitePath = "docs/testing/active/light.suite.json";
+    }, ["validate"]);
+    assert.strictEqual(inDocs.status, 2);
+    assert.ok(inDocs.stderr.includes("outside docs/testing"), inDocs.stderr);
+    const dotted = fixture.tool((suite) => {
+      light(suite);
+      suite.plan = ".runtime-e2e/../docs/testing/active/label.md";
+    }, ["validate"]);
+    assert.strictEqual(dotted.status, 2);
+    assert.ok(dotted.stderr.includes("outside docs/testing"), dotted.stderr);
+    const noReason = fixture.tool((suite) => { light(suite); delete suite.modeReason; }, ["validate"]);
+    assert.ok(noReason.stderr.includes("modeReason"), noReason.stderr);
+    const approve = fixture.tool(light, ["approve", "--reviewer", "owner"]);
+    assert.strictEqual(approve.status, 2);
+    assert.ok(approve.stderr.includes("without an approval gate"), approve.stderr);
+
+    const out = path.join(fixture.root, ".runtime-e2e/light-run");
+    const ran = fixture.tool(light, ["run", "--out", out]);
+    assert.ok([0, 1].includes(ran.status), ran.stderr || ran.stdout);
+    const results = JSON.parse(fs.readFileSync(path.join(out, "results.json"), "utf8"));
+    assert.deepStrictEqual(results.mode, { name: "light", reason: "a change set to prove now and no request to keep the tests", approved: false });
+    assert.strictEqual(proofs(results)["E2E-01"], "PROVEN");
+    assert.deepStrictEqual(results.environment, { strong: [], weak: [], confirmed: false });
+    assert.ok(fs.readFileSync(path.join(out, "summary.md"), "utf8").includes("Mode: light (no approval gate"));
+    assert.ok(fs.readFileSync(path.join(out, "report.html"), "utf8").includes("<b>Mode: light</b>"));
+    assert.ok([0, 1].includes(fixture.audit(out).status));
+    assert.ok(!fs.existsSync(path.join(fixture.root, ".runtime-e2e/light/label.suite.json.approval.json")));
+
+    const production = (suite) => {
+      light(suite);
+      suite.determinism = { env: { BASE_URL: "https://shop.example.com" } };
+    };
+    const stopped = fixture.tool(production, ["run", "--out", path.join(fixture.root, ".runtime-e2e/stopped")]);
+    assert.strictEqual(stopped.status, 2);
+    assert.ok(stopped.stderr.includes("production-like host shop.example.com"), stopped.stderr);
+    assert.ok(!fs.existsSync(path.join(fixture.root, ".runtime-e2e/stopped")));
+    const confirmedOut = path.join(fixture.root, ".runtime-e2e/confirmed");
+    const confirmed = fixture.tool(production, ["run", "--out", confirmedOut, "--confirm-environment"]);
+    assert.ok([0, 1].includes(confirmed.status), confirmed.stderr);
+    const confirmedResults = JSON.parse(fs.readFileSync(path.join(confirmedOut, "results.json"), "utf8"));
+    assert.strictEqual(confirmedResults.environment.confirmed, true);
+    assert.ok(fs.readFileSync(path.join(confirmedOut, "report.html"), "utf8").includes("run confirmed by the human"));
+
+    // A durable bundle whose approval is rewritten as light, with integrity recomputed, still fails the audit.
+    const durableRun = fixture.run(null, "durable");
+    const approvalPath = path.join(durableRun.out, "approval.json");
+    const forged = JSON.parse(fs.readFileSync(approvalPath, "utf8"));
+    for (const approval of [{ ...forged, mode: "light", reviewer: null }, { ...forged, reviewer: null }]) {
+      fs.writeFileSync(approvalPath, JSON.stringify(approval));
+      const integrity = JSON.parse(fs.readFileSync(path.join(durableRun.out, "integrity.json"), "utf8"));
+      integrity["approval.json"] = require("crypto").createHash("sha256").update(fs.readFileSync(approvalPath)).digest("hex");
+      fs.writeFileSync(path.join(durableRun.out, "integrity.json"), JSON.stringify(integrity));
+      const forgedAudit = fixture.audit(durableRun.out);
+      assert.strictEqual(forgedAudit.status, 2);
+      assert.ok(forgedAudit.stderr.includes("Approval does not cover"), forgedAudit.stderr);
+    }
+
+    const elsewhere = spawnSync("python3", [path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py"), "promote", out,
+      "--root", fixture.root, "--to", "tests/kept"], { encoding: "utf8" });
+    assert.ok(elsewhere.stderr.includes("lives under docs/testing"), elsewhere.stderr);
+
+    // Light tests are discarded after the run; promotion restores them from the snapshot without rediscovery.
+    const spec = path.join(fixture.root, "e2e/label.spec.ts");
+    const original = fs.readFileSync(spec);
+    fs.writeFileSync(spec, "edited after the run\n");
+    const refused = spawnSync("python3", [path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py"), "promote", out,
+      "--root", fixture.root, "--to", "docs/testing/promoted"], { encoding: "utf8" });
+    assert.ok(refused.stderr.includes("e2e/label.spec.ts changed since the light run"), refused.stderr);
+    assert.ok(!fs.existsSync(path.join(fixture.root, "docs/testing/promoted")));
+    fs.writeFileSync(spec, original);
+    fs.rmSync(path.join(fixture.root, "tests/cases.json"));
+    const promoted = spawnSync("python3", [path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py"), "promote", out,
+      "--root", fixture.root, "--to", "docs/testing/promoted"], { encoding: "utf8" });
+    assert.strictEqual(promoted.status, 0, promoted.stderr);
+    assert.ok(fs.existsSync(path.join(fixture.root, "tests/cases.json")));
+    const durable = JSON.parse(fs.readFileSync(path.join(fixture.root, "docs/testing/promoted/label.suite.json"), "utf8"));
+    assert.strictEqual(durable.mode, "durable");
+    assert.strictEqual(durable.plan, "docs/testing/promoted/label.md");
+    const evidenceTool = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
+    const promotedSuite = path.join(fixture.root, "docs/testing/promoted/label.suite.json");
+    const tool = (...args) => spawnSync("python3", [evidenceTool, ...args, "--root", fixture.root], { encoding: "utf8" });
+    assert.strictEqual(tool("validate", promotedSuite).status, 0);
+    assert.strictEqual(tool("approve", promotedSuite, "--reviewer", "owner").status, 0);
+    const again = spawnSync("python3", [evidenceTool, "promote", out, "--root", fixture.root, "--to", "docs/testing/promoted"], { encoding: "utf8" });
+    assert.ok(again.stderr.includes("already exists"), again.stderr);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E reports applied, skipped, and asked blind spots and names unmeasured checks", () => {
+  const fixture = createBaseHeadFixture();
+  try {
+    const asked = fixture.run((suite) => {
+      for (const entry of suite.blindSpots) {
+        if (entry.item === "input-empty") {
+          delete entry.skipped;
+          entry.cases = ["E2E-01"];
+        }
+        if (entry.item === "viewport-mobile") {
+          delete entry.skipped;
+          entry.question = "Should a long label truncate or wrap on a phone?";
+        }
+      }
+    }, "blind-spots");
+    assert.strictEqual(asked.status, 1, asked.stderr || asked.stdout);
+    const spots = asked.results.blindSpots;
+    assert.deepStrictEqual(spots.applied, [{ item: "input-empty", cases: [{ caseId: "E2E-01", result: "PASS" }] }]);
+    assert.deepStrictEqual(spots.questions.map((q) => q.item), ["viewport-mobile"]);
+    assert.strictEqual(spots.skipped.length, blindSpotItems().length - 2);
+    assert.ok(asked.stdout.includes("blind-spot questions for the human: viewport-mobile"), asked.stdout);
+    const page = fs.readFileSync(path.join(asked.out, "report.html"), "utf8");
+    assert.ok(page.includes("<h2>Blind spots</h2>") && page.includes("Should a long label truncate or wrap on a phone?"));
+    const missing = fixture.validate((suite) => { suite.blindSpots.pop(); });
+    assert.strictEqual(missing.status, 2);
+    assert.ok(missing.stderr.includes("missing: "), missing.stderr);
+
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "new", unmeasured: true },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+      { title: "renders a label", file: "e2e/label.spec.ts", expect: "*", existing: true },
+    ]);
+    const unmeasured = fixture.run(null, "unmeasured");
+    const row = unmeasured.results.cases.find((c) => c.caseId === "E2E-01");
+    assert.strictEqual(row.result, "FAIL");
+    assert.ok(row.reasons.some((r) => r.startsWith("No actual value recorded for label")), JSON.stringify(row.reasons));
   } finally {
     fixture.cleanup();
   }

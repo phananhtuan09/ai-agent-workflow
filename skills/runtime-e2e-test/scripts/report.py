@@ -147,6 +147,25 @@ def human_cases(plan_text):
     return found
 
 
+def mode_line(mode):
+    if mode is None:
+        return ""
+    gate = "approved by a human before the run" if mode["approved"] else "no approval gate: nobody reviewed these tests before the run"
+    return f"<p><b>Mode: {esc(mode['name'])}</b> ({esc(gate)}). Chosen because {esc(mode['reason'])}.</p>"
+
+
+def blind_spots_section(spots):
+    out = [f"<h2>Blind spots</h2><p>{len(spots['applied'])} applied, {len(spots['skipped'])} skipped, {len(spots['questions'])} question(s) for you.</p>",
+           "<table><tr><th>Item</th><th>Outcome</th><th>Detail</th></tr>"]
+    for row in spots["applied"]:
+        cases = " ".join(f"<a href='#case-{esc(c['caseId'])}'>{esc(c['caseId'])}</a> {badge(c['result'])}" for c in row["cases"])
+        out.append(f"<tr><td><code>{esc(row['item'])}</code></td><td>applied</td><td>{cases}</td></tr>")
+    out += [f"<tr><td><code>{esc(r['item'])}</code></td><td>question</td><td>{esc(r['question'])}</td></tr>" for r in spots["questions"]]
+    out += [f"<tr><td><code>{esc(r['item'])}</code></td><td>skipped</td><td>{esc(r['reason'])}</td></tr>" for r in spots["skipped"]]
+    out.append("</table>")
+    return "".join(out)
+
+
 def open_items(result):
     """The same unresolved and review items the audit reports, as data."""
     items = [("Unresolved case", c["caseId"], f"{c['result']} / {c['proof']}") for c in result["cases"]
@@ -162,6 +181,7 @@ def open_items(result):
     if sweep is not None:
         items += [("Sweep difference", r["route"], ", ".join(r["differs"])) for r in sweep["routes"] if r["differs"]]
         items += [("Sweep not compared", c, "") for c in sweep["notCompared"]]
+    items += [("Blind-spot question", r["item"], r["question"]) for r in (result.get("blindSpots") or {}).get("questions", [])]
     return items
 
 
@@ -261,9 +281,10 @@ def build(bundle, notes=None):
            f"Base <code>{esc((base or {}).get('gitHead', '') or 'none')}</code> → head <code>{esc(manifest.get('gitHead', ''))}</code>"
            f"{' (uncommitted changes recorded)' if manifest.get('gitStatus') else ''}<br>{esc(level)}<br>"
            f"Command <code>{esc(' '.join(manifest.get('command', [])))}</code></p>",
+           mode_line(result.get("mode")),
            "<p class='muted'>Everything below comes from the evidence bundle; only boxes marked as agent inference were written by the agent. "
            "The audit (<code>evidence.py audit</code>) stays the source of truth.</p>",
-           "<h2>Claims</h2><table><tr><th>Case</th><th>Title (approved plan)</th><th>Kind</th><th>Routes</th><th>Head</th><th>Base</th><th>Can-fail</th></tr>"]
+           "<h2>Claims</h2><table><tr><th>Case</th><th>Title (plan)</th><th>Kind</th><th>Routes</th><th>Head</th><th>Base</th><th>Can-fail</th></tr>"]
     for case in suite["cases"]:
         row = rows[case["id"]]
         out.append(f"<tr><td><a href='#case-{esc(case['id'])}'>{esc(case['id'])}</a></td><td>{esc(titles.get(case['id'], ''))}</td>"
@@ -301,6 +322,8 @@ def build(bundle, notes=None):
             tests = "<br>".join(f"{esc(k)}: {esc('; '.join(v[:10]))}" for k, v in r["tests"].items())
             out.append(f"<tr><td>{esc(r['id'])}</td><td>{badge(r['status'])}</td><td>{tests or esc(r['reason'] or 'no failures')}</td></tr>")
         out.append("</table>")
+    if result.get("blindSpots") is not None:
+        out.append(blind_spots_section(result["blindSpots"]))
     out.append("<h2>Cases</h2>")
     for case in suite["cases"]:
         out.append(case_card(case, rows[case["id"]], base_rows.get(case["id"]), titles, head_tests.get(case["id"], {}),
@@ -317,10 +340,13 @@ def build(bundle, notes=None):
     limits += [f"Native global error: {str(e.get('message', e))[:200]}" for e in result.get("nativeErrors", [])]
     projects = [x for x in manifest.get("command", []) if x.startswith("--project")]
     limits.append(f"Browsers/viewports: only {', '.join(projects) or 'the default project'} ran")
+    env = result.get("environment") or {"strong": [], "weak": []}
+    limits += [f"Environment signal (strong{', run confirmed by the human' if env.get('confirmed') else ''}): {x}" for x in env["strong"]]
+    limits += [f"Environment signal (weak): {x}" for x in env["weak"]]
     out.append("<h2>Limits</h2><ul>" + "".join(f"<li>{esc(x)}</li>" for x in limits) + "</ul>")
     review = human_cases(plan_text)
     out.append("<h2>Human confirmation</h2><ul>")
-    out += [f"<li>{esc(a)}: {esc(b)} {esc(c)}</li>" for a, b, c in items if a in ("Sweep difference", "Existing suite")]
+    out += [f"<li>{esc(a)}: {esc(b)} {esc(c)}</li>" for a, b, c in items if a in ("Sweep difference", "Existing suite", "Blind-spot question")]
     out += [f"<li>Subjective review: {esc(c)}</li>" for c in review]
     out.append("<li>Sign-off decision is recorded in the plan ledger, never here.</li></ul>")
     if notes.get("general"):
