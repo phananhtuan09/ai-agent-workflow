@@ -108,14 +108,15 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `planner-mode` | `planner`, `quality-code-check`, `manage-project-knowledge` |
 
 The bundle named `core` is optional; the `coding-standard` kit does not require it.
-`brainstorm-partner`, `smart-commits`, and `triage` are machine-wide skills in [`global-skills/`](global-skills), installed once per machine instead of by a bundle.
+`brainstorm-partner`, `design-interview`, `sharpen-design`, `smart-commits`, and `triage` are machine-wide skills in [`global-skills/`](global-skills), installed once per machine instead of by a bundle.
 
 </details>
 
 ### Planner mode
 
 The `planner-mode` bundle installs the `planner` skill with `quality-code-check` and `manage-project-knowledge`; Codex and Antigravity receive the same skill.
-It routes to the global `brainstorm-partner` and `smart-commits` skills when they are installed on the machine.
+It routes to the global `brainstorm-partner`, `design-interview`, and `smart-commits` skills when they are installed on the machine.
+`sharpen-design` runs only when the human invokes it.
 Type `/planner` to turn it on for the rest of the conversation.
 For each prompt the agent picks the fitting workflow step or skill, does it, and ends with two or three numbered next steps; reply `1`, `2`, or `3` to continue.
 It asks first before git actions, outward actions such as PR comments, and unresolved product decisions, and choosing an option that names one of those actions approves it.
@@ -179,7 +180,8 @@ Existing project and global instruction files are always preserved.
 AGENTS.md
 docs/
 ├── WORKFLOW.md          # authority, work shapes, durable memory, proof
-├── product/             # accepted product and domain behavior
+├── product/             # accepted product behavior
+├── glossary/            # accepted project-specific terms
 ├── decisions/           # architecture, security, compatibility, operations
 ├── plans/               # active and completed durable working memory
 ├── patterns/            # accepted recurring technical patterns
@@ -194,7 +196,7 @@ docs/
 ```
 
 Optional namespaces are not product authority and are not loaded by ordinary coding work.
-The agent maintains durable knowledge itself: it records what you accept in conversation, keeps facts it infers from code in `docs/observed/`, and asks only when intent sources conflict.
+The agent maintains durable knowledge itself: it records what you accept in conversation, records a confirmed term in `docs/glossary/` immediately, keeps facts it infers from code in `docs/observed/`, and asks only when intent sources conflict.
 See [`docs/README.md`](docs/README.md) for each location's contract.
 
 </details>
@@ -252,7 +254,7 @@ For an A/B benchmark, also compare globally available skills and instructions, r
 
 | Path | Contents | Installed by the CLI |
 | --- | --- | --- |
-| [`global-skills/`](global-skills) | Machine-wide skills (`brainstorm-partner`, `herdr-guide`, `idea-scout`, `prompt-leverage`, `smart-commits`, `triage`) | No; follow its README |
+| [`global-skills/`](global-skills) | Machine-wide skills (`brainstorm-partner`, `design-interview`, `herdr-guide`, `idea-scout`, `prompt-leverage`, `sharpen-design`, `smart-commits`, `triage`) | No; follow its README |
 | [`paseo-plugins/`](paseo-plugins) | [Paseo](https://paseo.sh) plugins (`attention`, `usage-pill`) | No; follow its README |
 | `cli.js`, `lib/` | The `ai-workflow-init` installer and updater | — |
 | `docs/braintorm/` | Exploratory design notes, not product authority | No |

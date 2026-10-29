@@ -7,6 +7,16 @@ Do not create a decision record for routine implementation choices.
 ## Admission
 
 Create a decision artifact only for an accepted choice whose rationale or constraints future work must preserve.
+Create it only when all three tests below are true.
+If one fails, do not create the record.
+
+1. **Hard to reverse.** Changing the choice later has a meaningful cost.
+2. **Surprising without context.** A future reader would wonder why the choice was made.
+3. **A real trade-off.** Genuine alternatives existed, and one was chosen for specific reasons.
+
+The agent records a decision that passes these tests and was accepted in the conversation.
+It does not ask for a separate permission step before writing.
+A routine implementation choice or an obvious default fails the tests.
 Update the original record to mark it superseded; do not rewrite history to make an old decision appear current.
 Use a filename in the form `YYYY-MM-DD-<lowercase-kebab-topic>.md`.
 `README.md` defines this namespace and is not a decision record.
