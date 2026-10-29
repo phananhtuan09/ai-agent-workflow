@@ -478,6 +478,9 @@ def runtime_status(bundle, known, review, head):
 def coverage(item, cases):
     mapped = [c for c in cases if item in c["expects"]]
     good = [c for c in mapped if c["result"] == "PASS" and c["proof"] != "NON_PROVING"]
+    # A failing case already fails the run, so the expectation is reported as failed, not as unproven.
+    if any(c["result"] == "FAIL" for c in mapped):
+        return "FAILED", [c["id"] for c in mapped]
     return ("FULL" if mapped and len(good) == len(mapped) else "PARTIAL" if good else "NONE"), [c["id"] for c in mapped]
 
 

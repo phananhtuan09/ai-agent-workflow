@@ -3706,6 +3706,28 @@ test("validate-change report checks the run files and computes one status from t
     assert.ok(result.stderr.includes("suite case E2E-02: refs must list known ids"), result.stderr);
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
 
+    // An expectation whose case fails is reported as failed, not again as unproven.
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "something else" },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+    ]);
+    const failing = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.cases[0].expects = ["K1"];
+      suite.cases[0].flows = ["F1"];
+      suite.cases[1].expects = ["K2"];
+    }, "label/runs/failing");
+    assert.strictEqual(failing.status, 1, failing.stderr || failing.stdout);
+    result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/failing"; });
+    assert.strictEqual(result.status, 1, result.stderr);
+    assert.strictEqual(read("status.json").overall, "FAILED");
+    assert.ok(!read("status.json").sections.some((s) => s.reason.includes("chưa được chứng minh đủ")), JSON.stringify(read("status.json").sections));
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("| E2E-01 | FAILED |"));
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "new" },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+    ]);
+
     // Expectations edited after the risk step can add a gate, and an unconfirmed agent-intent item needs a question.
     const agentOnly = items.map((i) => ({ ...i, source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined, default: undefined }));
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: agentOnly });
