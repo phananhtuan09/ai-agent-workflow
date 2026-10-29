@@ -3343,7 +3343,7 @@ function createSurfaceFixture() {
   ].join("\n"));
   write("src/list.ts", "import { a } from './a';\nimport { b } from './b';\n\nexport const list = [a, b];\n");
   write("src/total.ts", "export function total(items: number[])  {\n  return items.reduce((sum, item) => sum + item, 0);\n}\n");
-  write("src/legacy.ts", "export function legacy(value: any) {\n  console.debug(value);\n  return value * 42;\n}\n\nexport const LIMIT = 250;\n");
+  write("src/legacy.ts", "export function legacy(value: any) {\n  console.debug(value);\n  return value * 42;\n}\n\nexport const LIMIT = 250;\nexport const retryDelay = 250;\n");
   // A non-ASCII path is quoted by git by default; documentation and tests are out of scope.
   write("src/đơn-hàng.ts", "export const order = (value: number) => {\n  console.debug(value);\n  return value;\n};\n");
   write("e2e/đơn.spec.ts", "export const wait = () => 2500;\n");
@@ -3383,6 +3383,23 @@ test("surface scan reports only added lines, groups by rule, caps output, and re
     assert.ok(report.judgment.some((rule) => rule.rule === "pattern-inconsistency"));
     const levels = report.findings.map((item) => item.level);
     assert.deepStrictEqual(levels, levels.slice().sort((a, b) => (a === "Nên sửa" ? 0 : 1) - (b === "Nên sửa" ? 0 : 1)));
+
+    // Size checks use the diff's own new side: an oversized added function is found from HEAD,
+    // and a diff file that does not match the working tree is skipped, not misread.
+    const big = ["export function big() {", ...Array.from({ length: 90 }, (_, i) => `  step(${i});`), "}", ""].join("\n");
+    fs.writeFileSync(path.join(fixture.root, "src/big.ts"), big);
+    spawnSync("git", ["add", "."], { cwd: fixture.root });
+    spawnSync("git", ["commit", "-qm", "big"], { cwd: fixture.root });
+    fs.writeFileSync(path.join(fixture.root, "src/big.ts"), `// moved\n\n\n${big}`);
+    const sized = JSON.parse(scan().stdout);
+    assert.deepStrictEqual(sized.findings.filter((item) => item.rule === "oversized-function").map((item) => `${item.file}:${item.line}`), ["src/big.ts:1"]);
+    const committed = spawnSync("git", ["diff", `${fixture.base}...HEAD`], { cwd: fixture.root, encoding: "utf8" }).stdout;
+    const committedFile = path.join(fixture.root, "committed.diff");
+    fs.writeFileSync(committedFile, committed);
+    const mismatched = JSON.parse(spawnSync(process.execPath, [script, "--root", fixture.root, "--diff", committedFile], { cwd: fixture.root, encoding: "utf8" }).stdout);
+    assert.ok(!mismatched.findings.some((item) => item.rule === "oversized-function"));
+    assert.ok(mismatched.skipped.some((item) => item.file === "src/big.ts"), JSON.stringify(mismatched.skipped));
+    fs.writeFileSync(path.join(fixture.root, "src/big.ts"), big);
 
     // A diff file written with git's default path quoting decodes to the same path.
     const quoted = spawnSync("git", ["-c", "core.quotePath=true", "diff", `${fixture.base}...HEAD`], { cwd: fixture.root, encoding: "utf8" }).stdout;

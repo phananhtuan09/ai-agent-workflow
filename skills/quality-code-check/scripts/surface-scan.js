@@ -251,6 +251,21 @@ function projectFiles(root) {
   return found;
 }
 
+// The new side of the diff, only when its lines are the ones the diff numbered; otherwise size checks skip the file.
+function newSide(context, file) {
+  let text = null;
+  if (context.revision) {
+    const shown = spawnSync("git", ["show", `${context.revision}:${file.path}`], { cwd: context.root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+    if (shown.status === 0) text = shown.stdout;
+  } else {
+    text = readProjectFile(context.root, file.path);
+  }
+  const lines = text === null ? null : text.split("\n");
+  if (lines && file.added.every((entry) => lines[entry.line - 1] === entry.text)) return text;
+  context.skipped.push({ file: file.path, reason: text === null ? "new side not readable" : "working tree differs from the diff" });
+  return null;
+}
+
 function readProjectFile(root, file) {
   try {
     return fs.readFileSync(path.join(root, file), "utf8");
@@ -316,6 +331,8 @@ const BUILTINS = {
       if (isComment(entry.text, ext)) return;
       if (/^\s*(export\s+)?(const|final|static\s+final)\s+[A-Z][A-Z0-9_]*\s*[:=]/.test(entry.text)) return;
       if (/^\s*[A-Z][A-Z0-9_]*\s*=/.test(entry.text) || /^\s*(import|from|export\s+\*)\b/.test(entry.text)) return;
+      // A number given a name by its own declaration, such as `const retryDelay = 250;`, is not magic.
+      if (/^\s*(export\s+)?((const|let|var|final|static)\s+)*[A-Za-z_$][\w$]*\s*(:\s*[\w.]+)?\s*=\s*-?[\d_.]+\s*;?\s*(\/\/.*|#.*)?$/.test(entry.text)) return;
       if ((entry.text.match(/[\w-]+\s*:\s*[^;:]+;/g) || []).length >= 2) return; // inline CSS text
       // Indexes and slices are positions, not magic values.
       const code = stripStrings(entry.text).replace(/\[[^\[\]]*\]/g, "[]")
@@ -328,7 +345,7 @@ const BUILTINS = {
   },
 
   "function-size"(rule, file, context) {
-    const text = readProjectFile(context.root, file.path);
+    const text = newSide(context, file);
     if (text === null) return [];
     const lines = text.split("\n");
     const added = new Set(file.added.map((entry) => entry.line));
@@ -359,7 +376,7 @@ const BUILTINS = {
   },
 
   "file-size"(rule, file, context) {
-    const text = readProjectFile(context.root, file.path);
+    const text = newSide(context, file);
     if (text === null) return [];
     const total = text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
     const before = total - file.added.length + file.removed.length;
@@ -451,7 +468,7 @@ function scan(diffText, options) {
   const { settings, rules } = loadRules(options.rules);
   const ignored = matcher(listSetting(settings.ignore));
   const isTest = matcher(listSetting(settings.tests));
-  const context = { root: options.root, settings, isTest, facts: projectFacts(options.root) };
+  const context = { root: options.root, revision: options.base ? "HEAD" : null, settings, isTest, facts: projectFacts(options.root), skipped: [] };
   const files = parseDiff(diffText).filter((file) => !ignored(file.path));
   const findings = [];
   files.forEach((file) => {
@@ -492,6 +509,7 @@ function scan(diffText, options) {
     findings,
     shown: findings.slice(0, cap),
     hidden: findings.length > cap ? countBy(findings.slice(cap), "category") : {},
+    skipped: context.skipped.filter((item, index, all) => all.findIndex((other) => other.file === item.file) === index),
     judgment: rules.filter((rule) => rule.kind === "judgment").map((rule) => ({ rule: rule.id, category: rule.category, level: rule.level, what: rule.what })),
   };
 }
@@ -519,6 +537,7 @@ function markdown(result) {
       lines.push("", `Còn ${total} phát hiện khác không hiển thị: ${hidden.map(([category, count]) => `${category} ${count}`).join(", ")}.`);
     }
   }
+  if (result.skipped.length) lines.push("", `Bỏ qua kiểm tra kích thước: ${result.skipped.map((item) => `\`${item.file}\` (${item.reason})`).join(", ")}.`);
   lines.push("", `Quét ${result.files.length} file; chỉ xét các dòng thêm mới. Các quy tắc cần đánh giá thủ công: ${result.judgment.map((rule) => `\`${rule.rule}\``).join(", ")}.`);
   return lines.join("\n");
 }
