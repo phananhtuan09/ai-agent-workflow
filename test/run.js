@@ -3493,8 +3493,10 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     git("config", "user.email", "test@example.com");
     git("config", "user.name", "Test");
     fs.mkdirSync(path.join(root, "src"));
-    fs.writeFileSync(path.join(root, "package.json"), '{\n  "dependencies": {\n    "react": "^17.0.2",\n    "zod": "^3.1.0"\n  }\n}\n');
+    fs.writeFileSync(path.join(root, "package.json"), '{\n  "version": "1.0.0",\n  "dependencies": {\n    "react": "^17.0.2",\n    "zod": "^3.1.0"\n  }\n}\n');
     fs.writeFileSync(path.join(root, "src/old.test.ts"), "it('works', () => {});\n");
+    fs.writeFileSync(path.join(root, "src/moved.test.ts"), "it('moves', () => {});\n");
+    fs.writeFileSync(path.join(root, "src/notes.txt"), "-- authorize(user)\nkeep\n");
     fs.writeFileSync(path.join(root, "src/copy.css"), ".a { color: red; }\n");
     fs.writeFileSync(path.join(root, ".gitignore"), ".runtime-e2e/\n");
     git("add", ".");
@@ -3524,8 +3526,11 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     assert.ok(fromDescription.stderr.includes("taken from the PR description is agent-intent"), fromDescription.stderr);
     expectations([prompt]);
 
-    fs.writeFileSync(path.join(root, "package.json"), '{\n  "dependencies": {\n    "react": "^18.3.1",\n    "zod": "^3.2.0"\n  }\n}\n');
+    fs.writeFileSync(path.join(root, "package.json"), '{\n  "version": "2.0.0",\n  "dependencies": {\n    "react": "^18.3.1",\n    "zod": "^3.2.0"\n  }\n}\n');
     fs.rmSync(path.join(root, "src/old.test.ts"));
+    git("mv", "src/moved.test.ts", "src/renamed.test.ts");
+    // In the diff these read "--- authorize(user)" and "+++ isAdmin(x)", which are hunk lines, not file headers.
+    fs.writeFileSync(path.join(root, "src/notes.txt"), "++ isAdmin(x)\nkeep\n");
     fs.mkdirSync(path.join(root, "src/auth"));
     fs.writeFileSync(path.join(root, 'src/auth/gu"ard-đ.ts'), "export const ok = (u) => isAdmin(u);\nit.skip('later', () => {});\n");
     fs.writeFileSync(path.join(root, "package-lock.json"), "x\n".repeat(50));
@@ -3536,11 +3541,22 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     const hits = Object.fromEntries(high.signals.map((s) => [s.rule, s.hits]));
     assert.deepStrictEqual([high.gate, high.audit], ["required", "required"]);
     assert.deepStrictEqual(Object.keys(hits).sort(), ["access-check", "dependency-major", "permission-path", "tests-deleted", "tests-skipped"]);
+    assert.deepStrictEqual(hits["access-check"].filter((h) => h.startsWith("src/notes.txt")), ["src/notes.txt: +++ isAdmin(x)", "src/notes.txt: --- authorize(user)"]);
     assert.deepStrictEqual(hits["permission-path"], ['src/auth/gu"ard-đ.ts']);
     assert.deepStrictEqual(hits["dependency-major"], ["package.json: react ^17.0.2 → ^18.3.1"]);
+    // A renamed test file is not a deleted one; the package version is not a dependency.
     assert.deepStrictEqual(hits["tests-deleted"], ["src/old.test.ts"]);
     // Ignored lockfiles count toward neither the size nor the file total.
-    assert.strictEqual(high.files, 4);
+    assert.strictEqual(high.files, 7);
+
+    // With --worktree, an untracked file counts as added.
+    fs.mkdirSync(path.join(root, "db/migrations"), { recursive: true });
+    fs.writeFileSync(path.join(root, "db/migrations/001.sql"), "DROP TABLE orders;\n");
+    assert.strictEqual(validateChange(root, ["risk", run, "--base", "HEAD", "--worktree"]).status, 0);
+    const untracked = JSON.parse(fs.readFileSync(path.join(run, "risk.json"), "utf8"));
+    assert.deepStrictEqual(untracked.untracked, ["db/migrations/001.sql"]);
+    assert.deepStrictEqual(untracked.signals.map((s) => s.rule), ["data-path", "destructive-sql"]);
+    fs.rmSync(path.join(root, "db"), { recursive: true });
 
     const rules = path.join(root, "rules.md");
     const source = fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/references/risk-rules.md"), "utf8");
@@ -3632,6 +3648,11 @@ test("validate-change report checks the run files and computes one status from t
     assert.strictEqual(result.status, 1);
     assert.strictEqual(read("status.json").overall, "FAILED");
 
+    // A required step that did not run proves nothing.
+    result = report((d) => { d.steps[2] = { skill: "runtime-e2e-test", status: "SKIPPED", skip: "not-applicable", reason: "no runtime surface" }; });
+    assert.strictEqual(result.status, 1);
+    assert.deepStrictEqual(read("status.json").sections, [{ status: "NEEDS_REVIEW", reason: "runtime-e2e-test không chạy: no runtime surface" }]);
+
     // A required skill left out or missing never passes silently.
     result = report((d) => { d.steps.splice(1, 1); });
     assert.strictEqual(result.status, 2);
@@ -3663,6 +3684,24 @@ test("validate-change report checks the run files and computes one status from t
     result = report();
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("suite case E2E-02: refs must list known ids"), result.stderr);
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
+
+    // Expectations edited after the risk step can add a gate, and an unconfirmed agent-intent item needs a question.
+    const agentOnly = items.map((i) => ({ ...i, source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined, default: undefined }));
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: agentOnly });
+    result = report();
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("records no answer"), result.stderr);
+    const waived = (d) => { d.gate.override = "never"; };
+    result = report(waived);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("need a human question: K1, K2"), result.stderr);
+    writeJson(file("review.json"), { ...review, questions: [{ kRef: "K1", question: "Is this wanted?" }, { kRef: "K2", question: "And this?" }] });
+    result = report(waived);
+    assert.strictEqual(result.status, 1, result.stderr);
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").startsWith("# Validate change — label change\n\n**Ý định chưa được human xác nhận.**"));
+    assert.deepStrictEqual([read("status.json").gate, read("status.json").overall], ["WAIVED", "NEEDS_REVIEW"]);
+    writeJson(file("review.json"), review);
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
 
     // risk.json is generated: a hand edit is refused.
@@ -3741,6 +3780,15 @@ test("validate-change report checks the run files and computes one status from t
     result = report(withAudit);
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("one verdict for every expectation item"), result.stderr);
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED"), verdict("K2", "MISSING")] });
+    result = report(withAudit);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("SUPPORTED cites the evidence it rests on"), result.stderr);
+    // A malformed file is reported as inconsistent, not as a crash.
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [{ verdict: "MISSING" }, verdict("K2", "MISSING")] });
+    result = report(withAudit);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.startsWith("Inconsistent:") && !result.stderr.includes("Traceback"), result.stderr);
   } finally {
     fixture.cleanup();
   }

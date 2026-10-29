@@ -157,28 +157,52 @@ def unquote(path):
     return out.decode("utf-8", "replace")
 
 
-def read_diff(root, base, worktree):
-    """Files of the change with their added and removed lines, and whether each was deleted."""
+def read_diff(root, base, worktree, untracked=None):
+    """Files of the change with their added and removed lines, and whether each was deleted or renamed away.
+
+    With `worktree`, untracked files count as added; `untracked` limits them to a list recorded earlier.
+    """
     ref = [base] if worktree else [f"{base}...HEAD"]
     text = git(root, "diff", "--no-color", "--no-renames", "--no-ext-diff", "-U0", *ref)
-    files, current = {}, None
+    files, current, header, old = {}, None, False, None
     for line in text.splitlines():
         if line.startswith("diff --git "):
-            current, old = None, None
-        elif line.startswith("--- "):
+            current, header, old = None, True, None
+        elif header and line.startswith("@@"):
+            header = False
+        # Inside a hunk, a removed "-- x" reads "--- x" and an added "++ x" reads "+++ x"; only the header names files.
+        elif header and line.startswith("--- "):
             old = None if line[4:] == "/dev/null" else unquote(line[4:])[2:]
-        elif line.startswith("+++ "):
+        elif header and line.startswith("+++ "):
             new = None if line[4:] == "/dev/null" else unquote(line[4:])[2:]
-            name = new or old
-            current = files.setdefault(name, {"added": [], "removed": [], "deleted": new is None})
-        elif current is not None and line.startswith("+"):
+            current = files.setdefault(new or old, {"added": [], "removed": [], "deleted": new is None, "renamed": False})
+        elif current is not None and not header and line.startswith("+"):
             current["added"].append(line[1:])
-        elif current is not None and line.startswith("-"):
+        elif current is not None and not header and line.startswith("-"):
             current["removed"].append(line[1:])
     # Binary files and mode-only changes carry no hunks, so they come from the name list.
     for name in git(root, "diff", "--name-only", "--no-renames", *ref).splitlines():
-        files.setdefault(unquote(name), {"added": [], "removed": [], "deleted": False})
-    return files
+        files.setdefault(unquote(name), {"added": [], "removed": [], "deleted": False, "renamed": False})
+    fields = git(root, "diff", "--name-status", "-M", "-z", *ref).split("\0")
+    i = 0
+    while i < len(fields) - 1:
+        if fields[i].startswith("R"):
+            if fields[i + 1] in files:
+                files[fields[i + 1]]["renamed"] = True
+            i += 3
+        else:
+            i += 2
+    found = []
+    if worktree:
+        listed = [n for n in git(root, "ls-files", "--others", "--exclude-standard", "-z").split("\0") if n]
+        found = sorted(n for n in listed if untracked is None or n in untracked)
+        for name in found:
+            try:
+                lines = (root / name).read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError):
+                lines = []
+            files[name] = {"added": lines, "removed": [], "deleted": False, "renamed": False}
+    return files, found
 
 
 def major(version):
@@ -186,16 +210,32 @@ def major(version):
     return int(found.group()) if found else None
 
 
-def dependency_majors(change):
-    """Dependencies whose declared major version differs between removed and added package.json lines."""
-    entry = re.compile(r'^\s*"([^"]+)"\s*:\s*"([^"]+)"')
-    before = {m.group(1): m.group(2) for m in map(entry.match, change["removed"]) if m}
-    after = {m.group(1): m.group(2) for m in map(entry.match, change["added"]) if m}
+DEPENDENCY_SECTIONS = ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies")
+
+
+def declared(text):
+    """Dependency versions a package.json declares, or none when it is missing or not JSON."""
+    try:
+        data = json.loads(text) if text else {}
+    except ValueError:
+        return {}
+    sections = [data.get(key) for key in DEPENDENCY_SECTIONS] if isinstance(data, dict) else []
+    return {name: version for section in sections if isinstance(section, dict) for name, version in section.items() if isinstance(version, str)}
+
+
+def dependency_majors(before_text, after_text):
+    """Dependencies whose declared major version differs between the base and the new package.json."""
+    before, after = declared(before_text), declared(after_text)
     return [f"{name} {before[name]} → {after[name]}" for name in sorted(set(before) & set(after))
             if major(before[name]) is not None and major(after[name]) is not None and major(before[name]) != major(after[name])]
 
 
-def diff_signals(files, settings, rules):
+def show(root, revision, name):
+    done = subprocess.run(["git", "show", f"{revision}:{name}"], cwd=root, capture_output=True, text=True)
+    return done.stdout if done.returncode == 0 else ""
+
+
+def diff_signals(files, settings, rules, versions):
     """Rules the diff itself triggers; intent rules are evaluated separately from the expectation list."""
     ignored, tests, shared = matcher(settings["ignore"]), matcher(settings["tests"]), matcher(settings["shared"])
     kept = {name: change for name, change in sorted(files.items()) if not ignored(name)}
@@ -216,9 +256,9 @@ def diff_signals(files, settings, rules):
         elif rule["check"] == "shared":
             hits = [name for name in kept if settings["shared"] and shared(name)]
         elif rule["check"] == "tests-deleted":
-            hits = [name for name, change in kept.items() if change["deleted"] and tests(name)]
+            hits = [name for name, change in kept.items() if change["deleted"] and not change["renamed"] and tests(name)]
         elif rule["check"] == "dependency-major":
-            hits = [f"{name}: {d}" for name, change in kept.items() if Path(name).name == "package.json" for d in dependency_majors(change)]
+            hits = [f"{name}: {d}" for name in kept if Path(name).name == "package.json" for d in dependency_majors(*versions(name))]
         if hits:
             signals.append({"rule": rule["id"], "level": rule["level"], "what": rule["what"], "count": len(hits), "hits": hits[:5]})
     return signals, {"files": len(kept), "lines": lines}
@@ -234,17 +274,25 @@ def intent_signals(expectations, rules):
             for r in rules if r["scope"] == "builtin" and r["check"] in INTENT_BUILTINS and found[r["check"]]]
 
 
-def assess(root, base, worktree, expectations, rules_path):
+def assess(root, base, worktree, expectations, rules_path, untracked=None):
     settings, rules = load_rules(rules_path)
-    signals, size = diff_signals(read_diff(root, base, worktree), settings, rules)
+    base_sha = git(root, "rev-parse", base if worktree else git(root, "merge-base", base, "HEAD").strip()).strip()
+
+    def versions(name):
+        after = (root / name).read_text(encoding="utf-8") if worktree and (root / name).is_file() else show(root, "HEAD", name)
+        return show(root, base_sha, name), after
+
+    files, found = read_diff(root, base, worktree, untracked)
+    signals, size = diff_signals(files, settings, rules, versions)
     signals += intent_signals(expectations, rules)
     levels = {s["level"] for s in signals}
     return {
         "schema": "validate-change/risk@1",
         "base": base,
-        "baseSha": git(root, "rev-parse", base if worktree else git(root, "merge-base", base, "HEAD").strip()).strip(),
+        "baseSha": base_sha,
         "headSha": git(root, "rev-parse", "HEAD").strip(),
         "worktree": worktree,
+        "untracked": found,
         "rulesDigest": hashlib.sha256(Path(rules_path).read_bytes()).hexdigest(),
         **size,
         "signals": signals,
@@ -443,10 +491,18 @@ def evaluate(root, run_dir, rules_path):
     head = git(root, "rev-parse", "HEAD").strip()
     if risk.get("headSha") != head:
         raise Inconsistent(f"risk.json was computed for {risk.get('headSha')}, but HEAD is {head}; run risk again")
-    fresh = assess(root, risk["base"], risk["worktree"], expectations, rules_path)
-    diff_only = lambda r: [s for s in r["signals"] if s["rule"] not in {x["rule"] for x in intent_signals(expectations, load_rules(rules_path)[1])}]
+    # Light tests written after the risk step are untracked too, so only the files recorded then are compared.
+    fresh = assess(root, risk["base"], risk["worktree"], expectations, rules_path, risk.get("untracked", []))
+    rules = load_rules(rules_path)[1]
+    intent_ids = {r["id"] for r in rules if r["scope"] == "builtin" and r["check"] in INTENT_BUILTINS}
+    diff_only = lambda r: [s for s in r["signals"] if s["rule"] not in intent_ids]
     if (fresh["rulesDigest"], fresh["baseSha"], diff_only(fresh)) != (risk["rulesDigest"], risk["baseSha"], diff_only(risk)):
         raise Inconsistent("risk.json does not match the diff and the risk rules; run risk again instead of editing it")
+    # Expectations edited after the risk step can add an intent signal, never remove the stored one.
+    added = [s for s in intent_signals(expectations, rules) if s["rule"] not in {x["rule"] for x in risk["signals"]}]
+    risk = {**risk, "signals": risk["signals"] + added,
+            "gate": "required" if risk["gate"] == "required" or any(s["level"] in ("high", "gate") for s in added) else risk["gate"],
+            "audit": "required" if risk["audit"] == "required" or any(s["level"] == "high" for s in added) else risk["audit"]}
     run = load(run_dir / "run.json")
     steps = check_run(run)
     sections, limits = [], list(run.get("limits", []))
@@ -487,7 +543,8 @@ def evaluate(root, run_dir, rules_path):
             sections.append(("BLOCKED", f"thiếu skill bắt buộc {skill}"))
             limits.append(f"{skill} chưa được cài nên bước này không chạy.")
         elif steps[skill]["status"] == "SKIPPED" and steps[skill]["skip"] == "not-applicable":
-            limits.append(f"{skill} không chạy: {steps[skill]['reason']}")
+            # A step that did not run proves nothing, so the change cannot pass on the other steps alone.
+            sections.append(("NEEDS_REVIEW", f"{skill} không chạy: {steps[skill]['reason']}"))
 
     static = steps["quality-code-check"]
     build_failed = static["status"] == "RAN" and any(c["kind"] == "build" and c["exit"] != 0 for c in static["checks"])
@@ -630,6 +687,9 @@ def main(argv=None):
         state = evaluate(root, run_dir, args.rules)
     except Inconsistent as error:
         print(f"Inconsistent: {error}", file=sys.stderr)
+        return 2
+    except (KeyError, TypeError, AttributeError, IndexError) as error:
+        print(f"Inconsistent: a run file is malformed ({type(error).__name__}: {error})", file=sys.stderr)
         return 2
     report = markdown(state)
     (run_dir / "report.md").write_text(report, encoding="utf-8")

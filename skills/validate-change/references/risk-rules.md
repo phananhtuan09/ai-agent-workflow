@@ -39,12 +39,12 @@ Files under `ignore` are left out of every rule and every count.
 | `access-check` | high | changed | `\b(isAdmin\|authorize\|requireRole\|hasRole\|hasPermission\|canAccess\|checkPermission\|verifyToken\|jwt\|bcrypt\|csrf)\b` | An access check or credential handling added or removed. |
 | `money-math` | high | changed | `(?i)(amount\|currency\|refund\|charge\|discount\|subtotal\|price)\w*\s*(=[^=>]\|[*+/-]\s*[\w(]\|[<>]=?\s*\d)` | Arithmetic, assignment, or a limit on a money value. |
 | `tests-skipped` | high | added | `\b(it\|test\|describe)\.(skip\|only\|todo)\(\|\bx(it\|describe)\(\|@pytest\.mark\.skip` | A test skipped, focused, or left as a todo. |
-| `tests-deleted` | high | builtin | `builtin:tests-deleted` | A test file deleted by the change. |
+| `tests-deleted` | high | builtin | `builtin:tests-deleted` | A test file deleted by the change; a renamed one does not count. |
 | `size` | gate | builtin | `builtin:size` | The change is larger than `max-lines` changed lines or `max-files` files. |
 | `shared` | gate | builtin | `builtin:shared` | A file matching the `shared` setting, such as a design-system component or a utility many routes import. |
 | `env-file` | gate | path | `(^\|/)\.env(\.\|$)` | An environment file. |
 | `env-var` | gate | added | `process\.env\.\w+\|import\.meta\.env\.\w+\|os\.environ\|getenv\(` | Code that reads an environment variable. |
-| `dependency-major` | gate | builtin | `builtin:dependency-major` | A dependency in `package.json` moved to a new major version. |
+| `dependency-major` | gate | builtin | `builtin:dependency-major` | A dependency in a `package.json` dependency section moved to a new major version. |
 | `agent-intent-only` | gate | builtin | `builtin:agent-intent-only` | No expectation comes from a human prompt or spec. |
 | `intent-conflict` | gate | builtin | `builtin:intent-conflict` | The expectation list records a conflict between sources; the human resolves it at the gate. |
 | `flag-default` | advisory | changed | `(?i)\b\w*(feature\|flag\|toggle)\w*\s*[:=]\s*(true\|false)\b` | A feature-flag default set or flipped. |

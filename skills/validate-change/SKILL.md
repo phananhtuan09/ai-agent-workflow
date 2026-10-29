@@ -66,7 +66,7 @@ Build exactly one expectation list in `expectations.json`; every later step cons
 
 ## 2. Risk gate
 
-Run `python3 <skill-dir>/scripts/validate_change.py risk <run-dir> --base <ref>` (add `--worktree` for uncommitted changes).
+Run `python3 <skill-dir>/scripts/validate_change.py risk <run-dir> --base <ref>` (add `--worktree` for uncommitted changes; untracked files then count as added).
 It applies `references/risk-rules.md`, a project-editable table of deterministic signals: money, data, and permission paths and tokens, deleted or skipped tests, size, shared files, environment variables, major dependency bumps, agent-intent only, and recorded conflicts.
 
 - Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists K1..Kn, the conflicts, the assumptions, and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
