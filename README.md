@@ -71,6 +71,7 @@ Record which source or revision you used when comparing installations.
 | 🧭 Core protocol | `--kit coding-standard` | `AGENTS.md`, `docs/WORKFLOW.md`, and the `docs/` namespaces | Stable |
 | 🗺️ Planner mode | `--bundle planner-mode` | Manually invoked `/planner` mode that picks the next workflow step and suggests numbered next prompts | Experimental |
 | 🧪 Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
+| ✅ Validate change | `--bundle validate` | Manually invoked `/validate-change` that runs static checks, review, and runtime E2E on one expectation list and reports one status | Experimental |
 | 🎨 Design | `--kit design` | `docs/PRODUCT.md` and `docs/DESIGN.md` for the external Impeccable engine | Stable |
 | 📊 Workflow evaluation | `--kit workflow-eval` | Trace-first evaluation standard, templates, and skills under `docs/evaluation/` | Stable |
 | 🎓 Learning | `--kit learning-workflow` | Mini-project learning coordinator and helpers under `docs/learning/` | Stable |
@@ -90,6 +91,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `manage-project-knowledge` | Finds and explains durable knowledge under `docs/`, keeps it current on its own after each task, and maintains all project docs when invoked without a topic. |
 | `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
+| `validate-change` | Manually invoked composite that validates a change against one expectation list with `quality-code-check`, `review-pr`, and `runtime-e2e-test`, gates risky changes once, and reports one status (`references/risk-rules.md` is project-customizable). |
 | `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
 | `workflow-evaluation`, `record-workflow-friction` | Evaluate AI workflows and record execution friction. |
 | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` | Run two-to-three-day learning mini-projects. |
@@ -100,6 +102,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `common-review` | `quality-code-check`, `review-pr` |
 | `proposal` | `proposal-designer` |
 | `testing` | `runtime-e2e-test` |
+| `validate` | `validate-change`, `quality-code-check`, `review-pr`, `runtime-e2e-test` |
 | `evaluation` | `workflow-evaluation`, `record-workflow-friction` |
 | `learning` | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` |
 | `planner-mode` | `planner`, `quality-code-check`, `manage-project-knowledge` |
@@ -126,6 +129,23 @@ See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for s
 `plan` mode writes a Markdown plan plus mapped Playwright tests for human approval; `run` mode executes approved scripts against real web or HTTP API boundaries.
 Versioned evidence bundles keep inputs, results, observations, traces, retries, and cleanup for independent audit.
 After installation, complete `<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md` with the project's service commands, readiness checks, fixtures, and safety limits, without secret values. Adjust `references/blind-spots.md`, the edge-case catalog every plan walks, to the project; an edited copy is kept on update.
+
+### Validate change
+
+The `validate` bundle installs `validate-change` with the three skills it calls. Type `/validate-change [PR | branch | diff] [intent or spec]` after a change is made.
+It builds one expectation list from your prompt or spec (the PR description never counts as intent), applies the deterministic risk rules in `references/risk-rules.md`, and stops once for confirmation when the change touches money, data, or permissions, is large, or has no human-stated intent.
+It then runs `quality-code-check`, `review-pr`, and `runtime-e2e-test` light mode on that list, adds an independent audit for high-risk changes, and writes one report with a computed status. It never changes application code.
+It is experimental. Claude Code keeps it manual with `disable-model-invocation` and Codex with `allow_implicit_invocation: false`; other runtimes rely on the skill description.
+
+| You want to… | Command |
+| --- | --- |
+| Accept a PR or a change just made | `/validate-change` |
+| Re-test existing features or build a durable suite | `/runtime-e2e-test` (durable) |
+| Only runtime E2E on a change | `/runtime-e2e-test` (light) |
+| Only lint, type check, or build | `/quality-code-check` |
+| Review someone else's PR or a diff | `/review-pr` |
+
+See the [decision record](docs/decisions/2026-10-29-validate-change-composite.md) for why it is an opt-in command and not a required chain.
 
 ### Design
 

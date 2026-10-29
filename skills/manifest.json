@@ -21,6 +21,12 @@
     "testing": [
       "runtime-e2e-test"
     ],
+    "validate": [
+      "validate-change",
+      "quality-code-check",
+      "review-pr",
+      "runtime-e2e-test"
+    ],
     "evaluation": [
       "workflow-evaluation",
       "record-workflow-friction"

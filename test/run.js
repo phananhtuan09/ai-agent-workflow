@@ -3470,6 +3470,306 @@ test("installed quality-code-check includes the surface scan and its rules", () 
   }
 });
 
+const VALIDATE_CHANGE = path.join(SOURCE_ROOT, "skills/validate-change/scripts/validate_change.py");
+
+function validateChange(root, args) {
+  return spawnSync("python3", [VALIDATE_CHANGE, ...args], { cwd: root, encoding: "utf8" });
+}
+
+function writeJson(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
+}
+
+test("validate-change risk rules read the diff and the editable rules table", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "validate-change-risk-"));
+  const git = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  try {
+    git("init", "-q");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "Test");
+    fs.mkdirSync(path.join(root, "src"));
+    fs.writeFileSync(path.join(root, "package.json"), '{\n  "dependencies": {\n    "react": "^17.0.2",\n    "zod": "^3.1.0"\n  }\n}\n');
+    fs.writeFileSync(path.join(root, "src/old.test.ts"), "it('works', () => {});\n");
+    fs.writeFileSync(path.join(root, "src/copy.css"), ".a { color: red; }\n");
+    fs.writeFileSync(path.join(root, ".gitignore"), ".runtime-e2e/\n");
+    git("add", ".");
+    git("commit", "-qm", "base");
+    git("checkout", "-qb", "change");
+    const run = path.join(root, ".runtime-e2e/x/validate");
+    const expectations = (items) => writeJson(path.join(run, "expectations.json"), { schema: "validate-change/expectations@1", items });
+    const prompt = { id: "K1", statement: "Copy is updated", change: "modified", source: "prompt", sourceRef: "prompt", quote: "đổi màu chữ", confirmed: "source" };
+    expectations([prompt]);
+    fs.writeFileSync(path.join(root, "src/copy.css"), ".a { color: blue; }\n");
+    git("commit", "-qam", "copy");
+    const result = validateChange(root, ["risk", run, "--base", git("rev-parse", "HEAD~1")]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    const low = JSON.parse(fs.readFileSync(path.join(run, "risk.json"), "utf8"));
+    assert.deepStrictEqual([low.gate, low.audit, low.signals], ["not-required", "not-required", []]);
+
+    // Intent-only signals come from the expectation list, not the diff.
+    expectations([{ ...prompt, source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined }]);
+    const base = git("rev-parse", "HEAD~1");
+    assert.strictEqual(validateChange(root, ["risk", run, "--base", base]).status, 0);
+    const intent = JSON.parse(fs.readFileSync(path.join(run, "risk.json"), "utf8"));
+    assert.deepStrictEqual([intent.gate, intent.audit, intent.signals.map((s) => s.rule)], ["required", "not-required", ["agent-intent-only"]]);
+    // The PR description can only ever be agent intent.
+    expectations([{ ...prompt, sourceRef: "pr-description" }]);
+    const fromDescription = validateChange(root, ["risk", run, "--base", base]);
+    assert.strictEqual(fromDescription.status, 2);
+    assert.ok(fromDescription.stderr.includes("taken from the PR description is agent-intent"), fromDescription.stderr);
+    expectations([prompt]);
+
+    fs.writeFileSync(path.join(root, "package.json"), '{\n  "dependencies": {\n    "react": "^18.3.1",\n    "zod": "^3.2.0"\n  }\n}\n');
+    fs.rmSync(path.join(root, "src/old.test.ts"));
+    fs.mkdirSync(path.join(root, "src/auth"));
+    fs.writeFileSync(path.join(root, 'src/auth/gu"ard-đ.ts'), "export const ok = (u) => isAdmin(u);\nit.skip('later', () => {});\n");
+    fs.writeFileSync(path.join(root, "package-lock.json"), "x\n".repeat(50));
+    git("add", "-A");
+    git("commit", "-qm", "wide");
+    assert.strictEqual(validateChange(root, ["risk", run, "--base", base]).status, 0);
+    const high = JSON.parse(fs.readFileSync(path.join(run, "risk.json"), "utf8"));
+    const hits = Object.fromEntries(high.signals.map((s) => [s.rule, s.hits]));
+    assert.deepStrictEqual([high.gate, high.audit], ["required", "required"]);
+    assert.deepStrictEqual(Object.keys(hits).sort(), ["access-check", "dependency-major", "permission-path", "tests-deleted", "tests-skipped"]);
+    assert.deepStrictEqual(hits["permission-path"], ['src/auth/gu"ard-đ.ts']);
+    assert.deepStrictEqual(hits["dependency-major"], ["package.json: react ^17.0.2 → ^18.3.1"]);
+    assert.deepStrictEqual(hits["tests-deleted"], ["src/old.test.ts"]);
+    // Ignored lockfiles count toward neither the size nor the file total.
+    assert.strictEqual(high.files, 4);
+
+    const rules = path.join(root, "rules.md");
+    const source = fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/references/risk-rules.md"), "utf8");
+    fs.writeFileSync(rules, source.replace("- max-files: 25", "- max-files: 2").replace(/^\| `access-check` .*\n/m, "").replace("| `tests-skipped` | high |", "| `tests-skipped` | advisory |"));
+    assert.strictEqual(validateChange(root, ["risk", run, "--base", base, "--rules", rules]).status, 0);
+    const edited = JSON.parse(fs.readFileSync(path.join(run, "risk.json"), "utf8"));
+    const levels = Object.fromEntries(edited.signals.map((s) => [s.rule, s.level]));
+    assert.strictEqual(levels["access-check"], undefined);
+    assert.strictEqual(levels["tests-skipped"], "advisory");
+    assert.strictEqual(levels.size, "gate");
+    fs.writeFileSync(rules, source.replace("| `size` | gate |", "| `size` | urgent |"));
+    const invalid = validateChange(root, ["risk", run, "--base", base, "--rules", rules]);
+    assert.strictEqual(invalid.status, 2);
+    assert.ok(invalid.stderr.includes("rule size: level is one of high, gate, advisory"), invalid.stderr);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("validate-change report checks the run files and computes one status from the steps", () => {
+  const fixture = createBaseHeadFixture();
+  try {
+    const root = fixture.root;
+    const runDir = ".runtime-e2e/label/validate";
+    const run = path.join(root, runDir);
+    const file = (name) => path.join(run, name);
+    const read = (name) => JSON.parse(fs.readFileSync(file(name), "utf8"));
+    const items = [
+      { id: "K1", statement: "The label shows the new text", change: "modified", source: "prompt", sourceRef: "prompt", quote: "show new", confirmed: "source" },
+      { id: "K2", statement: "The label endpoint keeps responding", change: "unchanged", source: "assumption", sourceRef: "diff:app.txt", default: "keep responding", confirmed: "none" },
+    ];
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
+    const risk = validateChange(root, ["risk", run, "--base", fixture.base]);
+    assert.strictEqual(risk.status, 0, risk.stderr);
+    assert.ok(risk.stdout.includes("Gate: not-required"), risk.stdout);
+
+    fs.writeFileSync(path.join(root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02"]));
+    fixture.writeCases([
+      { title: "[E2E-01] shows the new label", expect: "new" },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+    ]);
+    const bundle = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.cases[0].expects = ["K1"];
+      suite.cases[0].flows = ["F1"];
+      suite.cases[1].expects = ["K2"];
+    }, "label/runs/one");
+    assert.strictEqual(bundle.status, 0, bundle.stderr || bundle.stdout);
+    const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+    const review = { schema: "validate-change/review@1", headSha: head, status: "Có thể merge", findings: [],
+      flows: [{ id: "F1", route: "/label", risk: "medium", why: "renders the changed text", kRefs: ["K1"] }],
+      suspicions: [{ id: "H1", location: "app.txt:1", hypothesis: "the old text is cached", proof: "runtime", kRefs: ["K1"] }], questions: [] };
+    writeJson(file("review.json"), review);
+    const steps = [
+      { skill: "quality-code-check", status: "RAN", checks: [{ kind: "build", command: "npm run build", exit: 0 }, { kind: "lint", command: "npm run lint", exit: 0 }] },
+      { skill: "review-pr", status: "RAN", artifact: `${runDir}/review.json` },
+      { skill: "runtime-e2e-test", status: "RAN", artifact: ".runtime-e2e/label/runs/one" },
+    ];
+    const runFile = { schema: "validate-change/run@1", target: { label: "label change" }, gate: { override: null, answer: null }, steps,
+      separateTests: [{ area: "performance", signal: "GET /label twice per load", command: "/security-performance-check /label" }], limits: [] };
+    const report = (mutate) => {
+      const data = JSON.parse(JSON.stringify(runFile));
+      if (mutate) mutate(data);
+      writeJson(file("run.json"), data);
+      return validateChange(root, ["report", run]);
+    };
+
+    let result = report();
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.deepStrictEqual(read("status.json").overall, "PASSED");
+    const text = fs.readFileSync(file("report.md"), "utf8");
+    assert.ok(text.includes("- Trạng thái: **PASSED** — Đạt."), text);
+    assert.ok(text.includes("- Gate: STRAIGHT-THROUGH; rủi ro: không có tín hiệu."), text);
+    assert.ok(text.includes("| K1: The label shows the new text | modified | prompt (`prompt`) | source | E2E-01 | FULL | — |"), text);
+    assert.ok(text.includes("- K2: keep responding"), text);
+    assert.ok(text.includes("- F1 `/label` (medium): renders the changed text — có case"), text);
+    assert.ok(text.includes("- H1 `app.txt:1`: the old text is cached — kiểm bằng runtime; chưa có case"), text);
+    assert.ok(text.includes("- performance: GET /label twice per load. Lệnh: `/security-performance-check /label`"), text);
+    assert.ok(text.includes("security-performance-check chưa được cài hoặc chưa chạy"), text);
+
+    // Lint failures do not stop the run; a failed build skips runtime and must be recorded that way.
+    result = report((d) => { d.steps[0].checks[1].exit = 1; });
+    assert.strictEqual(result.status, 1);
+    assert.deepStrictEqual(read("status.json").sections, [{ status: "FAILED", reason: "kiểm tra tĩnh lỗi: lint" }]);
+    result = report((d) => { d.steps[0].checks[0].exit = 2; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("SKIPPED with skip build-failed"), result.stderr);
+    result = report((d) => { d.steps[0].checks[0].exit = 2; d.steps[2] = { skill: "runtime-e2e-test", status: "SKIPPED", skip: "build-failed", reason: "build exit 2" }; });
+    assert.strictEqual(result.status, 1);
+    assert.strictEqual(read("status.json").overall, "FAILED");
+
+    // A required skill left out or missing never passes silently.
+    result = report((d) => { d.steps.splice(1, 1); });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("review-pr is required"), result.stderr);
+    result = report((d) => { d.steps[1] = { skill: "review-pr", status: "MISSING" }; });
+    assert.strictEqual(result.status, 1, result.stderr);
+    assert.strictEqual(read("status.json").overall, "BLOCKED");
+
+    // The review handoff must match its own findings and the reviewed head.
+    writeJson(file("review.json"), { ...review, status: "Chưa thể merge — cần sửa" });
+    result = report();
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("has no finding behind it"), result.stderr);
+    writeJson(file("review.json"), { ...review, status: "Chưa thể kết luận — cần quyết định", findings: [{ id: "PR-01", kind: "decide", kRefs: ["K1"] }] });
+    result = report();
+    assert.strictEqual(read("status.json").overall, "NEEDS_REVIEW");
+    writeJson(file("review.json"), { ...review, headSha: fixture.base });
+    result = report();
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("review again"), result.stderr);
+    writeJson(file("review.json"), review);
+
+    // An expectation with no runtime case is not proven; an unknown reference is inconsistent.
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [...items, { ...items[0], id: "K3", statement: "A third behavior" }] });
+    result = report();
+    assert.strictEqual(result.status, 1);
+    assert.ok(read("status.json").sections.some((s) => s.reason.includes("chưa được chứng minh đủ ở runtime: K3")));
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [items[0]] });
+    result = report();
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("suite case E2E-02: refs must list known ids"), result.stderr);
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
+
+    // risk.json is generated: a hand edit is refused.
+    const riskData = read("risk.json");
+    writeJson(file("risk.json"), { ...riskData, signals: [{ rule: "size", level: "advisory", what: "x", count: 1, hits: ["x"] }] });
+    result = report();
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("instead of editing it"), result.stderr);
+    writeJson(file("risk.json"), riskData);
+
+    // A high-risk commit makes the earlier records stale, then requires the gate and the audit.
+    fs.mkdirSync(path.join(root, "src/billing"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/billing/charge.ts"), "export const total = price * 2;\n");
+    spawnSync("git", ["add", "src/billing/charge.ts"], { cwd: root });
+    spawnSync("git", ["commit", "-qm", "charge"], { cwd: root });
+    result = report();
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("run risk again"), result.stderr);
+    assert.strictEqual(validateChange(root, ["risk", run, "--base", fixture.base]).status, 0);
+    assert.deepStrictEqual([read("risk.json").gate, read("risk.json").audit], ["required", "required"]);
+    result = report();
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("records no answer"), result.stderr);
+    result = report((d) => { d.gate.answer = "no-human"; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("skip no-human"), result.stderr);
+    result = report((d) => {
+      d.gate.answer = "no-human";
+      d.steps = d.steps.map((s) => ({ skill: s.skill, status: "SKIPPED", skip: "no-human", reason: "headless run" }));
+    });
+    assert.strictEqual(result.status, 1);
+    assert.strictEqual(read("status.json").overall, "NEEDS_HUMAN");
+    result = report((d) => { d.gate.answer = "confirmed"; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("mark K2 confirmed: gate"), result.stderr);
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [items[0], { ...items[1], confirmed: "gate" }] });
+    result = report((d) => { d.gate.override = "never"; d.gate.answer = null; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("no gate answer confirms them"), result.stderr);
+    // The runtime bundle ran on the earlier head, so it no longer counts.
+    const newHead = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+    writeJson(file("review.json"), { ...review, headSha: newHead });
+    result = report((d) => { d.gate.answer = "confirmed"; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("run it again"), result.stderr);
+
+    const rerun = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.cases[0].expects = ["K1"];
+      suite.cases[1].expects = ["K2"];
+    }, "label/runs/two");
+    assert.strictEqual(rerun.status, 0, rerun.stderr || rerun.stdout);
+    const confirmed = (d) => { d.gate.answer = "confirmed"; d.steps[2].artifact = ".runtime-e2e/label/runs/two"; };
+    result = report(confirmed);
+    assert.strictEqual(result.status, 1);
+    assert.deepStrictEqual(read("status.json").sections, [{ status: "NEEDS_REVIEW", reason: "change rủi ro cao nhưng audit độc lập chưa chạy" }]);
+
+    assert.strictEqual(validateChange(root, ["audit-input", run]).status, 0);
+    const input = read("audit-input.json");
+    assert.deepStrictEqual(input.expectations.map((k) => k.id).sort(), ["K1", "K2"]);
+    assert.ok(input.expectations.every((k) => Object.keys(k).join() === "id,statement"), "the auditor sees only the statements");
+    const withAudit = (d) => { confirmed(d); d.steps.push({ skill: "audit", status: "RAN", artifact: `${runDir}/audit.json` }); };
+    const verdict = (k, v, evidenceFile) => ({ k, verdict: v, reason: "read the observation", evidence: evidenceFile ? [{ file: evidenceFile, locator: "checks" }] : [] });
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED", "results.json"), verdict("K2", "SUPPORTED", "results.json")] });
+    result = report(withAudit);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- Gate: CONFIRMED; rủi ro: money-path (high): src/billing/charge.ts; money-math (high)"));
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "CONTRADICTED", "results.json"), verdict("K2", "MISSING")] });
+    result = report(withAudit);
+    assert.strictEqual(read("status.json").overall, "FAILED");
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED", "../../validate/review.json"), verdict("K2", "MISSING")] });
+    result = report(withAudit);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("inside the runtime bundle"), result.stderr);
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED")] });
+    result = report(withAudit);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("one verdict for every expectation item"), result.stderr);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("validate-change is a manual command and the composite contracts reach review-pr and runtime-e2e-test", () => {
+  const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/SKILL.md"), "utf8");
+  assert.ok(skill.includes("disable-model-invocation: true"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
+  const review = fs.readFileSync(path.join(SOURCE_ROOT, "skills/review-pr/SKILL.md"), "utf8");
+  assert.ok(review.includes("## Called From validate-change"));
+  assert.ok(review.includes("Without that caller, never write the handoff"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/SKILL.md"), "utf8").includes('"expects": ["K1"]'));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Accept a PR or a change just made | `/validate-change` |"));
+
+  const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--bundle", "validate"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const skills = path.join(result.workspace, ".claude/skills");
+    ["validate-change", "quality-code-check", "review-pr", "runtime-e2e-test"].forEach((id) => assert.ok(fs.existsSync(path.join(skills, id, "SKILL.md")), id));
+    // The composite finds the runtime tool beside it, so an installed run can verify its bundle.
+    assert.ok(fs.existsSync(path.join(skills, "validate-change/scripts/validate_change.py")));
+    assert.ok(fs.existsSync(path.join(skills, "validate-change/references/risk-rules.md")));
+    assert.ok(fs.existsSync(path.join(skills, "validate-change/scripts/../../runtime-e2e-test/scripts/evidence.py")));
+  } finally {
+    result.cleanup();
+  }
+});
+
 test("temporary package workspace can be created", () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-test-"));
   assert.ok(fs.existsSync(workspace));

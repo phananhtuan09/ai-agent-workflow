@@ -20,6 +20,7 @@ Choose the mode first. Both modes plan and run the same way, with the same evide
 An explicit human instruction ("keep this test", "quick run only") overrides the choice.
 Declare the choice in the suite as `mode` with `modeReason` naming the signal; the first line of the chat report states the mode and that signal.
 Do not rely on the implementer's summary or PR description for intent or for what was tested; derive both from the human's request and the change itself, as `review-pr` does.
+When `validate-change` invokes this skill, it supplies `expectations.json` (K1..Kn) and the review handoff `review.json`; use them instead of deriving intent again. Cover each K with at least one case that names it in an `expects` list, and name the review's flows and suspicions a case covers in `flows` and `suspicions` (for example `"expects": ["K1"], "flows": ["F1"], "suspicions": ["H1"]`). Derive intent cases from K, never from review findings or the implementer's summary.
 
 Durable mode is `plan`, then explicit human approval, then `run`. Light mode does the same planning steps and runs straight away:
 
