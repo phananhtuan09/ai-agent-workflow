@@ -73,7 +73,7 @@ It applies `references/risk-rules.md`, a project-editable table of deterministic
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
   - Edited: apply the edits; an item the human adds is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.
   - No human can answer (a headless run): record `answer: no-human`, mark the three steps `SKIPPED` with `skip: no-human`, and report. The status is `NEEDS_HUMAN`; never continue on your own.
-- Gate not required: run straight through. Assumptions stay `confirmed: none` and the report lists them with their defaults.
+- Gate not required: run straight through. Assumptions stay `confirmed: none` and the report lists them with their defaults; do not ask the human about them after the report either.
 - `--gate=never` records `override: never`; the report shows it as a human waiver beside the computed risk, which does not change.
 
 The audit in step 6 is required when any `high` signal fired.
@@ -96,6 +96,10 @@ Load `runtime-e2e-test` in light mode with `expectations.json` and `review.json`
 - Intent: at least one case per K, naming it in the case's `expects`. Derive cases from K, never from review findings or the implementer's summary.
 - Regression: the impact map, `unchanged` items, and the review's flows, named in `flows`.
 - Edge cases: the blind-spot catalog and the review's suspicions that need runtime proof, named in `suspicions`.
+
+A sweep difference is never yours to call expected.
+The report script accepts it only when it is the run's only open item and each differing route is covered by a passing, proving case for an expectation the human confirmed (`confirmed` is `source` or `gate`); the report then lists it as a note with both screenshots.
+Any other difference keeps the run at `NEEDS_REVIEW`.
 
 Skip this step with `skip: not-applicable` when the change has no runtime surface the skill supports, and say why.
 
