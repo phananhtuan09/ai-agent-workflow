@@ -1,6 +1,6 @@
 ---
 name: quality-code-check
-description: Use when the task involves linting, type checking, build verification, or debugging failing validation. Prefer project-native commands and focused checks before broad fixes.
+description: Use when the task involves linting, type checking, build verification, or debugging failing validation, or when asked to review code quality or clean up AI-written code (noisy comments, ignored project patterns, reinvented helpers, unnecessary abstraction, diff noise). Prefer project-native commands and focused checks before broad fixes.
 ---
 
 # Quality Code Check
@@ -95,6 +95,29 @@ Code quality validation is a safety gate that catches errors early, prevents tec
 - Run a build when the affected boundary or repository requirements make it relevant
 - Use the existing build configuration and the smallest reliable package or project scope
 - Report failing or unavailable build steps honestly
+
+---
+
+### 4. Surface review - AI-written code that tools pass
+
+Lint, type checks, and builds do not catch surface problems that AI implementers often leave behind: noisy comments, code that ignores project patterns, reinvented helpers, unnecessary abstraction, and diff noise.
+`review-pr` excludes style on purpose, so this layer belongs here. Its risk is subjective, noisy output, so every finding needs evidence.
+
+**Rules:**
+- Review only lines the change adds or modifies. Never report pre-existing code.
+- **Pattern inconsistency needs precedent:** cite 2–3 existing project files that do the same job the other way, for example "data fetching uses `useQuery` in `OrderList.tsx` and `UserList.tsx`; this change uses `useEffect` + `fetch`". No precedent, no finding.
+- **Redundant or reinvented code needs the existing equivalent:** search for an equivalent of each new helper, hook, or component and name it with its path, for example "`formatDate()` already exists in `utils/date.ts`". No equivalent, no finding.
+- Every other judgment finding quotes the diff line it is about.
+- A finding is `Nên sửa` or `Tuỳ chọn`, never a merge blocker by itself.
+
+**Two layers, both driven by `references/surface-rules.md`:**
+- *Deterministic scan* (no tokens): `node <skill-dir>/scripts/surface-scan.js --root . --base <base-ref>` reads the change's diff (or `--diff <file>`, `-` for stdin) and applies the rules whose check is a regex or a `builtin:` scan, such as commented-out code, changelog-style comments, debug statements, `as any` and non-null `!`, new suppressions, TODOs without an owner, oversized functions and files, magic numbers, hardcoded colors or spacing when the project defines design tokens, hardcoded UI text when the project uses i18n, and whitespace-only edits or moved imports. Add `--format md` for the report section. Without `--base` or `--diff` it scans the uncommitted changes against `HEAD`; untracked files are not in a diff, so stage them with `git add -N` first.
+- *Judgment layer:* walk the rules whose check is `judgment` while reading the diff (comments restating code, unnecessary abstraction, impossible defensive checks, log-and-rethrow, error-hiding fallbacks, `useMemo`/`useCallback` overuse, pattern inconsistency, reinvented helpers). The scan lists them in its output.
+
+The scan is a lead, not a verdict: drop a scan item that the surrounding code shows is intended, such as a command-line tool that prints on purpose, and say so in one line.
+`references/surface-rules.md` is project-customizable: rules, levels, file types, and settings such as the cap and size limits can be edited per project, and the edit survives `update --apply`.
+
+**Fixing:** report only when called from a composite validation step or a review. Standalone, apply only mechanical fixes (remove commented-out code and debug statements) and only when fixing is authorized; everything else is reported.
 
 ---
 
@@ -229,6 +252,30 @@ mvn compile
    - Confirm output artifacts generated
    - Target: Build succeeds without critical errors
 
+5. **Run the surface review when the request covers code quality or AI-written code**
+   - Run `scripts/surface-scan.js` on the change's diff, then walk the judgment rules
+   - Keep only findings with the evidence their rule names
+   - Report it after lint, types, and build; it never changes their results or blocks on its own
+
+### Surface review output
+
+Write the section in Vietnamese, after the lint, type, and build results.
+List at most the rules file's `cap` items (10 by default), `Nên sửa` first and grouped by type, and summarize the rest as a count per type.
+
+```markdown
+## Bề mặt code
+
+| Loại | Vị trí | Bằng chứng | Mức |
+| --- | --- | --- | --- |
+| pattern consistency | `src/pages/InvoicePage.tsx:12` | Data fetching uses `useQuery` in `src/pages/OrderList.tsx` and `src/pages/UserList.tsx`; this change uses `useEffect` + `fetch`. | Nên sửa |
+| redundancy | `src/lib/dates.ts:3` | `formatDay()` duplicates `formatDate()` in `src/utils/date.ts`. | Nên sửa |
+| comments | `src/pages/InvoicePage.tsx:40` | `// set loading to true` restates `setLoading(true)`. | Tuỳ chọn |
+
+Còn 3 phát hiện khác không hiển thị: cleanliness 2, comments 1.
+```
+
+When nothing meets the bar, write `Không có phát hiện bề mặt cần báo trên các dòng thay đổi.` under the heading.
+
 ### Error Recovery
 
 **If quality checks fail:**
@@ -277,6 +324,7 @@ Do not present skipped checks as passed or suppress errors to obtain a clean res
 - [ ] No critical build errors present
 - [ ] Warnings at project-acceptable levels
 - [ ] All blocking issues fixed or escalated
+- [ ] Surface review, when requested, reports only changed lines with the evidence each rule needs
 
 ---
 
