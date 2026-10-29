@@ -477,8 +477,9 @@ def runtime_status(bundle, known, confirmed, review, head):
 
 
 def intent_sweep_notes(line, results, cases, suite, confirmed):
-    """Notes for sweep differences when they are the audit's only open item and each sits on a route that a
-    passing, proving case for a human-confirmed expectation covers; otherwise [] and the run stays NEEDS_REVIEW."""
+    """Notes for sweep differences when they are the audit's only open item, add no console error, and each sits on
+    a route that a passing, proving case for a human-confirmed expectation covers; otherwise [] and the run stays
+    NEEDS_REVIEW. Route coverage does not prove every pixel of the page, so the note keeps both screenshots."""
     problems = line.removeprefix("Audit: evidence consistent; ").split("; ")
     if len(problems) != 1 or not problems[0].startswith("sweep differences needing review: "):
         return []
@@ -489,9 +490,9 @@ def intent_sweep_notes(line, results, cases, suite, confirmed):
             for route in case.get("routes", []):
                 proving.setdefault(route, []).append(case["id"])
     differing = [r for r in (results.get("sweep") or {}).get("routes", []) if r["differs"]]
-    if not differing or any(r["route"] not in proving for r in differing):
+    if not differing or any(r["route"] not in proving or "consoleErrors" in r["differs"] for r in differing):
         return []
-    return [f"Sweep khác base ở `{r['route']}` ({', '.join(r['differs'])}); trang này có case chứng minh kỳ vọng đã xác nhận "
+    return [f"Sweep khác base ở `{r['route']}` ({', '.join(r['differs'])}); trang này có case pass cho kỳ vọng đã xác nhận "
             f"({', '.join(proving[r['route']])}). Xem ảnh base `{r['screenshots']['base']}` và head `{r['screenshots']['head']}`."
             for r in differing]
 

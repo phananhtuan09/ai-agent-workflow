@@ -98,7 +98,8 @@ Load `runtime-e2e-test` in light mode with `expectations.json` and `review.json`
 - Edge cases: the blind-spot catalog and the review's suspicions that need runtime proof, named in `suspicions`.
 
 A sweep difference is never yours to call expected.
-The report script accepts it only when it is the run's only open item and each differing route is covered by a passing, proving case for an expectation the human confirmed (`confirmed` is `source` or `gate`); the report then lists it as a note with both screenshots.
+The report script accepts it only when it is the run's only open item, adds no console error, and each differing route is covered by a passing, proving case for an expectation the human confirmed (`confirmed` is `source` or `gate`); the report then lists it as a note with both screenshots.
+Route coverage does not prove the rest of the page, so the human still looks at the screenshots.
 Any other difference keeps the run at `NEEDS_REVIEW`.
 
 Skip this step with `skip: not-applicable` when the change has no runtime surface the skill supports, and say why.

@@ -3729,12 +3729,13 @@ test("validate-change report checks the run files and computes one status from t
     ]);
 
     // A sweep difference passes only on a route that a passing case for a confirmed expectation covers.
-    const capture = (text) => ({ routes: [{ route: "/label", text, requests: ["GET /api/label 200"], consoleErrors: [], screenshot: "label-shot" }] });
-    fixture.writeCases([
+    const capture = (text, errors = []) => ({ routes: [{ route: "/label", text, requests: ["GET /api/label 200"], consoleErrors: errors, screenshot: "label-shot" }] });
+    const sweptCases = (headErrors) => fixture.writeCases([
       { title: "[E2E-01] shows the new label", expect: "new" },
       { title: "[E2E-02] label endpoint responds", expect: "*" },
-      { title: "[SWEEP-1] key routes", expect: "*", sweep: { base: capture("Label\nold"), head: capture("Label\nnew") }, png: { base: png(4, 3), head: png(4, 3, [[1, 2]]) } },
+      { title: "[SWEEP-1] key routes", expect: "*", sweep: { base: capture("Label\nold"), head: capture("Label\nnew", headErrors) }, png: { base: png(4, 3), head: png(4, 3, [[1, 2]]) } },
     ]);
+    sweptCases();
     fs.writeFileSync(path.join(root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02", "SWEEP-1"]));
     const swept = (intentRoute, name) => fixture.run((suite) => {
       suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
@@ -3750,13 +3751,19 @@ test("validate-change report checks the run files and computes one status from t
     result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/swept"; });
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.strictEqual(read("status.json").overall, "PASSED");
-    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- Ghi chú: Sweep khác base ở `/label` (text, screenshot); trang này có case chứng minh kỳ vọng đã xác nhận (E2E-01)."));
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- Ghi chú: Sweep khác base ở `/label` (text, screenshot); trang này có case pass cho kỳ vọng đã xác nhận (E2E-01)."));
     // Covered only by the unconfirmed assumption K2, the difference stays for the human.
     assert.strictEqual(swept("/elsewhere", "label/runs/swept-other").status, 1);
     result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/swept-other"; });
     assert.strictEqual(result.status, 1, result.stderr || result.stdout);
     assert.deepStrictEqual(read("status.json").sections.map((x) => x.status), ["NEEDS_REVIEW"]);
     assert.ok(read("status.json").sections[0].reason.includes("sweep differences needing review: /label"));
+    // A new console error on the page is never accepted, even on a covered route.
+    sweptCases(["TypeError: x"]);
+    assert.strictEqual(swept("/label", "label/runs/swept-error").status, 1);
+    result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/swept-error"; });
+    assert.strictEqual(result.status, 1, result.stderr || result.stdout);
+    assert.strictEqual(read("status.json").overall, "NEEDS_REVIEW");
     fixture.writeCases([
       { title: "[E2E-01] shows the new label", expect: "new" },
       { title: "[E2E-02] label endpoint responds", expect: "*" },
