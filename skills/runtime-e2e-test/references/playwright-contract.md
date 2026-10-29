@@ -127,6 +127,7 @@ export async function lineCount(locator: Locator): Promise<number> {
 }
 ```
 
+When the request is about narrow screens, wrapping, or overflow, measure at the project's mobile viewport and at 320 and 360 px wide, one check per width, since a device profile such as Pixel 7 is 412 px wide.
 Set the viewport first (`await page.setViewportSize({ width: 375, height: 667 })`), wait for the data with a web-first assertion, then record `{ id: 'heading_lines', expected: 1, actual: await lineCount(heading) }`.
 Horizontal overflow is `await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)` in a project whose e2e tsconfig includes the DOM lib; otherwise compare `element.scrollWidth` and `clientWidth` inside `locator.evaluate`.
 A check with no `actual` value is reported by name as unmeasured: the case is a test defect to fix, not evidence about the app.
@@ -238,6 +239,7 @@ test('[SWEEP-01] key routes', async ({ page }, testInfo) => {
 
 Screenshots must be file attachments under the test's output path; an attachment with a `body` stays inline in the JSON report and blocks the sweep.
 Log in and seed data as the project's other tests do, with the same frozen time; the `route` values must equal the case's `routes`.
+In any case that checks console errors, attach the listener after login: an error the flow expects, such as a 401 the login page handles, is not a new error.
 The tool compares each route between base and head after the suite's normalization rules: visible text lines removed and added, the set of requests, console errors new on head, and the screenshot's changed pixel count, counting a pixel only when a channel moves by more than 16 of 255, so rendering jitter is ignored (a resized or undecodable screenshot counts as changed).
 Every difference is reported with both screenshots for human review; a route that a `new-behavior` case also covers is marked "may belong to intent", but nothing is excused automatically.
 
