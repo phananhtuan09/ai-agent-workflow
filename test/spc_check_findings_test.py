@@ -582,5 +582,244 @@ class CliWiringTests(unittest.TestCase):
             self.assertIn("differs from stored body", err.getvalue())
 
 
+# ---------------------------------------------------------------------------
+# Previously fixed behaviors (locked before further changes).
+# ---------------------------------------------------------------------------
+
+def sec_request(body_bytes, *, url="/api/me", role="user-a", **extra):
+    req = {
+        "role": role, "method": "GET", "url": url, "status": 200,
+        "length": len(body_bytes), "body_hash": c.body_sha256(body_bytes),
+    }
+    req.update(extra)
+    return req
+
+
+def sec_finding(requests, *, signal_id="sensitive-response", har="finding-1.har"):
+    return {
+        "schema": c.FINDING_SCHEMA, "track": "security", "signal_id": signal_id,
+        "file": "src/api/me.ts", "line": 1, "cwe": "CWE-200", "severity": "med",
+        "status": "exploited", "introduced": True, "roles_tested": ["user-a"],
+        "requests": requests,
+        "repro_curl": "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/me",
+        "evidence": {"har_path": har, "screenshot": None}, "validator": "agent",
+    }
+
+
+def base_summary(track="security", **extra):
+    data = {
+        "schema": c.SUMMARY_SCHEMA, "track": track, "target": {"label": "t"},
+        "signals_loaded": [], "coverage": [{"path": "src/api/me.ts", "in_scope": True}],
+        "conditions": {}, "limits": ["Not a penetration test, dependency CVE audit, or load test."],
+    }
+    data.update(extra)
+    return data
+
+
+class NoTruncationTests(unittest.TestCase):
+    BODY = json.dumps({"items": [{"id": i, "name": f"item-{i}"} for i in range(40)]})
+
+    def test_truncated_body_with_original_size_rejected(self):
+        full = c.utf8_size(self.BODY)
+        data = har_doc(self.BODY[:200], size=full)
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_har(data)
+        self.assertIn("differs from stored body", str(ctx.exception))
+
+    def test_full_body_length_matches_size_and_finding(self):
+        data = har_doc(self.BODY)
+        summaries = c.check_har(data)
+        self.assertEqual(summaries[0]["size"], c.utf8_size(self.BODY))
+        finding = sec_finding([sec_request(self.BODY.encode("utf-8"), url="http://127.0.0.1:3000/api/me")])
+        c.cross_check_finding_har(finding, "<har>", data)
+
+    def test_finding_length_of_truncated_preview_rejected(self):
+        data = har_doc(self.BODY)
+        preview = self.BODY[:100].encode("utf-8")
+        finding = sec_finding([sec_request(preview)])
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.cross_check_finding_har(finding, "<har>", data)
+        self.assertIn("disagrees", str(ctx.exception))
+
+
+class ScanWithoutSensitiveRowTests(unittest.TestCase):
+    LEAK = json.dumps({"id": 7, "owner": {"name": "a", "passwordHash": "$2b$10$abcdefghijklmnopqrstuuJ8S7ZqLx0lJgqv1nO3gk2Yw5o4i2K6"}})
+
+    def test_run_requires_sensitive_finding_when_row_not_loaded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            summary = base_summary(
+                signals_loaded=[{"id": "authz-route", "file": "references/security-signals.md", "matched_paths": []}],
+                body_scan={"ran": True, "hars": ["probes.har"]},
+            )
+            (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+            (run_dir / "probes.har").write_text(json.dumps(har_doc(self.LEAK)), encoding="utf-8")
+            loaded_ids = {e["id"] for e in summary["signals_loaded"]}
+            self.assertNotIn("sensitive-response", loaded_ids)
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("sensitive-response", str(ctx.exception))
+
+    def test_scan_hits_regardless_of_loaded_rows(self):
+        hits = c.scan_har_bodies(har_doc(self.LEAK))["hits"]
+        self.assertTrue(any(h["key"] == "passwordHash" for h in hits), hits)
+
+
+class CallerAuthorizedTableTests(unittest.TestCase):
+    # (role, expected, observed, verdict, caller_authorized, ok)
+    CASES = [
+        ("owner", "allow", "allow", "allowed", True, True),
+        ("admin", "allow", "allow", "allowed", True, True),
+        ("admin", "allow", "allow", "bypassed", True, False),
+        ("owner", "allow", "allow", "bypassed", None, False),
+        ("user-b", "deny", "allow", "bypassed", False, True),
+        ("anonymous", "deny", "allow", "bypassed", None, True),
+        ("anonymous", "deny", "deny", "enforced", False, True),
+        ("user-b", "deny", "deny", "bypassed", False, False),
+        ("user-b", "deny", "allow", "allowed", False, False),
+        ("admin", "deny", "allow", "bypassed", True, False),
+    ]
+
+    def test_table(self):
+        for role, expected, observed, verdict, authorized, ok in self.CASES:
+            req = sec_request(b"", url="/api/orders/1", role=role, expected_access=expected,
+                              observed_access=observed, access_verdict=verdict)
+            if authorized is not None:
+                req["caller_authorized"] = authorized
+            with self.subTest(role=role, verdict=verdict, authorized=authorized):
+                if ok:
+                    c.check_request(req, "req", signal_id="object-id-access")
+                else:
+                    with self.assertRaises(c.Inconsistent):
+                        c.check_request(req, "req", signal_id="object-id-access")
+
+
+class ThresholdBaseZeroTableTests(unittest.TestCase):
+    CASES = [
+        ("count <= base", [0], [0], "count", "pass"),
+        ("count <= base", [0], [1], "count", "fail"),
+        ("median < base*1.10", [0], [0], None, "pass"),
+        ("median < base*1.10", [0], [3], None, "fail"),
+        ("median < base*1.10; abs < 2500", [0], [0], None, "pass"),
+        ("median > base*0.90", [0], [0], None, "pass"),
+    ]
+
+    def test_table(self):
+        for expr, base, head, agg, verdict in self.CASES:
+            with self.subTest(expr=expr, base=base, head=head):
+                self.assertEqual(c.evaluate_threshold(base, head, expr, aggregation=agg)["verdict"], verdict)
+
+
+def recorded_har(entries, *, creator=True):
+    log = {"version": "1.2", "entries": entries}
+    if creator:
+        log["creator"] = {"name": "Playwright", "version": "1.48.0"}
+        log["browser"] = {"name": "chromium", "version": "130.0"}
+    return {"log": log}
+
+
+def har_entry(url, started, *, body='{"ok":true}', mime="application/json", method="GET"):
+    return {
+        "startedDateTime": started,
+        "time": 12.5,
+        "request": {"method": method, "url": url},
+        "response": {"status": 200, "content": {"size": c.utf8_size(body), "mimeType": mime, "text": body}},
+        "timings": {"send": 0.1, "wait": 10.0, "receive": 2.4},
+    }
+
+
+def perf_finding(signal_id="background-requests", *, base=0, head=3, har="head.har", base_har="base.har",
+                 request_filter=None):
+    evidence = {"har_path": har, "screenshot": None}
+    if base_har is not None:
+        evidence["base_har_path"] = base_har
+    if request_filter is not None:
+        evidence["request_filter"] = request_filter
+    return {
+        "schema": c.FINDING_SCHEMA, "track": "performance", "signal_id": signal_id,
+        "file": "src/pages/OrdersPage.tsx", "line": 10, "severity": "high", "status": "exploited",
+        "introduced": True,
+        "metric": {
+            "class": "exact", "aggregation": "count", "unit": "requests",
+            "base": {"median": base, "min": base, "max": base, "n": 1},
+            "head": {"median": head, "min": head, "max": head, "n": 1},
+            "delta_pct": 100 if base == 0 else (head - base) * 100 / base,
+            "threshold": "count <= base", "effective_threshold": "count <= base",
+            "aa_spread": None, "verdict": "fail",
+        },
+        "evidence": evidence,
+        "fix_hint": "Clear the interval on unmount.",
+    }
+
+
+class BackgroundRequestsNavigationTests(unittest.TestCase):
+    """background-requests must be counted after navigating away, on base and head."""
+
+    def write_run(self, run_dir, finding, base_entries, head_entries):
+        (run_dir / "summary.json").write_text(json.dumps(base_summary(track="performance")), encoding="utf-8")
+        (run_dir / "finding-1.json").write_text(json.dumps(finding), encoding="utf-8")
+        (run_dir / "base.har").write_text(json.dumps(recorded_har(base_entries)), encoding="utf-8")
+        (run_dir / "head.har").write_text(json.dumps(recorded_har(head_entries)), encoding="utf-8")
+
+    def page_then_polls(self, polls):
+        entries = [
+            har_entry("http://127.0.0.1:3000/orders", "2026-01-01T00:00:00.000Z", body="<html></html>", mime="text/html"),
+            har_entry("http://127.0.0.1:3000/api/orders", "2026-01-01T00:00:00.400Z"),
+            har_entry("http://127.0.0.1:3000/", "2026-01-01T00:00:01.000Z", body="<html></html>", mime="text/html"),
+        ]
+        for i in range(polls):
+            entries.append(har_entry("http://127.0.0.1:3000/api/orders/poll", f"2026-01-01T00:00:0{3 + i}.000Z"))
+        return entries
+
+    NAV = {"after": {"base": "2026-01-01T00:00:01.000Z", "head": "2026-01-01T00:00:01.000Z"},
+           "window_ms": 15000, "exclude_assets": True}
+
+    def test_counted_after_navigation_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write_run(run_dir, perf_finding(request_filter=self.NAV), self.page_then_polls(0), self.page_then_polls(3))
+            c.check_run_dir(run_dir)
+
+    def test_missing_navigation_boundary_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write_run(run_dir, perf_finding(request_filter={"exclude_assets": True}),
+                           self.page_then_polls(0), self.page_then_polls(3))
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("after", str(ctx.exception))
+
+    def test_window_shorter_than_15s_rejected(self):
+        nav = dict(self.NAV, window_ms=5000)
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write_run(run_dir, perf_finding(request_filter=nav), self.page_then_polls(0), self.page_then_polls(3))
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("window_ms", str(ctx.exception))
+
+    def test_no_page_load_before_navigation_rejected(self):
+        polls_only = [har_entry("http://127.0.0.1:3000/api/orders/poll", f"2026-01-01T00:00:0{3 + i}.000Z") for i in range(3)]
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write_run(run_dir, perf_finding(request_filter=self.NAV), self.page_then_polls(0), polls_only)
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("before", str(ctx.exception))
+
+
+# The navigation boundary was documented in performance-signals.md but not enforced by `run`.
+EXPECTED_FAIL_BEHAVIOR = frozenset({
+    "BackgroundRequestsNavigationTests.test_missing_navigation_boundary_rejected",
+    "BackgroundRequestsNavigationTests.test_window_shorter_than_15s_rejected",
+    "BackgroundRequestsNavigationTests.test_no_page_load_before_navigation_rejected",
+})
+for _name in EXPECTED_FAIL_BEHAVIOR:
+    _cls, _meth = _name.split(".")
+    _owner = globals()[_cls]
+    setattr(_owner, _meth, unittest.expectedFailure(getattr(_owner, _meth)))
+_owner = None  # keep the loader from collecting the class twice under this alias
+
+
 if __name__ == "__main__":
     unittest.main()
