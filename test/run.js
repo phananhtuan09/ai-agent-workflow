@@ -3964,6 +3964,7 @@ test("security-performance-check is a manual command and the JSON checker valida
   assert.ok(!skill.includes("performance track is not available yet"));
   assert.ok(skill.includes("use placeholders only"));
   assert.ok(skill.includes("always load"));
+  assert.ok(skill.includes("no `validator` field") || skill.includes("no validator field"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
   const signalsDoc = fs.readFileSync(SECURITY_SIGNALS, "utf8");
   assert.ok(signalsDoc.includes("loads only when a changed path matches"));
@@ -4157,7 +4158,7 @@ test("performance threshold helper applies median, range, and A/A noise floor", 
     "threshold",
     "--expr", "median < base*1.10",
     "--base", "100,100,100,100,100",
-    "--head", "112,112,112,112,112",
+    "--head", "111,111,111,111,111",
     "--metric-class", "noisy",
     "--min-runs", "5",
     "--aa", "100,102,98,101,99:105,103,107,104,106",
@@ -4178,6 +4179,62 @@ test("performance threshold helper applies median, range, and A/A noise floor", 
   ]);
   assert.strictEqual(result.status, 0, result.stderr || result.stdout);
   assert.strictEqual(JSON.parse(result.stdout).verdict, "inconclusive");
+
+  // Finding 1: A/A side near 0 with base>=1 must not silently pass; excessive floor → inconclusive.
+  result = checkFindings([
+    "threshold",
+    "--expr", "count <= base",
+    "--base", "1,1,1,1,1",
+    "--head", "3,3,3,3,3",
+    "--metric-class", "noisy",
+    "--min-runs", "5",
+    "--aggregation", "count",
+    "--aa", "0,0,0,0,0:1,1,1,1,1",
+    "--aa-multiplier", "2.5",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  const aaZero = JSON.parse(result.stdout);
+  assert.strictEqual(aaZero.verdict, "inconclusive", JSON.stringify(aaZero));
+  assert.ok(aaZero.reason && aaZero.reason.includes("A/A spread"), aaZero.reason);
+  assert.ok(aaZero.aa_spread > 0, JSON.stringify(aaZero));
+
+  // Finding 2: higher_better with a huge A/A spread is inconclusive (never a silent pass).
+  result = checkFindings([
+    "threshold",
+    "--expr", "median > base*0.90",
+    "--base", "100,100,100,100,100",
+    "--head", "10,10,10,10,10",
+    "--metric-class", "noisy",
+    "--min-runs", "5",
+    "--direction", "higher_better",
+    "--aa", "100,100,100,100,100:200,200,200,200,200",
+    "--aa-multiplier", "2.5",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  const aaHigh = JSON.parse(result.stdout);
+  assert.strictEqual(aaHigh.verdict, "inconclusive", JSON.stringify(aaHigh));
+  assert.ok(aaHigh.reason && aaHigh.reason.includes("A/A spread"), aaHigh.reason);
+
+  // Findings 4–5: --direction / --aggregation that conflict with the expression are rejected.
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "100",
+    "--head", "110",
+    "--direction", "higher_better",
+  ]);
+  assert.strictEqual(result.status, 2);
+  assert.ok(result.stderr.includes("conflicts with expression"), result.stderr);
+
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "100",
+    "--head", "110",
+    "--aggregation", "max",
+  ]);
+  assert.strictEqual(result.status, 2);
+  assert.ok(result.stderr.includes("conflicts with expression"), result.stderr);
 
   result = checkFindings(["threshold", "--expr", "not a threshold", "--base", "1", "--head", "2"]);
   assert.strictEqual(result.status, 2);

@@ -108,9 +108,9 @@ Do not add Mann-Whitney, KS, or Cliff's delta gates in this revision.
    With 3 vs 3 runs a two-sided rank test cannot reach p < 0.05, so 3 runs is not enough; do not judge before the minimum.
 
 4. **Noise floor**: run base against itself (A/A) for each noisy metric.
-   Effective threshold = max(configured threshold, 2–3× the A/A spread) via `check_findings.py threshold` (default multiplier 2.5).
+   Spread is `|a−b| / max(|a|, |b|, 1)`; effective threshold = max(configured threshold, 2–3× that spread) via `check_findings.py threshold` (default multiplier 2.5).
    Inside the noise → informational under `Giới hạn`, not a finding.
-   Still inconclusive after the run cap → `Giới hạn`, not a finding.
+   Excessive A/A widening (unusable floor) or still inconclusive after the run cap → `Giới hạn`, not a finding (never a silent pass).
 
 5. **Classify each breach** as NEW (`introduced: true`) or PRE_EXISTING (`introduced: false`) versus base.
    Static-only observations (no measured samples) are hypotheses under `Giới hạn`.
@@ -148,7 +148,7 @@ Security finding:
 }
 ```
 
-Performance finding:
+Performance finding (no `validator` field; security findings require `validator`):
 
 ```json
 {
