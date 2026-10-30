@@ -82,6 +82,7 @@ If a skill is not installed, apply `docs/WORKFLOW.md` directly and say the skill
 | Hard bug, unclear logic, or technical trade-off to think through | `brainstorm-partner` |
 | Review a PR, branch, or diff | `review-pr` |
 | The human invokes `/validate-change` to accept a change just made | `validate-change`; never start it yourself |
+| The human invokes `/security-performance-check` for a targeted security or performance check | `security-performance-check`; never start it yourself |
 | Task accepted, changed, or invalidated durable knowledge | `manage-project-knowledge` |
 | Commit or push the human asked for | `smart-commits` |
 | The human asks to log agent friction | `record-workflow-friction` |
@@ -92,6 +93,7 @@ Which command fits what the human wants:
 | The human wants to… | Command |
 | --- | --- |
 | Accept a PR or a change just made | `/validate-change` |
+| Targeted security check on a change | `/security-performance-check` |
 | Re-test existing features or build a durable suite | `/runtime-e2e-test` (durable) |
 | Only runtime E2E on a change | `/runtime-e2e-test` (light) |
 | Only lint, type check, or build | `/quality-code-check` |
