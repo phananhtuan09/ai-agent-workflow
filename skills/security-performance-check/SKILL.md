@@ -58,7 +58,8 @@ An edited copy is kept by `update --apply`.
 Editing a row changes which signals load and match without touching this `SKILL.md`.
 
 Load matching rows into `signals_loaded[]` (id, file, matched paths) via the checker or by reading the table the same way.
-Keep `always` rows few so context stays small; other rows match when changed paths hit their `paths/patterns`.
+Keep `always` rows few so context stays small; they always load, and `matched_paths` still lists which changed paths hit their `paths/patterns` (may be empty).
+Other (`tag:`) rows load only when changed paths hit their `paths/patterns`.
 
 ## Security flow
 
@@ -108,7 +109,7 @@ Only `status: exploited` counts as a finding; `hypothesis` and `unclear` appear 
   "requests": [
     {"role": "user-b", "method": "GET", "url": "/api/orders/1", "status": 200, "length": 120, "body_hash": "sha256:..."}
   ],
-  "repro_curl": "curl -s -H 'Cookie: ...' http://127.0.0.1:3000/api/orders/1",
+  "repro_curl": "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1",
   "evidence": {"har_path": "finding-1.har", "screenshot": null},
   "validator": "agent"
 }
@@ -132,6 +133,7 @@ Run summary:
 
 Write the report in Vietnamese.
 Preserve identifiers, paths, commands, and quoted source text.
+In `repro_curl` and any `requests[].headers` values for `Cookie`, `Authorization`, or `Set-Cookie`, use placeholders only (`<redacted>`, `REDACTED`, `$TOKEN`, `***`); the checker rejects real secrets.
 
 ```markdown
 # Security performance check — {target}
