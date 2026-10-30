@@ -1,7 +1,7 @@
 # Evidence contract
 
 Machine-checkable rules for probe evidence under this skill's run directory.
-`scripts/check_findings.py` enforces the checks below (`har`, `redact`, `scan-bodies`, `finding`, `run`).
+`scripts/check_findings.py` enforces the checks below (`har`, `redact`, `leaks`, `scan-bodies`, `finding`, `run`).
 
 ## Response bodies (HAR)
 
@@ -34,11 +34,38 @@ If such an entry still carries `_file` or `text`, a present body is size-checked
 
 ### In-place redaction
 
-Stored bodies never keep a password, password hash, token, secret, API key, private key, or session id in clear text.
-Run `check_findings.py redact <raw.har> --out <stored.har>` after `scan-bodies` and before writing findings: it replaces each such value (by field name — the sensitive key list plus any key ending in `password`, `secret`, `token`, `hash`, or `digest` — and by bcrypt / argon2 / JWT / AWS-key / PEM shape) with the marker, keeps the field name, updates `content.size`, and writes `_spc_redaction`.
-`run` rejects any `*.har` in the run directory that still holds such a value in clear text.
+Evidence never keeps a password, password hash, token, secret, API key, private key, OTP, or session cookie in clear text, in requests or responses.
+Capture into a temp directory outside the repo, run `scan-bodies`, then `check_findings.py redact <temp file> --out <run-dir file>` before writing findings, and delete the temp originals.
+`redact` takes a HAR, a JSON file, or a text file (log, HTML). It keeps field names and replaces values with the marker.
+
+Scope in a HAR (every entry):
+
+| Part | What is redacted |
+| --- | --- |
+| Response body, `request.postData.text` | JSON (nested, arrays, JSON inside strings), form-urlencoded, multipart parts, HTML, plain text; unparseable bodies are scanned as text, never skipped |
+| `request.postData.params`, `queryString`, query in `url` / `redirectURL` / `Location` | secret parameter values; `user:password@` in URLs |
+| Headers | `Authorization` / `Proxy-Authorization` (scheme kept: `Bearer «REDACTED»`), every `Cookie` value, the value pair of each `Set-Cookie` (attributes kept), and any header whose name has a word like token, key, secret, session, auth, csrf, sid, password |
+| `cookies[]` | every value |
+
+Detection is framework-agnostic, by key name and by value shape:
+
+- Key names: the sensitive key list plus `pwd`, `pass`, `passphrase`, `pin`, `otp`, `salt`, `sid`, common session-cookie names, any key containing `password` / `secret` / `apikey` / `credential` (except metadata such as `password_min_length`, `token_type`, `password_required`), and any key ending in `password`, `secret`, `token`, `hash`, `digest`, `session_id`, `api_key`, `private_key`.
+  Empty values, booleans, and placeholders (`<redacted>`, `$TOKEN`, `***`, `REDACTED`) are not secrets.
+- Shapes anywhere (prose, HTML, logs, any key): bcrypt `$2[abxy]$`, `$argon2`, `$5$`/`$6$`/`$pbkdf2…` crypt, `pbkdf2_sha256$…`, scrypt, JWT, PEM private key, AWS / GitHub / Slack / Stripe / Google key prefixes.
+- Shapes of a whole structured value (JSON string, parameter, header) under a key that is not a public identifier: hex digest of 32+ chars (salted `salt:hex` too), and high-entropy tokens of 32+ chars with mixed case and digits.
+- Text: `key=value` / `key: value` pairs (logs, `.txt`); HTML only quoted pairs (inline script data, attributes) plus `<input type=password value>` and `<meta name=csrf-token content>`, so label text such as `Password: enter 8+ characters` is not flagged; JS/CSS source only by strong shape.
+
+False-positive decisions:
+
+- UUIDs are identifiers, not secrets, and are never flagged by shape.
+- Values under public digest/identifier keys (`id`, `*_id`, `uuid`, `url`, `path`, `file`, `sha`, `commit`, `etag`, `checksum`, `integrity`, `body_hash`, …) are not flagged by hex/token shape; a strong shape (JWT, bcrypt) under any key still is.
+- `summary.target` and `summary.conditions` (commit SHAs, tool versions) are never flagged by shape.
+- URL path segments are not scanned; a secret in a path is the app's leak and belongs in a finding, redacted by hand.
+- Long opaque pagination cursors may be redacted as tokens; this costs nothing the checker needs.
+
 A finding's `requests[].length` and `body_hash` describe the stored (redacted) body, so the length and integrity checks still apply.
 A marker under a sensitive key is still a `scan-bodies` hit (`reason: redacted_sensitive_key`): redaction hides the value, not the leak.
+Shape hits that redaction removes are kept in `_spc_redaction.scan_hits` (`{path, key, reason}`), so `run`'s re-scan counts the same hits before and after redaction.
 
 The rules for a redacted body:
 
@@ -55,6 +82,7 @@ The rules for a redacted body:
 
 - `marker` MUST be exactly `«REDACTED»`.
 - `paths` lists JSONPath-like or dotted field names that were redacted (nonempty when any replacement occurred).
+- `scan_hits` (optional, written by `redact`) lists scan-bodies hits whose value the marker replaced.
 - `ranges` lists `[start, end)` character offsets into the **stored** (already redacted) text covering each marker occurrence; every range MUST equal the marker string.
 - After redaction, `content.size` still equals the stored body byte length (decoded length when `encoding` is `base64`, or sidecar length when `_file` is used).
 
@@ -68,12 +96,23 @@ The checker rejects a HAR entry when:
 - a finding references a HAR path that does not exist on disk;
 - a finding request has no matching HAR entry by method + URL (order-preserving among duplicates), or length / `body_hash` disagree with that entry.
 
+## Evidence files in the run directory
+
+`check_findings.py run` (and `leaks <dir>`) checks **every file under the run directory, recursively**:
+
+- No clear secret in any HAR (all parts above), JSON (summary, findings, probe logs), text, HTML, or zip of text files; each leak is reported with its file and location (`entries[3].request.headers[1] (Cookie)`, `$.probes[0].token`).
+  A HAR holding a secret without `_spc_redaction` is a raw copy.
+  Images and video are skipped; any other binary file is rejected as unverifiable.
+- No raw-looking names: a path with a word `raw`, `unredacted`, `orig`, `original`, `unsanitized`, `unmasked`, `plaintext`, or `cleartext` is rejected (`drawer.har` and `withdraw.txt` are fine).
+- No two HARs with identical content (compared by hash of the parsed JSON): base and head are each recorded.
+- Temp files under `/tmp` are outside the run directory; the checker cannot see them, so deleting them is a rule in `SKILL.md`, not a check.
+
 ## Finding ↔ HAR cross-check
 
 `check_findings.py run` always cross-checks security findings that cite `evidence.har_path`:
 
 - Missing `har_path` / `screenshot` files are errors (not silent skips).
-- Each `requests[]` item is matched to a HAR entry by **method + URL** (relative and absolute URLs that share path+query match). Among duplicates, the first unused HAR entry in file order wins.
+- Each `requests[]` item is matched to a HAR entry by **method + URL**: an exact URL match first (so base and head requests to the same path on two ports keep their own entries), then relative and absolute URLs that share path+query. Among duplicates, the first unused HAR entry in file order wins.
 - Differing request vs entry counts do **not** skip the check; an unmatched request is an error.
 
 ## Access classification
@@ -189,3 +228,10 @@ For `request-count` and `background-requests`, `metric.base` / `metric.head` use
 | `window_ms` | with `after`, count only entries within this many milliseconds |
 
 `background-requests` requires `after` and `window_ms >= 15000`.
+
+## Summary and base-vs-head fields
+
+- `target.base_sha` and `target.head_sha` are the tested commits (7–64 lowercase hex).
+- When the security track ran, `budgets.probes = {used, limit}` integers with `used <= limit`; `budgets.time_minutes = {used, limit}` is optional.
+- `requests[].side` is `base` or `head` (default head). A security finding with `introduced: true` or `false` needs a `side: "base"` request or a nonempty `introduced_reason`; `introduced: true` with a base request that was also `bypassed` is rejected (pre-existing), as is `introduced: false` whose base requests never reproduce it. `introduced: "unknown"` needs neither.
+- For `performance_scope.project_type: "web-ui"`, `browser_metrics` has one entry per noisy browser row of `performance-signals.md` (LCP, CLS, INP/TBT, long tasks): `{order: "interleaved", base: [...], head: [...], verdict}` with at least `min_runs_per_side` (5) samples per side, or `{skipped: {kind, reason}}` where `kind` is `time_budget` (needs `budgets.time_minutes.used >= limit`), `collector_unavailable` (the row's collector is not in `collectors`), `flow_broken`, or `not_rendered`, and `reason` states the concrete cause. A finding for a skipped metric is rejected.

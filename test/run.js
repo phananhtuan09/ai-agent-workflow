@@ -4060,6 +4060,10 @@ test("security-performance-check is a manual command and the JSON checker valida
   assert.deepStrictEqual(skillIds, ["security-performance-check"]);
 
   const runDir = fs.mkdtempSync(path.join(os.tmpdir(), "spc-run-"));
+  const SPC_TARGET_SHAS = {
+    base_sha: "9fceb02d0ae598e95dc970b74767f19372d61af8",
+    head_sha: "e83c5163316f89bfbde7d9ab23ca2e25604af290",
+  };
   try {
     const accessReq = {
       role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH,
@@ -4075,6 +4079,7 @@ test("security-performance-check is a manual command and the JSON checker valida
       severity: "high",
       status: "exploited",
       introduced: true,
+      introduced_reason: "the order route does not exist on base (404)",
       roles_tested: ["user-a", "user-b"],
       requests: [accessReq],
       repro_curl: "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1",
@@ -4084,7 +4089,7 @@ test("security-performance-check is a manual command and the JSON checker valida
     const summary = {
       schema: "security-performance-check/summary@1",
       track: "security",
-      target: { label: "PR #1" },
+      target: { label: "PR #1", ...SPC_TARGET_SHAS },
       signals_loaded: allSecurityRows({ "object-id-access": ["src/orders/get.ts"] }),
       coverage: [
         { path: "src/orders/get.ts", in_scope: true, notes: "" },
@@ -4093,6 +4098,7 @@ test("security-performance-check is a manual command and the JSON checker valida
       probes: [{ signal_id: "object-id-access", validator: "agent", outcome: "exploited", finding: "finding-1.json" }],
       conditions: { host: "http://127.0.0.1:3000" },
       body_scan: { ran: true, hars: ["finding-1.har"], hit_count: 0 },
+      budgets: { probes: { used: 1, limit: 20 } },
       limits: ["Not a penetration test, dependency CVE audit, or load test."],
     };
     writeJson(path.join(runDir, "finding-1.har"), {
@@ -4218,10 +4224,13 @@ test("security-performance-check is a manual command and the JSON checker valida
     writeJson(path.join(runDir, "summary.json"), {
       schema: "security-performance-check/summary@1",
       track: "performance",
-      target: { label: "PR #1" },
+      target: { label: "PR #1", ...SPC_TARGET_SHAS },
       signals_loaded: [{ id: "request-count", file: "references/performance-signals.md", matched_paths: ["src/orders/list.tsx"] }],
       coverage: [{ path: "src/orders/list.tsx", in_scope: true, notes: "" }],
       performance_scope: { project_type: "web-ui", collectors: ["playwright"] },
+      browser_metrics: Object.fromEntries(["lcp", "cls", "inp-tbt", "long-tasks"].map((id) => [id, {
+        order: "interleaved", base: [100, 102, 101, 99, 100], head: [101, 100, 102, 100, 101], verdict: "pass",
+      }])),
       conditions: { host: "http://127.0.0.1:3000", viewport: "1280x720" },
       limits: ["Not a penetration test, dependency CVE audit, or load test."],
     });

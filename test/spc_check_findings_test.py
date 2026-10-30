@@ -35,10 +35,21 @@ def security_fields(file_path="src/api/me.ts"):
         "signals_loaded": all_rows_loaded(),
         "coverage": [{"path": file_path, "in_scope": True}] + row_reasons(),
         "probes": [],
+        "budgets": {"probes": {"used": 0, "limit": 20}},
     }
 
 
 WEB_SCOPE = {"project_type": "web-ui", "collectors": ["playwright"]}
+# Both commits are named so the report can be reproduced; 40-hex SHAs are not secrets.
+TARGET = {"label": "t", "base_sha": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+          "head_sha": "e83c5163316f89bfbde7d9ab23ca2e25604af290"}
+BROWSER_METRIC_IDS = ("lcp", "cls", "inp-tbt", "long-tasks")
+
+
+def browser_samples(n=5):
+    """summary.browser_metrics with n interleaved base/head samples per noisy browser metric."""
+    return {sid: {"order": "interleaved", "base": [100.0 + i for i in range(n)],
+                  "head": [101.0 + i for i in range(n)], "verdict": "pass"} for sid in BROWSER_METRIC_IDS}
 
 
 def har_doc(body_text, *, size=None, redaction=None, url="http://127.0.0.1:3000/api/me",
@@ -428,6 +439,7 @@ class CrossCheckAndRunTests(unittest.TestCase):
                 "severity": "med",
                 "status": "exploited",
                 "introduced": True,
+                "introduced_reason": "the route returns 404 on base",
                 "roles_tested": ["user-a"],
                 "requests": [{
                     "role": "user-a",
@@ -444,7 +456,7 @@ class CrossCheckAndRunTests(unittest.TestCase):
             summary = {
                 "schema": c.SUMMARY_SCHEMA,
                 "track": "security",
-                "target": {"label": "t"},
+                "target": dict(TARGET),
                 **security_fields(),
                 "conditions": {},
                 "body_scan": {"ran": True, "hars": [], "hit_count": 0},
@@ -472,6 +484,7 @@ class CrossCheckAndRunTests(unittest.TestCase):
                 "severity": "med",
                 "status": "exploited",
                 "introduced": True,
+                "introduced_reason": "the route returns 404 on base",
                 "roles_tested": ["user-a"],
                 "requests": [{
                     "role": "user-a",
@@ -488,7 +501,7 @@ class CrossCheckAndRunTests(unittest.TestCase):
             summary = {
                 "schema": c.SUMMARY_SCHEMA,
                 "track": "security",
-                "target": {"label": "t"},
+                "target": dict(TARGET),
                 **security_fields(),
                 "conditions": {},
                 "limits": ["Not a penetration test, dependency CVE audit, or load test."],
@@ -507,13 +520,14 @@ class RunScanEnforcementTests(unittest.TestCase):
         data = {
             "schema": c.SUMMARY_SCHEMA,
             "track": track,
-            "target": {"label": "t"},
+            "target": dict(TARGET),
             **security_fields("server/notes.ts"),
             "conditions": {},
             "limits": ["Not a penetration test, dependency CVE audit, or load test."],
         }
         if track in ("performance", "both"):
             data["performance_scope"] = WEB_SCOPE
+            data["browser_metrics"] = browser_samples()
         if body_scan is not None:
             data["body_scan"] = body_scan
         return data
@@ -632,6 +646,7 @@ def sec_finding(requests, *, signal_id="sensitive-response", har="finding-1.har"
         "schema": c.FINDING_SCHEMA, "track": "security", "signal_id": signal_id,
         "file": "src/api/me.ts", "line": 1, "cwe": "CWE-200", "severity": "med",
         "status": "exploited", "introduced": True, "roles_tested": ["user-a"],
+        "introduced_reason": "the route returns 404 on base",
         "requests": requests,
         "repro_curl": "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/me",
         "evidence": {"har_path": har, "screenshot": None}, "validator": "agent",
@@ -640,12 +655,13 @@ def sec_finding(requests, *, signal_id="sensitive-response", har="finding-1.har"
 
 def base_summary(track="security", **extra):
     data = {
-        "schema": c.SUMMARY_SCHEMA, "track": track, "target": {"label": "t"},
+        "schema": c.SUMMARY_SCHEMA, "track": track, "target": dict(TARGET),
         **security_fields(),
         "conditions": {}, "limits": ["Not a penetration test, dependency CVE audit, or load test."],
     }
     if track in ("performance", "both"):
         data["performance_scope"] = WEB_SCOPE
+        data["browser_metrics"] = browser_samples()
     data.update(extra)
     return data
 
@@ -1313,6 +1329,425 @@ class RedactionTests(unittest.TestCase):
         bad = sec_finding([sec_request(self.BODY.encode("utf-8"))])
         with self.assertRaises(c.Inconsistent):
             c.cross_check_finding_har(bad, "finding-1.har", data)
+
+
+# ---------------------------------------------------------------------------
+# Round 4: every evidence file is scanned; redaction covers requests and responses.
+# ---------------------------------------------------------------------------
+
+JWT = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4ifQ."
+       "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c")
+BCRYPT = "$2b$10$abcdefghijklmnopqrstuuJ8S7ZqLx0lJgqv1nO3gk2Yw5o4i2K6a"
+ARGON2 = "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHRzb21lc2FsdA$RdescudvJCsgt3ub+b+dWRWJTmaaJObG"
+HEX64 = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+TOKEN40 = "Zk3pQ9vX2mR7tL1wB8nC4yH6jD0sF5gK3aE9uT2q"
+UUID = "123e4567-e89b-42d3-a456-426614174000"
+
+
+def har_with(*, request=None, response_body='{"ok":true}', response_headers=None, response_cookies=None,
+             mime="application/json", url="http://127.0.0.1:3000/api/login"):
+    req = {"method": "POST", "url": url, "headers": [], "queryString": []}
+    req.update(request or {})
+    content = {"size": c.utf8_size(response_body), "mimeType": mime, "text": response_body}
+    resp = {"status": 200, "headers": response_headers or [], "content": content}
+    if response_cookies is not None:
+        resp["cookies"] = response_cookies
+    return {"log": {"version": "1.2", "entries": [{"request": req, "response": resp}]}}
+
+
+def scan_run(run_dir, files):
+    """Write a clean security run plus extra evidence files; return check_run_dir()."""
+    summary = base_summary(body_scan={"ran": True, "hit_count": 0})
+    (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+    for name, data in files.items():
+        target = run_dir / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(data if isinstance(data, str) else json.dumps(data), encoding="utf-8")
+    return c.check_run_dir(run_dir)
+
+
+class EvidenceLeakScanTests(unittest.TestCase):
+    def assert_run_rejects(self, files, *needles):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(c.Inconsistent) as ctx:
+                scan_run(Path(tmp), files)
+        for needle in needles:
+            self.assertIn(needle, str(ctx.exception))
+        return str(ctx.exception)
+
+    def test_request_json_body_password_rejected(self):
+        har = har_with(request={"postData": {"mimeType": "application/json",
+                                             "text": '{"email":"a@example.test","password":"hunter2-Secret"}'}})
+        self.assert_run_rejects({"probe.har": har}, "probe.har", "entries[0].request.postData", "password")
+
+    def test_request_form_body_rejected(self):
+        har = har_with(request={"postData": {"mimeType": "application/x-www-form-urlencoded",
+                                             "text": "email=a%40example.test&password=hunter2"}})
+        self.assert_run_rejects({"probe.har": har}, "request.postData", "password")
+
+    def test_request_post_params_rejected(self):
+        har = har_with(request={"postData": {"mimeType": "application/x-www-form-urlencoded",
+                                             "params": [{"name": "password", "value": "hunter2"}]}})
+        self.assert_run_rejects({"probe.har": har}, "request.postData.params")
+
+    def test_query_token_rejected(self):
+        har = har_with(url="http://127.0.0.1:3000/reset?token=abc123def456ghi",
+                       request={"method": "GET", "queryString": [{"name": "token", "value": "abc123def456ghi"}]})
+        self.assert_run_rejects({"probe.har": har}, "request.url", "request.queryString")
+
+    def test_authorization_and_cookie_headers_rejected(self):
+        har = har_with(request={"headers": [{"name": "Authorization", "value": "Bearer abcDEF1234567890xyz"},
+                                            {"name": "Cookie", "value": "theme=dark; sid=s3cr3tValue123"}]})
+        self.assert_run_rejects({"probe.har": har}, "request.headers[0]", "request.headers[1]")
+
+    def test_set_cookie_and_cookie_list_rejected(self):
+        har = har_with(response_headers=[{"name": "Set-Cookie", "value": "session=abcdef123456; Path=/; HttpOnly"}],
+                       response_cookies=[{"name": "session", "value": "abcdef123456"}])
+        self.assert_run_rejects({"probe.har": har}, "response.headers[0]", "response.cookies[0]")
+
+    def test_custom_secret_header_rejected_and_pseudo_header_ignored(self):
+        har = har_with(request={"headers": [{"name": ":authority", "value": "127.0.0.1:3000"},
+                                            {"name": "X-Auth-Token", "value": "f00ba7f00ba7f00ba7"}]})
+        message = self.assert_run_rejects({"probe.har": har}, "request.headers[1]")
+        self.assertNotIn("request.headers[0]", message)
+
+    def test_har_in_subdirectory_rejected(self):
+        # Response hits are caught by the scan-bodies re-scan; request-side secrets by the leak check.
+        har = har_with(request={"headers": [{"name": "Authorization", "value": "Bearer abcDEF1234567890xyz"}]})
+        self.assert_run_rejects({"evidence/probes/p1.har": har}, "evidence/probes/p1.har")
+        har = har_with(response_body=json.dumps({"user": {"passwordHash": BCRYPT}}))
+        self.assert_run_rejects({"evidence/probes/p1.har": har}, "hit_count")
+
+    def test_probe_json_and_text_log_rejected(self):
+        self.assert_run_rejects({"logs/probe-3.json": {"response": {"user": {"password_hash": BCRYPT}}}},
+                                "logs/probe-3.json")
+        self.assert_run_rejects({"notes.txt": "login ok, token=abcd1234efgh5678 stored"}, "notes.txt")
+
+    def test_html_response_leak_rejected(self):
+        html = ('<form><input type="hidden" name="csrf_token" value="Zx81kq0PLm7Qa2Rt">'
+                '<input type="password" name="pw" value="hunter2"></form>')
+        har = har_with(response_body=html, mime="text/html")
+        self.assert_run_rejects({"probe.har": har}, "response.content")
+
+    def test_redacted_har_passes_run_and_keeps_names(self):
+        har = har_with(
+            url="http://127.0.0.1:3000/reset?token=abc123def456ghi&page=2",
+            request={"headers": [{"name": "Authorization", "value": "Bearer abcDEF1234567890xyz"},
+                                 {"name": "Cookie", "value": "theme=dark; sid=s3cr3tValue123"}],
+                     "queryString": [{"name": "token", "value": "abc123def456ghi"}, {"name": "page", "value": "2"}],
+                     "postData": {"mimeType": "application/json", "text": '{"email":"a@example.test","password":"x1"}'}},
+            response_headers=[{"name": "Set-Cookie", "value": "session=abcdef123456; Path=/; HttpOnly"}],
+            response_body='<input type="password" name="pw" value="hunter2">', mime="text/html")
+        c.redact_har(har, "probe.har")
+        entry = har["log"]["entries"][0]
+        headers = {h["name"]: h["value"] for h in entry["request"]["headers"]}
+        self.assertEqual(headers["Authorization"], "Bearer " + c.REDACTION_MARKER)
+        # Every cookie value is redacted (names stay): which cookie carries the session is app-specific.
+        self.assertEqual(headers["Cookie"], f"theme={c.REDACTION_MARKER}; sid={c.REDACTION_MARKER}")
+        self.assertEqual(entry["response"]["headers"][0]["value"], f"session={c.REDACTION_MARKER}; Path=/; HttpOnly")
+        self.assertIn("page=2", entry["request"]["url"])
+        self.assertNotIn("abc123def456ghi", json.dumps(har))
+        self.assertIn('"password"', entry["request"]["postData"]["text"])
+        with tempfile.TemporaryDirectory() as tmp:
+            scan_run(Path(tmp), {"probe.har": har})
+
+
+class RawCopyTests(unittest.TestCase):
+    CLEAN = har_with()
+
+    def test_raw_named_files_rejected(self):
+        for name in ("probe.raw.har", "unredacted-body.json", "orig/finding-1.har", "original.har"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(c.Inconsistent) as ctx:
+                    scan_run(Path(tmp), {name: self.CLEAN})
+                self.assertIn("raw", str(ctx.exception))
+
+    def test_ordinary_names_with_raw_inside_a_word_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scan_run(Path(tmp), {"drawer-open.har": self.CLEAN, "screens/withdraw.txt": "ok"})
+
+    def test_secret_har_without_redaction_metadata_named(self):
+        har = har_with(request={"postData": {"mimeType": "application/json", "text": '{"apiKey":"super-secret-value"}'}})
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(c.Inconsistent) as ctx:
+                scan_run(Path(tmp), {"probe.har": har})
+        self.assertIn("_spc_redaction", str(ctx.exception))
+
+
+class RedactionScopeTests(unittest.TestCase):
+    def leaks(self, text, mime=None):
+        return c.secret_leaks_in_text(text, mime)
+
+    def test_nested_json_keeps_field_names(self):
+        body = json.dumps({"data": {"user": {"email": "a@example.test", "profile": {"password_digest": "abc12345"}},
+                                    "sessions": [{"token": "t0k3n-value-1"}], "pin": 4321}})
+        new, found = c.redact_text(body, "application/json")
+        doc = json.loads(new)
+        self.assertEqual(doc["data"]["user"]["profile"]["password_digest"], c.REDACTION_MARKER)
+        self.assertEqual(doc["data"]["sessions"][0]["token"], c.REDACTION_MARKER)
+        self.assertEqual(doc["data"]["pin"], c.REDACTION_MARKER)
+        self.assertEqual(doc["data"]["user"]["email"], "a@example.test")
+        self.assertEqual(len(found), 3)
+
+    def test_form_urlencoded(self):
+        new, found = c.redact_text("username=bob&password=hunter2&remember=true", "application/x-www-form-urlencoded")
+        self.assertEqual(new, f"username=bob&password={c.REDACTION_MARKER}&remember=true")
+        self.assertTrue(found)
+
+    def test_multipart(self):
+        body = ("--XyZ\r\nContent-Disposition: form-data; name=\"username\"\r\n\r\nbob\r\n"
+                "--XyZ\r\nContent-Disposition: form-data; name=\"password\"\r\n\r\nhunter2\r\n"
+                "--XyZ\r\nContent-Disposition: form-data; name=\"avatar\"; filename=\"a.txt\"\r\n"
+                "Content-Type: text/plain\r\n\r\nhello\r\n--XyZ--\r\n")
+        new, found = c.redact_text(body, "multipart/form-data; boundary=XyZ")
+        self.assertIn("\r\n\r\nbob\r\n", new)
+        self.assertIn(f"\r\n\r\n{c.REDACTION_MARKER}\r\n", new)
+        self.assertNotIn("hunter2", new)
+        self.assertIn("hello", new)
+
+    def test_html_and_plain_text(self):
+        html = '<meta name="csrf-token" content="Zx81kq0PLm7Qa2Rt"><input type="password" value="hunter2">'
+        new, _ = c.redact_text(html, "text/html")
+        self.assertNotIn("Zx81kq0PLm7Qa2Rt", new)
+        self.assertNotIn("hunter2", new)
+        self.assertIn('name="csrf-token"', new)
+        text_body = "Authorization: Bearer abcDEF1234567890xyz\nuser password = 'hunter2'\nall good"
+        new, _ = c.redact_text(text_body, "text/plain")
+        self.assertIn("Authorization: Bearer " + c.REDACTION_MARKER, new)
+        self.assertNotIn("hunter2", new)
+        self.assertIn("all good", new)
+
+    def test_value_shapes_under_any_key(self):
+        for value in (BCRYPT, ARGON2, HEX64, TOKEN40, JWT, "pbkdf2_sha256$600000$s0mesalt$Q2hhbmdlTWVQbGVhc2UxMjM0NTY3OA==",
+                      "a1b2c3d4e5f60718:" + HEX64):
+            with self.subTest(value=value[:12]):
+                self.assertTrue(self.leaks(json.dumps({"note": {"value": value}})), value)
+
+    def test_strong_shapes_found_in_text(self):
+        for value in (BCRYPT, ARGON2, JWT):
+            with self.subTest(value=value[:12]):
+                self.assertTrue(self.leaks(f"<p>debug {value} end</p>", "text/html"))
+                self.assertTrue(self.leaks(f"const x = '{value}';", "application/javascript"))
+
+    def test_no_false_positives(self):
+        doc = {"id": UUID, "trace": UUID, "request_uuid": UUID, "password_min_length": 8, "token_type": "Bearer",
+               "password_required": True, "etag": "5d41402abc4b2a76b9719d911017c592", "commit": HEX64[:40],
+               "body_hash": "sha256:" + HEX64, "file": "src/pages/OrdersPage.tsx", "count": 12345678901234,
+               "label": "Reset your password", "url": "http://127.0.0.1:3000/api/orders?page=2"}
+        self.assertEqual(self.leaks(json.dumps(doc)), [])
+        self.assertEqual(self.leaks("Passwords must be 8+ chars. Use a token-based flow.", "text/plain"), [])
+        self.assertEqual(self.leaks("const password = form.password.value;", "application/javascript"), [])
+
+    def test_summary_target_shas_not_flagged(self):
+        summary = base_summary()
+        self.assertEqual(c.secret_leaks_in_json(summary), [])
+
+    def test_redaction_is_idempotent(self):
+        body = json.dumps({"user": {"password": "x", "hash": BCRYPT}, "jwt": JWT})
+        once, found = c.redact_text(body, "application/json")
+        self.assertTrue(found)
+        twice, again = c.redact_text(once, "application/json")
+        self.assertEqual(again, [])
+        self.assertEqual(once, twice)
+
+    def test_non_json_body_does_not_crash_and_is_scanned(self):
+        self.assertEqual(c.unredacted_secrets("hello world", "text/plain"), [])
+        self.assertTrue(c.unredacted_secrets("user=bob&password=hunter2", "application/x-www-form-urlencoded"))
+        self.assertTrue(c.unredacted_secrets('{"password": "hunter2", "trunc', "application/json"))
+
+    def test_html_and_js_bodies_are_scanned_not_skipped(self):
+        self.assertTrue(c.unredacted_secrets('<input type="password" value="hunter2">', "text/html"))
+        self.assertTrue(c.unredacted_secrets(f"window.__T = '{JWT}';", "application/javascript"))
+
+    def test_scan_hits_survive_redaction(self):
+        body = json.dumps({"data": {"value": JWT}, "user": {"passwordHash": BCRYPT}})
+        data = har_doc(body)
+        before = len(c.scan_har_bodies(data, "x.har")["hits"])
+        c.redact_har(data, "x.har")
+        after = len(c.scan_har_bodies(data, "x.har")["hits"])
+        self.assertEqual(before, after)
+
+
+class BrowserMetricsTests(unittest.TestCase):
+    def summary(self, metrics, **extra):
+        data = base_summary(track="performance")
+        data["browser_metrics"] = metrics
+        data.update(extra)
+        return data
+
+    def reject(self, summary, needle):
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_summary(summary, "summary.json")
+        self.assertIn(needle, str(ctx.exception))
+
+    def test_web_ui_without_browser_metrics_rejected(self):
+        data = base_summary(track="performance")
+        del data["browser_metrics"]
+        self.reject(data, "browser_metrics")
+
+    def test_fewer_than_five_samples_rejected(self):
+        self.reject(self.summary(browser_samples(3)), "5")
+
+    def test_order_must_be_interleaved(self):
+        metrics = browser_samples()
+        metrics["lcp"]["order"] = "sequential"
+        self.reject(self.summary(metrics), "interleaved")
+
+    def test_missing_metric_rejected(self):
+        metrics = browser_samples()
+        del metrics["cls"]
+        self.reject(self.summary(metrics), "cls")
+
+    def test_time_budget_skip_needs_exhausted_budget(self):
+        metrics = browser_samples()
+        metrics["inp-tbt"] = {"skipped": {"kind": "time_budget",
+                                          "reason": "the 30 minute budget ran out after LCP and CLS"}}
+        self.reject(self.summary(metrics), "time_minutes")
+        self.reject(self.summary(metrics, budgets={"probes": {"used": 0, "limit": 20},
+                                                   "time_minutes": {"used": 12, "limit": 30}}), "time_minutes")
+        c.check_summary(self.summary(metrics, budgets={"probes": {"used": 0, "limit": 20},
+                                                       "time_minutes": {"used": 30, "limit": 30}}), "summary.json")
+
+    def test_skip_needs_concrete_reason(self):
+        metrics = browser_samples()
+        metrics["lcp"] = {"skipped": {"kind": "time_budget", "reason": "n/a"}}
+        self.reject(self.summary(metrics, budgets={"probes": {"used": 0, "limit": 20},
+                                                   "time_minutes": {"used": 30, "limit": 30}}), "reason")
+        metrics["lcp"] = {"skipped": {"kind": "collector_unavailable", "reason": "no browser on this machine today"}}
+        self.reject(self.summary(metrics), "collector")
+
+    def test_not_required_outside_web_ui(self):
+        data = base_summary(track="performance", performance_scope={"project_type": "api-only", "collectors": ["http"]})
+        del data["browser_metrics"]
+        c.check_summary(data, "summary.json")
+
+    def test_finding_for_skipped_metric_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            metrics = browser_samples()
+            metrics["lcp"] = {"skipped": {"kind": "time_budget", "reason": "the 30 minute budget ran out first"}}
+            summary = base_summary(track="performance", browser_metrics=metrics,
+                                   budgets={"probes": {"used": 0, "limit": 20},
+                                            "time_minutes": {"used": 30, "limit": 30}})
+            finding = perf_finding("lcp", base=100, head=150, base_har=None)
+            finding["metric"].update({"class": "noisy", "aggregation": "median", "unit": "ms"})
+            finding["metric"]["base"]["n"] = finding["metric"]["head"]["n"] = 5
+            finding["evidence"] = {"har_path": None, "screenshot": "lcp.png"}
+            (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+            (run_dir / "finding-1.json").write_text(json.dumps(finding), encoding="utf-8")
+            (run_dir / "lcp.png").write_bytes(b"\x89PNG\r\n")
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("browser_metrics", str(ctx.exception))
+
+
+class SummaryTargetAndBudgetTests(unittest.TestCase):
+    def reject(self, summary, needle):
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_summary(summary, "summary.json")
+        self.assertIn(needle, str(ctx.exception))
+
+    def test_target_needs_base_and_head_sha(self):
+        self.reject(base_summary(target={"label": "PR #1"}), "base_sha")
+        self.reject(base_summary(target={**TARGET, "head_sha": "main"}), "head_sha")
+
+    def test_probe_budget_is_numeric(self):
+        self.reject(base_summary(budgets={"probes": "20 probes"}), "budgets.probes")
+        self.reject(base_summary(budgets={"probes": {"used": "3", "limit": 20}}), "budgets.probes")
+        self.reject(base_summary(budgets={"probes": {"used": 21, "limit": 20}}), "budgets.probes")
+        summary = base_summary()
+        del summary["budgets"]
+        self.reject(summary, "budgets.probes")
+        c.check_summary(base_summary(budgets={"probes": {"used": 20, "limit": 20}}), "summary.json")
+
+
+class IntroducedEvidenceTests(unittest.TestCase):
+    def finding(self, requests, **extra):
+        f = sec_finding(requests)
+        f.pop("introduced_reason", None)
+        f.update(extra)
+        return f
+
+    def test_introduced_claim_needs_base_request_or_reason(self):
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_finding(self.finding([sec_request(b"{}")]), "f.json")
+        self.assertIn("introduced", str(ctx.exception))
+        with self.assertRaises(c.Inconsistent):
+            c.check_finding(self.finding([sec_request(b"{}")], introduced=False), "f.json")
+
+    def test_base_request_or_reason_or_unknown_passes(self):
+        c.check_finding(self.finding([sec_request(b"{}"), sec_request(b"", side="base")]), "f.json")
+        c.check_finding(self.finding([sec_request(b"{}")], introduced_reason="route returns 404 on base"), "f.json")
+        c.check_finding(self.finding([sec_request(b"{}")], introduced="unknown"), "f.json")
+
+    def test_side_value_checked(self):
+        with self.assertRaises(c.Inconsistent):
+            c.check_finding(self.finding([sec_request(b"{}", side="before")]), "f.json")
+
+    def test_introduced_contradicted_by_base_bypass(self):
+        access = {"expected_access": "deny", "observed_access": "allow", "access_verdict": "bypassed"}
+        f = self.finding([sec_request(b"{}", **access), sec_request(b"", side="base", **access)],
+                         signal_id="object-id-access")
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_finding(f, "f.json")
+        self.assertIn("base", str(ctx.exception))
+
+    def test_base_and_head_requests_match_their_own_entries(self):
+        head_body, base_body = b'{"id":1}', b""
+        har = {"log": {"version": "1.2", "entries": [
+            {"request": {"method": "GET", "url": "http://127.0.0.1:3001/api/me"},
+             "response": {"status": 404, "content": {"size": 0, "mimeType": "application/json", "text": ""}}},
+            {"request": {"method": "GET", "url": "http://127.0.0.1:3000/api/me"},
+             "response": {"status": 200, "content": {"size": 8, "mimeType": "application/json",
+                                                      "text": head_body.decode()}}},
+        ]}}
+        f = self.finding([sec_request(head_body, url="http://127.0.0.1:3000/api/me"),
+                          sec_request(base_body, url="http://127.0.0.1:3001/api/me", side="base")])
+        f["requests"][1]["status"] = 404
+        c.cross_check_finding_har(f, "finding-1.har", har)
+
+
+class DuplicateHarTests(unittest.TestCase):
+    def test_identical_hars_rejected(self):
+        har = har_with()
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(c.Inconsistent) as ctx:
+                scan_run(Path(tmp), {"base.har": har, "head.har": json.loads(json.dumps(har, indent=2))})
+            self.assertIn("identical", str(ctx.exception))
+
+
+class LeakCliTests(unittest.TestCase):
+    def test_leaks_and_redact_cli_on_text(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "probe.log"
+            src.write_text("POST /login password=hunter2\nok\n", encoding="utf-8")
+            script = [sys.executable, "-B", str(Path(c.__file__))]
+            dirty = subprocess.run(script + ["leaks", tmp], capture_output=True, text=True)
+            self.assertEqual(dirty.returncode, 2, dirty.stdout + dirty.stderr)
+            self.assertIn("probe.log", dirty.stderr)
+            out = Path(tmp) / "probe-redacted.log"
+            run_cli(["redact", str(src), "--out", str(out)])
+            src.unlink()
+            self.assertIn("password=" + c.REDACTION_MARKER, out.read_text(encoding="utf-8"))
+            run_cli(["leaks", tmp])
+
+
+class HtmlProseTests(unittest.TestCase):
+    """HTML pages: quoted script/attribute data is scanned; visible label text is not a secret."""
+
+    def test_label_prose_not_flagged(self):
+        page = "<label>Password: Enter your password</label><p>Token: required</p>"
+        self.assertEqual(c.secret_leaks_in_text(page, "text/html"), [])
+
+    def test_inline_script_config_flagged(self):
+        page = '<script>window.cfg = {"apiToken": "abc123xyz"}</script>'
+        new, found = c.redact_text(page, "text/html")
+        self.assertTrue(found)
+        self.assertIn('"apiToken": "' + c.REDACTION_MARKER + '"', new)
+
+    def test_plain_text_log_pair_flagged(self):
+        self.assertTrue(c.secret_leaks_in_text("password: hunter2", "text/plain"))
 
 
 if __name__ == "__main__":

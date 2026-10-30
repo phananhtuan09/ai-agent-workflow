@@ -43,7 +43,7 @@ Use `<evidence root>/<slug>/security-performance/`, under the evidence root that
 | `finding-<n>.json` | One file per finding (only `exploited` status) |
 | HAR / screenshots / traces | Full-body request evidence (see evidence contract), screenshots, or metric dumps named from the finding |
 
-Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, `run`, `aggregate`, `threshold`, `har`, `redact`, or `scan-bodies`).
+Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, `run`, `aggregate`, `threshold`, `har`, `redact`, `leaks`, or `scan-bodies`).
 Read `references/evidence-contract.md` for the HAR body, redaction, coverage, probe, performance-evidence, and access-classification rules the checker enforces.
 
 ## Project runtime
@@ -93,14 +93,17 @@ Run `check_findings.py signals --diff <unified diff>` to get `signals_loaded[]` 
      A `deterministic` probe that exploited is an exploited finding whose `signal_id` is the best-matching security row, never a hypothesis or a `Giới hạn` note.
    - Store every probed response as a **full HAR body** (no `body_preview`, no hand reconstruction).
      Validate with `check_findings.py har`.
+   - Capture into a temp directory **outside the repo** (`mktemp -d`); only redacted copies enter the run directory, under ordinary names (never `raw`, `unredacted`, `orig`).
    - After probes, run `check_findings.py scan-bodies` on every saved HAR.
      Each hit is an exploited `sensitive-response` finding whatever that row's coverage decision was.
      Record the scan in `summary.body_scan` or `body-scan.json` (`ran: true`, plus any `allow` exemptions); `check_findings.py run` requires it whenever the security track ran, re-scans the HARs, and fails on any hit without an exploited `sensitive-response` finding.
      Document legitimate fields with `_spc_scan_allow` or `--allow key:reason`; password hashes and private keys are never exemptable.
-   - Then run `check_findings.py redact <har> --out <stored har>`: passwords, hashes, tokens, and secrets become `«REDACTED»` with the field name kept and `_spc_redaction` written.
-     Findings cite the stored body's length and hash; `run` rejects a HAR that still holds such a value.
+   - Then run `check_findings.py redact <file> --out <run-dir file>` on every HAR, probe log, and text file: passwords, hashes, tokens, secrets, and session cookies in requests and responses (body, query, headers, cookies) become `«REDACTED»` with the field name kept and `_spc_redaction` written.
+     Findings cite the stored body's length and hash.
+     `run` scans every file in the run directory recursively and rejects any clear secret (with file and entry location), raw-looking names, and identical HARs; `leaks <path>` runs the same check.
    - Compare head with base: a probe that succeeds on head and fails on base is `introduced`; one that succeeds on both is `pre-existing`.
-   - Reset data around probes that write; stop at the probe budget and report "probes not run: N".
+     `introduced: true|false` needs the base request in `requests[]` (`"side": "base"`) or an `introduced_reason`.
+   - Reset data around probes that write; stop at the probe budget, record `budgets.probes = {used, limit}`, and report "probes not run: N".
 
 5. **Stop before any probe** if the configured target is not an allowed host, with the reason under `Giới hạn`.
 
@@ -126,6 +129,7 @@ Do not add Mann-Whitney, KS, or Cliff's delta gates in this revision.
 
 3. **Noisy metrics** (`metric_class: noisy`): LCP, CLS, INP/TBT, response time, long tasks.
    At least 5 runs per side (`min_runs_per_side`), interleaved base/head (B, H, B, H, …).
+   For web UI, LCP, CLS, INP/TBT, and long tasks are measured by default: record each in `summary.browser_metrics` (`order: "interleaved"`, `base[]`, `head[]`, `verdict`) or as `skipped: {kind, reason}` with a concrete cause (`time_budget` needs `budgets.time_minutes` used ≥ limit).
    With 3 vs 3 runs a two-sided rank test cannot reach p < 0.05, so 3 runs is not enough; do not judge before the minimum.
 
 4. **Noise floor**: run base against itself (A/A) for each noisy metric.
@@ -159,6 +163,7 @@ Security finding:
   "severity": "high",
   "status": "exploited",
   "introduced": true,
+  "introduced_reason": "the route does not exist on base (404)",
   "roles_tested": ["user-a", "user-b", "anonymous"],
   "requests": [
     {
@@ -221,7 +226,7 @@ Run summary (the real file lists every security row in `signals_loaded` and `cov
 {
   "schema": "security-performance-check/summary@1",
   "track": "both",
-  "target": {"label": "PR #12"},
+  "target": {"label": "PR #12", "base_sha": "9fceb02", "head_sha": "e83c516"},
   "signals_loaded": [
     {"id": "object-id-access", "file": "references/security-signals.md", "matched_paths": ["src/orders/get.ts"]},
     {"id": "markup-render", "file": "references/security-signals.md", "matched_paths": []},
@@ -236,6 +241,11 @@ Run summary (the real file lists every security row in `signals_loaded` and `cov
     {"signal_id": "object-id-access", "validator": "agent", "outcome": "exploited", "finding": "finding-1.json"}
   ],
   "performance_scope": {"project_type": "web-ui", "collectors": ["playwright", "build"]},
+  "browser_metrics": {
+    "lcp": {"order": "interleaved", "base": [1210, 1190, 1230, 1205, 1220], "head": [1215, 1200, 1225, 1210, 1218], "verdict": "pass"},
+    "cls": {"skipped": {"kind": "time_budget", "reason": "time budget spent on the failing request-count flow"}}
+  },
+  "budgets": {"probes": {"used": 6, "limit": 20}, "time_minutes": {"used": 45, "limit": 45}},
   "conditions": {
     "base": "...",
     "head": "...",
@@ -250,6 +260,11 @@ Run summary (the real file lists every security row in `signals_loaded` and `cov
   "limits": ["Not a penetration test, dependency CVE audit, or load test."]
 }
 ```
+
+## Finish
+
+Delete the temp capture directory and any other `/tmp` files the run created before reporting.
+The checker cannot verify this; it only sees the run directory.
 
 ## Output
 

@@ -89,6 +89,11 @@ DEFAULT_PATH_EXCLUDES = (
     "**/*.po",
     "**/*.pot",
 )
+REQUEST_SIDES = ("base", "head")
+GIT_SHA = re.compile(r"[0-9a-f]{7,64}")
+BROWSER_METRIC_SOURCES = frozenset({"playwright", "lighthouse"})
+BROWSER_SKIP_KINDS = ("time_budget", "collector_unavailable", "flow_broken", "not_rendered")
+MIN_SKIP_REASON = 20
 # Signals that require expected_access / observed_access / access_verdict on every request.
 ACCESS_REQUIRED_SIGNALS = frozenset({"authz-route", "object-id-access"})
 # Sensitive keys (normalized: alnum only) that must never be allow-listed away.
@@ -888,6 +893,8 @@ def check_request(entry, where, signal_id=None):
         raise Inconsistent(
             f"{where}: body_hash for length 0 must be the sha256 of empty bytes ({empty_digest})"
         )
+    if entry.get("side") is not None and entry["side"] not in REQUEST_SIDES:
+        raise Inconsistent(f"{where}: side is one of {', '.join(REQUEST_SIDES)} when present (default head)")
     require_access = signal_id in ACCESS_REQUIRED_SIGNALS if signal_id else False
     check_access_classification(entry, where, require_access_fields=require_access)
     headers = entry.get("headers")
@@ -924,6 +931,12 @@ def check_redaction_meta(content, body_text, where):
         raise Inconsistent(f"{where}: _spc_redaction.ranges is a list when present")
     if ranges and not paths:
         raise Inconsistent(f"{where}: _spc_redaction.paths is required when ranges are listed")
+    scan_hits = meta.get("scan_hits")
+    if scan_hits is not None and (
+        not isinstance(scan_hits, list)
+        or any(not isinstance(h, dict) or not text(h.get("path")) or not text(h.get("reason")) for h in scan_hits)
+    ):
+        raise Inconsistent(f"{where}: _spc_redaction.scan_hits is a list of {{path, key, reason}} when present")
     marker_len = len(REDACTION_MARKER)
     for i, span in enumerate(ranges):
         rwhere = f"{where}: _spc_redaction.ranges[{i}]"
@@ -1386,21 +1399,38 @@ def scan_body_text(body_text, url=None, *, mime=None, allow_list=None):
     return hits
 
 
+def redacted_scan_hits(recorded, url, allow_list):
+    """Value-shape hits that redaction removed (recorded in _spc_redaction.scan_hits) still count."""
+    out = []
+    for hit in recorded or []:
+        if not isinstance(hit, dict):
+            continue
+        key = hit.get("key") or str(hit.get("path") or "").rsplit(".", 1)[-1].split("[", 1)[0]
+        if key and key_is_allowed(key, allow_list) and hit.get("reason") not in NEVER_EXEMPTABLE_SHAPES:
+            continue
+        out.append({"url": url, "path": hit.get("path") or "$", "key": hit.get("key"), "reason": hit.get("reason")})
+    return out
+
+
 def scan_har_bodies(data, path="<har>", allow_list=None):
     """Scan every HAR response body for sensitive fields; return hit list."""
     summaries = check_har(data, path)
     hits = []
     global_allow = list(allow_list or [])
+    entries = data["log"]["entries"]
     for summary in summaries:
         if not summary.get("body_present"):
             continue
+        merged_allow = list(global_allow) + list(summary.get("allow") or [])
+        content = entries[summary["index"]]["response"]["content"]
+        meta = content.get("_spc_redaction") if isinstance(content.get("_spc_redaction"), dict) else {}
+        hits.extend(redacted_scan_hits(meta.get("scan_hits"), summary.get("url"), merged_allow))
         if should_skip_raw_scan(summary.get("mimeType"), summary.get("url")):
             # Still scan when the body parses as JSON (API mistaken for asset mime).
             try:
                 json.loads(summary["text"])
             except (ValueError, TypeError):
                 continue
-        merged_allow = list(global_allow) + list(summary.get("allow") or [])
         hits.extend(
             scan_body_text(
                 summary["text"],
@@ -1412,80 +1442,541 @@ def scan_har_bodies(data, path="<har>", allow_list=None):
     return {"path": path, "entries": len(summaries), "hits": hits}
 
 
-SECRET_KEY_NORMS = frozenset(normalize_sensitive_key(k) for k in SENSITIVE_KEY_NAMES)
+# ---------------------------------------------------------------------------
+# Secret detection and redaction. One code path finds and redacts, so a file the
+# redactor wrote always passes the leak check. It covers requests and responses
+# (bodies, query, headers, cookies) in HARs and every other evidence file.
+# ---------------------------------------------------------------------------
+
+# Exact key names (alnum, lower case) that always hold a secret value.
+SECRET_KEY_NORMS = frozenset(normalize_sensitive_key(k) for k in SENSITIVE_KEY_NAMES) | frozenset({
+    "pwd", "pass", "passphrase", "pin", "pincode", "otp", "totp", "mfacode", "salt",
+    "sid", "sessid", "jsessionid", "phpsessid", "aspnetsessionid", "connectsid", "sessionkey",
+    "cookie", "setcookie", "authorization", "proxyauthorization",
+})
+# A key containing one of these is secret unless it ends in a metadata suffix (password_min_length).
+SECRET_KEY_SUBSTRINGS = ("password", "passwd", "secret", "privatekey", "apikey", "credential")
+# Any key ending in one of these is secret (api_token, reset_digest, signing_key, user_session_id).
+SECRET_KEY_SUFFIXES = (
+    "password", "passwd", "passphrase", "secret", "token", "hash", "digest", "apikey", "privatekey",
+    "accesskey", "secretkey", "signingkey", "encryptionkey", "sessionid", "sessiontoken", "credentials",
+)
+NON_SECRET_KEY_SUFFIXES = (
+    "at", "date", "time", "count", "length", "minlength", "maxlength", "policy", "required", "enabled",
+    "expires", "expiry", "expiresin", "ttl", "type", "hint", "rules", "url", "uri", "field", "label",
+    "placeholder", "name", "strength", "status", "valid", "id",
+)
+# Public digests and identifiers: never secret by name; hex/token value shapes under them are not flagged.
+PUBLIC_DIGEST_KEY_SUFFIXES = (
+    "bodyhash", "contenthash", "filehash", "commithash", "githash", "treehash", "sha", "sha1", "sha256",
+    "sha512", "commit", "etag", "checksum", "integrity",
+)
+PUBLIC_VALUE_KEY_SUFFIXES = PUBLIC_DIGEST_KEY_SUFFIXES + (
+    "id", "ids", "uuid", "guid", "url", "uri", "href", "src", "path", "file", "filename", "slug",
+    "ref", "revision", "version",
+)
+# Top-level keys of the run's own JSON (summary.target, summary.conditions) hold commit SHAs.
+OWN_ARTIFACT_PUBLIC_ROOTS = ("target", "conditions")
+SENSITIVE_HEADER_NAMES = frozenset({"authorization", "proxy-authorization", "cookie", "set-cookie"})
+SENSITIVE_HEADER_WORDS = frozenset({
+    "token", "secret", "session", "sessionid", "apikey", "auth", "csrf", "xsrf", "password", "passwd",
+    "jwt", "bearer", "key", "signature", "credential", "credentials", "sid", "cookie", "otp",
+})
+URL_HEADER_NAMES = frozenset({"location", "referer", "content-location", "refresh", "link"})
+AUTH_SCHEMES = ("bearer", "basic", "token", "digest", "negotiate", "apikey", "jwt")
+TRIVIAL_VALUES = frozenset({"", "null", "none", "nil", "undefined", "true", "false"})
+VALUE_PLACEHOLDER = re.compile(
+    r"(?:<[^<>]*>|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|\*{2,}|x{3,}|\[(?:redacted|filtered|hidden)\]"
+    r"|redacted|filtered|" + re.escape(REDACTION_MARKER) + r")",
+    re.IGNORECASE,
+)
+# Shapes that are a secret wherever they appear (prose, HTML, JS, logs, any key).
+STRONG_SECRET_SHAPES = tuple((name, re.compile(pattern)) for name, pattern in (
+    ("bcrypt_hash", r"\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{50,60}"),
+    ("argon2_hash", r"\$argon2(?:id|i|d)\$[^\s\"'<>,;&\\]+"),
+    ("crypt_hash", r"\$(?:1|5|6|y|7|scrypt|pbkdf2(?:-sha\d+)?)\$[^\s\"'<>,;&\\]{16,}"),
+    ("pbkdf2_hash", r"\bpbkdf2[_:][A-Za-z0-9]+[$:][^\s\"'<>,;&\\]{16,}"),
+    ("scrypt_hash", r"\bscrypt:\d+:\d+:\d+\$[^\s\"'<>,;&\\]{16,}"),
+    ("jwt", r"\beyJ[A-Za-z0-9_-]{4,}\.eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*"),
+    ("pem_private_key",
+     r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----(?:[\s\S]*?-----END (?:[A-Z0-9]+ )*PRIVATE KEY-----)?"),
+    ("aws_access_key", r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    ("github_token", r"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{40,})"),
+    ("slack_token", r"\bxox[abposr]-[A-Za-z0-9-]{10,}"),
+    ("stripe_key", r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{16,}"),
+    ("google_api_key", r"\bAIza[0-9A-Za-z_-]{35}"),
+))
+# Whole-value shapes for structured values (JSON strings, form/query values, header values).
+HEX_SECRET = re.compile(
+    r"[0-9a-fA-F]{32,}|[0-9a-fA-F]{8,}[:$.][0-9a-fA-F]{32,}|[0-9a-fA-F]{32,}[:$.][0-9a-fA-F]{8,}"
+)
+UUID_VALUE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+TOKEN_VALUE = re.compile(r"[A-Za-z0-9_\-+/=~.]{32,}")
+STRONG_ONLY_MIMES = frozenset({
+    "application/javascript", "text/javascript", "application/x-javascript", "text/css",
+})
+RAW_KEY = re.compile(r"(?<![A-Za-z0-9_\-.])(\\?[\"'])?([A-Za-z_][A-Za-z0-9_\-.]{0,63})(\\?[\"'])?[ \t]*(?:=>|:|=)[ \t]*")
+BARE_VALUE = re.compile(r"[^\s\"'&,;<>(){}\[\]\\|]+")
+COOKIE_LINE = re.compile(r"(?i)(?<![A-Za-z0-9_-])(set-cookie|cookie)[ \t]*:[ \t]*([^\r\n\"'\\]*)")
+BEARER_ANYWHERE = re.compile(r"(?i)\b(?:bearer|token)[ \t]+([A-Za-z0-9\-._~+/]{8,}=*)")
+URL_USERINFO = re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^/\s:@\"']+:([^@\s/\"']+)@")
+URL_QUERY = re.compile(r"\?([A-Za-z0-9_.\-\[\]%+*~!]+=[^\s\"'<>#\\]*)")
+FORM_BODY = re.compile(r"[A-Za-z0-9_.\-\[\]%+*~!]+=[^&\s]*(?:&[A-Za-z0-9_.\-\[\]%+*~!]+=[^&\s]*)*")
+HTML_TAG = re.compile(r"(?is)<(input|meta)\b[^>]*>")
+HTML_ATTR = re.compile(r"""([A-Za-z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))""")
 REDACT_SHAPES = tuple(SENSITIVE_VALUE_SHAPES)
 
 
-# Redaction also covers any key naming a hash, token, secret, or password (e.g. api_token, reset_digest).
-SECRET_KEY_SUFFIXES = ("password", "passwd", "secret", "token", "hash", "digest", "apikey", "privatekey")
-
-
 def is_secret_key(key):
+    """True when a field, parameter, or cookie name holds a secret (framework-agnostic)."""
     norm = normalize_sensitive_key(key)
-    return norm in SECRET_KEY_NORMS or norm.endswith(SECRET_KEY_SUFFIXES) or "password" in norm
+    if not norm:
+        return False
+    if norm in SECRET_KEY_NORMS:
+        return True
+    if any(part in norm for part in SECRET_KEY_SUBSTRINGS):
+        return not norm.endswith(NON_SECRET_KEY_SUFFIXES)
+    if norm.endswith(PUBLIC_DIGEST_KEY_SUFFIXES):
+        return False
+    return norm.endswith(SECRET_KEY_SUFFIXES)
 
 
-def _secret_value(value):
+def is_public_value_key(key):
+    norm = normalize_sensitive_key(key or "")
+    return bool(norm) and not is_secret_key(key) and norm.endswith(PUBLIC_VALUE_KEY_SUFFIXES)
+
+
+def is_sensitive_header(name):
+    low = str(name).strip().lower()
+    if low in SENSITIVE_HEADER_NAMES:
+        return True
+    return any(word in SENSITIVE_HEADER_WORDS for word in re.split(r"[^a-z0-9]+", low) if word)
+
+
+def _strip_scheme(value):
+    v = value.strip()
+    head, _, rest = v.partition(" ")
+    if rest.strip() and head.lower().rstrip(":") in AUTH_SCHEMES:
+        return rest.strip()
+    return v
+
+
+def is_clear_secret(value):
+    """True when a value under a secret name is real: not empty, a boolean, a placeholder, or the marker."""
     if isinstance(value, bool) or value is None:
         return False
     if isinstance(value, (int, float)):
         return True
-    return isinstance(value, str) and value.strip() != "" and value != REDACTION_MARKER
+    if not isinstance(value, str):
+        return False
+    v = _strip_scheme(value.strip().strip("'\""))
+    if v.lower() in TRIVIAL_VALUES:
+        return False
+    return not VALUE_PLACEHOLDER.fullmatch(v)
 
 
-def _redact_json(node, path, found):
-    """Replace secret values in parsed JSON with the marker; return the new node."""
-    if isinstance(node, dict):
-        out = {}
-        for key, value in node.items():
-            child = f"{path}.{key}"
-            if is_secret_key(key) and _secret_value(value):
-                out[key] = REDACTION_MARKER
-                found.append(child)
+def _secret_value(value):
+    return is_clear_secret(value)
+
+
+def _entropy(value):
+    counts = {}
+    for ch in value:
+        counts[ch] = counts.get(ch, 0) + 1
+    total = len(value)
+    return -sum((n / total) * math.log2(n / total) for n in counts.values())
+
+
+def value_shape(value):
+    """Secret shape of a whole structured value: a strong shape, a hex digest, or a high-entropy token.
+
+    UUIDs are identifiers, not secrets, and are never flagged.
+    """
+    if not isinstance(value, str):
+        return None
+    v = value.strip()
+    if not v or UUID_VALUE.fullmatch(v):
+        return None
+    for name, pattern in STRONG_SECRET_SHAPES:
+        if pattern.fullmatch(v):
+            return name
+    if HEX_SECRET.fullmatch(v):
+        return "hex_digest"
+    if (
+        TOKEN_VALUE.fullmatch(v)
+        and not re.search(r"\.[A-Za-z0-9]{1,5}$", v)
+        and not v.startswith(("/", "."))
+        and "//" not in v
+        and re.search(r"[a-z]", v) and re.search(r"[A-Z]", v) and re.search(r"[0-9]", v)
+        and _entropy(v) >= 3.5
+    ):
+        return "high_entropy_token"
+    return None
+
+
+def _tokenish(value):
+    return len(value) >= 8 and (
+        any(ch.isdigit() for ch in value)
+        or (any(ch.isupper() for ch in value) and any(ch.islower() for ch in value))
+        or any(ch in "._-~+/" for ch in value)
+    )
+
+
+def _strong_spans(text_value, offset=0):
+    spans = []
+    for name, pattern in STRONG_SECRET_SHAPES:
+        for match in pattern.finditer(text_value):
+            if match.end() > match.start() and is_clear_secret(match.group(0)):
+                spans.append((offset + match.start(), offset + match.end(), f"#{name}"))
+    return spans
+
+
+def _cookie_spans(value, offset, set_cookie):
+    spans, idx = [], 0
+    for k, part in enumerate(value.split(";")):
+        if set_cookie and k > 0:
+            break
+        if "=" in part:
+            name, _, raw = part.partition("=")
+            start = offset + idx + len(name) + 1
+            lead = len(raw) - len(raw.lstrip())
+            val = raw.strip()
+            if val and is_clear_secret(val):
+                spans.append((start + lead, start + lead + len(val), f".cookie:{name.strip()}"))
+        idx += len(part) + 1
+    return spans
+
+
+def _form_spans(form, offset=0, shapes=True):
+    """Spans of secret values in an a=b&c=d string (form body or URL query)."""
+    from urllib.parse import unquote_plus
+    spans, idx = [], 0
+    for part in form.split("&"):
+        if "=" in part:
+            raw_key, _, raw_val = part.partition("=")
+            key, val = unquote_plus(raw_key), unquote_plus(raw_val)
+            start, end = offset + idx + len(raw_key) + 1, offset + idx + len(part)
+            if raw_val and is_clear_secret(val) and (
+                is_secret_key(key) or (shapes and not is_public_value_key(key) and value_shape(val))
+            ):
+                spans.append((start, end, f".{key}"))
             else:
-                out[key] = _redact_json(value, child, found)
-        return out
-    if isinstance(node, list):
-        return [_redact_json(v, f"{path}[{i}]", found) for i, v in enumerate(node)]
-    if isinstance(node, str) and node != REDACTION_MARKER and any(r.search(node) for _n, r in REDACT_SHAPES):
-        found.append(path)
-        return REDACTION_MARKER
-    return node
+                spans.extend(_strong_spans(raw_val, start))
+        idx += len(part) + 1
+    return spans
 
 
-def _redact_raw(body_text, found):
-    out = body_text
-    for key in SENSITIVE_KEY_NAMES:
-        pattern = re.compile(
-            rf'((?:^|[{{,;&\s?\[(])["\']?{re.escape(key)}["\']?\s*[:=]\s*["\']?)([^"\'&\s,;}}\]]+)',
-            re.IGNORECASE,
-        )
-        def sub(match):
-            if match.group(2) in (REDACTION_MARKER, "null", "false", "undefined"):
-                return match.group(0)
-            found.append(f"$raw.{key}")
-            return match.group(1) + REDACTION_MARKER
-        out = pattern.sub(sub, out)
-    for name, pattern in REDACT_SHAPES:
-        raw = re.compile(pattern.pattern.lstrip("^").rstrip("$"))
-        if raw.search(out):
-            found.append(f"$raw.{name}")
-            out = raw.sub(REDACTION_MARKER, out)
+def _quoted_end(body, start, quote):
+    i = start
+    while i < len(body):
+        if body[i] == "\\":
+            i += 2
+            continue
+        if body[i] == quote:
+            return i
+        i += 1
+    return len(body)
+
+
+def _raw_value_span(body, pos):
+    if body.startswith('\\"', pos):
+        end = body.find('\\"', pos + 2)
+        return pos + 2, end if end != -1 else len(body)
+    quote = body[pos:pos + 1]
+    if quote in ('"', "'"):
+        return pos + 1, _quoted_end(body, pos + 1, quote)
+    match = BARE_VALUE.match(body, pos)
+    return match.span() if match else None
+
+
+def _html_spans(match):
+    tag, base = match.group(1).lower(), match.start()
+    attrs = {}
+    for attr in HTML_ATTR.finditer(match.group(0)):
+        group = next(g for g in (2, 3, 4) if attr.group(g) is not None)
+        attrs[attr.group(1).lower()] = (attr.group(group), base + attr.start(group), base + attr.end(group))
+    name = (attrs.get("name") or attrs.get("id") or attrs.get("property") or (None,))[0]
+    value_attr = "value" if tag == "input" else "content"
+    if value_attr not in attrs:
+        return []
+    value, start, end = attrs[value_attr]
+    kind = (attrs.get("type") or ("",))[0].lower()
+    secret = (tag == "input" and kind == "password") or (name and is_secret_key(name))
+    if secret and is_clear_secret(value):
+        return [(start, end, f".html:{name or 'password'}")]
+    return []
+
+
+def _raw_secret_spans(body, mode="full"):
+    """Spans of secrets in free text.
+
+    mode 'full' (logs, plain text): key=value / key: value pairs; 'html': only quoted pairs (script
+    data, attributes), so prose like "Password: enter 8+ characters" is not flagged; 'strong' (JS/CSS
+    source): value shapes only.
+    """
+    spans = _strong_spans(body)
+    if mode == "strong":
+        return spans
+    for match in COOKIE_LINE.finditer(body):
+        spans.extend(_cookie_spans(match.group(2), match.start(2), match.group(1).lower() == "set-cookie"))
+    for match in RAW_KEY.finditer(body):
+        key = match.group(2)
+        if normalize_sensitive_key(key) in ("cookie", "setcookie") or not is_secret_key(key):
+            continue
+        if mode == "html" and not match.group(1) and body[match.end():match.end() + 1] not in ("'", '"', "\\"):
+            continue
+        span = _raw_value_span(body, match.end())
+        if not span:
+            continue
+        start, end = span
+        value = body[start:end]
+        if value.lower() in AUTH_SCHEMES:
+            gap = re.compile(r"[ \t]+").match(body, end)
+            nxt = BARE_VALUE.match(body, gap.end()) if gap else None
+            if not nxt:
+                continue
+            start, end = nxt.span()
+            value = body[start:end]
+        else:
+            stripped = _strip_scheme(value)
+            if stripped != value.strip():
+                start = start + value.index(stripped)
+                end = start + len(stripped)
+                value = stripped
+        if is_clear_secret(value):
+            spans.append((start, end, f".{key}"))
+    for match in BEARER_ANYWHERE.finditer(body):
+        if _tokenish(match.group(1)) and is_clear_secret(match.group(1)):
+            spans.append((match.start(1), match.end(1), ".bearer"))
+    for match in URL_USERINFO.finditer(body):
+        if is_clear_secret(match.group(1)):
+            spans.append((match.start(1), match.end(1), ".url_password"))
+    for match in URL_QUERY.finditer(body):
+        spans.extend(_form_spans(match.group(1), match.start(1)))
+    for match in HTML_TAG.finditer(body):
+        spans.extend(_html_spans(match))
+    return spans
+
+
+def _multipart_spans(body, mime, shapes=True):
+    boundary = None
+    found = re.search(r'boundary="?([^";]+)"?', mime or "")
+    if found:
+        boundary = "--" + found.group(1).strip()
+    else:
+        first = re.match(r"(--[^\r\n]+)\r?\n", body)
+        boundary = first.group(1).strip() if first else None
+    if not boundary or boundary not in body:
+        return _raw_secret_spans(body)
+    spans = []
+    positions = [m.start() for m in re.finditer(re.escape(boundary), body)]
+    for i, pos in enumerate(positions):
+        seg_start = pos + len(boundary)
+        seg_end = positions[i + 1] if i + 1 < len(positions) else len(body)
+        segment = body[seg_start:seg_end]
+        split = re.search(r"\r?\n\r?\n", segment)
+        if not split:
+            continue
+        headers = segment[:split.start()]
+        part_start = seg_start + split.end()
+        content = segment[split.end():]
+        trimmed = content.rstrip("\r\n")
+        name = re.search(r'name="([^"]*)"', headers)
+        name = name.group(1) if name else ""
+        if "filename=" not in headers and trimmed and is_clear_secret(trimmed) and (
+            is_secret_key(name) or (shapes and not is_public_value_key(name) and value_shape(trimmed))
+        ):
+            spans.append((part_start, part_start + len(trimmed), f".{name}"))
+            continue
+        spans.extend((s + part_start, e + part_start, lbl) for s, e, lbl in _raw_secret_spans(trimmed))
+    return spans
+
+
+def _apply_spans(body, spans, prefix):
+    """Replace merged spans with the marker; return (new text, labels)."""
+    merged = []
+    for start, end, label in sorted(spans, key=lambda s: (s[0], -s[1])):
+        if merged and start < merged[-1][1]:
+            if end > merged[-1][1]:
+                merged[-1] = (merged[-1][0], end, merged[-1][2])
+            continue
+        merged.append((start, end, label))
+    if not merged:
+        return body, []
+    out, labels, last = [], [], 0
+    for start, end, label in merged:
+        out.append(body[last:start])
+        out.append(REDACTION_MARKER)
+        last = end
+        line = body.count("\n", 0, start) + 1
+        labels.append(f"{prefix}{label}" + (f" (line {line})" if "\n" in body else ""))
+    out.append(body[last:])
+    return "".join(out), labels
+
+
+def _redact_header_value(name, value, path, found):
+    low = str(name).strip().lower()
+    if not isinstance(value, str) or not value:
+        return value
+    if low in ("cookie", "set-cookie"):
+        lines = value.split("\n")
+        new_lines = []
+        for line in lines:
+            new, labels = _apply_spans(line, _cookie_spans(line, 0, low == "set-cookie"), path)
+            found.extend(labels)
+            new_lines.append(new)
+        return "\n".join(new_lines)
+    if is_sensitive_header(low):
+        stripped = _strip_scheme(value)
+        if not is_clear_secret(stripped):
+            return value
+        found.append(f"{path} ({name})")
+        return value[: len(value) - len(value.lstrip())] + value.strip()[: len(value.strip()) - len(stripped)] + REDACTION_MARKER
+    spans = _strong_spans(value)
+    if low in URL_HEADER_NAMES:
+        spans += _url_spans(value)
+    new, labels = _apply_spans(value, spans, path)
+    found.extend(f"{label} ({name})" for label in labels)
+    return new
+
+
+def _url_spans(url):
+    spans = []
+    for match in URL_USERINFO.finditer(url):
+        if is_clear_secret(match.group(1)):
+            spans.append((match.start(1), match.end(1), ".url_password"))
+    qpos = url.find("?")
+    if qpos != -1:
+        hpos = url.find("#", qpos)
+        query = url[qpos + 1: hpos if hpos != -1 else len(url)]
+        spans.extend(_form_spans(query, qpos + 1))
+    return spans
+
+
+def _redact_url(url, path, found):
+    if not isinstance(url, str) or not url:
+        return url
+    new, labels = _apply_spans(url, _url_spans(url) + _strong_spans(url), path)
+    found.extend(labels)
+    return new
+
+
+def _redact_string(value, path, found, key=None, shapes=True):
+    if not is_clear_secret(value):
+        return value
+    if shapes and not is_public_value_key(key):
+        shape = value_shape(value)
+        if shape:
+            found.append(f"{path}#{shape}")
+            return REDACTION_MARKER
+    new, labels = redact_text(value, None, shapes=shapes, path=path)
+    found.extend(labels)
+    return new
+
+
+def _is_pair(node):
+    return isinstance(node, dict) and "name" in node and "value" in node and isinstance(node.get("name"), str)
+
+
+def _redact_pair(node, path, found, container):
+    out = dict(node)
+    name, value = node["name"], node["value"]
+    where = f"{path} ({name})"
+    if container == "headers":
+        out["value"] = _redact_header_value(name, value, path, found)
+    elif container == "cookies":
+        if is_clear_secret(value):
+            out["value"] = REDACTION_MARKER
+            found.append(where)
+    elif is_secret_key(name) and is_clear_secret(value):
+        out["value"] = REDACTION_MARKER
+        found.append(where)
+    elif isinstance(value, str):
+        before = len(found)
+        out["value"] = _redact_string(value, path, found, key=name)
+        found[before:] = [f"{label} ({name})" for label in found[before:]]
     return out
 
 
-def redact_body_text(body_text):
-    """Return (redacted text, redacted paths). Field names stay; values become the marker."""
+def _redact_json_node(node, path, found, *, key=None, inherit=False, shapes=True, container=None):
+    """Replace secret values in parsed JSON with the marker; return the new node (field names stay)."""
+    norm_container = normalize_sensitive_key(container or "")
+    if isinstance(node, dict):
+        if _is_pair(node) and norm_container in ("headers", "cookies", "querystring", "params"):
+            return _redact_pair(node, path, found, "headers" if norm_container == "headers" else
+                                "cookies" if norm_container == "cookies" else "params")
+        headers_dict = norm_container in ("headers", "requestheaders", "responseheaders")
+        out = {}
+        for k, v in node.items():
+            child = f"{path}.{k}"
+            norm = normalize_sensitive_key(k)
+            if isinstance(v, str) and (headers_dict or norm in ("cookie", "setcookie", "authorization",
+                                                                 "proxyauthorization")):
+                header = {"setcookie": "set-cookie", "proxyauthorization": "proxy-authorization"}.get(norm, k)
+                out[k] = _redact_header_value(header, v, child, found)
+                continue
+            secret = inherit or is_secret_key(k)
+            if secret and not isinstance(v, (dict, list)):
+                if is_clear_secret(v):
+                    out[k] = REDACTION_MARKER
+                    found.append(child)
+                else:
+                    out[k] = v
+                continue
+            if norm in ("url", "redirecturl", "href", "location") and isinstance(v, str):
+                out[k] = _redact_url(v, child, found)
+                continue
+            out[k] = _redact_json_node(v, child, found, key=k, inherit=secret, shapes=shapes, container=k)
+        return out
+    if isinstance(node, list):
+        return [_redact_json_node(v, f"{path}[{i}]", found, key=key, inherit=inherit, shapes=shapes,
+                                  container=container) for i, v in enumerate(node)]
+    if inherit and is_clear_secret(node):
+        found.append(path)
+        return REDACTION_MARKER
+    if isinstance(node, str):
+        return _redact_string(node, path, found, key=key, shapes=shapes)
+    return node
+
+
+def _redact_json(node, path, found):
+    return _redact_json_node(node, path, found)
+
+
+def redact_text(body_text, mime=None, *, shapes=True, path="$"):
+    """Return (redacted text, labels) for any body: JSON, form, multipart, HTML, text, JS/CSS.
+
+    JSON is walked by key and value shape; unparseable bodies are scanned as text, never skipped.
+    """
     found = []
-    try:
-        parsed = json.loads(body_text)
-    except (ValueError, TypeError):
-        parsed = None
-    if parsed is not None and isinstance(parsed, (dict, list)):
-        new = _redact_json(parsed, "$", found)
-        return (json.dumps(new, ensure_ascii=False) if found else body_text), found
-    new = _redact_raw(body_text, found)
-    return new, found
+    if not isinstance(body_text, str) or not body_text:
+        return body_text, found
+    kind = normalize_mime(mime)
+    stripped = body_text.strip()
+    if stripped[:1] in ("{", "["):
+        try:
+            parsed = json.loads(body_text)
+        except (ValueError, TypeError):
+            parsed = None
+        if isinstance(parsed, (dict, list)):
+            new = _redact_json_node(parsed, path, found, shapes=shapes)
+            return (json.dumps(new, ensure_ascii=False) if found else body_text), found
+    if kind.startswith("multipart/") or (
+        stripped.startswith("--") and "content-disposition" in stripped[:500].lower()
+    ):
+        spans, prefix = _multipart_spans(body_text, mime, shapes), f"{path}multipart" if path != "$" else "$multipart"
+    elif kind == "application/x-www-form-urlencoded" or FORM_BODY.fullmatch(stripped):
+        spans, prefix = _form_spans(body_text, 0, shapes), f"{path}form" if path != "$" else "$form"
+    else:
+        mode = "strong" if kind in STRONG_ONLY_MIMES else "html" if kind in ("text/html", "application/xhtml+xml") else "full"
+        spans, prefix = _raw_secret_spans(body_text, mode), f"{path}" if path != "$" else "$raw"
+    new, labels = _apply_spans(body_text, spans, prefix)
+    return new, labels
+
+
+def redact_body_text(body_text, mime=None):
+    """Return (redacted text, redacted paths). Field names stay; values become the marker."""
+    return redact_text(body_text, mime)
 
 
 def marker_ranges(body_text):
@@ -1496,60 +1987,303 @@ def marker_ranges(body_text):
     return out
 
 
-def redact_har(data, path="<har>"):
-    """Redact secret values in every stored response body; update size and _spc_redaction."""
-    check_har(data, path)
-    redacted = 0
-    for i, entry in enumerate(data["log"]["entries"]):
-        content = entry["response"]["content"]
-        if content.get("_file") is not None:
-            continue
-        body_bytes, body_text = resolve_har_body_bytes(content, path, f"{path}: entries[{i}]")
-        if body_text is None or not body_text:
-            continue
-        new_text, found = redact_body_text(body_text)
-        if not found:
-            continue
-        content["text"] = new_text
-        content.pop("encoding", None)
-        content["size"] = utf8_size(new_text)
-        meta = content.get("_spc_redaction") or {"marker": REDACTION_MARKER, "paths": []}
-        meta["marker"] = REDACTION_MARKER
-        meta["paths"] = list(dict.fromkeys(list(meta.get("paths") or []) + found))
-        meta["ranges"] = marker_ranges(new_text)
-        content["_spc_redaction"] = meta
-        redacted += len(found)
-    check_har(data, path)
-    return redacted
+def _hit_key(hit):
+    reason = hit.get("reason")
+    if reason == "redacted_sensitive_key":
+        reason = "sensitive_key"
+    return (hit.get("path"), hit.get("key"), reason)
 
 
-def unredacted_secrets(body_text, mime=None, url=None):
-    """Paths of secret values a stored body still holds in clear text."""
-    found = []
+def _lost_scan_hits(before, after):
+    """scan-bodies hits that redaction removed (value shapes); kept so later re-scans count the same."""
+    remaining = {}
+    for hit in after:
+        remaining[_hit_key(hit)] = remaining.get(_hit_key(hit), 0) + 1
+    lost = []
+    for hit in before:
+        key = _hit_key(hit)
+        if remaining.get(key):
+            remaining[key] -= 1
+            continue
+        lost.append({"path": hit.get("path") or "$", "key": hit.get("key"), "reason": hit.get("reason")})
+    return lost
+
+
+def _decode_body(holder, har_path, where):
+    """UTF-8 text of a HAR content/postData holder, or None for binary bodies."""
+    if holder.get("_file") is not None:
+        return None
     try:
-        parsed = json.loads(body_text)
-    except (ValueError, TypeError):
-        parsed = None
-    if parsed is not None and isinstance(parsed, (dict, list)):
-        _redact_json(parsed, "$", found)
-        return found
-    if should_skip_raw_scan(mime, url):
-        return found
-    _redact_raw(body_text, found)
+        _bytes, body_text = resolve_har_body_bytes(holder, har_path, where)
+    except Inconsistent:
+        return holder.get("text") if isinstance(holder.get("text"), str) else None
+    return body_text
+
+
+def _redact_entry(entry, i, har_path, found):
+    """Redact one HAR entry in place; append 'entries[i].part.field label' locations to found."""
+    loc = f"entries[{i}]"
+    request = entry.get("request") if isinstance(entry.get("request"), dict) else None
+    response = entry.get("response") if isinstance(entry.get("response"), dict) else None
+    for part_name, part in (("request", request), ("response", response)):
+        if part is None:
+            continue
+        if isinstance(part.get("url"), str):
+            part["url"] = _redact_url(part["url"], f"{loc}.{part_name}.url", found)
+        if isinstance(part.get("redirectURL"), str):
+            part["redirectURL"] = _redact_url(part["redirectURL"], f"{loc}.{part_name}.redirectURL", found)
+        for list_key in ("headers", "cookies", "queryString"):
+            items = part.get(list_key)
+            if not isinstance(items, list):
+                continue
+            container = "params" if list_key == "queryString" else list_key
+            part[list_key] = [
+                _redact_pair(item, f"{loc}.{part_name}.{list_key}[{j}]", found, container) if _is_pair(item) else item
+                for j, item in enumerate(items)
+            ]
+        for other, value in list(part.items()):
+            if other in ("url", "redirectURL", "headers", "cookies", "queryString", "postData", "content",
+                         "method", "httpVersion", "status", "statusText", "headersSize", "bodySize"):
+                continue
+            part[other] = _redact_json_node(value, f"{loc}.{part_name}.{other}", found, key=other, container=other)
+    post = request.get("postData") if request else None
+    if isinstance(post, dict):
+        post_found = []
+        body_text = _decode_body(post, har_path, f"{har_path}: {loc}.request.postData")
+        if body_text:
+            new_text, labels = redact_text(body_text, post.get("mimeType"))
+            if labels:
+                post["text"] = new_text
+                post.pop("encoding", None)
+                post_found.extend(labels)
+        if isinstance(post.get("params"), list):
+            post["params"] = [
+                _redact_pair(item, f"{loc}.request.postData.params[{j}]", post_found, "params") if _is_pair(item) else item
+                for j, item in enumerate(post["params"])
+            ]
+        if post_found:
+            meta = post.get("_spc_redaction") or {}
+            post["_spc_redaction"] = {
+                "marker": REDACTION_MARKER,
+                "paths": list(dict.fromkeys(list(meta.get("paths") or []) + post_found)),
+            }
+            found.extend(
+                label if label.startswith(loc) else f"{loc}.request.postData.text {label}" for label in post_found
+            )
+    content = response.get("content") if response else None
+    if isinstance(content, dict):
+        body_text = _decode_body(content, har_path, f"{har_path}: {loc}")
+        if body_text:
+            url = request.get("url") if request else None
+            mime = content.get("mimeType")
+            new_text, labels = redact_text(body_text, mime)
+            if labels:
+                allow = []
+                try:
+                    allow = parse_scan_allow(content.get("_spc_scan_allow"), loc)
+                except Inconsistent:
+                    pass
+                before = scan_body_text(body_text, url, mime=mime, allow_list=allow)
+                after = scan_body_text(new_text, url, mime=mime, allow_list=allow)
+                content["text"] = new_text
+                content.pop("encoding", None)
+                content["size"] = utf8_size(new_text)
+                meta = content.get("_spc_redaction") or {"marker": REDACTION_MARKER, "paths": []}
+                meta["marker"] = REDACTION_MARKER
+                meta["paths"] = list(dict.fromkeys(list(meta.get("paths") or []) + labels))
+                meta["ranges"] = marker_ranges(new_text)
+                lost = _lost_scan_hits(before, after)
+                if lost or meta.get("scan_hits"):
+                    meta["scan_hits"] = list(meta.get("scan_hits") or []) + lost
+                content["_spc_redaction"] = meta
+                found.extend(f"{loc}.response.content.text {label}" for label in labels)
+    for other, value in list(entry.items()):
+        if other in ("request", "response", "startedDateTime", "time", "timings", "cache", "serverIPAddress",
+                     "connection", "pageref"):
+            continue
+        entry[other] = _redact_json_node(value, f"{loc}.{other}", found, key=other, container=other)
+
+
+def _redact_har_doc(data, path):
+    found = []
+    entries = (data.get("log") or {}).get("entries") if isinstance(data, dict) else None
+    for i, entry in enumerate(entries or []):
+        if isinstance(entry, dict):
+            _redact_entry(entry, i, path, found)
     return found
 
 
+def is_har_document(data):
+    return isinstance(data, dict) and isinstance(data.get("log"), dict) and isinstance(data["log"].get("entries"), list)
+
+
+def redact_har(data, path="<har>"):
+    """Redact secrets in every request and response of a HAR in place; return the count.
+
+    Covers bodies (JSON, form, multipart, HTML, text), postData params, URL query, cookies,
+    and secret headers. Field names stay; values become the marker.
+    """
+    check_har(data, path)
+    found = _redact_har_doc(data, path)
+    check_har(data, path)
+    return len(found)
+
+
+def har_secret_leaks(data, path="<har>"):
+    """Locations of secrets a HAR still holds in clear text (requests and responses)."""
+    copy = json.loads(json.dumps(data))
+    return _redact_har_doc(copy, path)
+
+
+def secret_leaks_in_json(doc, *, own_artifact=True):
+    """Locations of clear secrets in a parsed JSON document (summary, finding, probe log)."""
+    found = []
+    if own_artifact and isinstance(doc, dict):
+        for key, value in doc.items():
+            public = key in OWN_ARTIFACT_PUBLIC_ROOTS
+            _redact_json_node(value, f"$.{key}", found, key=key, inherit=is_secret_key(key) and not public,
+                              shapes=not public, container=key)
+        return found
+    _redact_json_node(doc, "$", found)
+    return found
+
+
+def secret_leaks_in_text(body_text, mime=None):
+    """Locations of clear secrets in any text body; JSON is walked, other text uses raw rules."""
+    return redact_text(body_text, mime)[1]
+
+
+def unredacted_secrets(body_text, mime=None, url=None):
+    """Paths of secret values a stored body still holds in clear text (never skipped by type)."""
+    if not body_text:
+        return []
+    return secret_leaks_in_text(body_text, mime)
+
+
 def check_stored_bodies_redacted(har_data, har_path):
-    for summary in check_har(har_data, har_path):
-        if not summary.get("body_present") or not summary.get("text"):
-            continue
-        leftover = unredacted_secrets(summary["text"], summary.get("mimeType"), summary.get("url"))
-        if leftover:
+    check_har(har_data, har_path)
+    leftover = har_secret_leaks(har_data, har_path)
+    if leftover:
+        raise Inconsistent(
+            f"{har_path}: stores secret value(s) in clear text at {'; '.join(leftover[:6])}"
+            f"{' …' if len(leftover) > 6 else ''}. A HAR with secrets and no _spc_redaction is a raw copy: "
+            f"run check_findings.py redact (field names stay, values become {REDACTION_MARKER!r})"
+        )
+
+
+# Evidence files in the run directory ------------------------------------------------
+
+RAW_NAME_TOKENS = frozenset({"raw", "unredacted", "orig", "original", "unsanitized", "unsanitised", "unmasked",
+                             "plaintext", "cleartext"})
+MEDIA_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp", ".mp4", ".webm", ".avif", ".ico"})
+TEXT_MIME_BY_SUFFIX = {
+    ".html": "text/html", ".htm": "text/html", ".js": "application/javascript", ".mjs": "application/javascript",
+    ".cjs": "application/javascript", ".css": "text/css", ".xml": "application/xml", ".txt": "text/plain",
+}
+
+
+def raw_named(relative):
+    tokens = re.split(r"[^a-z0-9]+", str(relative).lower())
+    return sorted({t for t in tokens if t in RAW_NAME_TOKENS})
+
+
+def _text_leaks(body, suffix):
+    mime = TEXT_MIME_BY_SUFFIX.get(suffix)
+    stripped = body.lstrip()
+    if stripped[:1] in ("{", "["):
+        try:
+            doc = json.loads(body)
+        except ValueError:
+            doc = None
+        if doc is not None:
+            if is_har_document(doc):
+                return har_secret_leaks(doc)
+            return secret_leaks_in_json(doc)
+    return secret_leaks_in_text(body, mime)
+
+
+def file_secret_leaks(path, display=None):
+    """Clear secrets in one evidence file: HAR, JSON, text, zip of text. Media files are skipped."""
+    import zipfile
+    path = Path(path)
+    display = display or str(path)
+    suffix = path.suffix.lower()
+    if suffix in MEDIA_SUFFIXES:
+        return []
+    if suffix == ".zip":
+        leaks = []
+        with zipfile.ZipFile(path) as archive:
+            for member in archive.namelist():
+                if member.endswith("/") or Path(member).suffix.lower() in MEDIA_SUFFIXES:
+                    continue
+                try:
+                    body = archive.read(member).decode("utf-8")
+                except UnicodeDecodeError:
+                    raise Inconsistent(f"{display}!{member}: binary file the leak check cannot read; "
+                                       "keep only redacted text evidence or media in the run directory") from None
+                leaks.extend(f"{member}: {loc}" for loc in _text_leaks(body, Path(member).suffix.lower()))
+        return leaks
+    try:
+        body = path.read_bytes().decode("utf-8")
+    except UnicodeDecodeError:
+        raise Inconsistent(f"{display}: binary file the leak check cannot read; keep only redacted text "
+                           "evidence or media (png/jpg/gif/webp/mp4/webm) in the run directory") from None
+    if suffix == ".har":
+        try:
+            doc = json.loads(body)
+        except ValueError:
+            raise Inconsistent(f"{display}: HAR is not valid JSON") from None
+        if is_har_document(doc):
+            return har_secret_leaks(doc, str(path))
+    return _text_leaks(body, suffix)
+
+
+def evidence_files(run_dir):
+    run_dir = Path(run_dir)
+    return sorted(p for p in run_dir.rglob("*") if p.is_file())
+
+
+def check_evidence_files(run_dir):
+    """Every file in the run directory: no raw-copy names, no identical HARs, no clear secrets."""
+    run_dir = Path(run_dir)
+    files = evidence_files(run_dir)
+    for file in files:
+        rel = file.relative_to(run_dir)
+        tokens = raw_named(rel)
+        if tokens:
             raise Inconsistent(
-                f"{har_path}: entries[{summary['index']}] stores secret value(s) in clear text at "
-                f"{', '.join(leftover[:5])}; run check_findings.py redact (field names stay, values become "
-                f"{REDACTION_MARKER!r})"
+                f"{run_dir}: {rel} looks like a raw copy ({', '.join(tokens)} in the name); keep originals in a "
+                "temp directory outside the repo, write only redacted evidence here, and delete the originals"
             )
+    seen = {}
+    for file in files:
+        if file.suffix.lower() != ".har":
+            continue
+        try:
+            canonical = json.dumps(json.loads(file.read_text(encoding="utf-8")), sort_keys=True)
+        except (ValueError, UnicodeDecodeError):
+            continue
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        rel = file.relative_to(run_dir)
+        if digest in seen:
+            raise Inconsistent(
+                f"{run_dir}: {seen[digest]} and {rel} are identical HARs; base and head (or two probes) "
+                "must each be recorded, not copied"
+            )
+        seen[digest] = rel
+    problems = []
+    for file in files:
+        rel = file.relative_to(run_dir)
+        for loc in file_secret_leaks(file, str(rel)):
+            problems.append(f"{rel}: {loc}")
+    if problems:
+        hint = (" A HAR with secrets and no _spc_redaction is a raw copy." if any(".har" in p for p in problems) else "")
+        raise Inconsistent(
+            f"{run_dir}: {len(problems)} clear secret(s) in evidence: {'; '.join(problems[:8])}"
+            f"{' …' if len(problems) > 8 else ''}.{hint} Run check_findings.py redact <file> --out <file> "
+            f"(field names stay, values become {REDACTION_MARKER!r})"
+        )
+    return len(files)
 
 
 def parse_har_time(value, where):
@@ -1702,12 +2436,13 @@ def find_har_entry_for_request(req, summaries, used_indices):
     """Match a finding request to a HAR entry by method + URL, preserving order."""
     method = (req.get("method") or "").upper()
     url = req.get("url")
-    for summary in summaries:
-        idx = summary["index"]
-        if idx in used_indices:
-            continue
-        if (summary.get("method") or "").upper() != method:
-            continue
+    candidates = [s for s in summaries
+                  if s["index"] not in used_indices and (s.get("method") or "").upper() == method]
+    # Exact URL first, so base and head requests to the same path on two servers keep their own entries.
+    for summary in candidates:
+        if url == summary.get("url"):
+            return summary
+    for summary in candidates:
         if urls_match(url, summary.get("url")):
             return summary
     return None
@@ -1852,9 +2587,31 @@ def check_finding(data, path="<finding>"):
     signal_id = data.get("signal_id")
     for i, req in enumerate(requests):
         check_request(req, f"{path}: requests[{i}]", signal_id=signal_id)
+    check_introduced_evidence(data, requests, path)
     if data.get("validator") not in VALIDATORS:
         raise Inconsistent(f"{path}: validator is one of {', '.join(VALIDATORS)}")
     return data
+
+
+def check_introduced_evidence(data, requests, path):
+    """introduced true/false is a base-vs-head claim: show a base request or say why there is none."""
+    introduced = data.get("introduced")
+    if introduced == "unknown":
+        return
+    reason = data.get("introduced_reason")
+    if reason is not None and not isinstance(reason, str):
+        raise Inconsistent(f"{path}: introduced_reason is a string when present")
+    base = [r for r in requests if r.get("side") == "base"]
+    if not base and not text(reason):
+        raise Inconsistent(
+            f"{path}: introduced {json.dumps(introduced)} needs a base-side request (side: \"base\") "
+            "or introduced_reason (e.g. the route does not exist on base, so base returns 404)"
+        )
+    verdicts = [r.get("access_verdict") for r in base if r.get("access_verdict")]
+    if introduced is True and "bypassed" in verdicts:
+        raise Inconsistent(f"{path}: introduced true but a base-side request was also bypassed (pre-existing)")
+    if introduced is False and verdicts and "bypassed" not in verdicts:
+        raise Inconsistent(f"{path}: introduced false but no base-side request reproduces the issue")
 
 
 def check_summary(data, path="<summary>", finding_count=None):
@@ -1867,6 +2624,9 @@ def check_summary(data, path="<summary>", finding_count=None):
     target = data.get("target")
     if not isinstance(target, dict) or not text(target.get("label")):
         raise Inconsistent(f"{path}: target.label is required")
+    for key in ("base_sha", "head_sha"):
+        if not isinstance(target.get(key), str) or not GIT_SHA.fullmatch(target[key].strip()):
+            raise Inconsistent(f"{path}: target.{key} is the commit SHA that was tested (7-64 lowercase hex)")
     loaded = data.get("signals_loaded")
     if not isinstance(loaded, list):
         raise Inconsistent(f"{path}: signals_loaded is a list")
@@ -1908,7 +2668,9 @@ def check_summary(data, path="<summary>", finding_count=None):
     if data["track"] in ("security", "both"):
         check_security_rows_covered(loaded, row_reasons, path)
     check_probes(data.get("probes"), data["track"], path)
+    check_budgets(data, path)
     check_performance_scope(data, path)
+    check_browser_metrics(data, path)
     conditions = data.get("conditions")
     if not isinstance(conditions, dict):
         raise Inconsistent(f"{path}: conditions is an object")
@@ -1971,6 +2733,103 @@ def check_probes(probes, track, path):
                 f"{where}: a deterministic probe that exploited must name its finding file "
                 "(no downgrade to hypothesis or Giới hạn)"
             )
+
+
+def _budget_pair(value, where, kind):
+    if not isinstance(value, dict):
+        raise Inconsistent(f"{where} is {{used, limit}} numbers")
+    nums = []
+    for key in ("used", "limit"):
+        v = value.get(key)
+        ok = isinstance(v, int) if kind is int else isinstance(v, (int, float))
+        if not ok or isinstance(v, bool) or v < 0:
+            raise Inconsistent(f"{where}.{key} is a non-negative {'integer' if kind is int else 'number'}")
+        nums.append(v)
+    if nums[1] <= 0:
+        raise Inconsistent(f"{where}.limit is greater than 0")
+    return nums
+
+
+def check_budgets(data, path):
+    """budgets.probes {used, limit} integers (security); budgets.time_minutes {used, limit} optional."""
+    budgets = data.get("budgets")
+    if budgets is None and data["track"] not in ("security", "both"):
+        return
+    if not isinstance(budgets, dict):
+        raise Inconsistent(f"{path}: budgets.probes {{used, limit}} is required when the security track ran")
+    if data["track"] in ("security", "both") or budgets.get("probes") is not None:
+        used, limit = _budget_pair(budgets.get("probes"), f"{path}: budgets.probes", int)
+        if used > limit:
+            raise Inconsistent(f"{path}: budgets.probes.used {used} exceeds limit {limit}")
+    if budgets.get("time_minutes") is not None:
+        _budget_pair(budgets["time_minutes"], f"{path}: budgets.time_minutes", float)
+
+
+def browser_metric_rows(signals_path=None):
+    """Noisy browser metrics (LCP, CLS, INP/TBT, long tasks) from performance-signals.md."""
+    rows = load_performance_signals(signals_path or PERF_SIGNALS)
+    return [r for r in rows if r.get("level") != "off" and r.get("metric_class") == "noisy"
+            and r.get("sources") and set(r["sources"]) <= BROWSER_METRIC_SOURCES]
+
+
+def browser_metric_ids(signals_path=None):
+    return [r["id"] for r in browser_metric_rows(signals_path)]
+
+
+def check_browser_metrics(data, path):
+    """web-ui runs measure each browser metric n>=min_runs interleaved, or record a concrete skip."""
+    scope = data.get("performance_scope")
+    if data["track"] not in ("performance", "both") or not isinstance(scope, dict) \
+            or scope.get("project_type") != "web-ui":
+        return
+    metrics = data.get("browser_metrics")
+    if not isinstance(metrics, dict):
+        raise Inconsistent(
+            f"{path}: browser_metrics is required for web-ui runs (one entry per noisy browser metric: "
+            "interleaved base/head samples, or skipped {kind, reason})"
+        )
+    collectors = scope.get("collectors") or []
+    budgets = data.get("budgets") if isinstance(data.get("budgets"), dict) else {}
+    for row in browser_metric_rows():
+        sid = row["id"]
+        where = f"{path}: browser_metrics.{sid}"
+        entry = metrics.get(sid)
+        if not isinstance(entry, dict):
+            raise Inconsistent(f"{where} is required (samples or skipped {{kind, reason}})")
+        skipped = entry.get("skipped")
+        if skipped is not None:
+            if not isinstance(skipped, dict) or skipped.get("kind") not in BROWSER_SKIP_KINDS:
+                raise Inconsistent(f"{where}.skipped.kind is one of {', '.join(BROWSER_SKIP_KINDS)}")
+            if not isinstance(skipped.get("reason"), str) or len(skipped["reason"].strip()) < MIN_SKIP_REASON:
+                raise Inconsistent(f"{where}.skipped.reason states the concrete cause ({MIN_SKIP_REASON}+ chars)")
+            if skipped["kind"] == "time_budget":
+                spent = budgets.get("time_minutes")
+                if not isinstance(spent, dict):
+                    raise Inconsistent(f"{where}: a time_budget skip needs budgets.time_minutes {{used, limit}}")
+                used, limit = _budget_pair(spent, f"{path}: budgets.time_minutes", float)
+                if used < limit:
+                    raise Inconsistent(
+                        f"{where}: time_budget skip but budgets.time_minutes used {used} < limit {limit}"
+                    )
+            if skipped["kind"] == "collector_unavailable" and set(row["sources"]) & set(collectors):
+                raise Inconsistent(
+                    f"{where}: collector_unavailable skip but performance_scope.collectors has "
+                    f"{', '.join(sorted(set(row['sources']) & set(collectors)))}"
+                )
+            continue
+        if entry.get("order") != "interleaved":
+            raise Inconsistent(f"{where}.order must be interleaved (base, head, base, head, ...)")
+        need = max(NOISY_MIN_RUNS, int(row.get("min_runs_per_side") or 0))
+        for side in ("base", "head"):
+            values = entry.get(side)
+            if not isinstance(values, list) or any(
+                not isinstance(v, (int, float)) or isinstance(v, bool) or v < 0 for v in values
+            ):
+                raise Inconsistent(f"{where}.{side} is a list of non-negative numbers")
+            if len(values) < need:
+                raise Inconsistent(f"{where}.{side} has {len(values)} sample(s); at least {need} are required")
+        if entry.get("verdict") not in VERDICTS:
+            raise Inconsistent(f"{where}.verdict is one of {', '.join(VERDICTS)}")
 
 
 def check_performance_scope(data, path):
@@ -2041,7 +2900,7 @@ def rescan_recorded_hars(run_dir, record, where):
     """
     run_dir = Path(run_dir)
     names = {str(h) for h in (record.get("hars") or [])}
-    names.update(p.name for p in run_dir.glob("*.har"))
+    names.update(str(p.relative_to(run_dir)) for p in run_dir.rglob("*.har"))
     allow = parse_scan_allow(record.get("allow"), f"{where}.allow")
     hits = []
     for name in sorted(names):
@@ -2119,6 +2978,12 @@ def check_run_dir(run_dir):
                         f"not by this run's collectors ({', '.join(collectors)})"
                     )
             check_performance_evidence(run_dir, finding, str(path), scope)
+            metric_entry = (summary.get("browser_metrics") or {}).get(finding["signal_id"])
+            if isinstance(metric_entry, dict) and metric_entry.get("skipped") is not None:
+                raise Inconsistent(
+                    f"{path}: {finding['signal_id']} has a finding but browser_metrics marks it skipped; "
+                    "record its samples"
+                )
         if finding["status"] == "exploited":
             exploited += 1
         elif finding["status"] in ("hypothesis", "unclear"):
@@ -2151,8 +3016,9 @@ def check_run_dir(run_dir):
                 "but no exploited sensitive-response finding was written"
             )
     check_probe_findings(run_dir, summary, named_findings)
-    for har_file in sorted(run_dir.glob("*.har")):
-        check_stored_bodies_redacted(load(har_file), str(har_file))
+    for har_file in sorted(run_dir.rglob("*.har")):
+        check_har(load(har_file), str(har_file))
+    check_evidence_files(run_dir)
     check_summary(summary, str(run_dir / "summary.json"), finding_count=exploited)
     return {"summary": summary, "findings": len(findings), "exploited": exploited}
 
@@ -2258,10 +3124,40 @@ def cmd_har(args):
 
 
 def cmd_redact(args):
-    data = load(args.path)
-    count = redact_har(data, args.path)
-    Path(args.out).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    """Redact a HAR, a JSON file, or a text file (log, HTML) into --out."""
+    source = Path(args.path)
+    body = source.read_text(encoding="utf-8")
+    doc = None
+    if body.lstrip()[:1] in ("{", "["):
+        try:
+            doc = json.loads(body)
+        except ValueError:
+            doc = None
+    if is_har_document(doc):
+        count = redact_har(doc, args.path)
+        out_text = json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
+    elif doc is not None:
+        found = []
+        new = _redact_json_node(doc, "$", found)
+        count, out_text = len(found), json.dumps(new, indent=2, ensure_ascii=False) + "\n"
+    else:
+        out_text, labels = redact_text(body, TEXT_MIME_BY_SUFFIX.get(source.suffix.lower()))
+        count = len(labels)
+    Path(args.out).write_text(out_text, encoding="utf-8")
     print(f"OK {args.out}: {count} value(s) redacted")
+    return 0
+
+
+def cmd_leaks(args):
+    """Exit 2 when a file, or any file under a directory, still holds a clear secret."""
+    target = Path(args.path)
+    if target.is_dir():
+        check_evidence_files(target)
+    else:
+        leaks = file_secret_leaks(target)
+        if leaks:
+            raise Inconsistent(f"{target}: clear secret(s) at {'; '.join(leaks[:8])}")
+    print(f"OK {target}: no clear secrets")
     return 0
 
 
@@ -2338,9 +3234,15 @@ def main(argv=None):
     har_cmd.add_argument("--recorded", action="store_true",
                          help="also require a measuring-tool HAR (creator, real startedDateTime values)")
 
-    redact_cmd = sub.add_parser("redact", help="replace secret values in stored bodies with the marker, keeping field names")
+    redact_cmd = sub.add_parser(
+        "redact",
+        help="replace secret values with the marker, keeping field names (HAR requests and responses, JSON, text)",
+    )
     redact_cmd.add_argument("path")
     redact_cmd.add_argument("--out", required=True)
+
+    leaks_cmd = sub.add_parser("leaks", help="fail when a file or any file under a directory holds a clear secret")
+    leaks_cmd.add_argument("path")
 
     scan_cmd = sub.add_parser(
         "scan-bodies",
@@ -2373,6 +3275,8 @@ def main(argv=None):
             return cmd_har(args)
         if args.command == "redact":
             return cmd_redact(args)
+        if args.command == "leaks":
+            return cmd_leaks(args)
         if args.command == "scan-bodies":
             return cmd_scan_bodies(args)
     except Inconsistent as error:

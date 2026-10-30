@@ -18,6 +18,8 @@ Record `summary.performance_scope = {project_type, collectors}`; the checker enf
 | `cli`, `mobile`, `library` | none | Nothing is measured. Write the limit under `limits` / `Giới hạn`; never report a number that was not collected. |
 
 A finding is accepted only when its row's `source` list shares a collector with `performance_scope.collectors`.
+For `web-ui`, every noisy row measured only in the browser (`source` within `playwright`, `lighthouse`: LCP, CLS, INP/TBT, long tasks) runs by default with `min_runs_per_side` (5) interleaved base/head samples, recorded in `summary.browser_metrics.<id>`.
+Skipping one needs `browser_metrics.<id>.skipped = {kind, reason}` with a concrete cause: `time_budget` (with `budgets.time_minutes` used >= limit), `collector_unavailable`, `flow_broken`, or `not_rendered`. `run` rejects a web-ui run with neither (see `evidence-contract.md`).
 Use Lighthouse only when the project already has it; otherwise record that limit under `Giới hạn`.
 
 Columns:
