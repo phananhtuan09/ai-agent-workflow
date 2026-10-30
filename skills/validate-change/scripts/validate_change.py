@@ -297,42 +297,42 @@ def load_spc_checker():
     return mod
 
 
-def separate_tests_from_signals(paths):
-    """Match changed paths against installed signal-file triggers into separateTests entries."""
+def separate_tests_from_signals(paths, changes=None):
+    """Recommend security-performance-check from the changed code, in any language.
+
+    Every signal row is considered. A row is reported when a changed file hits one of its hints:
+    a path hint, or a content hint found in that file's added or removed lines (`changes`).
+    A content hit is enough on its own, so a narrow path glob can never hide server, auth, or
+    render code from the recommendation.
+    """
     checker = load_spc_checker()
     if checker is None:
         return []
     path_list = list(paths)
     entries = []
     try:
-        security_rows = checker.load_signals(SPC_SECURITY_SIGNALS)
-        for entry in checker.match_signals(security_rows, path_list, signals_file="references/security-signals.md"):
-            if not entry.get("matched_paths"):
-                continue
-            hit = entry["matched_paths"][0]
-            extra = f" +{len(entry['matched_paths']) - 1}" if len(entry["matched_paths"]) > 1 else ""
-            entries.append({
-                "area": "security",
-                "signal": f"{entry['id']}: {hit}{extra}",
-                "command": "/security-performance-check security",
-            })
-        performance_rows = checker.load_performance_signals(SPC_PERFORMANCE_SIGNALS)
-        for entry in checker.match_performance_signals(
-                performance_rows, path_list, signals_file="references/performance-signals.md"):
-            if not entry.get("matched_paths"):
-                continue
-            hit = entry["matched_paths"][0]
-            extra = f" +{len(entry['matched_paths']) - 1}" if len(entry["matched_paths"]) > 1 else ""
-            entries.append({
-                "area": "performance",
-                "signal": f"{entry['id']}: {hit}{extra}",
-                "command": "/security-performance-check performance",
-            })
+        tracks = (
+            ("security", checker.load_signals(SPC_SECURITY_SIGNALS)),
+            ("performance", checker.load_performance_signals(SPC_PERFORMANCE_SIGNALS)),
+        )
+        for area, rows in tracks:
+            for row_id, hits in checker.hinted_paths(rows, path_list, changes).items():
+                extra = f" +{len(hits) - 1}" if len(hits) > 1 else ""
+                entries.append({
+                    "area": area,
+                    "signal": f"{row_id}: {hits[0]}{extra}",
+                    "command": f"/security-performance-check {area}",
+                })
     except (ValueError, OSError) as error:
         # Parser/file errors (including check_findings.Inconsistent) become risk-step inconsistencies;
         # other exceptions (bugs) propagate.
         raise Inconsistent(f"security-performance-check signal files: {error}") from None
     return entries
+
+
+def diff_changes(files):
+    """{path: changed lines} from read_diff, for content hints."""
+    return {name: "\n".join(info["added"] + info["removed"]) for name, info in files.items()}
 
 
 def assess(root, base, worktree, expectations, rules_path, untracked=None):
@@ -349,7 +349,7 @@ def assess(root, base, worktree, expectations, rules_path, untracked=None):
     levels = {s["level"] for s in signals}
     ignored = matcher(settings["ignore"])
     kept_paths = [name for name in sorted(files) if not ignored(name)]
-    separate = separate_tests_from_signals(kept_paths)
+    separate = separate_tests_from_signals(kept_paths, diff_changes(files))
     return {
         "schema": "validate-change/risk@1",
         "base": base,

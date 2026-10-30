@@ -11,6 +11,35 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills/security-performance-check/scripts"))
 import check_findings as c  # noqa: E402
 
+SEC_FILE = "references/security-signals.md"
+
+
+def all_rows_loaded():
+    """signals_loaded with every security row: rows always load, hints only rank them."""
+    return [{"id": row["id"], "file": SEC_FILE, "matched_paths": []} for row in c.load_signals()]
+
+
+def row_reasons(skip=()):
+    """One coverage reason per security row (applies or skipped + why)."""
+    out = []
+    for row in c.load_signals():
+        if row["id"] in skip:
+            continue
+        out.append({"signal_id": row["id"], "decision": "skipped",
+                    "reason": "the diff has no code with this behavior"})
+    return out
+
+
+def security_fields(file_path="src/api/me.ts"):
+    return {
+        "signals_loaded": all_rows_loaded(),
+        "coverage": [{"path": file_path, "in_scope": True}] + row_reasons(),
+        "probes": [],
+    }
+
+
+WEB_SCOPE = {"project_type": "web-ui", "collectors": ["playwright"]}
+
 
 def har_doc(body_text, *, size=None, redaction=None, url="http://127.0.0.1:3000/api/me",
             mime="application/json", encoding=None, file_ref=None, method="GET",
@@ -164,10 +193,14 @@ class SensitiveScanTests(unittest.TestCase):
         result = c.scan_har_bodies(har_doc(body))
         self.assertEqual(result["hits"], [])
 
-    def test_redacted_sensitive_key_not_reported(self):
-        body = json.dumps({"passwordHash": c.REDACTION_MARKER, "id": 1})
-        result = c.scan_har_bodies(har_doc(body))
-        self.assertEqual(result["hits"], [])
+    def test_redacted_sensitive_key_still_reported(self):
+        # Redaction hides the value, not the fact that the response carried the field.
+        body = json.dumps({"passwordHash": c.REDACTION_MARKER, "id": 1}, ensure_ascii=False)
+        start = body.index(c.REDACTION_MARKER)
+        result = c.scan_har_bodies(har_doc(body, redaction={
+            "marker": c.REDACTION_MARKER, "paths": ["$.passwordHash"],
+            "ranges": [[start, start + len(c.REDACTION_MARKER)]]}))
+        self.assertEqual([h["reason"] for h in result["hits"]], ["redacted_sensitive_key"])
 
     def test_css_span_not_a_hit(self):
         css = "div { span: 1px; margin: 0; }"
@@ -412,8 +445,7 @@ class CrossCheckAndRunTests(unittest.TestCase):
                 "schema": c.SUMMARY_SCHEMA,
                 "track": "security",
                 "target": {"label": "t"},
-                "signals_loaded": [],
-                "coverage": [{"path": "src/api/me.ts", "in_scope": True}],
+                **security_fields(),
                 "conditions": {},
                 "body_scan": {"ran": True, "hars": [], "hit_count": 0},
                 "limits": ["Not a penetration test, dependency CVE audit, or load test."],
@@ -457,8 +489,7 @@ class CrossCheckAndRunTests(unittest.TestCase):
                 "schema": c.SUMMARY_SCHEMA,
                 "track": "security",
                 "target": {"label": "t"},
-                "signals_loaded": [],
-                "coverage": [{"path": "src/api/me.ts", "in_scope": True}],
+                **security_fields(),
                 "conditions": {},
                 "limits": ["Not a penetration test, dependency CVE audit, or load test."],
             }
@@ -477,11 +508,12 @@ class RunScanEnforcementTests(unittest.TestCase):
             "schema": c.SUMMARY_SCHEMA,
             "track": track,
             "target": {"label": "t"},
-            "signals_loaded": [],
-            "coverage": [{"path": "server/notes.ts", "in_scope": True}],
+            **security_fields("server/notes.ts"),
             "conditions": {},
             "limits": ["Not a penetration test, dependency CVE audit, or load test."],
         }
+        if track in ("performance", "both"):
+            data["performance_scope"] = WEB_SCOPE
         if body_scan is not None:
             data["body_scan"] = body_scan
         return data
@@ -609,9 +641,11 @@ def sec_finding(requests, *, signal_id="sensitive-response", har="finding-1.har"
 def base_summary(track="security", **extra):
     data = {
         "schema": c.SUMMARY_SCHEMA, "track": track, "target": {"label": "t"},
-        "signals_loaded": [], "coverage": [{"path": "src/api/me.ts", "in_scope": True}],
+        **security_fields(),
         "conditions": {}, "limits": ["Not a penetration test, dependency CVE audit, or load test."],
     }
+    if track in ("performance", "both"):
+        data["performance_scope"] = WEB_SCOPE
     data.update(extra)
     return data
 
@@ -643,19 +677,17 @@ class NoTruncationTests(unittest.TestCase):
 
 
 class ScanWithoutSensitiveRowTests(unittest.TestCase):
+    """The body scan runs even when the agent judged sensitive-response not to apply."""
     LEAK = json.dumps({"id": 7, "owner": {"name": "a", "passwordHash": "$2b$10$abcdefghijklmnopqrstuuJ8S7ZqLx0lJgqv1nO3gk2Yw5o4i2K6"}})
 
     def test_run_requires_sensitive_finding_when_row_not_loaded(self):
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = Path(tmp)
-            summary = base_summary(
-                signals_loaded=[{"id": "authz-route", "file": "references/security-signals.md", "matched_paths": []}],
-                body_scan={"ran": True, "hars": ["probes.har"]},
-            )
+            summary = base_summary(body_scan={"ran": True, "hars": ["probes.har"]})
+            reasons = {e.get("signal_id"): e for e in summary["coverage"]}
+            self.assertEqual(reasons["sensitive-response"]["decision"], "skipped")
             (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
             (run_dir / "probes.har").write_text(json.dumps(har_doc(self.LEAK)), encoding="utf-8")
-            loaded_ids = {e["id"] for e in summary["signals_loaded"]}
-            self.assertNotIn("sensitive-response", loaded_ids)
             with self.assertRaises(c.Inconsistent) as ctx:
                 c.check_run_dir(run_dir)
             self.assertIn("sensitive-response", str(ctx.exception))
@@ -808,17 +840,479 @@ class BackgroundRequestsNavigationTests(unittest.TestCase):
             self.assertIn("before", str(ctx.exception))
 
 
-# The navigation boundary was documented in performance-signals.md but not enforced by `run`.
-EXPECTED_FAIL_BEHAVIOR = frozenset({
-    "BackgroundRequestsNavigationTests.test_missing_navigation_boundary_rejected",
-    "BackgroundRequestsNavigationTests.test_window_shorter_than_15s_rejected",
-    "BackgroundRequestsNavigationTests.test_no_page_load_before_navigation_rejected",
-})
-for _name in EXPECTED_FAIL_BEHAVIOR:
-    _cls, _meth = _name.split(".")
-    _owner = globals()[_cls]
-    setattr(_owner, _meth, unittest.expectedFailure(getattr(_owner, _meth)))
-_owner = None  # keep the loader from collecting the class twice under this alias
+
+# ---------------------------------------------------------------------------
+# Any language or framework: every row loads, hints come from paths or changed lines.
+# ---------------------------------------------------------------------------
+
+import importlib.util  # noqa: E402
+import inspect  # noqa: E402
+import re  # noqa: E402
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+VALIDATE_CHANGE = REPO_ROOT / "skills/validate-change/scripts/validate_change.py"
+
+
+def unified_diff(files):
+    """A small unified diff: {path: [added lines]} as modified files."""
+    out = []
+    for path, lines in files.items():
+        out += [f"diff --git a/{path} b/{path}", f"--- a/{path}", f"+++ b/{path}",
+                f"@@ -1,1 +1,{len(lines) + 1} @@", " // context"]
+        out += [f"+{line}" for line in lines]
+    return "\n".join(out) + "\n"
+
+
+# Each stack: a redirect/login change, a handler that reads an object by id, a template that renders user data.
+FRAMEWORK_DIFFS = {
+    "express": {
+        "src/auth.js": ["app.post('/login', (req, res) => res.redirect(req.query.next));"],
+        "src/orders.js": ["const order = await Order.findById(req.params.id);"],
+        "views/profile.ejs": ["<p><%- user.bio %></p>"],
+    },
+    "nextjs": {
+        "app/login/route.ts": ["return NextResponse.redirect(new URL(searchParams.get('callbackUrl')));"],
+        "app/api/orders/[id]/route.ts": ["export async function GET(req, { params }) {",
+                                         "  return Response.json(await db.order.findUnique({ where: { id: params.id } }));"],
+        "components/Bio.tsx": ["<div dangerouslySetInnerHTML={{ __html: user.bio }} />"],
+    },
+    "django": {
+        "accounts/views.py": ["    return redirect(request.GET.get('next'))"],
+        "orders/views.py": ["    order = get_object_or_404(Order, pk=pk)"],
+        "templates/profile.html": ["<p>{{ user.bio|safe }}</p>"],
+    },
+    "rails": {
+        "app/controllers/sessions_controller.rb": ["    redirect_to params[:return_to]"],
+        "app/controllers/orders_controller.rb": ["    @order = Order.find(params[:id])"],
+        "app/views/users/show.html.erb": ["<p><%== @user.bio %></p>"],
+    },
+    "laravel": {
+        "app/Http/Controllers/LoginController.php": ["        return redirect($request->input('next'));"],
+        "app/Http/Controllers/OrderController.php": ["        $order = Order::findOrFail($id);"],
+        "resources/views/profile.blade.php": ["<p>{!! $user->bio !!}</p>"],
+    },
+    "spring-boot": {
+        "src/main/java/com/acme/web/LoginController.java": ["        return \"redirect:\" + returnUrl;"],
+        "src/main/java/com/acme/web/OrderController.java": ["    @GetMapping(\"/orders/{id}\")",
+                                                            "    public Order get(@PathVariable Long id) { return repo.findById(id).orElseThrow(); }"],
+        "src/main/resources/templates/profile.html": ["<p th:utext=\"${user.bio}\"></p>"],
+    },
+    "aspnet-core": {
+        "Controllers/AccountController.cs": ["        return Redirect(returnUrl);"],
+        "Controllers/OrdersController.cs": ["    [HttpGet(\"{id}\")]",
+                                            "    public async Task<IActionResult> Get([FromRoute] int id) => Ok(await _db.Orders.FindAsync(id));"],
+        "Views/Profile/Index.cshtml": ["<p>@Html.Raw(Model.Bio)</p>"],
+    },
+    "go": {
+        "internal/web/login.go": ["\thttp.Redirect(w, r, r.URL.Query().Get(\"next\"), http.StatusFound)"],
+        "internal/web/orders.go": ["\tid := chi.URLParam(r, \"id\")", "\torder, err := store.Order(ctx, id)"],
+        "internal/web/profile.go": ["\tdata := map[string]any{\"Bio\": template.HTML(user.Bio)}"],
+    },
+    "fastapi": {
+        "app/auth.py": ["    return RedirectResponse(request.query_params['next'])"],
+        "app/orders.py": ["@router.get('/orders/{id}')", "async def get_order(id: int): return await Order.get(id=id)"],
+        "app/templates/profile.html": ["<p>{{ user.bio | safe }}</p>"],
+    },
+}
+EXPECTED_HINTED = ("open-redirect", "object-id-access", "markup-render")
+
+
+def rows_without_path_hints():
+    rows = c.load_signals()
+    for row in rows:
+        row["patterns"] = []
+    return rows
+
+
+class AnyFrameworkSignalTests(unittest.TestCase):
+    def test_every_stack_loads_all_rows_and_hints_by_content(self):
+        all_ids = [row["id"] for row in c.load_signals()]
+        pathless = rows_without_path_hints()
+        for stack, files in FRAMEWORK_DIFFS.items():
+            with self.subTest(stack=stack):
+                changes = c.parse_unified_diff(unified_diff(files))
+                self.assertEqual(set(changes), set(files))
+                loaded = c.match_signals(c.load_signals(), list(changes), changes=changes)
+                self.assertEqual([e["id"] for e in loaded], all_ids)
+                # Content alone hints the rows: path hints are cleared here.
+                hinted = c.hinted_paths(pathless, list(changes), changes)
+                for row_id in EXPECTED_HINTED:
+                    self.assertIn(row_id, hinted, f"{stack}: {row_id} not hinted by changed lines")
+
+    def test_signals_cli_with_diff_returns_every_row(self):
+        all_ids = [row["id"] for row in c.load_signals()]
+        for stack, files in FRAMEWORK_DIFFS.items():
+            with self.subTest(stack=stack), tempfile.TemporaryDirectory() as tmp:
+                diff = Path(tmp) / "change.diff"
+                diff.write_text(unified_diff(files), encoding="utf-8")
+                out = run_cli(["signals", "--diff", str(diff)])
+                loaded = json.loads(out)["signals_loaded"]
+                self.assertEqual([e["id"] for e in loaded], all_ids)
+                hinted = {e["id"] for e in loaded if e["matched_paths"]}
+                self.assertTrue(set(EXPECTED_HINTED) <= hinted, f"{stack}: {sorted(hinted)}")
+
+    def test_every_stack_summary_needs_a_reason_per_row(self):
+        for stack, files in FRAMEWORK_DIFFS.items():
+            with self.subTest(stack=stack):
+                changes = c.parse_unified_diff(unified_diff(files))
+                loaded = c.match_signals(c.load_signals(), list(changes), changes=changes)
+                applies = {e["id"] for e in loaded if e["matched_paths"]}
+                coverage = [{"path": f, "in_scope": True} for f in files]
+                coverage += [{"signal_id": e["id"], "decision": "applies" if e["id"] in applies else "skipped",
+                              "reason": f"{stack} diff {'touches' if e['id'] in applies else 'has no code for'} this behavior"}
+                             for e in loaded]
+                summary = base_summary(signals_loaded=loaded, coverage=coverage)
+                c.check_summary(summary, "summary.json")
+                for dropped in EXPECTED_HINTED:
+                    short = dict(summary, coverage=[x for x in coverage if x.get("signal_id") != dropped])
+                    with self.assertRaises(c.Inconsistent) as ctx:
+                        c.check_summary(short, "summary.json")
+                    self.assertIn(dropped, str(ctx.exception))
+
+    def test_summary_missing_a_loaded_row_rejected(self):
+        loaded = [e for e in all_rows_loaded() if e["id"] != "cookie-flags"]
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_summary(base_summary(signals_loaded=loaded), "summary.json")
+        self.assertIn("cookie-flags", str(ctx.exception))
+
+    def test_reason_must_be_text(self):
+        coverage = [{"path": "src/api/me.ts", "in_scope": True}] + row_reasons()
+        coverage[1] = dict(coverage[1], reason="")
+        with self.assertRaises(c.Inconsistent):
+            c.check_summary(base_summary(coverage=coverage), "summary.json")
+
+    def test_docs_only_diff_still_loads_every_row_with_no_hints(self):
+        changes = c.parse_unified_diff(unified_diff({"README.md": ["Use res.redirect(next) after login."]}))
+        loaded = c.match_signals(c.load_signals(), list(changes), changes=changes)
+        self.assertEqual(len(loaded), len(c.load_signals()))
+        self.assertTrue(all(not e["matched_paths"] for e in loaded))
+
+    def test_deleted_file_lines_count_as_changes(self):
+        diff = "--- a/app/auth.py\n+++ /dev/null\n@@ -1 +0,0 @@\n-    return redirect(request.GET['next'])\n"
+        changes = c.parse_unified_diff(diff)
+        self.assertIn("app/auth.py", changes)
+        self.assertIn("open-redirect", c.hinted_paths(rows_without_path_hints(), list(changes), changes))
+
+
+def run_cli(args):
+    import subprocess
+    result = subprocess.run([sys.executable, "-B", str(Path(c.__file__)), *args],
+                            capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise AssertionError(result.stderr or result.stdout)
+    return result.stdout
+
+
+class NoGlobGatingTests(unittest.TestCase):
+    """No path glob decides whether a row loads, in the checker or in validate-change."""
+
+    def test_empty_paths_return_every_row(self):
+        self.assertEqual(len(c.match_signals(c.load_signals(), [])), len(c.load_signals()))
+        perf = c.load_performance_signals()
+        self.assertEqual(len(c.match_performance_signals(perf, [])),
+                         len([r for r in perf if r["level"] != "off"]))
+
+    def test_match_functions_do_not_filter_on_trigger_or_patterns(self):
+        for fn in (c.match_signals, c.match_performance_signals):
+            body = inspect.getsource(fn).split('"""')[-1]
+            self.assertNotIn("trigger", body, fn.__name__)
+            self.assertNotIn("patterns", body, fn.__name__)
+            self.assertNotRegex(body, r"if\s+(not\s+)?(hits|matched|row_hints)", fn.__name__)
+
+    def test_signal_rows_have_no_path_only_trigger(self):
+        for row in c.load_signals():
+            self.assertIn(row["trigger"], ("always",) , row["id"])
+            self.assertTrue(row["content_hints"], f"{row['id']} needs content hints")
+        for row in c.load_performance_signals():
+            self.assertTrue(row["content_hints"], f"{row['id']} needs content hints")
+
+    def test_validate_change_has_no_glob_gate(self):
+        src = VALIDATE_CHANGE.read_text(encoding="utf-8")
+        self.assertNotRegex(src, r"if not \w+\.get\(\"matched_paths\"\)")
+        self.assertNotIn("match_signals(", src)
+        self.assertIn("hinted_paths(rows, path_list, changes)", src)
+        self.assertRegex(src, r"separate_tests_from_signals\(kept_paths, diff_changes\(files\)\)")
+
+
+def load_validate_change():
+    spec = importlib.util.spec_from_file_location("vc_under_test", VALIDATE_CHANGE)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def strip_path_hints(doc, path_cell):
+    out = []
+    for line in doc.splitlines():
+        parts = line.split(" | ")
+        if re.match(r"^\| `[a-z0-9-]+` \|", line) and len(parts) > path_cell + 2:
+            parts[path_cell] = "`**/never-match/**`"
+            line = " | ".join(parts)
+        out.append(line)
+    return "\n".join(out) + "\n"
+
+
+class ValidateChangeContentDetectionTests(unittest.TestCase):
+    def test_recommendation_survives_path_hints_that_never_match(self):
+        vc = load_validate_change()
+        with tempfile.TemporaryDirectory() as tmp:
+            sec = Path(tmp) / "security-signals.md"
+            perf = Path(tmp) / "performance-signals.md"
+            sec.write_text(strip_path_hints(c.SIGNALS.read_text(encoding="utf-8"), 2), encoding="utf-8")
+            perf.write_text(strip_path_hints(c.PERF_SIGNALS.read_text(encoding="utf-8"), 7), encoding="utf-8")
+            vc.SPC_SECURITY_SIGNALS, vc.SPC_PERFORMANCE_SIGNALS = sec, perf
+            for stack, files in FRAMEWORK_DIFFS.items():
+                with self.subTest(stack=stack):
+                    changes = c.parse_unified_diff(unified_diff(files))
+                    self.assertEqual(
+                        [e for e in vc.separate_tests_from_signals(list(changes)) if e["area"] == "security"], [],
+                        "path hints alone must not match in this fixture")
+                    entries = vc.separate_tests_from_signals(list(changes), changes)
+                    ids = {e["signal"].split(":")[0] for e in entries if e["area"] == "security"}
+                    for row_id in EXPECTED_HINTED:
+                        self.assertIn(row_id, ids, stack)
+                    self.assertTrue(all(e["command"].startswith("/security-performance-check ") for e in entries))
+
+    def test_diff_changes_joins_added_and_removed(self):
+        vc = load_validate_change()
+        got = vc.diff_changes({"a.py": {"added": ["x = 1"], "removed": ["return redirect(n)"]}})
+        self.assertEqual(got, {"a.py": "x = 1\nreturn redirect(n)"})
+
+
+# ---------------------------------------------------------------------------
+# Probes: a deterministic exploit is a finding (no evidence downgrade).
+# ---------------------------------------------------------------------------
+
+class ProbeOutcomeTests(unittest.TestCase):
+    def write(self, run_dir, probes, finding=None):
+        body = b'{"id":1}'
+        summary = base_summary(probes=probes, body_scan={"ran": True, "hars": ["finding-1.har"], "hit_count": 0})
+        (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+        (run_dir / "finding-1.har").write_text(json.dumps(har_doc(body.decode())), encoding="utf-8")
+        if finding is not None:
+            (run_dir / "finding-1.json").write_text(json.dumps(finding), encoding="utf-8")
+
+    def redirect_finding(self, signal_id="open-redirect"):
+        f = sec_finding([sec_request(b'{"id":1}')], signal_id=signal_id)
+        f["validator"] = "deterministic"
+        f["cwe"] = "CWE-601"
+        return f
+
+    def test_deterministic_exploit_with_matching_finding_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = {"signal_id": "open-redirect", "validator": "deterministic", "outcome": "exploited",
+                     "finding": "finding-1.json"}
+            self.write(Path(tmp), [probe], self.redirect_finding())
+            c.check_run_dir(Path(tmp))
+
+    def test_deterministic_exploit_without_finding_rejected(self):
+        probe = {"signal_id": "open-redirect", "validator": "deterministic", "outcome": "exploited", "finding": None}
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_summary(base_summary(probes=[probe]), "summary.json")
+        self.assertIn("no downgrade", str(ctx.exception))
+
+    def test_deterministic_exploit_naming_missing_file_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = {"signal_id": "open-redirect", "validator": "deterministic", "outcome": "exploited",
+                     "finding": "finding-9.json"}
+            self.write(Path(tmp), [probe])
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(Path(tmp))
+            self.assertIn("does not exist", str(ctx.exception))
+
+    def test_deterministic_exploit_with_other_signal_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = {"signal_id": "open-redirect", "validator": "deterministic", "outcome": "exploited",
+                     "finding": "finding-1.json"}
+            self.write(Path(tmp), [probe], self.redirect_finding("markup-render"))
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(Path(tmp))
+            self.assertIn("signal_id 'open-redirect'", str(ctx.exception))
+
+    def test_probe_signal_must_be_a_security_row(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = {"signal_id": "js-redirect", "validator": "deterministic", "outcome": "exploited",
+                     "finding": "finding-1.json"}
+            self.write(Path(tmp), [probe], self.redirect_finding("js-redirect"))
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(Path(tmp))
+            self.assertIn("best-matching row", str(ctx.exception))
+
+    def test_security_summary_without_probes_rejected(self):
+        summary = base_summary()
+        del summary["probes"]
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_summary(summary, "summary.json")
+        self.assertIn("probes", str(ctx.exception))
+
+    def test_unclear_agent_probe_needs_no_finding(self):
+        probe = {"signal_id": "object-id-access", "validator": "agent", "outcome": "unclear", "finding": None}
+        c.check_summary(base_summary(probes=[probe]), "summary.json")
+
+
+# ---------------------------------------------------------------------------
+# Performance: recorded base and head HARs, exact counts, project scope.
+# ---------------------------------------------------------------------------
+
+def order_entries(n, start_ms=100):
+    return [har_entry(f"http://127.0.0.1:3000/api/orders/{i}",
+                      f"2026-01-01T00:00:{(start_ms + 100 * i) // 1000:02d}.{(start_ms + 100 * i) % 1000:03d}Z")
+            for i in range(n)]
+
+
+class PerformanceEvidenceTests(unittest.TestCase):
+    FILTER = {"url_contains": "/api/orders"}
+
+    def run_with(self, *, finding=None, base=None, head=None, scope=WEB_SCOPE, limits=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            summary = base_summary(track="performance", performance_scope=scope)
+            if limits is not None:
+                summary["limits"] = limits
+            (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+            if finding is None:
+                finding = perf_finding("request-count", base=2, head=5, request_filter=self.FILTER)
+            (run_dir / "finding-1.json").write_text(json.dumps(finding), encoding="utf-8")
+            (run_dir / "base.har").write_text(json.dumps(base or recorded_har(order_entries(2))), encoding="utf-8")
+            (run_dir / "head.har").write_text(json.dumps(head or recorded_har(order_entries(5))), encoding="utf-8")
+            return c.check_run_dir(run_dir)
+
+    def assert_rejected(self, needle, **kw):
+        with self.assertRaises(c.Inconsistent) as ctx:
+            self.run_with(**kw)
+        self.assertIn(needle, str(ctx.exception))
+
+    def test_recorded_base_and_head_pass(self):
+        self.run_with()
+
+    def test_har_without_creator_rejected(self):
+        self.assert_rejected("creator", head=recorded_har(order_entries(5), creator=False))
+
+    def test_base_har_without_creator_rejected(self):
+        self.assert_rejected("base HAR", base=recorded_har(order_entries(2), creator=False))
+
+    def test_missing_started_date_time_rejected(self):
+        head = recorded_har(order_entries(5))
+        del head["log"]["entries"][2]["startedDateTime"]
+        self.assert_rejected("startedDateTime is required", head=head)
+
+    def test_identical_start_times_rejected(self):
+        head = recorded_har([har_entry(f"http://127.0.0.1:3000/api/orders/{i}", "2026-01-01T00:00:00.000Z")
+                             for i in range(5)])
+        self.assert_rejected("same startedDateTime", head=head)
+
+    def test_time_without_zone_rejected(self):
+        head = recorded_har(order_entries(5))
+        head["log"]["entries"][0]["startedDateTime"] = "2026-01-01T00:00:00.100"
+        self.assert_rejected("time zone", head=head)
+
+    def test_missing_base_har_path_rejected(self):
+        self.assert_rejected("base_har_path",
+                             finding=perf_finding("request-count", base=2, head=5, base_har=None, request_filter=self.FILTER))
+
+    def test_head_count_mismatch_rejected(self):
+        self.assert_rejected("must match exactly", head=recorded_har(order_entries(4)))
+
+    def test_base_count_mismatch_rejected(self):
+        self.assert_rejected("metric.base", base=recorded_har(order_entries(3)))
+
+    def test_count_with_more_than_one_sample_rejected(self):
+        finding = perf_finding("request-count", base=2, head=5, request_filter=self.FILTER)
+        finding["metric"]["head"]["n"] = 3
+        self.assert_rejected("n=1", finding=finding)
+
+    def test_filter_counts_only_matching_requests(self):
+        head = recorded_har(order_entries(5) + [har_entry("http://127.0.0.1:3000/static/app.js",
+                                                          "2026-01-01T00:00:09.000Z", mime="text/javascript")])
+        self.run_with(head=head)
+
+    def test_collector_outside_scope_rejected(self):
+        finding = perf_finding("lcp", base=2, head=5)
+        finding["metric"].update({"class": "noisy", "aggregation": "median", "unit": "ms"})
+        self.assert_rejected("not by this run's collectors", finding=finding,
+                             scope={"project_type": "api-only", "collectors": ["http"]})
+
+    def test_api_only_scope_cannot_use_playwright(self):
+        self.assert_rejected("api-only project cannot use playwright",
+                             scope={"project_type": "api-only", "collectors": ["playwright"]})
+
+    def test_cli_scope_with_a_finding_rejected(self):
+        self.assert_rejected("no performance finding",
+                             scope={"project_type": "cli", "collectors": []},
+                             limits=["Not a penetration test, dependency CVE audit, or load test.",
+                                     "Performance was not measured: CLI project."])
+
+    def test_cli_scope_needs_a_limit(self):
+        summary = base_summary(track="performance", performance_scope={"project_type": "library", "collectors": []})
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_summary(summary, "summary.json")
+        self.assertIn("not measured", str(ctx.exception))
+
+    def test_performance_track_needs_scope(self):
+        summary = base_summary(track="performance")
+        del summary["performance_scope"]
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_summary(summary, "summary.json")
+        self.assertIn("performance_scope", str(ctx.exception))
+
+
+# ---------------------------------------------------------------------------
+# Redaction of stored bodies.
+# ---------------------------------------------------------------------------
+
+class RedactionTests(unittest.TestCase):
+    BODY = json.dumps({"user": {"id": 7, "email": "a@example.test", "password_hash": "$2b$12$abcdefghijklmnopqrstuv",
+                                "api_token": "tok_live_1234567890abcdef"}, "items": [1, 2]})
+
+    def test_redact_cli_keeps_field_names_and_passes_checks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = Path(tmp) / "raw.har", Path(tmp) / "finding-1.har"
+            src.write_text(json.dumps(har_doc(self.BODY)), encoding="utf-8")
+            run_cli(["redact", str(src), "--out", str(out)])
+            data = json.loads(out.read_text(encoding="utf-8"))
+            content = data["log"]["entries"][0]["response"]["content"]
+            body = json.loads(content["text"])
+            self.assertEqual(body["user"]["password_hash"], c.REDACTION_MARKER)
+            self.assertEqual(body["user"]["api_token"], c.REDACTION_MARKER)
+            self.assertEqual(body["user"]["email"], "a@example.test")
+            self.assertNotIn("tok_live", content["text"])
+            self.assertEqual(content["size"], c.utf8_size(content["text"]))
+            self.assertEqual(len(content["_spc_redaction"]["ranges"]), 2)
+            c.check_har(data, str(out))
+            c.check_stored_bodies_redacted(data, str(out))
+            # Field names stay, so the scan still reports the sensitive keys.
+            keys = {h["key"] for h in c.scan_har_bodies(data, str(out))["hits"]}
+            self.assertIn("password_hash", keys)
+
+    def test_clear_secret_in_run_har_rejected(self):
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_stored_bodies_redacted(har_doc(self.BODY), "finding-1.har")
+        self.assertIn("redact", str(ctx.exception))
+
+    def test_marker_without_metadata_rejected(self):
+        text = json.dumps({"token": c.REDACTION_MARKER}, ensure_ascii=False)
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_har(har_doc(text), "finding-1.har")
+        self.assertIn("_spc_redaction", str(ctx.exception))
+
+    def test_size_checked_on_redacted_body(self):
+        data = har_doc(self.BODY)
+        c.redact_har(data)
+        content = data["log"]["entries"][0]["response"]["content"]
+        content["size"] = c.utf8_size(self.BODY)
+        with self.assertRaises(c.Inconsistent) as ctx:
+            c.check_har(data, "finding-1.har")
+        self.assertIn("content.size", str(ctx.exception))
+
+    def test_finding_hash_is_of_the_redacted_body(self):
+        data = har_doc(self.BODY)
+        c.redact_har(data)
+        stored = data["log"]["entries"][0]["response"]["content"]["text"].encode("utf-8")
+        good = sec_finding([sec_request(stored)])
+        c.cross_check_finding_har(good, "finding-1.har", data)
+        bad = sec_finding([sec_request(self.BODY.encode("utf-8"))])
+        with self.assertRaises(c.Inconsistent):
+            c.cross_check_finding_har(bad, "finding-1.har", data)
 
 
 if __name__ == "__main__":

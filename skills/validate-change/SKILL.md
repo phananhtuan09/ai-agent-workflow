@@ -69,7 +69,8 @@ Build exactly one expectation list in `expectations.json`; every later step cons
 Run `python3 <skill-dir>/scripts/validate_change.py risk <run-dir> --base <ref>` (add `--worktree` for uncommitted changes; untracked files then count as added).
 It applies `references/risk-rules.md`, a project-editable table of deterministic gate and audit signals: money, data, and permission paths and tokens, deleted or skipped tests, size, shared files, environment variables, major dependency bumps, agent-intent only, and recorded conflicts.
 
-When `security-performance-check` is installed beside this skill, the same risk step also reads the trigger columns (`trigger`, `paths/patterns` / `route_pattern`) of that skill's `references/security-signals.md` and `references/performance-signals.md`, matches them on the diff, and writes `separateTests` into `risk.json` with a ready command per match (for example `/security-performance-check security`).
+When `security-performance-check` is installed beside this skill, the same risk step also reads the hint columns of that skill's `references/security-signals.md` and `references/performance-signals.md` (path hints and content hints, for any language or framework), matches them on the diff's files and changed lines, and writes `separateTests` into `risk.json` with a ready command per hinted row (for example `/security-performance-check security`).
+A content hint alone is enough (a Django `redirect(request.GET["next"])` or a Blade `{!! $bio !!}` counts wherever the file lives), so path globs never drop the recommendation for server, auth, or render code; prose files such as `*.md` never count.
 Those signal files stay the single source of truth: this skill does not copy their rows.
 When the skill is not installed, `separateTests` in `risk.json` is empty and detection is skipped.
 The risk step writes each command without the target label; the report step appends that label when copying into `run.json`.

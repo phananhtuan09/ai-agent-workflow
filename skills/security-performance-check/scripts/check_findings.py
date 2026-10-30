@@ -7,6 +7,7 @@ import json
 import math
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -24,7 +25,20 @@ METRIC_CLASSES = ("exact", "noisy")
 DIRECTIONS = ("lower_better", "higher_better")
 AGGREGATIONS = ("median", "count", "max", "min", "sum")
 LEVELS = ("off", "warn", "error")
-SOURCES = ("playwright", "build", "lighthouse")
+SOURCES = ("playwright", "http", "build", "lighthouse")
+# Project types for the performance track and the collectors each one may use.
+PROJECT_TYPES = {
+    "web-ui": ("playwright", "http", "build", "lighthouse"),
+    "api-only": ("http",),
+    "cli": (),
+    "mobile": (),
+    "library": (),
+}
+COVERAGE_DECISIONS = ("applies", "skipped")
+PROBE_OUTCOMES = ("exploited", "not_exploited", "unclear", "not_run")
+# Performance rows whose metric is a request count read straight from the base and head HARs.
+HAR_COUNT_SIGNALS = frozenset({"request-count", "background-requests"})
+BACKGROUND_WINDOW_MS = 15000
 VERDICTS = ("pass", "fail", "informational", "inconclusive")
 ACCESS_EXPECTATIONS = ("allow", "deny")
 ACCESS_OBSERVED = ("allow", "deny", "unclear")
@@ -39,7 +53,7 @@ MAX_AA_WIDENING = 1.0
 MIN_HIGHER_BETTER_FACTOR = 0.01
 # In-place body redaction marker (see references/evidence-contract.md).
 REDACTION_MARKER = "«REDACTED»"
-# Non-executable / non-handler paths excluded from signal matching by default.
+# Paths that never count as a hint for a row (tests, fixtures, i18n, …). Rows still always load.
 DEFAULT_PATH_EXCLUDES = (
     "**/__tests__/**",
     "**/__mocks__/**",
@@ -269,6 +283,10 @@ def load_signals(path=SIGNALS):
             continue
         if all(set(c) <= {"-", " "} for c in cols):
             continue
+        # 9 columns: id, trigger, path hints, content hints, risk, …; an older 8-column copy has no content hints.
+        content_hints = parse_content_hints(cols[3]) if len(cols) >= 9 else []
+        if len(cols) >= 9:
+            cols = cols[:3] + cols[4:]
         signal_id = cols[0].strip().strip("`")
         trigger = cols[1].strip().strip("`")
         patterns = parse_patterns(cols[2])
@@ -281,6 +299,7 @@ def load_signals(path=SIGNALS):
             "id": signal_id,
             "trigger": trigger,
             "patterns": patterns,
+            "content_hints": content_hints,
             "risk": risk,
             "static_check": cols[4].strip(),
             "runtime_probe": cols[5].strip(),
@@ -289,31 +308,64 @@ def load_signals(path=SIGNALS):
         })
     if not rows:
         raise Inconsistent(f"{path}: no signal rows found")
-    always = [r for r in rows if r["trigger"] == TRIGGERS_ALWAYS]
-    if len(always) > 3:
-        raise Inconsistent(f"{path}: keep always rows to 2–3; found {len(always)}")
     for row in rows:
         if row["validator"] not in VALIDATORS:
             raise Inconsistent(f"{path}: signal {row['id']}: validator is one of {', '.join(VALIDATORS)}")
     return rows
 
 
-def match_signals(rows, paths, signals_file="references/security-signals.md", exclude=None):
-    """Build signals_loaded[]: always rows plus rows whose patterns hit a path.
+# Prose files never count as content hints: a README that says "login" changes no behavior.
+CONTENT_HINT_SKIP = ("**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "**/*.adoc", "**/docs/**",
+                     "**/CHANGELOG*", "**/LICENSE*")
 
-    Paths under DEFAULT_PATH_EXCLUDES (tests, fixtures, i18n/locale, …) never match.
+def parse_content_hints(cell):
+    """Backticked literal tokens (case-insensitive substrings of changed lines)."""
+    return [t for t in re.findall(r"`([^`]+)`", cell) if t.strip()]
+
+
+def _is_prose(path):
+    return matcher(list(CONTENT_HINT_SKIP))(path)
+
+
+def row_hints(row, path_list, changes=None):
+    """Paths that hint a row: a path pattern hit or a content token in that file's changed lines.
+
+    Hints only rank rows for the agent; they never decide whether a row loads.
     """
-    loaded = []
+    by_path = matcher(row["patterns"]) if row["patterns"] else (lambda _p: False)
+    tokens = [t.lower() for t in row.get("content_hints") or []]
+    hits = []
+    for p in path_list:
+        body = "" if _is_prose(p) else (changes or {}).get(p) or ""
+        if by_path(p) or (tokens and any(t in body.lower() for t in tokens)):
+            hits.append(p)
+    return hits
+
+
+def hinted_paths(rows, paths, changes=None, exclude=None):
+    """{row id: [paths]} for rows with at least one hint."""
     path_list = filter_matchable_paths(list(paths), exclude=exclude)
+    out = {}
     for row in rows:
-        matched = [p for p in path_list if row["patterns"] and matcher(row["patterns"])(p)]
-        if row["trigger"] == TRIGGERS_ALWAYS or matched:
-            loaded.append({
-                "id": row["id"],
-                "file": signals_file,
-                "matched_paths": matched,
-            })
-    return loaded
+        if row.get("level") == "off":
+            continue
+        hits = row_hints(row, path_list, changes)
+        if hits:
+            out[row["id"]] = hits
+    return out
+
+
+def match_signals(rows, paths, signals_file="references/security-signals.md", exclude=None, changes=None):
+    """Build signals_loaded[]: every security row loads; matched_paths lists the hinted paths.
+
+    `changes` maps a path to its changed diff lines so content hints work for any language.
+    Paths under DEFAULT_PATH_EXCLUDES (tests, fixtures, i18n/locale, …) never count as a hint.
+    """
+    path_list = filter_matchable_paths(list(paths), exclude=exclude)
+    return [
+        {"id": row["id"], "file": signals_file, "matched_paths": row_hints(row, path_list, changes)}
+        for row in rows
+    ]
 
 
 def load_performance_signals(path=PERF_SIGNALS):
@@ -333,9 +385,14 @@ def load_performance_signals(path=PERF_SIGNALS):
             continue
         if all(set(c) <= {"-", " "} for c in cols):
             continue
+        # 11 columns add content hints after route_pattern; an older 10-column copy has none.
+        content_hints = parse_content_hints(cols[8]) if len(cols) >= 11 else []
+        if len(cols) >= 11:
+            cols = cols[:8] + cols[9:]
         signal_id = cols[0].strip().strip("`")
         metric_class = cols[1].strip().strip("`")
-        source = cols[2].strip().strip("`")
+        sources = tuple(s.strip().strip("`") for s in cols[2].split(",") if s.strip())
+        source = sources[0] if sources else ""
         direction = cols[3].strip().strip("`")
         aggregation = cols[4].strip().strip("`")
         threshold = cols[5].strip().strip("`")
@@ -348,8 +405,8 @@ def load_performance_signals(path=PERF_SIGNALS):
         fix_hint = cols[9].strip()
         if metric_class not in METRIC_CLASSES:
             raise Inconsistent(f"{path}: signal {signal_id}: metric_class is one of {', '.join(METRIC_CLASSES)}")
-        if source not in SOURCES:
-            raise Inconsistent(f"{path}: signal {signal_id}: source is one of {', '.join(SOURCES)}")
+        if not sources or any(s not in SOURCES for s in sources):
+            raise Inconsistent(f"{path}: signal {signal_id}: source lists one or more of {', '.join(SOURCES)}")
         if direction not in DIRECTIONS:
             raise Inconsistent(f"{path}: signal {signal_id}: direction is one of {', '.join(DIRECTIONS)}")
         if aggregation not in AGGREGATIONS:
@@ -365,11 +422,13 @@ def load_performance_signals(path=PERF_SIGNALS):
             "id": signal_id,
             "metric_class": metric_class,
             "source": source,
+            "sources": sources,
             "direction": direction,
             "aggregation": aggregation,
             "threshold": threshold,
             "min_runs_per_side": min_runs,
             "patterns": patterns,
+            "content_hints": content_hints,
             "level": level,
             "fix_hint": fix_hint,
         })
@@ -379,24 +438,35 @@ def load_performance_signals(path=PERF_SIGNALS):
 
 
 def match_performance_signals(rows, paths, signals_file="references/performance-signals.md",
-                               exclude=None):
-    """Build signals_loaded[] for non-off rows whose route_pattern hits a path.
-
-    Paths under DEFAULT_PATH_EXCLUDES never match.
-    """
-    loaded = []
+                               exclude=None, changes=None):
+    """Build signals_loaded[]: every row except `level: off` loads; matched_paths lists hinted paths."""
     path_list = filter_matchable_paths(list(paths), exclude=exclude)
-    for row in rows:
-        if row["level"] == "off":
+    return [
+        {"id": row["id"], "file": signals_file, "matched_paths": row_hints(row, path_list, changes)}
+        for row in rows
+        if row["level"] != "off"
+    ]
+
+
+def parse_unified_diff(diff_text):
+    """{path: changed lines joined by newlines} from a unified diff (added and removed lines)."""
+    changes, current, source = {}, None, None
+    for line in diff_text.splitlines():
+        if line.startswith("--- "):
+            raw = line[4:].strip().split("\t")[0]
+            source = None if raw == "/dev/null" else re.sub(r"^a/", "", raw)
             continue
-        matched = [p for p in path_list if row["patterns"] and matcher(row["patterns"])(p)]
-        if matched:
-            loaded.append({
-                "id": row["id"],
-                "file": signals_file,
-                "matched_paths": matched,
-            })
-    return loaded
+        if line.startswith("+++ "):
+            raw = line[4:].strip().split("\t")[0]
+            current = source if raw == "/dev/null" else re.sub(r"^b/", "", raw)
+            if current is not None:
+                changes.setdefault(current, "")
+            continue
+        if current is None:
+            continue
+        if line.startswith(("+", "-")):
+            changes[current] += line[1:] + "\n"
+    return changes
 
 
 def parse_threshold(text_value):
@@ -1048,7 +1118,18 @@ def check_har_entry(entry, where, index=0, har_path="<har>", *, force_full_body=
 
     scan_text = body_text if body_text is not None else ""
     if body_text is not None:
-        check_redaction_meta(content, body_text, where)
+        has_meta = check_redaction_meta(content, body_text, where)
+        markers = body_text.count(REDACTION_MARKER)
+        if markers and not has_meta:
+            raise Inconsistent(
+                f"{where}: body holds {REDACTION_MARKER!r} but no _spc_redaction metadata "
+                "(redact with check_findings.py redact)"
+            )
+        if has_meta and len(content["_spc_redaction"].get("ranges") or []) != markers:
+            raise Inconsistent(
+                f"{where}: _spc_redaction.ranges lists {len(content['_spc_redaction'].get('ranges') or [])} "
+                f"span(s) but the stored body holds {markers} marker(s)"
+            )
     elif content.get("_spc_redaction") is not None:
         raise Inconsistent(f"{where}: _spc_redaction requires a UTF-8 body text")
 
@@ -1163,16 +1244,15 @@ def _walk_json_for_sensitive(node, path, hits, url, allow_list, *, skip_shapes=F
             if norm in SENSITIVE_KEY_NAMES:
                 if sensitive_value_is_empty(value):
                     pass
-                elif isinstance(value, str) and value == REDACTION_MARKER:
-                    pass
                 elif allowed_here:
                     pass
                 else:
+                    redacted = isinstance(value, str) and value == REDACTION_MARKER
                     hits.append({
                         "url": url,
                         "path": child_path,
                         "key": key_str,
-                        "reason": "sensitive_key",
+                        "reason": "redacted_sensitive_key" if redacted else "sensitive_key",
                     })
             # Allowed keys skip value-shape hits on their immediate string/array values;
             # nested objects are still walked for other keys.
@@ -1272,15 +1352,13 @@ def scan_body_text(body_text, url=None, *, mime=None, allow_list=None):
             value = raw_sensitive_value_after_key(body_text, match)
             if value is None:
                 continue
-            if isinstance(value, str) and value == REDACTION_MARKER:
-                continue
             if key_is_allowed(key, allow_list):
                 continue
             hits.append({
                 "url": url,
                 "path": key,
                 "key": key,
-                "reason": "sensitive_key",
+                "reason": "redacted_sensitive_key" if value == REDACTION_MARKER else "sensitive_key",
             })
             break
     for shape_name, pattern in SENSITIVE_VALUE_SHAPES:
@@ -1332,6 +1410,292 @@ def scan_har_bodies(data, path="<har>", allow_list=None):
             )
         )
     return {"path": path, "entries": len(summaries), "hits": hits}
+
+
+SECRET_KEY_NORMS = frozenset(normalize_sensitive_key(k) for k in SENSITIVE_KEY_NAMES)
+REDACT_SHAPES = tuple(SENSITIVE_VALUE_SHAPES)
+
+
+# Redaction also covers any key naming a hash, token, secret, or password (e.g. api_token, reset_digest).
+SECRET_KEY_SUFFIXES = ("password", "passwd", "secret", "token", "hash", "digest", "apikey", "privatekey")
+
+
+def is_secret_key(key):
+    norm = normalize_sensitive_key(key)
+    return norm in SECRET_KEY_NORMS or norm.endswith(SECRET_KEY_SUFFIXES) or "password" in norm
+
+
+def _secret_value(value):
+    if isinstance(value, bool) or value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    return isinstance(value, str) and value.strip() != "" and value != REDACTION_MARKER
+
+
+def _redact_json(node, path, found):
+    """Replace secret values in parsed JSON with the marker; return the new node."""
+    if isinstance(node, dict):
+        out = {}
+        for key, value in node.items():
+            child = f"{path}.{key}"
+            if is_secret_key(key) and _secret_value(value):
+                out[key] = REDACTION_MARKER
+                found.append(child)
+            else:
+                out[key] = _redact_json(value, child, found)
+        return out
+    if isinstance(node, list):
+        return [_redact_json(v, f"{path}[{i}]", found) for i, v in enumerate(node)]
+    if isinstance(node, str) and node != REDACTION_MARKER and any(r.search(node) for _n, r in REDACT_SHAPES):
+        found.append(path)
+        return REDACTION_MARKER
+    return node
+
+
+def _redact_raw(body_text, found):
+    out = body_text
+    for key in SENSITIVE_KEY_NAMES:
+        pattern = re.compile(
+            rf'((?:^|[{{,;&\s?\[(])["\']?{re.escape(key)}["\']?\s*[:=]\s*["\']?)([^"\'&\s,;}}\]]+)',
+            re.IGNORECASE,
+        )
+        def sub(match):
+            if match.group(2) in (REDACTION_MARKER, "null", "false", "undefined"):
+                return match.group(0)
+            found.append(f"$raw.{key}")
+            return match.group(1) + REDACTION_MARKER
+        out = pattern.sub(sub, out)
+    for name, pattern in REDACT_SHAPES:
+        raw = re.compile(pattern.pattern.lstrip("^").rstrip("$"))
+        if raw.search(out):
+            found.append(f"$raw.{name}")
+            out = raw.sub(REDACTION_MARKER, out)
+    return out
+
+
+def redact_body_text(body_text):
+    """Return (redacted text, redacted paths). Field names stay; values become the marker."""
+    found = []
+    try:
+        parsed = json.loads(body_text)
+    except (ValueError, TypeError):
+        parsed = None
+    if parsed is not None and isinstance(parsed, (dict, list)):
+        new = _redact_json(parsed, "$", found)
+        return (json.dumps(new, ensure_ascii=False) if found else body_text), found
+    new = _redact_raw(body_text, found)
+    return new, found
+
+
+def marker_ranges(body_text):
+    out, start = [], body_text.find(REDACTION_MARKER)
+    while start != -1:
+        out.append([start, start + len(REDACTION_MARKER)])
+        start = body_text.find(REDACTION_MARKER, start + len(REDACTION_MARKER))
+    return out
+
+
+def redact_har(data, path="<har>"):
+    """Redact secret values in every stored response body; update size and _spc_redaction."""
+    check_har(data, path)
+    redacted = 0
+    for i, entry in enumerate(data["log"]["entries"]):
+        content = entry["response"]["content"]
+        if content.get("_file") is not None:
+            continue
+        body_bytes, body_text = resolve_har_body_bytes(content, path, f"{path}: entries[{i}]")
+        if body_text is None or not body_text:
+            continue
+        new_text, found = redact_body_text(body_text)
+        if not found:
+            continue
+        content["text"] = new_text
+        content.pop("encoding", None)
+        content["size"] = utf8_size(new_text)
+        meta = content.get("_spc_redaction") or {"marker": REDACTION_MARKER, "paths": []}
+        meta["marker"] = REDACTION_MARKER
+        meta["paths"] = list(dict.fromkeys(list(meta.get("paths") or []) + found))
+        meta["ranges"] = marker_ranges(new_text)
+        content["_spc_redaction"] = meta
+        redacted += len(found)
+    check_har(data, path)
+    return redacted
+
+
+def unredacted_secrets(body_text, mime=None, url=None):
+    """Paths of secret values a stored body still holds in clear text."""
+    found = []
+    try:
+        parsed = json.loads(body_text)
+    except (ValueError, TypeError):
+        parsed = None
+    if parsed is not None and isinstance(parsed, (dict, list)):
+        _redact_json(parsed, "$", found)
+        return found
+    if should_skip_raw_scan(mime, url):
+        return found
+    _redact_raw(body_text, found)
+    return found
+
+
+def check_stored_bodies_redacted(har_data, har_path):
+    for summary in check_har(har_data, har_path):
+        if not summary.get("body_present") or not summary.get("text"):
+            continue
+        leftover = unredacted_secrets(summary["text"], summary.get("mimeType"), summary.get("url"))
+        if leftover:
+            raise Inconsistent(
+                f"{har_path}: entries[{summary['index']}] stores secret value(s) in clear text at "
+                f"{', '.join(leftover[:5])}; run check_findings.py redact (field names stay, values become "
+                f"{REDACTION_MARKER!r})"
+            )
+
+
+def parse_har_time(value, where):
+    if not text(value):
+        raise Inconsistent(f"{where}: startedDateTime is required (record the HAR with a browser or HTTP client)")
+    raw = value.strip()
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    try:
+        stamp = datetime.fromisoformat(raw)
+    except ValueError:
+        raise Inconsistent(f"{where}: startedDateTime {value!r} is not an ISO 8601 time") from None
+    if stamp.tzinfo is None:
+        raise Inconsistent(f"{where}: startedDateTime {value!r} needs a time zone")
+    return stamp.timestamp() * 1000.0
+
+
+def check_recorded_har(data, where):
+    """A HAR written by a measuring tool: creator name and real per-request start times."""
+    check_har(data, where)
+    log = data["log"]
+    creator = log.get("creator")
+    if not isinstance(creator, dict) or not text(creator.get("name")):
+        raise Inconsistent(
+            f"{where}: log.creator.name is required; measurements come from a browser or HTTP client, "
+            "not a hand-written HAR"
+        )
+    entries = log["entries"]
+    times = [parse_har_time(e.get("startedDateTime"), f"{where}: entries[{i}]") for i, e in enumerate(entries)]
+    if len(entries) > 1 and len(set(times)) == 1:
+        raise Inconsistent(
+            f"{where}: all {len(entries)} entries share the same startedDateTime; "
+            "a recorded HAR has real request start times"
+        )
+    return times
+
+
+def entry_is_asset(entry):
+    request = entry.get("request") or {}
+    content = (entry.get("response") or {}).get("content") or {}
+    url = request.get("url") or ""
+    mime = normalize_mime(content.get("mimeType"))
+    if is_asset_mime(mime) or is_asset_url(url):
+        return True
+    path_part = urlsplit(url).path.lower()
+    return mime in ("application/javascript", "text/javascript") or path_part.endswith((".js", ".mjs"))
+
+
+def count_har_requests(data, times, request_filter, side, signal_id, where):
+    """Count the requests the metric claims, using the finding's request_filter."""
+    flt = request_filter or {}
+    if not isinstance(flt, dict):
+        raise Inconsistent(f"{where}: evidence.request_filter is an object")
+    after = flt.get("after")
+    window = flt.get("window_ms")
+    if signal_id == "background-requests":
+        if not isinstance(after, dict) or not text(after.get("base")) or not text(after.get("head")):
+            raise Inconsistent(
+                f"{where}: background-requests needs evidence.request_filter.after {{base, head}} "
+                "(the time the page was navigated away from)"
+            )
+        if not isinstance(window, (int, float)) or isinstance(window, bool) or window < BACKGROUND_WINDOW_MS:
+            raise Inconsistent(
+                f"{where}: background-requests needs evidence.request_filter.window_ms >= {BACKGROUND_WINDOW_MS}"
+            )
+    start = None
+    if after is not None:
+        if not isinstance(after, dict) or not text(after.get(side)):
+            raise Inconsistent(f"{where}: evidence.request_filter.after.{side} is an ISO time")
+        start = parse_har_time(after[side], f"{where}: request_filter.after.{side}")
+        if not any(t <= start for t in times):
+            raise Inconsistent(
+                f"{where}: {side} HAR has no request before request_filter.after; "
+                "open the changed page first, then navigate away"
+            )
+    end = start + window if start is not None and isinstance(window, (int, float)) else None
+    url_contains = flt.get("url_contains")
+    methods = {m.upper() for m in flt.get("methods") or []}
+    count = 0
+    for entry, started in zip(data["log"]["entries"], times):
+        if start is not None and started <= start:
+            continue
+        if end is not None and started > end:
+            continue
+        request = entry.get("request") or {}
+        if url_contains and url_contains not in (request.get("url") or ""):
+            continue
+        if methods and (request.get("method") or "").upper() not in methods:
+            continue
+        if flt.get("exclude_assets") and entry_is_asset(entry):
+            continue
+        count += 1
+    return count
+
+
+def check_performance_evidence(run_dir, finding, path, scope):
+    """Base and head HARs are recorded, and request counts equal the metric exactly."""
+    evidence = finding.get("evidence") or {}
+    signal_id = finding.get("signal_id")
+    head_rel = evidence.get("har_path")
+    base_rel = evidence.get("base_har_path")
+    if signal_id in HAR_COUNT_SIGNALS and not head_rel:
+        raise Inconsistent(f"{path}: {signal_id} needs evidence.har_path (head HAR)")
+    if not head_rel:
+        return
+    if not base_rel:
+        raise Inconsistent(
+            f"{path}: a base-vs-head performance finding carries evidence.base_har_path (the base HAR)"
+        )
+    sides = {}
+    for side, rel in (("base", base_rel), ("head", head_rel)):
+        har_file = require_evidence_file(run_dir, rel, path, "base_har_path" if side == "base" else "har_path")
+        data = load(har_file)
+        sides[side] = (data, check_recorded_har(data, f"{path}: {side} HAR {rel}"))
+    if signal_id not in HAR_COUNT_SIGNALS:
+        return
+    metric = finding["metric"]
+    for side, (data, times) in sides.items():
+        stats = metric[side]
+        counted = count_har_requests(data, times, evidence.get("request_filter"), side, signal_id, path)
+        if stats["n"] != 1 or not (stats["median"] == stats["min"] == stats["max"] == counted):
+            raise Inconsistent(
+                f"{path}: metric.{side} says {stats['median']} (n={stats['n']}) but the {side} HAR holds "
+                f"{counted} counted request(s); the count must match exactly with n=1"
+            )
+
+
+def check_probe_findings(run_dir, summary, loaded_findings):
+    """A deterministic probe that exploited is an exploited finding with the same signal_id."""
+    by_name = {name: finding for name, finding in loaded_findings}
+    known = set(security_row_ids())
+    for i, probe in enumerate(summary.get("probes") or []):
+        if probe.get("outcome") != "exploited" or probe.get("validator") != "deterministic":
+            continue
+        where = f"{run_dir}: probes[{i}]"
+        finding = by_name.get(Path(probe["finding"]).name)
+        if finding is None:
+            raise Inconsistent(f"{where}: finding {probe['finding']!r} does not exist; an exploited deterministic probe is a finding")
+        if finding.get("status") != "exploited" or finding.get("signal_id") != probe["signal_id"]:
+            raise Inconsistent(
+                f"{where}: finding {probe['finding']!r} must be exploited with signal_id {probe['signal_id']!r}"
+            )
+        if probe["signal_id"] not in known:
+            raise Inconsistent(
+                f"{where}: signal_id {probe['signal_id']!r} is not a security row; use the best-matching row id"
+            )
 
 
 def find_har_entry_for_request(req, summaries, used_indices):
@@ -1461,6 +1825,11 @@ def check_finding(data, path="<finding>"):
         raise Inconsistent(f"{path}: evidence.screenshot is null or a nonempty string")
     if not har and not shot:
         raise Inconsistent(f"{path}: evidence names har_path and/or screenshot")
+    base_har = evidence.get("base_har_path")
+    if base_har is not None and not text(base_har):
+        raise Inconsistent(f"{path}: evidence.base_har_path is null or a nonempty string")
+    if evidence.get("request_filter") is not None and not isinstance(evidence["request_filter"], dict):
+        raise Inconsistent(f"{path}: evidence.request_filter is an object when present")
 
     if data["track"] == "performance":
         check_performance_metric(data.get("metric"), path)
@@ -1515,15 +1884,31 @@ def check_summary(data, path="<summary>", finding_count=None):
             raise Inconsistent(f"{where}: matched_paths is a list of strings")
     coverage = data.get("coverage")
     if not isinstance(coverage, list) or not coverage:
-        raise Inconsistent(f"{path}: coverage is a nonempty list (one entry per in-scope changed file)")
+        raise Inconsistent(f"{path}: coverage is a nonempty list (changed files and one reason per security row)")
+    row_reasons = {}
     for i, entry in enumerate(coverage):
         where = f"{path}: coverage[{i}]"
+        if isinstance(entry, dict) and "signal_id" in entry:
+            if not text(entry.get("signal_id")):
+                raise Inconsistent(f"{where}: signal_id is a nonempty string")
+            if entry.get("decision") not in COVERAGE_DECISIONS:
+                raise Inconsistent(f"{where}: decision is one of {', '.join(COVERAGE_DECISIONS)}")
+            if not text(entry.get("reason")):
+                raise Inconsistent(f"{where}: reason is a nonempty string (why the row applies or is skipped)")
+            if entry["signal_id"] in row_reasons:
+                raise Inconsistent(f"{where}: duplicate coverage reason for {entry['signal_id']}")
+            row_reasons[entry["signal_id"]] = entry
+            continue
         if not isinstance(entry, dict) or not text(entry.get("path")):
-            raise Inconsistent(f"{where}: path is required")
+            raise Inconsistent(f"{where}: path (changed file) or signal_id (row reason) is required")
         if not isinstance(entry.get("in_scope"), bool):
             raise Inconsistent(f"{where}: in_scope is a boolean")
         if "notes" in entry and entry["notes"] is not None and not isinstance(entry["notes"], str):
             raise Inconsistent(f"{where}: notes is a string when present")
+    if data["track"] in ("security", "both"):
+        check_security_rows_covered(loaded, row_reasons, path)
+    check_probes(data.get("probes"), data["track"], path)
+    check_performance_scope(data, path)
     conditions = data.get("conditions")
     if not isinstance(conditions, dict):
         raise Inconsistent(f"{path}: conditions is an object")
@@ -1540,6 +1925,80 @@ def check_summary(data, path="<summary>", finding_count=None):
         if declared is not None and declared != finding_count:
             raise Inconsistent(f"{path}: finding_count {declared} does not match {finding_count} finding files")
     return data
+
+
+def security_row_ids(signals_path=SIGNALS):
+    return [row["id"] for row in load_signals(signals_path)]
+
+
+def check_security_rows_covered(loaded, row_reasons, path, signals_path=SIGNALS):
+    """Every security row loads and has an applies/skipped reason in coverage[]."""
+    ids = security_row_ids(signals_path)
+    loaded_ids = {e.get("id") for e in loaded if str(e.get("file", "")).endswith("security-signals.md")}
+    missing_loaded = [i for i in ids if i not in loaded_ids]
+    if missing_loaded:
+        raise Inconsistent(
+            f"{path}: signals_loaded must list every security row (rows always load); missing {', '.join(missing_loaded)}"
+        )
+    missing_reason = [i for i in ids if i not in row_reasons]
+    if missing_reason:
+        raise Inconsistent(
+            f"{path}: coverage needs a {{signal_id, decision, reason}} entry per security row; missing {', '.join(missing_reason)}"
+        )
+
+
+def check_probes(probes, track, path):
+    """probes[]: one record per runtime probe so a deterministic exploit cannot be downgraded silently."""
+    if probes is None:
+        if track in ("security", "both"):
+            raise Inconsistent(f"{path}: probes is a list (one entry per runtime probe; empty when none ran)")
+        return
+    if not isinstance(probes, list):
+        raise Inconsistent(f"{path}: probes is a list")
+    for i, probe in enumerate(probes):
+        where = f"{path}: probes[{i}]"
+        if not isinstance(probe, dict) or not text(probe.get("signal_id")):
+            raise Inconsistent(f"{where}: signal_id is required")
+        if probe.get("validator") not in VALIDATORS:
+            raise Inconsistent(f"{where}: validator is one of {', '.join(VALIDATORS)}")
+        if probe.get("outcome") not in PROBE_OUTCOMES:
+            raise Inconsistent(f"{where}: outcome is one of {', '.join(PROBE_OUTCOMES)}")
+        finding = probe.get("finding")
+        if finding is not None and not text(finding):
+            raise Inconsistent(f"{where}: finding is null or a finding file name")
+        if probe["outcome"] == "exploited" and probe["validator"] == "deterministic" and not finding:
+            raise Inconsistent(
+                f"{where}: a deterministic probe that exploited must name its finding file "
+                "(no downgrade to hypothesis or Giới hạn)"
+            )
+
+
+def check_performance_scope(data, path):
+    """performance_scope says what the project is and which collectors measured it."""
+    scope = data.get("performance_scope")
+    if data["track"] not in ("performance", "both"):
+        return
+    if not isinstance(scope, dict):
+        raise Inconsistent(
+            f"{path}: performance_scope {{project_type, collectors}} is required when the performance track ran"
+        )
+    kind = scope.get("project_type")
+    if kind not in PROJECT_TYPES:
+        raise Inconsistent(f"{path}: performance_scope.project_type is one of {', '.join(PROJECT_TYPES)}")
+    collectors = scope.get("collectors")
+    if not isinstance(collectors, list) or any(c not in SOURCES for c in collectors):
+        raise Inconsistent(f"{path}: performance_scope.collectors lists zero or more of {', '.join(SOURCES)}")
+    allowed = PROJECT_TYPES[kind]
+    bad = [c for c in collectors if c not in allowed]
+    if bad:
+        raise Inconsistent(
+            f"{path}: performance_scope: a {kind} project cannot use {', '.join(bad)} "
+            f"(allowed: {', '.join(allowed) or 'none'})"
+        )
+    if not collectors and not any("performance" in str(x).lower() for x in data.get("limits") or []):
+        raise Inconsistent(
+            f"{path}: performance_scope has no collector; record under limits that performance was not measured"
+        )
 
 
 def check_body_scan_record(record, where):
@@ -1636,9 +2095,30 @@ def check_run_dir(run_dir):
     findings = sorted(run_dir.glob("finding-*.json"))
     exploited = 0
     loaded_findings = []
+    named_findings = []
+    scope = summary.get("performance_scope") or {}
+    perf_rows = {}
+    if any(True for _ in findings):
+        try:
+            perf_rows = {row["id"]: row for row in load_performance_signals(PERF_SIGNALS)}
+        except (Inconsistent, OSError):
+            perf_rows = {}
     for path in findings:
         finding = check_finding(load(path), str(path))
         loaded_findings.append(finding)
+        named_findings.append((path.name, finding))
+        if finding["track"] == "performance":
+            collectors = scope.get("collectors")
+            if isinstance(collectors, list):
+                if not collectors:
+                    raise Inconsistent(f"{path}: performance_scope has no collector, so no performance finding can be measured")
+                row = perf_rows.get(finding["signal_id"])
+                if row and not set(row["sources"]) & set(collectors):
+                    raise Inconsistent(
+                        f"{path}: {finding['signal_id']} is measured by {', '.join(row['sources'])}, "
+                        f"not by this run's collectors ({', '.join(collectors)})"
+                    )
+            check_performance_evidence(run_dir, finding, str(path), scope)
         if finding["status"] == "exploited":
             exploited += 1
         elif finding["status"] in ("hypothesis", "unclear"):
@@ -1670,6 +2150,9 @@ def check_run_dir(run_dir):
                 f"{where}: scan-bodies found {len(hits)} sensitive field hit(s) ({', '.join(keys)}) "
                 "but no exploited sensitive-response finding was written"
             )
+    check_probe_findings(run_dir, summary, named_findings)
+    for har_file in sorted(run_dir.glob("*.har")):
+        check_stored_bodies_redacted(load(har_file), str(har_file))
     check_summary(summary, str(run_dir / "summary.json"), finding_count=exploited)
     return {"summary": summary, "findings": len(findings), "exploited": exploited}
 
@@ -1690,29 +2173,20 @@ def cmd_signals(args):
     default_path = str(PERF_SIGNALS if track == "performance" else SIGNALS)
     signals_path = args.signals or default_path
     paths = [p.strip() for p in (args.paths or "").split(",") if p.strip()] if args.paths is not None else []
-    if args.paths is None and not args.all_always:
-        raise Inconsistent("signals: pass --paths (comma-separated) or --all-always")
+    changes = None
+    if args.diff:
+        changes = parse_unified_diff(Path(args.diff).read_text(encoding="utf-8", errors="replace"))
+        paths = list(dict.fromkeys(paths + list(changes)))
+    if args.paths is None and not args.diff and not args.all_always:
+        raise Inconsistent("signals: pass --paths (comma-separated), --diff <unified diff>, or --all-always")
     rel = signals_relpath(signals_path, track)
+    # Every row loads (security) or every non-off row (performance); paths and diff only add hints.
     if track == "performance":
         rows = load_performance_signals(signals_path)
-        if args.all_always:
-            loaded = [
-                {"id": row["id"], "file": rel, "matched_paths": []}
-                for row in rows
-                if row["level"] != "off"
-            ]
-        else:
-            loaded = match_performance_signals(rows, paths, signals_file=rel)
+        loaded = match_performance_signals(rows, paths, signals_file=rel, changes=changes)
     else:
         rows = load_signals(signals_path)
-        if args.all_always:
-            loaded = match_signals(
-                [r for r in rows if r["trigger"] == TRIGGERS_ALWAYS],
-                [],
-                signals_file=rel,
-            )
-        else:
-            loaded = match_signals(rows, paths, signals_file=rel)
+        loaded = match_signals(rows, paths, signals_file=rel, changes=changes)
     print(json.dumps({"signals_loaded": loaded}, indent=2, ensure_ascii=False))
     return 0
 
@@ -1775,8 +2249,19 @@ def cmd_threshold(args):
 
 
 def cmd_har(args):
-    check_har(load(args.path), args.path)
+    data = load(args.path)
+    check_har(data, args.path)
+    if args.recorded:
+        check_recorded_har(data, args.path)
     print(f"OK {args.path}")
+    return 0
+
+
+def cmd_redact(args):
+    data = load(args.path)
+    count = redact_har(data, args.path)
+    Path(args.out).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"OK {args.out}: {count} value(s) redacted")
     return 0
 
 
@@ -1811,7 +2296,8 @@ def main(argv=None):
     signals.add_argument("--track", choices=("security", "performance"), default="security")
     signals.add_argument("--signals", default=None, help="path to security-signals.md or performance-signals.md")
     signals.add_argument("--paths", default=None, help="comma-separated changed paths to match")
-    signals.add_argument("--all-always", action="store_true", help="emit always rows (security) or all non-off rows (performance)")
+    signals.add_argument("--diff", default=None, help="unified diff file; its changed lines feed content hints")
+    signals.add_argument("--all-always", action="store_true", help="emit every row without hints (rows always load)")
 
     finding = sub.add_parser("finding", help="validate one finding JSON file")
     finding.add_argument("path")
@@ -1849,6 +2335,12 @@ def main(argv=None):
 
     har_cmd = sub.add_parser("har", help="validate a HAR file against the evidence contract (full bodies, size)")
     har_cmd.add_argument("path")
+    har_cmd.add_argument("--recorded", action="store_true",
+                         help="also require a measuring-tool HAR (creator, real startedDateTime values)")
+
+    redact_cmd = sub.add_parser("redact", help="replace secret values in stored bodies with the marker, keeping field names")
+    redact_cmd.add_argument("path")
+    redact_cmd.add_argument("--out", required=True)
 
     scan_cmd = sub.add_parser(
         "scan-bodies",
@@ -1879,6 +2371,8 @@ def main(argv=None):
             return cmd_threshold(args)
         if args.command == "har":
             return cmd_har(args)
+        if args.command == "redact":
+            return cmd_redact(args)
         if args.command == "scan-bodies":
             return cmd_scan_bodies(args)
     except Inconsistent as error:

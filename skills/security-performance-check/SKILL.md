@@ -39,12 +39,12 @@ Use `<evidence root>/<slug>/security-performance/`, under the evidence root that
 
 | File | Holds |
 | --- | --- |
-| `summary.json` | Run summary: `signals_loaded[]`, `coverage[]`, `conditions{}`, `limits[]` |
+| `summary.json` | Run summary: `signals_loaded[]`, `coverage[]`, `probes[]`, `performance_scope{}`, `conditions{}`, `limits[]` |
 | `finding-<n>.json` | One file per finding (only `exploited` status) |
 | HAR / screenshots / traces | Full-body request evidence (see evidence contract), screenshots, or metric dumps named from the finding |
 
-Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, `run`, `aggregate`, `threshold`, `har`, or `scan-bodies`).
-Read `references/evidence-contract.md` for the HAR body, redaction, and access-classification rules the checker enforces.
+Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, `run`, `aggregate`, `threshold`, `har`, `redact`, or `scan-bodies`).
+Read `references/evidence-contract.md` for the HAR body, redaction, coverage, probe, performance-evidence, and access-classification rules the checker enforces.
 
 ## Project runtime
 
@@ -58,18 +58,19 @@ If those fields are missing, stop before probes and record the gap under `Giới
 An edited copy is kept by `update --apply`.
 Editing a row changes which signals load and match without touching this `SKILL.md`.
 
-Load matching rows into `signals_loaded[]` (id, file, matched paths) via the checker or by reading the table the same way.
-Security: keep `always` rows few so context stays small; they always load, and `matched_paths` still lists which changed paths hit their `paths/patterns` (may be empty).
-Other (`tag:`) rows load only when changed paths hit their `paths/patterns`.
-Performance: skip `level: off` rows; other rows match when changed paths or routes hit `route_pattern`.
+The checks work for any language or framework: rows describe behavior, not file types.
+Every security row loads on every security run, and every performance row except `level: off` loads on every performance run.
+Path and content hints never decide whether a row loads; they only say which changed files to read first.
+Run `check_findings.py signals --diff <unified diff>` to get `signals_loaded[]` (id, file, hinted `matched_paths`, possibly empty).
 
 ## Security flow
 
 1. **Map entry points and trust boundaries** for changed routes, endpoints, and inputs.
    List what an attacker cannot do, so severity is not inflated.
    Write `coverage[]` with one entry per in-scope changed file so skipped files are visible.
+   Add one `{signal_id, decision: applies|skipped, reason}` entry per security row, decided from the code (a Rails `redirect_to params[:next]` applies to `open-redirect` even when no path hint matched); the checker rejects a summary where any row lacks a reason.
 
-2. **Static pass** only for signals whose triggers match.
+2. **Static pass** for every row whose decision is `applies`.
    Apply each row's do-not-flag list (tests, dead code, env/config values, framework-escaped output, UI-only hiding when the server enforces).
 
 3. **For each candidate**, trace source → sink and answer four questions:
@@ -88,12 +89,16 @@ Performance: skip `level: off` rows; other rows match when changed paths or rout
    - Object access: account B touching account A's object by every ID location (path, query, body, header, cookie).
    - Deterministic validators where possible: injected markup counts only if a dialog with a unique marker fires; an open redirect counts only if the browser lands on a local canary.
      Never use public callback or OAST services.
+   - Record every probe in `summary.probes[]` (`signal_id`, `validator`, `outcome`, `finding`).
+     A `deterministic` probe that exploited is an exploited finding whose `signal_id` is the best-matching security row, never a hypothesis or a `Giới hạn` note.
    - Store every probed response as a **full HAR body** (no `body_preview`, no hand reconstruction).
-     Redact in place with `«REDACTED»` and `_spc_redaction` when needed; validate with `check_findings.py har`.
+     Validate with `check_findings.py har`.
    - After probes, run `check_findings.py scan-bodies` on every saved HAR.
-     Each hit is an exploited `sensitive-response` finding even when that signal row was not loaded.
+     Each hit is an exploited `sensitive-response` finding whatever that row's coverage decision was.
      Record the scan in `summary.body_scan` or `body-scan.json` (`ran: true`, plus any `allow` exemptions); `check_findings.py run` requires it whenever the security track ran, re-scans the HARs, and fails on any hit without an exploited `sensitive-response` finding.
      Document legitimate fields with `_spc_scan_allow` or `--allow key:reason`; password hashes and private keys are never exemptable.
+   - Then run `check_findings.py redact <har> --out <stored har>`: passwords, hashes, tokens, and secrets become `«REDACTED»` with the field name kept and `_spc_redaction` written.
+     Findings cite the stored body's length and hash; `run` rejects a HAR that still holds such a value.
    - Compare head with base: a probe that succeeds on head and fails on base is `introduced`; one that succeeds on both is `pre-existing`.
    - Reset data around probes that write; stop at the probe budget and report "probes not run: N".
 
@@ -101,8 +106,13 @@ Performance: skip `level: off` rows; other rows match when changed paths or rout
 
 ## Performance flow
 
-Use zero-install collectors only: Playwright through `runtime-e2e-test` infra (request count, payload bytes, response time, long tasks, and Core Web Vitals via `PerformanceObserver` / trace), plus build output for bundle size per entry.
-Use Lighthouse only when the target project already has it configured; otherwise record under `Giới hạn` that Lighthouse was skipped.
+First decide the project type and record `summary.performance_scope = {project_type, collectors}`:
+
+| Project type | Collectors |
+| --- | --- |
+| web UI | Playwright through `runtime-e2e-test` (request count, payload bytes, response time, long tasks, Core Web Vitals via `PerformanceObserver` / trace), build output for bundle size, Lighthouse only when the project already has it. |
+| API only | An HTTP client that records a HAR with real request start times: request count and response time per changed endpoint. |
+| CLI, mobile, library | None. Record under `Giới hạn` that performance was not measured; never report a number that was not collected. |
 Do not add Mann-Whitney, KS, or Cliff's delta gates in this revision.
 
 1. **Build base and head** in the #44 worktrees from `runtime-e2e-test`.
@@ -111,6 +121,7 @@ Do not add Mann-Whitney, KS, or Cliff's delta gates in this revision.
 
 2. **Exact metrics** (`metric_class: exact`): request count per flow, bundle size per entry, payload bytes, and `background-requests`.
    One run per side; compare with an exact diff against the row's threshold (for example `count <= base`).
+   Keep both HARs from the collector (`evidence.har_path` head, `evidence.base_har_path` base) and describe the count in `evidence.request_filter`; `run` recounts each HAR and requires the exact metric value.
    For `background-requests`: open each changed page, navigate to another same-origin page, count post-navigation background HTTP(S) requests for **15 seconds** (see `performance-signals.md`); head > base fails via `count <= base`.
 
 3. **Noisy metrics** (`metric_class: noisy`): LCP, CLS, INP/TBT, response time, long tasks.
@@ -194,12 +205,17 @@ Performance finding (no `validator` field; security findings require `validator`
     "aa_spread": null,
     "verdict": "fail"
   },
-  "evidence": {"har_path": "finding-1.har", "screenshot": null},
+  "evidence": {
+    "har_path": "head-orders.har",
+    "base_har_path": "base-orders.har",
+    "screenshot": null,
+    "request_filter": {"url_contains": "/api/", "exclude_assets": true}
+  },
   "fix_hint": "Collapse per-row fetches into one list endpoint."
 }
 ```
 
-Run summary:
+Run summary (the real file lists every security row in `signals_loaded` and `coverage`; three are shown):
 
 ```json
 {
@@ -208,9 +224,18 @@ Run summary:
   "target": {"label": "PR #12"},
   "signals_loaded": [
     {"id": "object-id-access", "file": "references/security-signals.md", "matched_paths": ["src/orders/get.ts"]},
+    {"id": "markup-render", "file": "references/security-signals.md", "matched_paths": []},
     {"id": "request-count", "file": "references/performance-signals.md", "matched_paths": ["src/orders/list.tsx"]}
   ],
-  "coverage": [{"path": "src/orders/list.tsx", "in_scope": true, "notes": ""}],
+  "coverage": [
+    {"path": "src/orders/list.tsx", "in_scope": true, "notes": ""},
+    {"signal_id": "object-id-access", "decision": "applies", "reason": "GET handler loads an order by the id path parameter"},
+    {"signal_id": "markup-render", "decision": "skipped", "reason": "no changed template or view renders user data"}
+  ],
+  "probes": [
+    {"signal_id": "object-id-access", "validator": "agent", "outcome": "exploited", "finding": "finding-1.json"}
+  ],
+  "performance_scope": {"project_type": "web-ui", "collectors": ["playwright", "build"]},
   "conditions": {
     "base": "...",
     "head": "...",

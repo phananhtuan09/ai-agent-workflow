@@ -3964,6 +3964,55 @@ function checkFindings(args, cwd = SOURCE_ROOT) {
   return spawnSync("python3", ["-B", CHECK_FINDINGS, ...args], { cwd, encoding: "utf8" });
 }
 
+// Every security row loads; a summary lists all of them with one coverage reason each.
+function securityRowIds() {
+  const result = checkFindings(["signals", "--all-always"]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  return JSON.parse(result.stdout).signals_loaded.map((s) => s.id);
+}
+
+function allSecurityRows(hints = {}) {
+  return securityRowIds().map((id) => ({ id, file: "references/security-signals.md", matched_paths: hints[id] || [] }));
+}
+
+function rowReasons(applies = {}) {
+  return securityRowIds().map((id) => (applies[id]
+    ? { signal_id: id, decision: "applies", reason: applies[id] }
+    : { signal_id: id, decision: "skipped", reason: "the diff has no code with this behavior" }));
+}
+
+// Replace the path-hint and/or content-hint cell of one signal row (security: cells 2/3, performance: 7/8).
+function editSignalRow(doc, id, { paths, content }, track = "security") {
+  const [pathCell, contentCell] = track === "performance" ? [7, 8] : [2, 3];
+  let changed = false;
+  const out = doc.split("\n").map((line) => {
+    if (!line.startsWith(`| \`${id}\` |`)) return line;
+    const parts = line.split(" | ");
+    if (paths !== undefined) parts[pathCell] = paths;
+    if (content !== undefined) parts[contentCell] = content;
+    changed = true;
+    return parts.join(" | ");
+  }).join("\n");
+  assert.ok(changed, `signal row ${id} not found`);
+  return out;
+}
+
+// A HAR as a collector writes it: creator plus real per-request start times.
+function recordedHar(urls) {
+  return {
+    log: {
+      version: "1.2",
+      creator: { name: "Playwright", version: "1.48.0" },
+      entries: urls.map((url, i) => ({
+        startedDateTime: new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 100 * (i + 1))).toISOString(),
+        time: 10,
+        request: { method: "GET", url },
+        response: { status: 200, content: { size: 2, mimeType: "application/json", text: "{}" } },
+      })),
+    },
+  };
+}
+
 test("security-performance-check is a manual command and the JSON checker validates findings and summaries", () => {
   const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/SKILL.md"), "utf8");
   assert.ok(skill.includes("disable-model-invocation: true"));
@@ -3972,7 +4021,11 @@ test("security-performance-check is a manual command and the JSON checker valida
   assert.ok(skill.includes("Noise floor"));
   assert.ok(!skill.includes("performance track is not available yet"));
   assert.ok(skill.includes("use placeholders only"));
-  assert.ok(skill.includes("always load"));
+  assert.ok(skill.includes("Every security row loads on every security run"));
+  assert.ok(skill.includes("never decide whether a row loads"));
+  assert.ok(skill.includes("performance_scope"));
+  assert.ok(skill.includes("never a hypothesis"));
+  assert.ok(skill.includes("check_findings.py redact"));
   assert.ok(skill.includes("no `validator` field") || skill.includes("no validator field"));
   assert.ok(skill.includes("scan-bodies"));
   assert.ok(skill.includes("evidence-contract.md"));
@@ -3980,12 +4033,20 @@ test("security-performance-check is a manual command and the JSON checker valida
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
   assert.ok(fs.existsSync(path.join(SOURCE_ROOT, "skills/security-performance-check/references/evidence-contract.md")));
   const signalsDoc = fs.readFileSync(SECURITY_SIGNALS, "utf8");
-  assert.ok(signalsDoc.includes("loads only when a changed path matches"));
+  assert.ok(signalsDoc.includes("Every row loads on every security run, in any language or framework."));
+  assert.ok(!signalsDoc.includes("loads only when a changed path matches"));
   assert.ok(!signalsDoc.includes("when the agent tags the area"));
   assert.ok(signalsDoc.includes("`**/server/**`"));
+  for (const sink of ["dangerouslySetInnerHTML", "v-html", "mark_safe", "html_safe", "{!!", "@Html.Raw", "th:utext", "template.HTML"]) {
+    assert.ok(signalsDoc.includes(sink), sink);
+  }
+  // Path hints carry no extension lists, so no stack is left out.
+  assert.ok(!/\*\.\{[a-z,]+\}/.test(signalsDoc), "security-signals.md still lists file extensions");
   const perfDoc = fs.readFileSync(PERFORMANCE_SIGNALS, "utf8");
   assert.ok(perfDoc.includes("`background-requests`"));
   assert.ok(perfDoc.includes("15 seconds") || perfDoc.includes("**15 seconds**"));
+  assert.ok(perfDoc.includes("`api-only`") && perfDoc.includes("`cli`, `mobile`, `library`"));
+  assert.ok(!/\*\.\{[a-z,]+\}/.test(perfDoc), "performance-signals.md still lists file extensions");
   const runtime = fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/project-runtime.md"), "utf8");
   assert.ok(runtime.includes("## Security and performance probes"));
   assert.ok(runtime.includes("Allowed hosts:"));
@@ -4024,8 +4085,12 @@ test("security-performance-check is a manual command and the JSON checker valida
       schema: "security-performance-check/summary@1",
       track: "security",
       target: { label: "PR #1" },
-      signals_loaded: [{ id: "object-id-access", file: "references/security-signals.md", matched_paths: ["src/orders/get.ts"] }],
-      coverage: [{ path: "src/orders/get.ts", in_scope: true, notes: "" }],
+      signals_loaded: allSecurityRows({ "object-id-access": ["src/orders/get.ts"] }),
+      coverage: [
+        { path: "src/orders/get.ts", in_scope: true, notes: "" },
+        ...rowReasons({ "object-id-access": "GET handler loads an order by the id path parameter" }),
+      ],
+      probes: [{ signal_id: "object-id-access", validator: "agent", outcome: "exploited", finding: "finding-1.json" }],
       conditions: { host: "http://127.0.0.1:3000" },
       body_scan: { ran: true, hars: ["finding-1.har"], hit_count: 0 },
       limits: ["Not a penetration test, dependency CVE audit, or load test."],
@@ -4044,6 +4109,14 @@ test("security-performance-check is a manual command and the JSON checker valida
     let result = checkFindings(["run", runDir]);
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(result.stdout.includes("1 exploited finding"));
+
+    // A row without a coverage reason is rejected.
+    const reasonless = { ...summary, coverage: summary.coverage.filter((c) => c.signal_id !== "markup-render") };
+    writeJson(path.join(runDir, "summary.json"), reasonless);
+    result = checkFindings(["run", runDir]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("markup-render"), result.stderr);
+    writeJson(path.join(runDir, "summary.json"), summary);
 
     result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
     assert.strictEqual(result.status, 0, result.stderr);
@@ -4129,30 +4202,40 @@ test("security-performance-check is a manual command and the JSON checker valida
         aa_spread: null,
         verdict: "fail",
       },
-      evidence: { har_path: "finding-perf.har", screenshot: null },
+      evidence: {
+        har_path: "finding-perf.har",
+        base_har_path: "base-perf.har",
+        screenshot: null,
+        request_filter: { url_contains: "/api/orders" },
+      },
       fix_hint: "Collapse per-row fetches into one list endpoint.",
     };
     writeJson(path.join(runDir, "finding-1.json"), perfFinding);
-    writeJson(path.join(runDir, "finding-perf.har"), {
-      log: {
-        version: "1.2",
-        entries: [{
-          request: { method: "GET", url: "http://127.0.0.1:3000/orders" },
-          response: { status: 200, content: { size: 0, mimeType: "text/html", text: "" } },
-        }],
-      },
-    });
+    const orderUrls = (n) => Array.from({ length: n }, (_, i) => `http://127.0.0.1:3000/api/orders/${i + 1}`);
+    writeJson(path.join(runDir, "base-perf.har"), recordedHar(orderUrls(2)));
+    writeJson(path.join(runDir, "finding-perf.har"), recordedHar(orderUrls(12)));
+    fs.rmSync(path.join(runDir, "finding-1.har"));
     writeJson(path.join(runDir, "summary.json"), {
       schema: "security-performance-check/summary@1",
       track: "performance",
       target: { label: "PR #1" },
       signals_loaded: [{ id: "request-count", file: "references/performance-signals.md", matched_paths: ["src/orders/list.tsx"] }],
       coverage: [{ path: "src/orders/list.tsx", in_scope: true, notes: "" }],
+      performance_scope: { project_type: "web-ui", collectors: ["playwright"] },
       conditions: { host: "http://127.0.0.1:3000", viewport: "1280x720" },
       limits: ["Not a penetration test, dependency CVE audit, or load test."],
     });
     result = checkFindings(["run", runDir]);
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    result = checkFindings(["har", "--recorded", path.join(runDir, "base-perf.har")]);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+
+    // The HAR count must equal the metric exactly.
+    writeJson(path.join(runDir, "finding-perf.har"), recordedHar(orderUrls(11)));
+    result = checkFindings(["run", runDir]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("must match exactly"), result.stderr);
+    writeJson(path.join(runDir, "finding-perf.har"), recordedHar(orderUrls(12)));
 
     perfFinding.metric.verdict = "pass";
     writeJson(path.join(runDir, "finding-1.json"), perfFinding);
@@ -4300,35 +4383,35 @@ test("performance threshold helper applies median, range, and A/A noise floor", 
   assert.strictEqual(JSON.parse(result.stdout).verdict, "fail");
 });
 
-test("editing security-signals.md changes signals_loaded and survives update --apply", () => {
+test("editing security-signals.md changes hints, never loading, and survives update --apply", () => {
+  const allIds = securityRowIds();
   const before = checkFindings(["signals", "--signals", SECURITY_SIGNALS, "--paths", "src/api/orders.ts"]);
   assert.strictEqual(before.status, 0, before.stderr || before.stdout);
   const beforeLoaded = JSON.parse(before.stdout).signals_loaded;
-  const beforeIds = beforeLoaded.map((s) => s.id);
-  assert.ok(beforeIds.includes("authz-route"), before.stdout);
-  assert.ok(beforeIds.includes("object-id-access"), before.stdout);
-  assert.ok(beforeIds.includes("sensitive-response"), before.stdout);
-  // always rows load even when matched_paths is empty (path filter does not gate them).
-  const alwaysOnly = checkFindings(["signals", "--signals", SECURITY_SIGNALS, "--paths", "README.md"]);
-  assert.strictEqual(alwaysOnly.status, 0, alwaysOnly.stderr || alwaysOnly.stdout);
-  const alwaysLoaded = JSON.parse(alwaysOnly.stdout).signals_loaded;
-  assert.ok(alwaysLoaded.some((s) => s.id === "authz-route" && Array.isArray(s.matched_paths) && s.matched_paths.length === 0), alwaysOnly.stdout);
-  assert.ok(!alwaysLoaded.some((s) => s.id === "sensitive-response"), alwaysOnly.stdout);
+  assert.deepStrictEqual(beforeLoaded.map((s) => s.id), allIds);
+  const hinted = (loaded, id) => loaded.find((s) => s.id === id).matched_paths.length > 0;
+  assert.ok(hinted(beforeLoaded, "authz-route"), before.stdout);
+  assert.ok(hinted(beforeLoaded, "object-id-access"), before.stdout);
+  assert.ok(hinted(beforeLoaded, "sensitive-response"), before.stdout);
+  // A docs-only change still loads every row; it just hints none.
+  const docsOnly = checkFindings(["signals", "--signals", SECURITY_SIGNALS, "--paths", "README.md"]);
+  assert.strictEqual(docsOnly.status, 0, docsOnly.stderr || docsOnly.stdout);
+  const docsLoaded = JSON.parse(docsOnly.stdout).signals_loaded;
+  assert.deepStrictEqual(docsLoaded.map((s) => s.id), allIds);
+  assert.ok(docsLoaded.every((s) => s.matched_paths.length === 0), docsOnly.stdout);
 
   const editedCopy = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "spc-signals-")), "security-signals.md");
   const original = fs.readFileSync(SECURITY_SIGNALS, "utf8");
-  // Narrow sensitive-response so src/api/orders.ts no longer matches; leave SKILL.md untouched.
-  const edited = original.replace(
-    "| `sensitive-response` | tag:sensitive | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/server/**`, `**/backend/**`, `**/app/**`, `**/serializers/**`, `**/dto/**`, `**/graphql/**`, `**/*response*`, `**/*serializer*` |",
-    "| `sensitive-response` | tag:sensitive | `**/serializers/**`, `**/dto/**`, `**/graphql/**`, `**/*response*` |"
-  );
+  // Narrow sensitive-response's path hints; leave SKILL.md untouched.
+  const edited = editSignalRow(original, "sensitive-response", { paths: "`**/serializers/**`" });
   assert.ok(edited !== original, "fixture edit must change the signal row");
   fs.writeFileSync(editedCopy, edited);
   const after = checkFindings(["signals", "--signals", editedCopy, "--paths", "src/api/orders.ts"]);
   assert.strictEqual(after.status, 0, after.stderr || after.stdout);
-  const afterIds = JSON.parse(after.stdout).signals_loaded.map((s) => s.id);
-  assert.ok(afterIds.includes("authz-route"), after.stdout);
-  assert.ok(!afterIds.includes("sensitive-response"), after.stdout);
+  const afterLoaded = JSON.parse(after.stdout).signals_loaded;
+  assert.deepStrictEqual(afterLoaded.map((s) => s.id), allIds);
+  assert.ok(hinted(afterLoaded, "authz-route"), after.stdout);
+  assert.ok(!hinted(afterLoaded, "sensitive-response"), after.stdout);
 
   const fixture = createUpdateFixture("claude");
   try {
@@ -4351,14 +4434,16 @@ test("editing security-signals.md changes signals_loaded and survives update --a
     assert.strictEqual(fs.readFileSync(installedSignals, "utf8"), edited);
     const surviving = checkFindings(["signals", "--signals", installedSignals, "--paths", "src/api/orders.ts"]);
     assert.strictEqual(surviving.status, 0, surviving.stderr || surviving.stdout);
-    assert.ok(!JSON.parse(surviving.stdout).signals_loaded.map((s) => s.id).includes("sensitive-response"), surviving.stdout);
+    const survivingLoaded = JSON.parse(surviving.stdout).signals_loaded;
+    assert.deepStrictEqual(survivingLoaded.map((s) => s.id), allIds);
+    assert.ok(!hinted(survivingLoaded, "sensitive-response"), surviving.stdout);
   } finally {
     fixture.cleanup();
     fs.rmSync(path.dirname(editedCopy), { recursive: true, force: true });
   }
 });
 
-test("editing performance-signals.md changes signals_loaded and survives update --apply", () => {
+test("editing performance-signals.md changes hints, never loading, and survives update --apply", () => {
   const before = checkFindings([
     "signals",
     "--track", "performance",
@@ -4366,17 +4451,15 @@ test("editing performance-signals.md changes signals_loaded and survives update 
     "--paths", "src/pages/orders.tsx",
   ]);
   assert.strictEqual(before.status, 0, before.stderr || before.stdout);
-  const beforeIds = JSON.parse(before.stdout).signals_loaded.map((s) => s.id);
-  assert.ok(beforeIds.includes("request-count"), before.stdout);
-  assert.ok(beforeIds.includes("lcp"), before.stdout);
+  const beforeLoaded = JSON.parse(before.stdout).signals_loaded;
+  const perfHinted = (loaded, id) => loaded.find((s) => s.id === id).matched_paths.length > 0;
+  assert.ok(perfHinted(beforeLoaded, "request-count"), before.stdout);
+  assert.ok(perfHinted(beforeLoaded, "lcp"), before.stdout);
 
   const editedCopy = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "spc-perf-signals-")), "performance-signals.md");
   const original = fs.readFileSync(PERFORMANCE_SIGNALS, "utf8");
   // Narrow request-count so src/pages/orders.tsx no longer matches; leave SKILL.md untouched.
-  const edited = original.replace(
-    "| `request-count` | exact | playwright | lower_better | count | `count <= base` | 1 | `**/*.{tsx,jsx,vue,html}`, `**/pages/**`, `**/app/**`, `**/routes/**`, `**/api/**` | error |",
-    "| `request-count` | exact | playwright | lower_better | count | `count <= base` | 1 | `**/routes/**`, `**/api/**` | error |"
-  );
+  const edited = editSignalRow(original, "request-count", { paths: "`**/routes/**`" }, "performance");
   assert.ok(edited !== original, "fixture edit must change the performance signal row");
   fs.writeFileSync(editedCopy, edited);
   const after = checkFindings([
@@ -4386,9 +4469,10 @@ test("editing performance-signals.md changes signals_loaded and survives update 
     "--paths", "src/pages/orders.tsx",
   ]);
   assert.strictEqual(after.status, 0, after.stderr || after.stdout);
-  const afterIds = JSON.parse(after.stdout).signals_loaded.map((s) => s.id);
-  assert.ok(afterIds.includes("lcp"), after.stdout);
-  assert.ok(!afterIds.includes("request-count"), after.stdout);
+  const afterLoaded = JSON.parse(after.stdout).signals_loaded;
+  assert.deepStrictEqual(afterLoaded.map((s) => s.id), beforeLoaded.map((s) => s.id));
+  assert.ok(perfHinted(afterLoaded, "lcp"), after.stdout);
+  assert.ok(!perfHinted(afterLoaded, "request-count"), after.stdout);
 
   const fixture = createUpdateFixture("claude");
   try {
@@ -4415,7 +4499,7 @@ test("editing performance-signals.md changes signals_loaded and survives update 
       "--paths", "src/pages/orders.tsx",
     ]);
     assert.strictEqual(surviving.status, 0, surviving.stderr || surviving.stdout);
-    assert.ok(!JSON.parse(surviving.stdout).signals_loaded.map((s) => s.id).includes("request-count"), surviving.stdout);
+    assert.ok(!perfHinted(JSON.parse(surviving.stdout).signals_loaded, "request-count"), surviving.stdout);
   } finally {
     fixture.cleanup();
     fs.rmSync(path.dirname(editedCopy), { recursive: true, force: true });
@@ -4446,7 +4530,7 @@ function riskRepoWithApiChange() {
   git("add", ".");
   git("commit", "-qm", "base");
   const base = git("rev-parse", "HEAD");
-  fs.writeFileSync(path.join(root, "src/api/orders.ts"), "export const get = (id) => load(id);\n");
+  fs.writeFileSync(path.join(root, "src/api/orders.ts"), "export const get = (req) => Order.findById(req.params.id);\n");
   git("commit", "-qam", "api");
   const run = path.join(root, ".runtime-e2e/x/validate");
   fs.mkdirSync(run, { recursive: true });
@@ -4465,7 +4549,7 @@ function riskRepoWithApiChange() {
   return { root, base, run, cleanup() { fs.rmSync(root, { recursive: true, force: true }); } };
 }
 
-test("validate-change risk reads installed signal files into separateTests; editing a trigger changes them", () => {
+test("validate-change risk reads installed signal files into separateTests; content hints survive narrow paths", () => {
   const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
   const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
   const signalsPath = path.join(skillsRoot, "security-performance-check/references/security-signals.md");
@@ -4490,14 +4574,19 @@ test("validate-change risk reads installed signal files into separateTests; edit
     assert.ok(result.stdout.includes("separateTests:"), result.stdout);
 
     const original = fs.readFileSync(signalsPath, "utf8");
-    // Narrow object-id-access so src/api/orders.ts no longer matches, without touching SKILL.md or risk-rules.md.
-    const edited = original.replace(
-      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/server/**`, `**/backend/**`, `**/serializers/**`, `**/dto/**`, `**/*route*.*`, `**/*handler*.*`, `**/*controller*.*`, `**/*.{ts,tsx,js,jsx,py,go}` |",
-      "| `object-id-access` | always | `**/never-match/**` |"
-    );
+    // Path hints that never match do not drop the row: the changed lines still hit its content hints.
+    let edited = editSignalRow(original, "object-id-access", { paths: "`**/never-match/**`" });
     assert.ok(edited !== original, "fixture edit must change the signal row");
     fs.writeFileSync(signalsPath, edited);
+    result = runRisk();
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const pathless = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
+    const pathlessIds = pathless.separateTests.filter((e) => e.area === "security").map((e) => e.signal.split(":")[0]);
+    assert.ok(pathlessIds.includes("object-id-access"), pathlessIds.join(","));
 
+    // Clearing both hint cells is a real edit to the file, and the row stops being recommended.
+    edited = editSignalRow(original, "object-id-access", { paths: "`**/never-match/**`", content: "`never-match-token`" });
+    fs.writeFileSync(signalsPath, edited);
     result = runRisk();
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const after = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
@@ -4677,10 +4766,7 @@ test("editing a signal file after risk makes report fail with Inconsistent", () 
     assert.ok(before.separateTests.length > 0);
 
     const original = fs.readFileSync(signalsPath, "utf8");
-    const edited = original.replace(
-      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/server/**`, `**/backend/**`, `**/serializers/**`, `**/dto/**`, `**/*route*.*`, `**/*handler*.*`, `**/*controller*.*`, `**/*.{ts,tsx,js,jsx,py,go}` |",
-      "| `object-id-access` | always | `**/never-match/**` |"
-    );
+    const edited = editSignalRow(original, "object-id-access", { paths: "`**/never-match/**`", content: "`never-match-token`" });
     assert.ok(edited !== original);
     fs.writeFileSync(signalsPath, edited);
 
