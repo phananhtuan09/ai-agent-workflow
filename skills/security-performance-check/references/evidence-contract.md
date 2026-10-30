@@ -7,15 +7,34 @@ Machine-checkable rules for probe evidence under this skill's run directory.
 
 Every probed HTTP response that is cited as evidence MUST be stored as a full HAR entry body.
 
-- Store the complete body in `log.entries[].response.content.text`.
-- Set `content.size` to the UTF-8 byte length of that stored `text` (HAR encoding `utf-8` when text is present).
-- Do not truncate (`body_preview`, first N characters), omit (`text` missing while `size > 0`), or reconstruct the body by hand from memory or logs.
+### How the body is stored
+
+Supported layouts (Playwright / Chrome HAR):
+
+| Layout | Fields | `content.size` equals |
+| --- | --- | --- |
+| Plain text | `content.text` (no `encoding`) | UTF-8 byte length of `text` |
+| Base64 embed | `content.encoding: "base64"` + `content.text` | **Decoded** byte length of `text` |
+| Attach / sidecar | `content._file` (path relative to the HAR file) | Byte length of the sidecar file |
+
+- A missing sidecar named by `_file` is an error.
+- Do not truncate (`body_preview`, first N characters), omit a required body, or reconstruct the body by hand from memory or logs.
 - Do not use placeholder body hashes such as `sha256:omitted`, `omitted`, `truncated`, or `redacted`.
-- Finding `requests[].length` is the same UTF-8 byte length as the stored body; `requests[].body_hash` is `sha256:` plus the hex digest of those stored bytes.
+- Finding `requests[].length` is the same byte length as the stored body; `requests[].body_hash` is `sha256:` plus the hex digest of those stored bytes.
+
+### When full-body rules are enforced
+
+The checker enforces “body present and `size` matches stored bytes” only when at least one of the following is true:
+
+1. The entry is a **probed** response: its method + URL match a finding `requests[]` entry (during `run` / finding↔HAR cross-check), or
+2. The entry’s `mimeType` is **text / JSON / HTML** (and similar: `text/*`, `application/json`, `application/xml`, `application/javascript`, `+json` / `+xml`, form-urlencoded, GraphQL).
+
+Entries that are neither probed nor text-JSON-HTML (static assets, images, fonts, and similar) do **not** fail the HAR when `text` / `_file` is absent.
+If such an entry still carries `_file` or `text`, a present body is size-checked; a declared `_file` whose sidecar is missing is always an error.
 
 ### In-place redaction
 
-When a body must not retain a secret in cleartext, redact **in place** inside `content.text`:
+When a body must not retain a secret in cleartext, redact **in place** inside the stored UTF-8 body text:
 
 1. Replace each sensitive span with the fixed marker `«REDACTED»` (U+00AB REDACTED U+00BB).
 2. Attach metadata on the same `content` object:
@@ -30,26 +49,39 @@ When a body must not retain a secret in cleartext, redact **in place** inside `c
 
 - `marker` MUST be exactly `«REDACTED»`.
 - `paths` lists JSONPath-like or dotted field names that were redacted (nonempty when any replacement occurred).
-- `ranges` lists `[start, end)` character offsets into the **stored** (already redacted) `text` covering each marker occurrence; every range MUST equal the marker string.
-- After redaction, `content.size` still equals the UTF-8 byte length of the stored `text` (the redacted body is the evidence body).
+- `ranges` lists `[start, end)` character offsets into the **stored** (already redacted) text covering each marker occurrence; every range MUST equal the marker string.
+- After redaction, `content.size` still equals the stored body byte length (decoded length when `encoding` is `base64`, or sidecar length when `_file` is used).
 
 The checker rejects a HAR entry when:
 
-- `content.size` ≠ UTF-8 byte length of `content.text`;
-- `size > 0` but `text` is missing or not a string;
+- for a probed or text-JSON-HTML entry, `content.size` ≠ stored body byte length;
+- for a probed or text-JSON-HTML entry, `size > 0` but neither `text` nor `_file` provides a body;
+- `_file` is set but the sidecar cannot be read;
 - `_spc_redaction` is present but malformed (wrong marker, empty paths when ranges exist, range not equal to the marker);
-- a finding references a HAR whose body length disagrees with `requests[].length`, or whose digest disagrees with `requests[].body_hash`.
+- a finding references a HAR path that does not exist on disk;
+- a finding request has no matching HAR entry by method + URL (order-preserving among duplicates), or length / `body_hash` disagree with that entry.
+
+## Finding ↔ HAR cross-check
+
+`check_findings.py run` always cross-checks security findings that cite `evidence.har_path`:
+
+- Missing `har_path` / `screenshot` files are errors (not silent skips).
+- Each `requests[]` item is matched to a HAR entry by **method + URL** (relative and absolute URLs that share path+query match). Among duplicates, the first unused HAR entry in file order wins.
+- Differing request vs entry counts do **not** skip the check; an unmatched request is an error.
 
 ## Access classification
 
-Authz and object-access probes record expected vs observed access on each `requests[]` entry:
+Authz and object-access probes record expected vs observed access on each `requests[]` entry.
+
+For `signal_id` `authz-route` and `object-id-access`, **`role`, `expected_access`, `observed_access`, and `access_verdict` are required** on every request.
+A `bypassed` verdict without those access fields is always rejected (any signal).
 
 | Field | Values | Meaning |
 | --- | --- | --- |
 | `role` | nonempty string | Caller identity used for the probe (already required). |
 | `expected_access` | `allow` \| `deny` | Whether this caller is authorized for this resource/action. Owner or higher-privilege role reading/writing data they are allowed to access is `allow`. |
 | `observed_access` | `allow` \| `deny` \| `unclear` | What the response showed vs the project's access-denied fingerprint. |
-| `access_verdict` | `allowed` \| `enforced` \| `bypassed` \| `unclear` | Classification for the report. |
+| `access_verdict` | `allowed` \| `enforced` \| `bypassed` \| `unclear` | Classification for the report; must match the derivation below. |
 | `caller_authorized` | boolean (optional) | Explicit authorized-caller flag; when true, `expected_access` must be `allow`. |
 
 Derivation (when `expected_access` and `observed_access` are both set and observed is not `unclear`):
@@ -66,4 +98,33 @@ It is inconsistent (checker rejects) when `expected_access` is `allow`, when `ca
 
 After probes, run `check_findings.py scan-bodies <har>` on every saved HAR.
 A hit is an exploited finding (`signal_id: sensitive-response`), even when that signal row was not loaded for the change.
-The scanner looks for generic sensitive key names and value shapes (password hashes, tokens, API keys, session ids, private keys, and similar); see the checker source for the current lists.
+
+Scanner rules:
+
+- Prefer a JSON walk; raw-text fallback only matches keys in JSON / query / form context at a **token boundary** (`"key":`, `key=`, `key:`), so CSS like `span: 1px` and ordinary prose do not hit.
+- HTML / CSS / JS asset bodies are treated conservatively (raw-text fallback skipped; JSON bodies still scanned when parseable).
+- `null`, `""`, `false`, and empty arrays/objects for a sensitive key are **not** hits.
+- Callers may document legitimate fields (for example the caller’s own `access_token` on a login/token response) via:
+  - per-entry HAR metadata `_spc_scan_allow: [{"key":"access_token","reason":"own token on login"}]`, or
+  - CLI `--allow key:reason` on `scan-bodies`.
+  Password hashes and private keys (and bcrypt / argon2 / PEM private-key shapes) are **never** exemptable.
+
+### Required scan record
+
+When a run has security probe requests (`finding-*.json` with nonempty `requests`), `check_findings.py run` requires a recorded scan-bodies result:
+
+- `summary.json` field `body_scan`, or
+- run-directory file `body-scan.json`
+
+Minimum shape:
+
+```json
+{
+  "ran": true,
+  "hars": ["finding-1.har"],
+  "hit_count": 0
+}
+```
+
+`ran` must be `true`. Skipping the scan (no record) fails the run.
+`hars` and `hit_count` are optional but recommended.

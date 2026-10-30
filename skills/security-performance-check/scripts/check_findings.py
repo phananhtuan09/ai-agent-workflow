@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Deterministic checks for security-performance-check finding JSON and run summaries."""
 import argparse
+import base64
 import hashlib
 import json
 import math
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 REF_DIR = Path(__file__).resolve().parents[1] / "references"
 SIGNALS = REF_DIR / "security-signals.md"
@@ -46,8 +48,14 @@ DEFAULT_PATH_EXCLUDES = (
     "**/tests/**",
     "**/spec/**",
     "**/fixtures/**",
+    "**/test-utils/**",
+    "**/test-helpers/**",
+    "**/cypress/**",
+    "**/e2e/**",
+    "**/playwright/**",
     "**/*.test.*",
     "**/*.spec.*",
+    "**/*.cy.*",
     "**/*.stories.*",
     "**/storybook/**",
     "**/.storybook/**",
@@ -58,8 +66,44 @@ DEFAULT_PATH_EXCLUDES = (
     "**/langs/**",
     "**/translation/**",
     "**/translations/**",
+    "**/messages/*.json",
+    "**/messages/**/*.json",
     "**/*.po",
     "**/*.pot",
+)
+# Signals that require expected_access / observed_access / access_verdict on every request.
+ACCESS_REQUIRED_SIGNALS = frozenset({"authz-route", "object-id-access"})
+# Sensitive keys (normalized: alnum only) that must never be allow-listed away.
+NEVER_EXEMPTABLE_KEYS = frozenset({
+    "password", "passwd", "passwordhash", "pwdhash",
+    "privatekey",
+})
+NEVER_EXEMPTABLE_SHAPES = frozenset({"bcrypt_hash", "argon2_hash", "pem_private_key"})
+# MIME types that always require a full stored body under the evidence contract.
+TEXTISH_MIME_PREFIXES = ("text/",)
+TEXTISH_MIME_EXACT = frozenset({
+    "application/json",
+    "application/xml",
+    "application/javascript",
+    "application/xhtml+xml",
+    "application/x-www-form-urlencoded",
+    "application/graphql",
+    "application/ld+json",
+})
+# Asset bodies skipped by scan-bodies raw-text fallback (and not full-body-enforced unless probed).
+ASSET_MIME_PREFIXES = (
+    "image/", "font/", "audio/", "video/", "application/font-", "application/octet-stream",
+)
+ASSET_MIME_EXACT = frozenset({
+    "text/css",
+    "application/wasm",
+    "application/pdf",
+    "application/zip",
+})
+ASSET_URL_SUFFIXES = (
+    ".css", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
+    ".woff", ".woff2", ".ttf", ".otf", ".eot",
+    ".mp3", ".mp4", ".webm", ".wav", ".pdf", ".map",
 )
 
 THRESHOLD_RE = re.compile(
@@ -672,12 +716,25 @@ def derive_access_verdict(expected_access, observed_access):
     return "enforced"
 
 
-def check_access_classification(entry, where):
-    """Validate expected_access / observed_access / access_verdict consistency."""
+def check_access_classification(entry, where, *, require_access_fields=False):
+    """Validate expected_access / observed_access / access_verdict consistency.
+
+    When require_access_fields is true (authz-route / object-id-access), role is already
+    required by check_request, and expected_access, observed_access, and access_verdict
+    must all be present and consistent with the derivation table.
+    """
     expected = entry.get("expected_access")
     observed = entry.get("observed_access")
     verdict = entry.get("access_verdict")
     authorized = entry.get("caller_authorized")
+
+    if require_access_fields:
+        if expected is None:
+            raise Inconsistent(f"{where}: expected_access is required for this signal")
+        if observed is None:
+            raise Inconsistent(f"{where}: observed_access is required for this signal")
+        if verdict is None:
+            raise Inconsistent(f"{where}: access_verdict is required for this signal")
 
     if expected is not None and expected not in ACCESS_EXPECTATIONS:
         raise Inconsistent(f"{where}: expected_access is one of {', '.join(ACCESS_EXPECTATIONS)}")
@@ -688,8 +745,10 @@ def check_access_classification(entry, where):
     if authorized is not None and not isinstance(authorized, bool):
         raise Inconsistent(f"{where}: caller_authorized is a boolean when present")
 
-    if verdict is not None and expected is None:
-        raise Inconsistent(f"{where}: access_verdict requires expected_access")
+    if verdict is not None and (expected is None or observed is None):
+        raise Inconsistent(
+            f"{where}: access_verdict requires expected_access and observed_access"
+        )
 
     if authorized is True:
         if expected is None:
@@ -698,6 +757,10 @@ def check_access_classification(entry, where):
             raise Inconsistent(f"{where}: caller_authorized true requires expected_access allow")
 
     if verdict == "bypassed":
+        if expected is None or observed is None:
+            raise Inconsistent(
+                f"{where}: access_verdict bypassed requires expected_access and observed_access"
+            )
         if expected == "allow":
             raise Inconsistent(
                 f"{where}: access_verdict bypassed is invalid when expected_access is allow "
@@ -715,9 +778,14 @@ def check_access_classification(entry, where):
                 f"{where}: access_verdict {verdict!r} disagrees with derived {derived!r} "
                 f"from expected_access={expected!r} observed_access={observed!r}"
             )
+    elif require_access_fields and expected is not None and observed == "unclear":
+        if verdict != "unclear":
+            raise Inconsistent(
+                f"{where}: observed_access unclear requires access_verdict unclear"
+            )
 
 
-def check_request(entry, where):
+def check_request(entry, where, signal_id=None):
     if not isinstance(entry, dict):
         raise Inconsistent(f"{where}: each request is an object")
     if not text(entry.get("role")) or not text(entry.get("method")) or not text(entry.get("url")):
@@ -743,7 +811,8 @@ def check_request(entry, where):
         raise Inconsistent(
             f"{where}: body_hash for length 0 must be the sha256 of empty bytes ({empty_digest})"
         )
-    check_access_classification(entry, where)
+    require_access = signal_id in ACCESS_REQUIRED_SIGNALS if signal_id else False
+    check_access_classification(entry, where, require_access_fields=require_access)
     headers = entry.get("headers")
     if headers is not None:
         if not isinstance(headers, dict):
@@ -797,10 +866,136 @@ def check_redaction_meta(content, body_text, where):
     return True
 
 
-def check_har_entry(entry, where, index=0):
+def normalize_mime(mime):
+    if not isinstance(mime, str):
+        return ""
+    return mime.lower().split(";")[0].strip()
+
+
+def is_textish_mime(mime):
+    """True for text / JSON / HTML / XML / form bodies that always need a full stored body."""
+    m = normalize_mime(mime)
+    if not m:
+        return False
+    if m in TEXTISH_MIME_EXACT or m.endswith("+json") or m.endswith("+xml"):
+        return True
+    return any(m.startswith(p) for p in TEXTISH_MIME_PREFIXES)
+
+
+def is_asset_mime(mime):
+    m = normalize_mime(mime)
+    if not m:
+        return False
+    if m in ASSET_MIME_EXACT:
+        return True
+    return any(m.startswith(p) for p in ASSET_MIME_PREFIXES)
+
+
+def is_asset_url(url):
+    if not isinstance(url, str) or not url.strip():
+        return False
+    path = urlsplit(url).path.lower()
+    return any(path.endswith(suf) for suf in ASSET_URL_SUFFIXES)
+
+
+def normalize_url_for_match(url):
+    """Normalize a request URL for finding↔HAR matching (scheme/host optional)."""
+    if not isinstance(url, str):
+        return ""
+    raw = url.strip()
+    if not raw:
+        return ""
+    parts = urlsplit(raw)
+    if parts.scheme or parts.netloc:
+        path = parts.path or "/"
+        return urlunsplit(("", "", path, parts.query, ""))
+    if raw.startswith("/"):
+        return raw
+    return raw
+
+
+def urls_match(finding_url, har_url):
+    if finding_url == har_url:
+        return True
+    a = normalize_url_for_match(finding_url)
+    b = normalize_url_for_match(har_url)
+    if a and b and a == b:
+        return True
+    if isinstance(finding_url, str) and isinstance(har_url, str):
+        if har_url.endswith(finding_url) or finding_url.endswith(har_url):
+            return True
+    return False
+
+
+def entry_needs_full_body(entry, *, force=False):
+    """Full-body rules apply to probed entries and to text/JSON/HTML mime types."""
+    if force:
+        return True
+    response = entry.get("response") if isinstance(entry, dict) else None
+    content = response.get("content") if isinstance(response, dict) else None
+    mime = (content or {}).get("mimeType") if isinstance(content, dict) else None
+    if is_textish_mime(mime):
+        return True
+    request = entry.get("request") if isinstance(entry, dict) else None
+    url = request.get("url") if isinstance(request, dict) else None
+    # Non-textish static assets are not required to carry an embedded body.
+    if is_asset_mime(mime) or is_asset_url(url):
+        return False
+    return False
+
+
+def resolve_har_body_bytes(content, har_path, where):
+    """Return (body_bytes|None, body_text|None) from HAR content.text / encoding / _file."""
+    file_ref = content.get("_file")
+    if file_ref is not None:
+        if not text(file_ref):
+            raise Inconsistent(f"{where}: content._file is a nonempty string when present")
+        if not har_path or har_path == "<har>":
+            raise Inconsistent(
+                f"{where}: content._file {file_ref!r} requires a real HAR file path to resolve"
+            )
+        sidecar = Path(file_ref)
+        if not sidecar.is_absolute():
+            sidecar = Path(har_path).resolve().parent / file_ref
+        if not sidecar.is_file():
+            raise Inconsistent(
+                f"{where}: content._file {file_ref!r} is missing (expected at {sidecar})"
+            )
+        body_bytes = sidecar.read_bytes()
+        try:
+            body_text = body_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            body_text = None
+        return body_bytes, body_text
+
+    body_text = content.get("text")
+    if body_text is None:
+        return None, None
+    if not isinstance(body_text, str):
+        raise Inconsistent(f"{where}: content.text is a string when present")
+    encoding = content.get("encoding")
+    if isinstance(encoding, str) and encoding.strip().lower() == "base64":
+        try:
+            body_bytes = base64.b64decode(body_text, validate=False)
+        except (ValueError, TypeError) as error:
+            raise Inconsistent(f"{where}: content.text is not valid base64: {error}") from None
+        try:
+            decoded_text = body_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            decoded_text = None
+        return body_bytes, decoded_text
+    if encoding is not None and not (isinstance(encoding, str) and encoding.strip() == ""):
+        # Unknown encoding: treat text as opaque UTF-8 storage of the declared body.
+        if not isinstance(encoding, str):
+            raise Inconsistent(f"{where}: content.encoding is a string when present")
+    return body_text.encode("utf-8"), body_text
+
+
+def check_har_entry(entry, where, index=0, har_path="<har>", *, force_full_body=False):
     """Validate one HAR log.entries[] item against the evidence contract."""
     if not isinstance(entry, dict):
         raise Inconsistent(f"{where}: entry is an object")
+    request = entry.get("request") if isinstance(entry.get("request"), dict) else {}
     response = entry.get("response")
     if not isinstance(response, dict):
         raise Inconsistent(f"{where}: response is an object")
@@ -810,35 +1005,67 @@ def check_har_entry(entry, where, index=0):
     size = content.get("size")
     if not isinstance(size, int) or isinstance(size, bool) or size < 0:
         raise Inconsistent(f"{where}: content.size is a non-negative integer")
-    body_text = content.get("text")
-    if size > 0 and not isinstance(body_text, str):
+
+    needs_body = entry_needs_full_body(entry, force=force_full_body)
+    body_bytes, body_text = resolve_har_body_bytes(content, har_path, where)
+
+    if body_bytes is None:
+        if size > 0 and needs_body:
+            raise Inconsistent(
+                f"{where}: content.text or content._file is required when content.size > 0 "
+                "(full body required for probed / text-JSON-HTML responses; "
+                "do not omit, truncate, or reconstruct)"
+            )
+        # Non-probed binary/asset entry without an embedded body: do not fail the HAR.
+        return {
+            "index": index,
+            "method": request.get("method"),
+            "url": request.get("url"),
+            "status": response.get("status"),
+            "mimeType": content.get("mimeType"),
+            "text": "",
+            "size": size,
+            "sha256": body_sha256(b""),
+            "body_present": False,
+            "allow": [],
+        }
+
+    if size != len(body_bytes):
+        encoding = content.get("encoding")
+        via = "decoded base64 length" if (
+            isinstance(encoding, str) and encoding.strip().lower() == "base64"
+        ) else ("sidecar file length" if content.get("_file") else "stored body UTF-8 length")
         raise Inconsistent(
-            f"{where}: content.text is required when content.size > 0 "
-            "(full body required; do not omit, truncate, or reconstruct)"
+            f"{where}: content.size {size} differs from {via} {len(body_bytes)}"
         )
-    if body_text is None:
-        body_text = ""
-    if not isinstance(body_text, str):
-        raise Inconsistent(f"{where}: content.text is a string when present")
-    stored = utf8_size(body_text)
-    # size always equals the stored (possibly redacted) body byte length.
-    check_redaction_meta(content, body_text, where)
-    if size != stored:
-        raise Inconsistent(
-            f"{where}: content.size {size} differs from stored body UTF-8 length {stored}"
-        )
+
+    scan_text = body_text if body_text is not None else ""
+    if body_text is not None:
+        check_redaction_meta(content, body_text, where)
+    elif content.get("_spc_redaction") is not None:
+        raise Inconsistent(f"{where}: _spc_redaction requires a UTF-8 body text")
+
+    allow = parse_scan_allow(content.get("_spc_scan_allow"), where)
     return {
         "index": index,
-        "url": ((entry.get("request") or {}).get("url") if isinstance(entry.get("request"), dict) else None),
+        "method": request.get("method"),
+        "url": request.get("url"),
         "status": response.get("status"),
-        "text": body_text,
+        "mimeType": content.get("mimeType"),
+        "text": scan_text,
         "size": size,
-        "sha256": body_sha256(body_text.encode("utf-8")),
+        "sha256": body_sha256(body_bytes),
+        "body_present": True,
+        "allow": allow,
     }
 
 
-def check_har(data, path="<har>"):
-    """Validate a HAR document; return normalized entry summaries."""
+def check_har(data, path="<har>", probed_requests=None):
+    """Validate a HAR document; return normalized entry summaries.
+
+    Full-body rules are enforced for text/JSON/HTML mime types and for entries that
+    match probed_requests (list of finding request dicts with method/url).
+    """
     if not isinstance(data, dict):
         raise Inconsistent(f"{path}: HAR must be an object")
     log = data.get("log")
@@ -847,30 +1074,112 @@ def check_har(data, path="<har>"):
     entries = log.get("entries")
     if not isinstance(entries, list) or not entries:
         raise Inconsistent(f"{path}: log.entries is a nonempty list")
-    return [check_har_entry(entry, f"{path}: entries[{i}]", index=i) for i, entry in enumerate(entries)]
+    probed = list(probed_requests or [])
+    summaries = []
+    for i, entry in enumerate(entries):
+        force = False
+        if probed and isinstance(entry, dict):
+            req = entry.get("request") if isinstance(entry.get("request"), dict) else {}
+            method = (req.get("method") or "").upper()
+            url = req.get("url")
+            for pref in probed:
+                if not isinstance(pref, dict):
+                    continue
+                if (pref.get("method") or "").upper() == method and urls_match(pref.get("url"), url):
+                    force = True
+                    break
+        summaries.append(
+            check_har_entry(
+                entry,
+                f"{path}: entries[{i}]",
+                index=i,
+                har_path=path,
+                force_full_body=force,
+            )
+        )
+    return summaries
 
 
-def _walk_json_for_sensitive(node, path, hits, url):
+def sensitive_value_is_empty(value):
+    """True when a sensitive key's value is null/empty/false and must not count as a hit."""
+    if value is None or value is False:
+        return True
+    if value == "" or value == [] or value == {}:
+        return True
+    if isinstance(value, str) and value.strip() == "":
+        return True
+    return False
+
+
+def normalize_sensitive_key(key):
+    return re.sub(r"[^a-z0-9]", "", str(key).lower())
+
+
+def parse_scan_allow(raw, where):
+    """Parse _spc_scan_allow: [{key, reason}, ...] exemptions for scan-bodies."""
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise Inconsistent(f"{where}: _spc_scan_allow is a list when present")
+    out = []
+    for i, item in enumerate(raw):
+        iwhere = f"{where}: _spc_scan_allow[{i}]"
+        if not isinstance(item, dict):
+            raise Inconsistent(f"{iwhere}: is an object with key and reason")
+        key = item.get("key")
+        reason = item.get("reason")
+        if not text(key) or not text(reason):
+            raise Inconsistent(f"{iwhere}: key and reason are nonempty strings")
+        norm = normalize_sensitive_key(key)
+        if norm in NEVER_EXEMPTABLE_KEYS:
+            raise Inconsistent(
+                f"{iwhere}: key {key!r} is never exemptable (password hashes / private keys)"
+            )
+        out.append({"key": key, "reason": reason, "norm": norm})
+    return out
+
+
+def key_is_allowed(key, allow_list):
+    norm = normalize_sensitive_key(key)
+    if norm in NEVER_EXEMPTABLE_KEYS:
+        return False
+    return any(a.get("norm") == norm for a in (allow_list or []))
+
+
+def _walk_json_for_sensitive(node, path, hits, url, allow_list, *, skip_shapes=False):
     if isinstance(node, dict):
         for key, value in node.items():
             key_str = str(key)
             child_path = f"{path}.{key_str}" if path else key_str
-            norm = re.sub(r"[^a-z0-9]", "", key_str.lower())
+            norm = normalize_sensitive_key(key_str)
+            allowed_here = key_is_allowed(key_str, allow_list)
             if norm in SENSITIVE_KEY_NAMES:
-                # Redaction marker in the value means the field was acknowledged; still a hit
-                # only when the cleartext (or non-marker) value remains.
-                if not (isinstance(value, str) and value == REDACTION_MARKER):
+                if sensitive_value_is_empty(value):
+                    pass
+                elif isinstance(value, str) and value == REDACTION_MARKER:
+                    pass
+                elif allowed_here:
+                    pass
+                else:
                     hits.append({
                         "url": url,
                         "path": child_path,
                         "key": key_str,
                         "reason": "sensitive_key",
                     })
-            _walk_json_for_sensitive(value, child_path, hits, url)
+            # Allowed keys skip value-shape hits on their immediate string/array values;
+            # nested objects are still walked for other keys.
+            _walk_json_for_sensitive(
+                value, child_path, hits, url, allow_list, skip_shapes=allowed_here
+            )
     elif isinstance(node, list):
         for i, item in enumerate(node):
-            _walk_json_for_sensitive(item, f"{path}[{i}]", hits, url)
+            _walk_json_for_sensitive(
+                item, f"{path}[{i}]", hits, url, allow_list, skip_shapes=skip_shapes
+            )
     elif isinstance(node, str):
+        if skip_shapes or not node or node == REDACTION_MARKER:
+            return
         for shape_name, pattern in SENSITIVE_VALUE_SHAPES:
             if pattern.search(node):
                 hits.append({
@@ -882,67 +1191,185 @@ def _walk_json_for_sensitive(node, path, hits, url):
                 break
 
 
-def scan_body_text(body_text, url=None):
+def raw_sensitive_key_pattern(key):
+    """Match a sensitive key only in JSON / query / form key context at a token boundary.
+
+    Accepts `"key":`, `'key':`, `key=`, or `key:` when the key is not mid-token
+    (so CSS like `span: 1px` does not match a short key, and prose stays quiet).
+    """
+    escaped = re.escape(key)
+    return re.compile(
+        rf'(?:^|[{{,;&\s?\n\r\[(])["\']?{escaped}["\']?\s*[:=]',
+        re.IGNORECASE,
+    )
+
+
+def raw_sensitive_value_after_key(body_text, match):
+    """Return the raw value text after a key match, or None when empty/null/false."""
+    rest = body_text[match.end():].lstrip()
+    if rest.lower().startswith("null") and (len(rest) == 4 or not rest[4].isalnum()):
+        return None
+    if rest.lower().startswith("false") and (len(rest) == 5 or not rest[5].isalnum()):
+        return None
+    if rest.startswith('""') or rest.startswith("''"):
+        return None
+    if rest.startswith('"'):
+        end = rest.find('"', 1)
+        return None if end == 1 else rest[1:end] if end != -1 else rest[1:]
+    if rest.startswith("'"):
+        end = rest.find("'", 1)
+        return None if end == 1 else rest[1:end] if end != -1 else rest[1:]
+    # Bare token up to delimiter.
+    token = re.match(r"([^\s&,;}\]]+)", rest)
+    if not token:
+        return None
+    value = token.group(1).rstrip(",")
+    if value.lower() in ("null", "false", "undefined") or value == "":
+        return None
+    return value
+
+
+def should_skip_raw_scan(mime, url):
+    """Skip conservative raw-text scanning for CSS/HTML/JS assets and binary URLs."""
+    m = normalize_mime(mime)
+    if is_asset_mime(m) or m in ("text/html", "text/css", "application/javascript", "text/javascript"):
+        return True
+    if is_asset_url(url):
+        return True
+    if isinstance(url, str):
+        path = urlsplit(url).path.lower()
+        if path.endswith((".js", ".mjs", ".cjs", ".html", ".htm", ".css")):
+            return True
+    return False
+
+
+def scan_body_text(body_text, url=None, *, mime=None, allow_list=None):
     """Return sensitive-field hits for one response body string."""
     hits = []
     if not body_text:
         return hits
-    # Prefer structured JSON walk; fall back to key-ish regex on raw text.
+    allow_list = allow_list or []
+    # Prefer structured JSON walk; fall back to boundary-aware key regex on raw text.
     try:
         parsed = json.loads(body_text)
     except (ValueError, TypeError):
         parsed = None
     if parsed is not None:
-        _walk_json_for_sensitive(parsed, "", hits, url)
+        _walk_json_for_sensitive(parsed, "", hits, url, allow_list)
+        return hits
+    if should_skip_raw_scan(mime, url):
         return hits
     for key in SENSITIVE_KEY_NAMES:
-        # Match passwordHash / password_hash / "password" alike in raw bodies.
-        pattern = re.compile(
-            rf'["\']?{re.escape(key)}["\']?\s*[:=]',
-            re.IGNORECASE,
-        )
-        if pattern.search(body_text):
+        pattern = raw_sensitive_key_pattern(key)
+        for match in pattern.finditer(body_text):
+            value = raw_sensitive_value_after_key(body_text, match)
+            if value is None:
+                continue
+            if isinstance(value, str) and value == REDACTION_MARKER:
+                continue
+            if key_is_allowed(key, allow_list):
+                continue
             hits.append({
                 "url": url,
                 "path": key,
                 "key": key,
                 "reason": "sensitive_key",
             })
+            break
     for shape_name, pattern in SENSITIVE_VALUE_SHAPES:
-        if pattern.search(body_text):
+        if shape_name in NEVER_EXEMPTABLE_SHAPES:
+            if pattern.search(body_text):
+                hits.append({
+                    "url": url,
+                    "path": "$",
+                    "key": None,
+                    "reason": shape_name,
+                })
+            continue
+        for match in pattern.finditer(body_text):
+            # Suppress shape hits that sit in the value of an allow-listed key.
+            prefix = body_text[max(0, match.start() - 96) : match.start()]
+            if any(raw_sensitive_key_pattern(a["key"]).search(prefix) for a in allow_list):
+                continue
             hits.append({
                 "url": url,
                 "path": "$",
                 "key": None,
                 "reason": shape_name,
             })
+            break
     return hits
 
 
-def scan_har_bodies(data, path="<har>"):
+def scan_har_bodies(data, path="<har>", allow_list=None):
     """Scan every HAR response body for sensitive fields; return hit list."""
     summaries = check_har(data, path)
     hits = []
+    global_allow = list(allow_list or [])
     for summary in summaries:
-        hits.extend(scan_body_text(summary["text"], url=summary.get("url")))
+        if not summary.get("body_present"):
+            continue
+        if should_skip_raw_scan(summary.get("mimeType"), summary.get("url")):
+            # Still scan when the body parses as JSON (API mistaken for asset mime).
+            try:
+                json.loads(summary["text"])
+            except (ValueError, TypeError):
+                continue
+        merged_allow = list(global_allow) + list(summary.get("allow") or [])
+        hits.extend(
+            scan_body_text(
+                summary["text"],
+                url=summary.get("url"),
+                mime=summary.get("mimeType"),
+                allow_list=merged_allow,
+            )
+        )
     return {"path": path, "entries": len(summaries), "hits": hits}
 
 
+def find_har_entry_for_request(req, summaries, used_indices):
+    """Match a finding request to a HAR entry by method + URL, preserving order."""
+    method = (req.get("method") or "").upper()
+    url = req.get("url")
+    for summary in summaries:
+        idx = summary["index"]
+        if idx in used_indices:
+            continue
+        if (summary.get("method") or "").upper() != method:
+            continue
+        if urls_match(url, summary.get("url")):
+            return summary
+    return None
+
+
 def cross_check_finding_har(finding, har_path, har_data):
-    """Ensure finding request length/hash agree with a stored HAR body when comparable."""
-    summaries = check_har(har_data, har_path)
+    """Ensure each finding request length/hash agrees with its matched HAR entry.
+
+    Matching is by method + URL (first unused entry in HAR order). Differing entry
+    counts no longer skip the check; a request with no match is an error.
+    """
     requests = finding.get("requests") or []
+    summaries = check_har(
+        har_data,
+        har_path,
+        probed_requests=requests if finding.get("track") == "security" else None,
+    )
     if finding.get("track") != "security" or not requests:
         return summaries
-    # When counts match 1:1, require each request to agree with the corresponding entry.
-    if len(requests) == len(summaries):
-        pairs = zip(requests, summaries)
-    elif len(summaries) == 1 and len(requests) >= 1:
-        # Single-entry HAR cited by a multi-request finding: check against the last request.
-        pairs = [(requests[-1], summaries[0])]
-    else:
-        return summaries
-    for req, summary in pairs:
+    used = set()
+    for i, req in enumerate(requests):
+        summary = find_har_entry_for_request(req, summaries, used)
+        if summary is None:
+            raise Inconsistent(
+                f"{har_path}: no HAR entry matches requests[{i}] "
+                f"{(req.get('method') or '').upper()} {req.get('url')!r}"
+            )
+        used.add(summary["index"])
+        if not summary.get("body_present") and req.get("length", 0) > 0:
+            raise Inconsistent(
+                f"{har_path}: matched entry for requests[{i}] has no stored body "
+                f"but request length is {req.get('length')}"
+            )
         if req.get("length") != summary["size"]:
             raise Inconsistent(
                 f"{har_path}: request length {req.get('length')} disagrees with HAR body size {summary['size']}"
@@ -1046,8 +1473,9 @@ def check_finding(data, path="<finding>"):
     requests = data.get("requests")
     if not isinstance(requests, list) or not requests:
         raise Inconsistent(f"{path}: requests is a nonempty list")
+    signal_id = data.get("signal_id")
     for i, req in enumerate(requests):
-        check_request(req, f"{path}: requests[{i}]")
+        check_request(req, f"{path}: requests[{i}]", signal_id=signal_id)
     if data.get("validator") not in VALIDATORS:
         raise Inconsistent(f"{path}: validator is one of {', '.join(VALIDATORS)}")
     return data
@@ -1097,11 +1525,53 @@ def check_summary(data, path="<summary>", finding_count=None):
         raise Inconsistent(f"{path}: limits is a nonempty list of strings")
     if not any("pen test" in x.lower() or "penetration" in x.lower() for x in limits):
         raise Inconsistent(f"{path}: limits must state this is not a pen test / CVE audit / load test")
+    body_scan = data.get("body_scan")
+    if body_scan is not None:
+        check_body_scan_record(body_scan, f"{path}: body_scan")
     if finding_count is not None:
         declared = data.get("finding_count")
         if declared is not None and declared != finding_count:
             raise Inconsistent(f"{path}: finding_count {declared} does not match {finding_count} finding files")
     return data
+
+
+def check_body_scan_record(record, where):
+    """Validate a recorded scan-bodies result (summary.body_scan or body-scan.json)."""
+    if not isinstance(record, dict):
+        raise Inconsistent(f"{where}: is an object")
+    if record.get("ran") is not True:
+        raise Inconsistent(f"{where}: ran must be true (scan-bodies was executed)")
+    hars = record.get("hars")
+    if hars is not None:
+        if not isinstance(hars, list) or any(not text(h) for h in hars):
+            raise Inconsistent(f"{where}: hars is a list of nonempty strings when present")
+    hit_count = record.get("hit_count")
+    if hit_count is not None and (
+        not isinstance(hit_count, int) or isinstance(hit_count, bool) or hit_count < 0
+    ):
+        raise Inconsistent(f"{where}: hit_count is a non-negative integer when present")
+    return record
+
+
+def load_body_scan_record(run_dir, summary):
+    """Return the scan-bodies record from summary.body_scan or body-scan.json, else None."""
+    if isinstance(summary.get("body_scan"), dict):
+        return summary["body_scan"]
+    artifact = Path(run_dir) / "body-scan.json"
+    if artifact.is_file():
+        return load(artifact)
+    return None
+
+
+def security_probes_exist(findings):
+    """True when the run recorded security probe requests (scan-bodies must have run)."""
+    for finding in findings:
+        if finding.get("track") != "security":
+            continue
+        requests = finding.get("requests")
+        if isinstance(requests, list) and requests:
+            return True
+    return False
 
 
 def resolve_evidence_path(run_dir, relative):
@@ -1113,21 +1583,46 @@ def resolve_evidence_path(run_dir, relative):
     return candidate
 
 
+def require_evidence_file(run_dir, relative, where, field):
+    """Resolve an evidence path and error when the file is missing."""
+    if not relative:
+        return None
+    candidate = resolve_evidence_path(run_dir, relative)
+    if candidate is None or not candidate.is_file():
+        raise Inconsistent(
+            f"{where}: evidence.{field} {relative!r} does not exist"
+        )
+    return candidate
+
+
 def check_run_dir(run_dir):
     run_dir = Path(run_dir)
     summary = check_summary(load(run_dir / "summary.json"), str(run_dir / "summary.json"))
     findings = sorted(run_dir.glob("finding-*.json"))
     exploited = 0
+    loaded_findings = []
     for path in findings:
         finding = check_finding(load(path), str(path))
+        loaded_findings.append(finding)
         if finding["status"] == "exploited":
             exploited += 1
         elif finding["status"] in ("hypothesis", "unclear"):
             raise Inconsistent(f"{path}: only exploited findings are written as finding files; put {finding['status']} under limits")
-        har_rel = (finding.get("evidence") or {}).get("har_path")
-        har_file = resolve_evidence_path(run_dir, har_rel)
-        if har_file is not None and har_file.is_file():
+        evidence = finding.get("evidence") or {}
+        har_rel = evidence.get("har_path")
+        shot_rel = evidence.get("screenshot")
+        har_file = require_evidence_file(run_dir, har_rel, str(path), "har_path")
+        require_evidence_file(run_dir, shot_rel, str(path), "screenshot")
+        if har_file is not None:
             cross_check_finding_har(finding, str(har_file), load(har_file))
+    if security_probes_exist(loaded_findings):
+        record = load_body_scan_record(run_dir, summary)
+        if record is None:
+            raise Inconsistent(
+                f"{run_dir}: security probes exist but no scan-bodies record was found "
+                "(set summary.body_scan or write body-scan.json with ran:true)"
+            )
+        check_body_scan_record(record, f"{run_dir}: body_scan")
     check_summary(summary, str(run_dir / "summary.json"), finding_count=exploited)
     return {"summary": summary, "findings": len(findings), "exploited": exploited}
 
@@ -1238,8 +1733,24 @@ def cmd_har(args):
     return 0
 
 
+def parse_allow_cli(values):
+    """Parse repeated --allow key:reason flags into scan-allow entries."""
+    if not values:
+        return []
+    raw = []
+    for item in values:
+        if ":" not in item:
+            raise Inconsistent(
+                f"scan-bodies --allow needs key:reason; got {item!r}"
+            )
+        key, reason = item.split(":", 1)
+        raw.append({"key": key.strip(), "reason": reason.strip()})
+    return parse_scan_allow(raw, "scan-bodies --allow")
+
+
 def cmd_scan_bodies(args):
-    result = scan_har_bodies(load(args.path), args.path)
+    allow = parse_allow_cli(getattr(args, "allow", None))
+    result = scan_har_bodies(load(args.path), args.path, allow_list=allow)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     # Exit 1 when hits exist so the skill flow can treat them as findings deterministically.
     return 1 if result["hits"] else 0
@@ -1297,6 +1808,13 @@ def main(argv=None):
         help="scan HAR response bodies for sensitive fields; exit 1 when hits are found",
     )
     scan_cmd.add_argument("path")
+    scan_cmd.add_argument(
+        "--allow",
+        action="append",
+        default=[],
+        help="per-run exemption key:reason (e.g. access_token:own token on login); "
+        "password hashes and private keys are never exemptable",
+    )
 
     args = parser.parse_args(argv)
     try:

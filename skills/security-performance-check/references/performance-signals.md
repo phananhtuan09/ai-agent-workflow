@@ -19,7 +19,7 @@ Columns:
 
 Collectors stay zero-install: Playwright through `runtime-e2e-test`, and build output for bundle size.
 Use Lighthouse only when the project already provides it; otherwise record that limit under `Giới hạn`.
-Default matching also skips tests, fixtures, i18n/locale/translation files, and similar non-executable assets (see `DEFAULT_PATH_EXCLUDES` in `check_findings.py`).
+Default matching also skips tests, fixtures, Cypress/Playwright e2e dirs, `*.cy.*`, `test-utils` / `test-helpers`, `__mocks__`, i18n/locale/translation files, `messages/*.json` locale catalogs, and similar non-executable assets (see `DEFAULT_PATH_EXCLUDES` in `check_findings.py`).
 
 ## Signals
 

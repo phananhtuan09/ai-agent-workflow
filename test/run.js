@@ -4000,6 +4000,10 @@ test("security-performance-check is a manual command and the JSON checker valida
 
   const runDir = fs.mkdtempSync(path.join(os.tmpdir(), "spc-run-"));
   try {
+    const accessReq = {
+      role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH,
+      expected_access: "deny", observed_access: "allow", access_verdict: "bypassed", caller_authorized: false,
+    };
     const finding = {
       schema: "security-performance-check/finding@1",
       track: "security",
@@ -4011,7 +4015,7 @@ test("security-performance-check is a manual command and the JSON checker valida
       status: "exploited",
       introduced: true,
       roles_tested: ["user-a", "user-b"],
-      requests: [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH }],
+      requests: [accessReq],
       repro_curl: "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1",
       evidence: { har_path: "finding-1.har", screenshot: null },
       validator: "agent",
@@ -4023,8 +4027,18 @@ test("security-performance-check is a manual command and the JSON checker valida
       signals_loaded: [{ id: "object-id-access", file: "references/security-signals.md", matched_paths: ["src/orders/get.ts"] }],
       coverage: [{ path: "src/orders/get.ts", in_scope: true, notes: "" }],
       conditions: { host: "http://127.0.0.1:3000" },
+      body_scan: { ran: true, hars: ["finding-1.har"], hit_count: 0 },
       limits: ["Not a penetration test, dependency CVE audit, or load test."],
     };
+    writeJson(path.join(runDir, "finding-1.har"), {
+      log: {
+        version: "1.2",
+        entries: [{
+          request: { method: "GET", url: "http://127.0.0.1:3000/api/orders/1" },
+          response: { status: 200, content: { size: 0, mimeType: "application/json", text: "" } },
+        }],
+      },
+    });
     writeJson(path.join(runDir, "finding-1.json"), finding);
     writeJson(path.join(runDir, "summary.json"), summary);
     let result = checkFindings(["run", runDir]);
@@ -4061,7 +4075,7 @@ test("security-performance-check is a manual command and the JSON checker valida
     assert.ok(result.stderr.includes("placeholder"), result.stderr);
     finding.repro_curl = "curl -s -H 'Authorization: Bearer $TOKEN' http://127.0.0.1:3000/api/orders/1";
     finding.requests = [{
-      role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH,
+      ...accessReq,
       headers: { Cookie: "<redacted>", Authorization: "REDACTED" },
     }];
     writeJson(path.join(runDir, "finding-1.json"), finding);
@@ -4072,7 +4086,7 @@ test("security-performance-check is a manual command and the JSON checker valida
     result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("placeholder"), result.stderr);
-    finding.requests = [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH }];
+    finding.requests = [{ ...accessReq }];
     finding.repro_curl = "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1";
 
     finding.status = "hypothesis";
@@ -4119,6 +4133,15 @@ test("security-performance-check is a manual command and the JSON checker valida
       fix_hint: "Collapse per-row fetches into one list endpoint.",
     };
     writeJson(path.join(runDir, "finding-1.json"), perfFinding);
+    writeJson(path.join(runDir, "finding-perf.har"), {
+      log: {
+        version: "1.2",
+        entries: [{
+          request: { method: "GET", url: "http://127.0.0.1:3000/orders" },
+          response: { status: 200, content: { size: 0, mimeType: "text/html", text: "" } },
+        }],
+      },
+    });
     writeJson(path.join(runDir, "summary.json"), {
       schema: "security-performance-check/summary@1",
       track: "performance",

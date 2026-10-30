@@ -92,6 +92,8 @@ Performance: skip `level: off` rows; other rows match when changed paths or rout
      Redact in place with `«REDACTED»` and `_spc_redaction` when needed; validate with `check_findings.py har`.
    - After probes, run `check_findings.py scan-bodies` on every saved HAR.
      Each hit is an exploited `sensitive-response` finding even when that signal row was not loaded.
+     Record the scan in `summary.body_scan` or `body-scan.json` (`ran: true`); `check_findings.py run` fails when security probes exist without that record.
+     Document legitimate fields with `_spc_scan_allow` or `--allow key:reason`; password hashes and private keys are never exemptable.
    - Compare head with base: a probe that succeeds on head and fails on base is `introduced`; one that succeeds on both is `pre-existing`.
    - Reset data around probes that write; stop at the probe budget and report "probes not run: N".
 
@@ -219,6 +221,7 @@ Run summary:
     "auth": "user-a",
     "tools": {"playwright": "...", "node": "..."}
   },
+  "body_scan": {"ran": true, "hars": ["finding-1.har"], "hit_count": 0},
   "limits": ["Not a penetration test, dependency CVE audit, or load test."]
 }
 ```
