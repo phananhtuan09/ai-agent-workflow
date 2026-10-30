@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic checks for security-performance-check finding JSON and run summaries."""
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -23,6 +24,9 @@ AGGREGATIONS = ("median", "count", "max", "min", "sum")
 LEVELS = ("off", "warn", "error")
 SOURCES = ("playwright", "build", "lighthouse")
 VERDICTS = ("pass", "fail", "informational", "inconclusive")
+ACCESS_EXPECTATIONS = ("allow", "deny")
+ACCESS_OBSERVED = ("allow", "deny", "unclear")
+ACCESS_VERDICTS = ("allowed", "enforced", "bypassed", "unclear")
 FINDING_SCHEMA = "security-performance-check/finding@1"
 SUMMARY_SCHEMA = "security-performance-check/summary@1"
 DEFAULT_AA_MULTIPLIER = 2.5
@@ -31,12 +35,66 @@ NOISY_MIN_RUNS = 5
 MAX_AA_WIDENING = 1.0
 # Clamp for higher_better relative factors so base*factor never goes non-positive.
 MIN_HIGHER_BETTER_FACTOR = 0.01
+# In-place body redaction marker (see references/evidence-contract.md).
+REDACTION_MARKER = "«REDACTED»"
+# Non-executable / non-handler paths excluded from signal matching by default.
+DEFAULT_PATH_EXCLUDES = (
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/__fixtures__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/spec/**",
+    "**/fixtures/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/*.stories.*",
+    "**/storybook/**",
+    "**/.storybook/**",
+    "**/i18n/**",
+    "**/locale/**",
+    "**/locales/**",
+    "**/lang/**",
+    "**/langs/**",
+    "**/translation/**",
+    "**/translations/**",
+    "**/*.po",
+    "**/*.pot",
+)
 
 THRESHOLD_RE = re.compile(
     r"^(?P<left>median|count|max|min|sum)\s*(?P<op><=|>=|<|>)\s*(?P<right>base(?:\s*\*\s*(?P<factor>[0-9]+(?:\.[0-9]+)?))?|(?P<abs_only>-?[0-9]+(?:\.[0-9]+)?))$"
 )
 ABS_BUDGET_RE = re.compile(
     r"^abs\s*(?P<op><=|>=|<|>)\s*(?P<value>-?[0-9]+(?:\.[0-9]+)?)$"
+)
+# Placeholder body hashes that mean the agent omitted or reconstructed the body.
+PLACEHOLDER_BODY_HASH = re.compile(
+    r"^(?:sha256:)?(?:omitted|redacted|truncated|preview|n/?a|\.\.\.|xxx+|0+)$",
+    re.IGNORECASE,
+)
+SHA256_HEX = re.compile(r"^sha256:[0-9a-f]{64}$", re.IGNORECASE)
+
+# Sensitive JSON/key names (case-insensitive) scanned in every saved response body.
+SENSITIVE_KEY_NAMES = (
+    "password", "passwd", "passwordhash", "password_hash", "pwdhash", "pwd_hash",
+    "secret", "clientsecret", "client_secret", "appsecret", "app_secret",
+    "apikey", "api_key", "apisecret", "api_secret",
+    "accesstoken", "access_token", "refreshtoken", "refresh_token",
+    "idtoken", "id_token", "authtoken", "auth_token", "bearertoken",
+    "privatekey", "private_key", "secretkey", "secret_key",
+    "sessionid", "session_id", "sessiontoken", "session_token",
+    "csrftoken", "csrf_token", "verificationtoken", "verification_token",
+    "ssn", "socialsecuritynumber", "creditcard", "cardnumber", "pan",
+    "cvv", "cvc", "authorization",
+)
+# Value shapes that are sensitive even under generic keys.
+SENSITIVE_VALUE_SHAPES = (
+    ("bcrypt_hash", re.compile(r"^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$")),
+    ("argon2_hash", re.compile(r"^\$argon2(?:id|i|d)\$")),
+    ("jwt", re.compile(r"^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$")),
+    ("aws_access_key", re.compile(r"^AKIA[0-9A-Z]{16}$")),
+    ("pem_private_key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
 )
 
 
@@ -81,6 +139,28 @@ def glob_regex(pattern):
 def matcher(patterns):
     compiled = [glob_regex(p) for p in patterns]
     return lambda path: any(r.match(path) for r in compiled)
+
+
+_EXCLUDE_MATCHER = None
+
+
+def default_exclude_matcher():
+    """Compiled matcher for DEFAULT_PATH_EXCLUDES (tests, fixtures, i18n, …)."""
+    global _EXCLUDE_MATCHER
+    if _EXCLUDE_MATCHER is None:
+        _EXCLUDE_MATCHER = matcher(list(DEFAULT_PATH_EXCLUDES))
+    return _EXCLUDE_MATCHER
+
+
+def is_excluded_path(path, exclude=None):
+    """True when path is a default-excluded non-handler asset (or matches exclude)."""
+    check = exclude if exclude is not None else default_exclude_matcher()
+    return bool(check(path))
+
+
+def filter_matchable_paths(paths, exclude=None):
+    """Drop default-excluded paths before signal matching."""
+    return [p for p in paths if not is_excluded_path(p, exclude=exclude)]
 
 
 def expand_braces(pattern):
@@ -167,10 +247,13 @@ def load_signals(path=SIGNALS):
     return rows
 
 
-def match_signals(rows, paths, signals_file="references/security-signals.md"):
-    """Build signals_loaded[]: always rows plus rows whose patterns hit a path."""
+def match_signals(rows, paths, signals_file="references/security-signals.md", exclude=None):
+    """Build signals_loaded[]: always rows plus rows whose patterns hit a path.
+
+    Paths under DEFAULT_PATH_EXCLUDES (tests, fixtures, i18n/locale, …) never match.
+    """
     loaded = []
-    path_list = list(paths)
+    path_list = filter_matchable_paths(list(paths), exclude=exclude)
     for row in rows:
         matched = [p for p in path_list if row["patterns"] and matcher(row["patterns"])(p)]
         if row["trigger"] == TRIGGERS_ALWAYS or matched:
@@ -244,10 +327,14 @@ def load_performance_signals(path=PERF_SIGNALS):
     return rows
 
 
-def match_performance_signals(rows, paths, signals_file="references/performance-signals.md"):
-    """Build signals_loaded[] for non-off rows whose route_pattern hits a path."""
+def match_performance_signals(rows, paths, signals_file="references/performance-signals.md",
+                               exclude=None):
+    """Build signals_loaded[] for non-off rows whose route_pattern hits a path.
+
+    Paths under DEFAULT_PATH_EXCLUDES never match.
+    """
     loaded = []
-    path_list = list(paths)
+    path_list = filter_matchable_paths(list(paths), exclude=exclude)
     for row in rows:
         if row["level"] == "off":
             continue
@@ -462,7 +549,18 @@ def evaluate_threshold(base_values, head_values, threshold_text, direction=None,
     else:
         right = parsed["absolute_only"]
 
-    relative_ok = compare(parsed["op"], head_value, right)
+    # Relative thresholds with base 0: base*factor is 0, so strict `<` / `>` reject equal zeros
+    # (`0 < 0`). Use non-strict equality for that zero-base case so identical samples pass;
+    # any nonzero head still fails a lower_better relative threshold (and must clear `>` / `>=`
+    # for higher_better). See performance-signals.md.
+    op = parsed["op"]
+    if parsed["relative_to_base"] and base_value == 0.0:
+        if op == "<":
+            op = "<="
+        elif op == ">":
+            op = ">="
+
+    relative_ok = compare(op, head_value, right)
     abs_ok = True
     if parsed["abs_budget"] is not None:
         abs_ok = compare(parsed["abs_budget"]["op"], head_value, parsed["abs_budget"]["value"])
@@ -471,7 +569,13 @@ def evaluate_threshold(base_values, head_values, threshold_text, direction=None,
     inside_noise = False
     if metric_class == "noisy" and spread is not None and parsed["relative_to_base"]:
         configured = parsed["factor"] if parsed["factor"] is not None else 1.0
-        raw_ok = compare(parsed["op"], head_value, base_value * configured)
+        raw_op = parsed["op"]
+        if base_value == 0.0:
+            if raw_op == "<":
+                raw_op = "<="
+            elif raw_op == ">":
+                raw_op = ">="
+        raw_ok = compare(raw_op, head_value, base_value * configured)
         if (not raw_ok) and relative_ok:
             inside_noise = True
 
@@ -538,6 +642,81 @@ def check_repro_curl(curl, where):
         check_sensitive_header(match.group(1), match.group(2).strip(), where)
 
 
+def body_sha256(data: bytes) -> str:
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def utf8_size(text_value: str) -> int:
+    return len(text_value.encode("utf-8"))
+
+
+def is_placeholder_body_hash(value):
+    if not isinstance(value, str) or not value.strip():
+        return True
+    return bool(PLACEHOLDER_BODY_HASH.fullmatch(value.strip()))
+
+
+def derive_access_verdict(expected_access, observed_access):
+    """Derive access_verdict from expected vs observed; None when observed is unclear."""
+    if expected_access not in ACCESS_EXPECTATIONS or observed_access not in ACCESS_OBSERVED:
+        return None
+    if observed_access == "unclear":
+        return "unclear"
+    if expected_access == "allow" and observed_access == "allow":
+        return "allowed"
+    if expected_access == "deny" and observed_access == "deny":
+        return "enforced"
+    if expected_access == "deny" and observed_access == "allow":
+        return "bypassed"
+    # expected allow, observed deny — unexpected deny, not a bypass
+    return "enforced"
+
+
+def check_access_classification(entry, where):
+    """Validate expected_access / observed_access / access_verdict consistency."""
+    expected = entry.get("expected_access")
+    observed = entry.get("observed_access")
+    verdict = entry.get("access_verdict")
+    authorized = entry.get("caller_authorized")
+
+    if expected is not None and expected not in ACCESS_EXPECTATIONS:
+        raise Inconsistent(f"{where}: expected_access is one of {', '.join(ACCESS_EXPECTATIONS)}")
+    if observed is not None and observed not in ACCESS_OBSERVED:
+        raise Inconsistent(f"{where}: observed_access is one of {', '.join(ACCESS_OBSERVED)}")
+    if verdict is not None and verdict not in ACCESS_VERDICTS:
+        raise Inconsistent(f"{where}: access_verdict is one of {', '.join(ACCESS_VERDICTS)}")
+    if authorized is not None and not isinstance(authorized, bool):
+        raise Inconsistent(f"{where}: caller_authorized is a boolean when present")
+
+    if verdict is not None and expected is None:
+        raise Inconsistent(f"{where}: access_verdict requires expected_access")
+
+    if authorized is True:
+        if expected is None:
+            raise Inconsistent(f"{where}: caller_authorized true requires expected_access allow")
+        if expected != "allow":
+            raise Inconsistent(f"{where}: caller_authorized true requires expected_access allow")
+
+    if verdict == "bypassed":
+        if expected == "allow":
+            raise Inconsistent(
+                f"{where}: access_verdict bypassed is invalid when expected_access is allow "
+                "(authorized callers are allowed, not bypassed)"
+            )
+        if authorized is True:
+            raise Inconsistent(
+                f"{where}: access_verdict bypassed is invalid when caller_authorized is true"
+            )
+
+    if expected is not None and observed is not None and observed != "unclear":
+        derived = derive_access_verdict(expected, observed)
+        if verdict is not None and verdict != derived:
+            raise Inconsistent(
+                f"{where}: access_verdict {verdict!r} disagrees with derived {derived!r} "
+                f"from expected_access={expected!r} observed_access={observed!r}"
+            )
+
+
 def check_request(entry, where):
     if not isinstance(entry, dict):
         raise Inconsistent(f"{where}: each request is an object")
@@ -547,8 +726,24 @@ def check_request(entry, where):
         raise Inconsistent(f"{where}: status is an HTTP status integer")
     if not isinstance(entry.get("length"), int) or isinstance(entry.get("length"), bool) or entry["length"] < 0:
         raise Inconsistent(f"{where}: length is a non-negative integer")
-    if not text(entry.get("body_hash")):
+    body_hash = entry.get("body_hash")
+    if not text(body_hash):
         raise Inconsistent(f"{where}: body_hash is a nonempty string")
+    if is_placeholder_body_hash(body_hash):
+        raise Inconsistent(
+            f"{where}: body_hash must be the real sha256 of the stored body; "
+            f"placeholder {body_hash!r} is rejected"
+        )
+    if not SHA256_HEX.fullmatch(body_hash.strip()):
+        raise Inconsistent(
+            f"{where}: body_hash must look like sha256:<64 hex chars>; got {body_hash!r}"
+        )
+    if entry["length"] == 0 and body_hash.strip().lower() != body_sha256(b"").lower():
+        empty_digest = body_sha256(b"")
+        raise Inconsistent(
+            f"{where}: body_hash for length 0 must be the sha256 of empty bytes ({empty_digest})"
+        )
+    check_access_classification(entry, where)
     headers = entry.get("headers")
     if headers is not None:
         if not isinstance(headers, dict):
@@ -559,6 +754,204 @@ def check_request(entry, where):
             if not isinstance(value, str):
                 raise Inconsistent(f"{where}: header {name!r} value is a string")
             check_sensitive_header(name, value, where)
+
+
+def check_redaction_meta(content, body_text, where):
+    """Validate optional _spc_redaction on HAR content; return True when present."""
+    meta = content.get("_spc_redaction")
+    if meta is None:
+        return False
+    if not isinstance(meta, dict):
+        raise Inconsistent(f"{where}: _spc_redaction is an object")
+    marker = meta.get("marker")
+    if marker != REDACTION_MARKER:
+        raise Inconsistent(
+            f"{where}: _spc_redaction.marker must be {REDACTION_MARKER!r}; got {marker!r}"
+        )
+    paths = meta.get("paths")
+    ranges = meta.get("ranges")
+    if not isinstance(paths, list) or any(not text(p) for p in paths):
+        raise Inconsistent(f"{where}: _spc_redaction.paths is a nonempty-string list")
+    if ranges is None:
+        ranges = []
+    if not isinstance(ranges, list):
+        raise Inconsistent(f"{where}: _spc_redaction.ranges is a list when present")
+    if ranges and not paths:
+        raise Inconsistent(f"{where}: _spc_redaction.paths is required when ranges are listed")
+    marker_len = len(REDACTION_MARKER)
+    for i, span in enumerate(ranges):
+        rwhere = f"{where}: _spc_redaction.ranges[{i}]"
+        if (
+            not isinstance(span, (list, tuple))
+            or len(span) != 2
+            or not all(isinstance(x, int) and not isinstance(x, bool) for x in span)
+        ):
+            raise Inconsistent(f"{rwhere}: is [start, end) of integers")
+        start, end = span
+        if start < 0 or end < start or end > len(body_text):
+            raise Inconsistent(f"{rwhere}: offsets fall inside the stored body text")
+        if end - start != marker_len or body_text[start:end] != REDACTION_MARKER:
+            raise Inconsistent(
+                f"{rwhere}: range must cover the marker {REDACTION_MARKER!r} in the stored text"
+            )
+    return True
+
+
+def check_har_entry(entry, where, index=0):
+    """Validate one HAR log.entries[] item against the evidence contract."""
+    if not isinstance(entry, dict):
+        raise Inconsistent(f"{where}: entry is an object")
+    response = entry.get("response")
+    if not isinstance(response, dict):
+        raise Inconsistent(f"{where}: response is an object")
+    content = response.get("content")
+    if not isinstance(content, dict):
+        raise Inconsistent(f"{where}: response.content is an object")
+    size = content.get("size")
+    if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+        raise Inconsistent(f"{where}: content.size is a non-negative integer")
+    body_text = content.get("text")
+    if size > 0 and not isinstance(body_text, str):
+        raise Inconsistent(
+            f"{where}: content.text is required when content.size > 0 "
+            "(full body required; do not omit, truncate, or reconstruct)"
+        )
+    if body_text is None:
+        body_text = ""
+    if not isinstance(body_text, str):
+        raise Inconsistent(f"{where}: content.text is a string when present")
+    stored = utf8_size(body_text)
+    # size always equals the stored (possibly redacted) body byte length.
+    check_redaction_meta(content, body_text, where)
+    if size != stored:
+        raise Inconsistent(
+            f"{where}: content.size {size} differs from stored body UTF-8 length {stored}"
+        )
+    return {
+        "index": index,
+        "url": ((entry.get("request") or {}).get("url") if isinstance(entry.get("request"), dict) else None),
+        "status": response.get("status"),
+        "text": body_text,
+        "size": size,
+        "sha256": body_sha256(body_text.encode("utf-8")),
+    }
+
+
+def check_har(data, path="<har>"):
+    """Validate a HAR document; return normalized entry summaries."""
+    if not isinstance(data, dict):
+        raise Inconsistent(f"{path}: HAR must be an object")
+    log = data.get("log")
+    if not isinstance(log, dict):
+        raise Inconsistent(f"{path}: log is an object")
+    entries = log.get("entries")
+    if not isinstance(entries, list) or not entries:
+        raise Inconsistent(f"{path}: log.entries is a nonempty list")
+    return [check_har_entry(entry, f"{path}: entries[{i}]", index=i) for i, entry in enumerate(entries)]
+
+
+def _walk_json_for_sensitive(node, path, hits, url):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            key_str = str(key)
+            child_path = f"{path}.{key_str}" if path else key_str
+            norm = re.sub(r"[^a-z0-9]", "", key_str.lower())
+            if norm in SENSITIVE_KEY_NAMES:
+                # Redaction marker in the value means the field was acknowledged; still a hit
+                # only when the cleartext (or non-marker) value remains.
+                if not (isinstance(value, str) and value == REDACTION_MARKER):
+                    hits.append({
+                        "url": url,
+                        "path": child_path,
+                        "key": key_str,
+                        "reason": "sensitive_key",
+                    })
+            _walk_json_for_sensitive(value, child_path, hits, url)
+    elif isinstance(node, list):
+        for i, item in enumerate(node):
+            _walk_json_for_sensitive(item, f"{path}[{i}]", hits, url)
+    elif isinstance(node, str):
+        for shape_name, pattern in SENSITIVE_VALUE_SHAPES:
+            if pattern.search(node):
+                hits.append({
+                    "url": url,
+                    "path": path or "$",
+                    "key": None,
+                    "reason": shape_name,
+                })
+                break
+
+
+def scan_body_text(body_text, url=None):
+    """Return sensitive-field hits for one response body string."""
+    hits = []
+    if not body_text:
+        return hits
+    # Prefer structured JSON walk; fall back to key-ish regex on raw text.
+    try:
+        parsed = json.loads(body_text)
+    except (ValueError, TypeError):
+        parsed = None
+    if parsed is not None:
+        _walk_json_for_sensitive(parsed, "", hits, url)
+        return hits
+    for key in SENSITIVE_KEY_NAMES:
+        # Match passwordHash / password_hash / "password" alike in raw bodies.
+        pattern = re.compile(
+            rf'["\']?{re.escape(key)}["\']?\s*[:=]',
+            re.IGNORECASE,
+        )
+        if pattern.search(body_text):
+            hits.append({
+                "url": url,
+                "path": key,
+                "key": key,
+                "reason": "sensitive_key",
+            })
+    for shape_name, pattern in SENSITIVE_VALUE_SHAPES:
+        if pattern.search(body_text):
+            hits.append({
+                "url": url,
+                "path": "$",
+                "key": None,
+                "reason": shape_name,
+            })
+    return hits
+
+
+def scan_har_bodies(data, path="<har>"):
+    """Scan every HAR response body for sensitive fields; return hit list."""
+    summaries = check_har(data, path)
+    hits = []
+    for summary in summaries:
+        hits.extend(scan_body_text(summary["text"], url=summary.get("url")))
+    return {"path": path, "entries": len(summaries), "hits": hits}
+
+
+def cross_check_finding_har(finding, har_path, har_data):
+    """Ensure finding request length/hash agree with a stored HAR body when comparable."""
+    summaries = check_har(har_data, har_path)
+    requests = finding.get("requests") or []
+    if finding.get("track") != "security" or not requests:
+        return summaries
+    # When counts match 1:1, require each request to agree with the corresponding entry.
+    if len(requests) == len(summaries):
+        pairs = zip(requests, summaries)
+    elif len(summaries) == 1 and len(requests) >= 1:
+        # Single-entry HAR cited by a multi-request finding: check against the last request.
+        pairs = [(requests[-1], summaries[0])]
+    else:
+        return summaries
+    for req, summary in pairs:
+        if req.get("length") != summary["size"]:
+            raise Inconsistent(
+                f"{har_path}: request length {req.get('length')} disagrees with HAR body size {summary['size']}"
+            )
+        if isinstance(req.get("body_hash"), str) and req["body_hash"].strip().lower() != summary["sha256"].lower():
+            raise Inconsistent(
+                f"{har_path}: request body_hash disagrees with sha256 of stored HAR body"
+            )
+    return summaries
 
 
 def check_side_metric(side, where):
@@ -711,6 +1104,15 @@ def check_summary(data, path="<summary>", finding_count=None):
     return data
 
 
+def resolve_evidence_path(run_dir, relative):
+    if not relative:
+        return None
+    candidate = Path(relative)
+    if not candidate.is_absolute():
+        candidate = run_dir / relative
+    return candidate
+
+
 def check_run_dir(run_dir):
     run_dir = Path(run_dir)
     summary = check_summary(load(run_dir / "summary.json"), str(run_dir / "summary.json"))
@@ -722,6 +1124,10 @@ def check_run_dir(run_dir):
             exploited += 1
         elif finding["status"] in ("hypothesis", "unclear"):
             raise Inconsistent(f"{path}: only exploited findings are written as finding files; put {finding['status']} under limits")
+        har_rel = (finding.get("evidence") or {}).get("har_path")
+        har_file = resolve_evidence_path(run_dir, har_rel)
+        if har_file is not None and har_file.is_file():
+            cross_check_finding_har(finding, str(har_file), load(har_file))
     check_summary(summary, str(run_dir / "summary.json"), finding_count=exploited)
     return {"summary": summary, "findings": len(findings), "exploited": exploited}
 
@@ -826,6 +1232,19 @@ def cmd_threshold(args):
     return 0
 
 
+def cmd_har(args):
+    check_har(load(args.path), args.path)
+    print(f"OK {args.path}")
+    return 0
+
+
+def cmd_scan_bodies(args):
+    result = scan_har_bodies(load(args.path), args.path)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    # Exit 1 when hits exist so the skill flow can treat them as findings deterministically.
+    return 1 if result["hits"] else 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -870,6 +1289,15 @@ def main(argv=None):
         help="must match the expression aggregate when set",
     )
 
+    har_cmd = sub.add_parser("har", help="validate a HAR file against the evidence contract (full bodies, size)")
+    har_cmd.add_argument("path")
+
+    scan_cmd = sub.add_parser(
+        "scan-bodies",
+        help="scan HAR response bodies for sensitive fields; exit 1 when hits are found",
+    )
+    scan_cmd.add_argument("path")
+
     args = parser.parse_args(argv)
     try:
         if args.command == "signals":
@@ -884,6 +1312,10 @@ def main(argv=None):
             return cmd_aggregate(args)
         if args.command == "threshold":
             return cmd_threshold(args)
+        if args.command == "har":
+            return cmd_har(args)
+        if args.command == "scan-bodies":
+            return cmd_scan_bodies(args)
     except Inconsistent as error:
         print(f"Inconsistent: {error}", file=sys.stderr)
         return 2

@@ -1157,6 +1157,11 @@ test("runtime E2E impact map and screenshot comparison unit tests pass", () => {
   assert.strictEqual(units.status, 0, units.stderr);
 });
 
+test("security-performance-check check_findings unit tests pass", () => {
+  const units = spawnSync("python3", ["-B", path.join(SOURCE_ROOT, "test/spc_check_findings_test.py")], { encoding: "utf8" });
+  assert.strictEqual(units.status, 0, units.stderr || units.stdout);
+});
+
 function png(width, height, marked = []) {
   // Unfiltered RGBA rows; marked pixels are red on white.
   const rows = [];
@@ -3953,9 +3958,10 @@ test("validate-change is a manual command and the composite contracts reach revi
 const CHECK_FINDINGS = path.join(SOURCE_ROOT, "skills/security-performance-check/scripts/check_findings.py");
 const SECURITY_SIGNALS = path.join(SOURCE_ROOT, "skills/security-performance-check/references/security-signals.md");
 const PERFORMANCE_SIGNALS = path.join(SOURCE_ROOT, "skills/security-performance-check/references/performance-signals.md");
+const EMPTY_BODY_HASH = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 function checkFindings(args, cwd = SOURCE_ROOT) {
-  return spawnSync("python3", [CHECK_FINDINGS, ...args], { cwd, encoding: "utf8" });
+  return spawnSync("python3", ["-B", CHECK_FINDINGS, ...args], { cwd, encoding: "utf8" });
 }
 
 test("security-performance-check is a manual command and the JSON checker validates findings and summaries", () => {
@@ -3968,10 +3974,18 @@ test("security-performance-check is a manual command and the JSON checker valida
   assert.ok(skill.includes("use placeholders only"));
   assert.ok(skill.includes("always load"));
   assert.ok(skill.includes("no `validator` field") || skill.includes("no validator field"));
+  assert.ok(skill.includes("scan-bodies"));
+  assert.ok(skill.includes("evidence-contract.md"));
+  assert.ok(skill.includes("background-requests"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
+  assert.ok(fs.existsSync(path.join(SOURCE_ROOT, "skills/security-performance-check/references/evidence-contract.md")));
   const signalsDoc = fs.readFileSync(SECURITY_SIGNALS, "utf8");
   assert.ok(signalsDoc.includes("loads only when a changed path matches"));
   assert.ok(!signalsDoc.includes("when the agent tags the area"));
+  assert.ok(signalsDoc.includes("`**/server/**`"));
+  const perfDoc = fs.readFileSync(PERFORMANCE_SIGNALS, "utf8");
+  assert.ok(perfDoc.includes("`background-requests`"));
+  assert.ok(perfDoc.includes("15 seconds") || perfDoc.includes("**15 seconds**"));
   const runtime = fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/project-runtime.md"), "utf8");
   assert.ok(runtime.includes("## Security and performance probes"));
   assert.ok(runtime.includes("Allowed hosts:"));
@@ -3997,7 +4011,7 @@ test("security-performance-check is a manual command and the JSON checker valida
       status: "exploited",
       introduced: true,
       roles_tested: ["user-a", "user-b"],
-      requests: [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 12, body_hash: "sha256:abc" }],
+      requests: [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH }],
       repro_curl: "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1",
       evidence: { har_path: "finding-1.har", screenshot: null },
       validator: "agent",
@@ -4047,7 +4061,7 @@ test("security-performance-check is a manual command and the JSON checker valida
     assert.ok(result.stderr.includes("placeholder"), result.stderr);
     finding.repro_curl = "curl -s -H 'Authorization: Bearer $TOKEN' http://127.0.0.1:3000/api/orders/1";
     finding.requests = [{
-      role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 12, body_hash: "sha256:abc",
+      role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH,
       headers: { Cookie: "<redacted>", Authorization: "REDACTED" },
     }];
     writeJson(path.join(runDir, "finding-1.json"), finding);
@@ -4058,7 +4072,7 @@ test("security-performance-check is a manual command and the JSON checker valida
     result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("placeholder"), result.stderr);
-    finding.requests = [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 12, body_hash: "sha256:abc" }];
+    finding.requests = [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 0, body_hash: EMPTY_BODY_HASH }];
     finding.repro_curl = "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1";
 
     finding.status = "hypothesis";
@@ -4242,6 +4256,25 @@ test("performance threshold helper applies median, range, and A/A noise floor", 
   result = checkFindings(["threshold", "--expr", "not a threshold", "--base", "1", "--head", "2"]);
   assert.strictEqual(result.status, 2);
   assert.ok(result.stderr.includes("threshold grammar invalid"), result.stderr);
+
+  // Relative threshold with base 0: equal samples pass; head > 0 fails.
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "0",
+    "--head", "0",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  assert.strictEqual(JSON.parse(result.stdout).verdict, "pass");
+
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "0",
+    "--head", "2",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  assert.strictEqual(JSON.parse(result.stdout).verdict, "fail");
 });
 
 test("editing security-signals.md changes signals_loaded and survives update --apply", () => {
@@ -4263,7 +4296,7 @@ test("editing security-signals.md changes signals_loaded and survives update --a
   const original = fs.readFileSync(SECURITY_SIGNALS, "utf8");
   // Narrow sensitive-response so src/api/orders.ts no longer matches; leave SKILL.md untouched.
   const edited = original.replace(
-    "| `sensitive-response` | tag:sensitive | `**/api/**`, `**/serializers/**`, `**/dto/**`, `**/graphql/**`, `**/*response*` |",
+    "| `sensitive-response` | tag:sensitive | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/server/**`, `**/backend/**`, `**/app/**`, `**/serializers/**`, `**/dto/**`, `**/graphql/**`, `**/*response*`, `**/*serializer*` |",
     "| `sensitive-response` | tag:sensitive | `**/serializers/**`, `**/dto/**`, `**/graphql/**`, `**/*response*` |"
   );
   assert.ok(edited !== original, "fixture edit must change the signal row");
@@ -4436,7 +4469,7 @@ test("validate-change risk reads installed signal files into separateTests; edit
     const original = fs.readFileSync(signalsPath, "utf8");
     // Narrow object-id-access so src/api/orders.ts no longer matches, without touching SKILL.md or risk-rules.md.
     const edited = original.replace(
-      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/*.{ts,tsx,js,jsx,py,go}` |",
+      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/server/**`, `**/backend/**`, `**/serializers/**`, `**/dto/**`, `**/*route*.*`, `**/*handler*.*`, `**/*controller*.*`, `**/*.{ts,tsx,js,jsx,py,go}` |",
       "| `object-id-access` | always | `**/never-match/**` |"
     );
     assert.ok(edited !== original, "fixture edit must change the signal row");
@@ -4622,7 +4655,7 @@ test("editing a signal file after risk makes report fail with Inconsistent", () 
 
     const original = fs.readFileSync(signalsPath, "utf8");
     const edited = original.replace(
-      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/*.{ts,tsx,js,jsx,py,go}` |",
+      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/server/**`, `**/backend/**`, `**/serializers/**`, `**/dto/**`, `**/*route*.*`, `**/*handler*.*`, `**/*controller*.*`, `**/*.{ts,tsx,js,jsx,py,go}` |",
       "| `object-id-access` | always | `**/never-match/**` |"
     );
     assert.ok(edited !== original);

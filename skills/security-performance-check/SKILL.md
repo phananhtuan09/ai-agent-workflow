@@ -41,9 +41,10 @@ Use `<evidence root>/<slug>/security-performance/`, under the evidence root that
 | --- | --- |
 | `summary.json` | Run summary: `signals_loaded[]`, `coverage[]`, `conditions{}`, `limits[]` |
 | `finding-<n>.json` | One file per finding (only `exploited` status) |
-| HAR / screenshots / traces | Redacted request evidence, screenshots, or metric dumps named from the finding |
+| HAR / screenshots / traces | Full-body request evidence (see evidence contract), screenshots, or metric dumps named from the finding |
 
-Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, `run`, `aggregate`, or `threshold`).
+Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, `run`, `aggregate`, `threshold`, `har`, or `scan-bodies`).
+Read `references/evidence-contract.md` for the HAR body, redaction, and access-classification rules the checker enforces.
 
 ## Project runtime
 
@@ -81,10 +82,16 @@ Performance: skip `level: off` rows; other rows match when changed paths or rout
 
 4. **Runtime probe** on local/dev only, through the declared production path:
    - Replay each changed request as a higher-privilege user, as another same-role user, and unauthenticated.
-     Classify as bypassed / enforced / unclear using the declared fingerprint; unclear goes to `Giới hạn`.
+     For each probe request record `expected_access` (`allow` \| `deny`), `observed_access`, and `access_verdict` per `references/evidence-contract.md`.
+     Owner or higher-privilege role reading/writing data they are allowed to access is `allowed`, never `bypassed`.
+     `bypassed` is only for an unauthorized caller that received access; unclear goes to `Giới hạn`.
    - Object access: account B touching account A's object by every ID location (path, query, body, header, cookie).
    - Deterministic validators where possible: injected markup counts only if a dialog with a unique marker fires; an open redirect counts only if the browser lands on a local canary.
      Never use public callback or OAST services.
+   - Store every probed response as a **full HAR body** (no `body_preview`, no hand reconstruction).
+     Redact in place with `«REDACTED»` and `_spc_redaction` when needed; validate with `check_findings.py har`.
+   - After probes, run `check_findings.py scan-bodies` on every saved HAR.
+     Each hit is an exploited `sensitive-response` finding even when that signal row was not loaded.
    - Compare head with base: a probe that succeeds on head and fails on base is `introduced`; one that succeeds on both is `pre-existing`.
    - Reset data around probes that write; stop at the probe budget and report "probes not run: N".
 
@@ -100,8 +107,9 @@ Do not add Mann-Whitney, KS, or Cliff's delta gates in this revision.
    Record a conditions header in `conditions{}`: URL/state, viewport, CPU/network throttling, cache, auth state, and tool versions (Playwright, Node, bundler).
    Load matching rows from `performance-signals.md` into `signals_loaded[]`.
 
-2. **Exact metrics** (`metric_class: exact`): request count per flow, bundle size per entry, payload bytes.
+2. **Exact metrics** (`metric_class: exact`): request count per flow, bundle size per entry, payload bytes, and `background-requests`.
    One run per side; compare with an exact diff against the row's threshold (for example `count <= base`).
+   For `background-requests`: open each changed page, navigate to another same-origin page, count post-navigation background HTTP(S) requests for **15 seconds** (see `performance-signals.md`); head > base fails via `count <= base`.
 
 3. **Noisy metrics** (`metric_class: noisy`): LCP, CLS, INP/TBT, response time, long tasks.
    At least 5 runs per side (`min_runs_per_side`), interleaved base/head (B, H, B, H, …).
@@ -140,13 +148,25 @@ Security finding:
   "introduced": true,
   "roles_tested": ["user-a", "user-b", "anonymous"],
   "requests": [
-    {"role": "user-b", "method": "GET", "url": "/api/orders/1", "status": 200, "length": 120, "body_hash": "sha256:..."}
+    {
+      "role": "user-b",
+      "method": "GET",
+      "url": "/api/orders/1",
+      "status": 200,
+      "length": 120,
+      "body_hash": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expected_access": "deny",
+      "observed_access": "allow",
+      "access_verdict": "bypassed",
+      "caller_authorized": false
+    }
   ],
   "repro_curl": "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1",
   "evidence": {"har_path": "finding-1.har", "screenshot": null},
   "validator": "agent"
 }
 ```
+
 
 Performance finding (no `validator` field; security findings require `validator`):
 
