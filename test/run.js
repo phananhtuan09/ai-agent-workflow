@@ -3918,7 +3918,7 @@ test("validate-change is a manual command and the composite contracts reach revi
   assert.ok(review.includes("Without that caller, never write the handoff"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/SKILL.md"), "utf8").includes('"expects": ["K1"]'));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Accept a PR or a change just made | `/validate-change` |"));
-  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Targeted security check on a change | `/security-performance-check` |"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Targeted security or performance check on a change | `/security-performance-check` |"));
 
   const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--bundle", "validate"]);
   try {
@@ -3930,6 +3930,7 @@ test("validate-change is a manual command and the composite contracts reach revi
     assert.ok(fs.existsSync(path.join(skills, "validate-change/references/risk-rules.md")));
     assert.ok(fs.existsSync(path.join(skills, "validate-change/scripts/../../runtime-e2e-test/scripts/evidence.py")));
     assert.ok(fs.existsSync(path.join(skills, "security-performance-check/references/security-signals.md")));
+    assert.ok(fs.existsSync(path.join(skills, "security-performance-check/references/performance-signals.md")));
   } finally {
     result.cleanup();
   }
@@ -3937,6 +3938,7 @@ test("validate-change is a manual command and the composite contracts reach revi
 
 const CHECK_FINDINGS = path.join(SOURCE_ROOT, "skills/security-performance-check/scripts/check_findings.py");
 const SECURITY_SIGNALS = path.join(SOURCE_ROOT, "skills/security-performance-check/references/security-signals.md");
+const PERFORMANCE_SIGNALS = path.join(SOURCE_ROOT, "skills/security-performance-check/references/performance-signals.md");
 
 function checkFindings(args, cwd = SOURCE_ROOT) {
   return spawnSync("python3", [CHECK_FINDINGS, ...args], { cwd, encoding: "utf8" });
@@ -3946,7 +3948,9 @@ test("security-performance-check is a manual command and the JSON checker valida
   const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/SKILL.md"), "utf8");
   assert.ok(skill.includes("disable-model-invocation: true"));
   assert.ok(skill.includes("disallowed-tools: Edit"));
-  assert.ok(skill.includes("performance track is not available yet"));
+  assert.ok(skill.includes("## Performance flow"));
+  assert.ok(skill.includes("Noise floor"));
+  assert.ok(!skill.includes("performance track is not available yet"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
   const runtime = fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/project-runtime.md"), "utf8");
   assert.ok(runtime.includes("## Security and performance probes"));
@@ -4014,9 +4018,113 @@ test("security-performance-check is a manual command and the JSON checker valida
     result = checkFindings(["summary", path.join(runDir, "summary.json")]);
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("not a pen test"), result.stderr);
+
+    const perfFinding = {
+      schema: "security-performance-check/finding@1",
+      track: "performance",
+      signal_id: "request-count",
+      file: "src/orders/list.tsx",
+      line: 18,
+      severity: "high",
+      status: "exploited",
+      introduced: true,
+      metric: {
+        class: "exact",
+        aggregation: "count",
+        unit: "requests",
+        base: { median: 2, min: 2, max: 2, n: 1 },
+        head: { median: 12, min: 12, max: 12, n: 1 },
+        delta_pct: 500,
+        threshold: "count <= base",
+        effective_threshold: "count <= base",
+        aa_spread: null,
+        verdict: "fail",
+      },
+      evidence: { har_path: "finding-perf.har", screenshot: null },
+      fix_hint: "Collapse per-row fetches into one list endpoint.",
+    };
+    writeJson(path.join(runDir, "finding-1.json"), perfFinding);
+    writeJson(path.join(runDir, "summary.json"), {
+      schema: "security-performance-check/summary@1",
+      track: "performance",
+      target: { label: "PR #1" },
+      signals_loaded: [{ id: "request-count", file: "references/performance-signals.md", matched_paths: ["src/orders/list.tsx"] }],
+      coverage: [{ path: "src/orders/list.tsx", in_scope: true, notes: "" }],
+      conditions: { host: "http://127.0.0.1:3000", viewport: "1280x720" },
+      limits: ["Not a penetration test, dependency CVE audit, or load test."],
+    });
+    result = checkFindings(["run", runDir]);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+
+    perfFinding.metric.verdict = "pass";
+    writeJson(path.join(runDir, "finding-1.json"), perfFinding);
+    result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("metric.verdict fail"), result.stderr);
   } finally {
     fs.rmSync(runDir, { recursive: true, force: true });
   }
+});
+
+test("performance threshold helper applies median, range, and A/A noise floor", () => {
+  let result = checkFindings(["aggregate", "--values", "10,12,11,13,9", "--how", "median"]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  const stats = JSON.parse(result.stdout);
+  assert.strictEqual(stats.median, 11);
+  assert.strictEqual(stats.min, 9);
+  assert.strictEqual(stats.max, 13);
+  assert.strictEqual(stats.n, 5);
+
+  result = checkFindings([
+    "threshold",
+    "--expr", "count <= base",
+    "--base", "2",
+    "--head", "5",
+    "--aggregation", "count",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  assert.strictEqual(JSON.parse(result.stdout).verdict, "fail");
+
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "100,102,98,101,99",
+    "--head", "120,118,122,119,121",
+    "--metric-class", "noisy",
+    "--min-runs", "5",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  assert.strictEqual(JSON.parse(result.stdout).verdict, "fail");
+
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "100,100,100,100,100",
+    "--head", "112,112,112,112,112",
+    "--metric-class", "noisy",
+    "--min-runs", "5",
+    "--aa", "100,102,98,101,99:105,103,107,104,106",
+    "--aa-multiplier", "2.5",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  const aa = JSON.parse(result.stdout);
+  assert.strictEqual(aa.verdict, "informational");
+  assert.ok(aa.effective_factor > 1.1, JSON.stringify(aa));
+
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "100,101",
+    "--head", "110,111",
+    "--metric-class", "noisy",
+    "--min-runs", "5",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  assert.strictEqual(JSON.parse(result.stdout).verdict, "inconclusive");
+
+  result = checkFindings(["threshold", "--expr", "not a threshold", "--base", "1", "--head", "2"]);
+  assert.strictEqual(result.status, 2);
+  assert.ok(result.stderr.includes("threshold grammar invalid"), result.stderr);
 });
 
 test("editing security-signals.md changes signals_loaded and survives update --apply", () => {
@@ -4064,6 +4172,70 @@ test("editing security-signals.md changes signals_loaded and survives update --a
     const surviving = checkFindings(["signals", "--signals", installedSignals, "--paths", "src/api/orders.ts"]);
     assert.strictEqual(surviving.status, 0, surviving.stderr || surviving.stdout);
     assert.ok(!JSON.parse(surviving.stdout).signals_loaded.map((s) => s.id).includes("sensitive-response"), surviving.stdout);
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(path.dirname(editedCopy), { recursive: true, force: true });
+  }
+});
+
+test("editing performance-signals.md changes signals_loaded and survives update --apply", () => {
+  const before = checkFindings([
+    "signals",
+    "--track", "performance",
+    "--signals", PERFORMANCE_SIGNALS,
+    "--paths", "src/pages/orders.tsx",
+  ]);
+  assert.strictEqual(before.status, 0, before.stderr || before.stdout);
+  const beforeIds = JSON.parse(before.stdout).signals_loaded.map((s) => s.id);
+  assert.ok(beforeIds.includes("request-count"), before.stdout);
+  assert.ok(beforeIds.includes("lcp"), before.stdout);
+
+  const editedCopy = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "spc-perf-signals-")), "performance-signals.md");
+  const original = fs.readFileSync(PERFORMANCE_SIGNALS, "utf8");
+  // Narrow request-count so src/pages/orders.tsx no longer matches; leave SKILL.md untouched.
+  const edited = original.replace(
+    "| `request-count` | exact | playwright | lower_better | count | `count <= base` | 1 | `**/*.{tsx,jsx,vue,html}`, `**/pages/**`, `**/app/**`, `**/routes/**`, `**/api/**` | error |",
+    "| `request-count` | exact | playwright | lower_better | count | `count <= base` | 1 | `**/routes/**`, `**/api/**` | error |"
+  );
+  assert.ok(edited !== original, "fixture edit must change the performance signal row");
+  fs.writeFileSync(editedCopy, edited);
+  const after = checkFindings([
+    "signals",
+    "--track", "performance",
+    "--signals", editedCopy,
+    "--paths", "src/pages/orders.tsx",
+  ]);
+  assert.strictEqual(after.status, 0, after.stderr || after.stdout);
+  const afterIds = JSON.parse(after.stdout).signals_loaded.map((s) => s.id);
+  assert.ok(afterIds.includes("lcp"), after.stdout);
+  assert.ok(!afterIds.includes("request-count"), after.stdout);
+
+  const fixture = createUpdateFixture("claude");
+  try {
+    const install = fixture.run(["--kit", "coding-standard", "--tool", "claude", "--bundle", "security-performance"]);
+    assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+    const installedSignals = path.join(fixture.workspace, ".claude/skills/security-performance-check/references/performance-signals.md");
+    assert.ok(fs.existsSync(installedSignals));
+    fs.writeFileSync(installedSignals, edited);
+    fs.writeFileSync(
+      path.join(fixture.sourceRoot, "skills/security-performance-check/references/performance-signals.md"),
+      `${original}\n<!-- upstream revision marker -->\n`
+    );
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(
+      apply.stdout.includes("SKIP LOCAL repository:.claude/skills/security-performance-check/references/performance-signals.md"),
+      apply.stdout
+    );
+    assert.strictEqual(fs.readFileSync(installedSignals, "utf8"), edited);
+    const surviving = checkFindings([
+      "signals",
+      "--track", "performance",
+      "--signals", installedSignals,
+      "--paths", "src/pages/orders.tsx",
+    ]);
+    assert.strictEqual(surviving.status, 0, surviving.stderr || surviving.stdout);
+    assert.ok(!JSON.parse(surviving.stdout).signals_loaded.map((s) => s.id).includes("request-count"), surviving.stdout);
   } finally {
     fixture.cleanup();
     fs.rmSync(path.dirname(editedCopy), { recursive: true, force: true });
