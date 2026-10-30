@@ -3912,6 +3912,8 @@ test("validate-change is a manual command and the composite contracts reach revi
   const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/SKILL.md"), "utf8");
   assert.ok(skill.includes("disable-model-invocation: true"));
   assert.ok(skill.includes("skip: recommended"));
+  assert.ok(skill.includes("security-signals.md") && skill.includes("performance-signals.md"));
+  assert.ok(skill.includes("separateTests"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
   const review = fs.readFileSync(path.join(SOURCE_ROOT, "skills/review-pr/SKILL.md"), "utf8");
   assert.ok(review.includes("## Called From validate-change"));
@@ -3919,6 +3921,7 @@ test("validate-change is a manual command and the composite contracts reach revi
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/SKILL.md"), "utf8").includes('"expects": ["K1"]'));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Accept a PR or a change just made | `/validate-change` |"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Targeted security or performance check on a change | `/security-performance-check` |"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/references/risk-rules.md"), "utf8").includes("security-performance-check"));
 
   const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--bundle", "validate"]);
   try {
@@ -4239,6 +4242,136 @@ test("editing performance-signals.md changes signals_loaded and survives update 
   } finally {
     fixture.cleanup();
     fs.rmSync(path.dirname(editedCopy), { recursive: true, force: true });
+  }
+});
+
+function copySkillTree(skillIds) {
+  const skillsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "vc-skills-"));
+  skillIds.forEach((id) => {
+    copyFixturePath(path.join(SOURCE_ROOT, "skills", id), path.join(skillsRoot, id));
+  });
+  return skillsRoot;
+}
+
+function riskRepoWithApiChange() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vc-signal-risk-"));
+  const git = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  git("init", "-q");
+  git("config", "user.email", "test@example.com");
+  git("config", "user.name", "Test");
+  fs.mkdirSync(path.join(root, "src/api"), { recursive: true });
+  fs.writeFileSync(path.join(root, "src/api/orders.ts"), "export const get = () => null;\n");
+  fs.writeFileSync(path.join(root, "README.md"), "base\n");
+  git("add", ".");
+  git("commit", "-qm", "base");
+  const base = git("rev-parse", "HEAD");
+  fs.writeFileSync(path.join(root, "src/api/orders.ts"), "export const get = (id) => load(id);\n");
+  git("commit", "-qam", "api");
+  const run = path.join(root, ".runtime-e2e/x/validate");
+  fs.mkdirSync(run, { recursive: true });
+  writeJson(path.join(run, "expectations.json"), {
+    schema: "validate-change/expectations@1",
+    items: [{
+      id: "K1",
+      statement: "Orders load by id",
+      change: "modified",
+      source: "prompt",
+      sourceRef: "prompt",
+      quote: "load by id",
+      confirmed: "source",
+    }],
+  });
+  return { root, base, run, cleanup() { fs.rmSync(root, { recursive: true, force: true }); } };
+}
+
+test("validate-change risk reads installed signal files into separateTests; editing a trigger changes them", () => {
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  const signalsPath = path.join(skillsRoot, "security-performance-check/references/security-signals.md");
+  const skillMd = path.join(skillsRoot, "validate-change/SKILL.md");
+  const rulesMd = path.join(skillsRoot, "validate-change/references/risk-rules.md");
+  const skillBefore = fs.readFileSync(skillMd, "utf8");
+  const rulesBefore = fs.readFileSync(rulesMd, "utf8");
+  const repo = riskRepoWithApiChange();
+  try {
+    const runRisk = () => spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    let result = runRisk();
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const before = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
+    assert.ok(Array.isArray(before.separateTests) && before.separateTests.length > 0, JSON.stringify(before.separateTests));
+    const securityIds = before.separateTests.filter((e) => e.area === "security").map((e) => e.signal.split(":")[0]);
+    assert.ok(securityIds.includes("object-id-access"), securityIds.join(","));
+    assert.ok(securityIds.includes("authz-route"), securityIds.join(","));
+    assert.ok(before.separateTests.every((e) => e.command.startsWith("/security-performance-check ")), JSON.stringify(before.separateTests));
+    assert.ok(result.stdout.includes("separateTests:"), result.stdout);
+
+    const original = fs.readFileSync(signalsPath, "utf8");
+    // Narrow object-id-access so src/api/orders.ts no longer matches, without touching SKILL.md or risk-rules.md.
+    const edited = original.replace(
+      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/*.{ts,tsx,js,jsx,py,go}` |",
+      "| `object-id-access` | always | `**/never-match/**` |"
+    );
+    assert.ok(edited !== original, "fixture edit must change the signal row");
+    fs.writeFileSync(signalsPath, edited);
+
+    result = runRisk();
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const after = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
+    const afterIds = after.separateTests.filter((e) => e.area === "security").map((e) => e.signal.split(":")[0]);
+    assert.ok(!afterIds.includes("object-id-access"), afterIds.join(","));
+    assert.ok(afterIds.includes("authz-route"), afterIds.join(","));
+    assert.notDeepStrictEqual(after.separateTests, before.separateTests);
+    assert.strictEqual(fs.readFileSync(skillMd, "utf8"), skillBefore);
+    assert.strictEqual(fs.readFileSync(rulesMd, "utf8"), rulesBefore);
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
+test("validate-change risk skips signal detection when security-performance-check is not installed", () => {
+  const skillsRoot = copySkillTree(["validate-change"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  const repo = riskRepoWithApiChange();
+  try {
+    assert.ok(!fs.existsSync(path.join(skillsRoot, "security-performance-check")));
+    const result = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const risk = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
+    assert.deepStrictEqual(risk.separateTests, []);
+    assert.ok(result.stdout.includes("separateTests: none"), result.stdout);
+
+    // Report still uses the existing missing-skill limit line when the step is MISSING.
+    writeJson(path.join(repo.run, "run.json"), {
+      schema: "validate-change/run@1",
+      target: { label: "PR#12" },
+      gate: { override: null, answer: null },
+      steps: [
+        { skill: "quality-code-check", status: "SKIPPED", skip: "not-applicable", reason: "signal-detection fixture" },
+        { skill: "review-pr", status: "SKIPPED", skip: "not-applicable", reason: "signal-detection fixture" },
+        { skill: "runtime-e2e-test", status: "SKIPPED", skip: "not-applicable", reason: "signal-detection fixture" },
+        { skill: "security-performance-check", status: "MISSING" },
+      ],
+      separateTests: [],
+      limits: [],
+    });
+    const report = spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
+    assert.strictEqual(report.status, 1, report.stderr || report.stdout);
+    const reportText = fs.readFileSync(path.join(repo.run, "report.md"), "utf8");
+    assert.ok(reportText.includes("security-performance-check chưa được cài hoặc chưa chạy"), reportText);
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
   }
 });
 

@@ -67,7 +67,11 @@ Build exactly one expectation list in `expectations.json`; every later step cons
 ## 2. Risk gate
 
 Run `python3 <skill-dir>/scripts/validate_change.py risk <run-dir> --base <ref>` (add `--worktree` for uncommitted changes; untracked files then count as added).
-It applies `references/risk-rules.md`, a project-editable table of deterministic signals: money, data, and permission paths and tokens, deleted or skipped tests, size, shared files, environment variables, major dependency bumps, agent-intent only, and recorded conflicts.
+It applies `references/risk-rules.md`, a project-editable table of deterministic gate and audit signals: money, data, and permission paths and tokens, deleted or skipped tests, size, shared files, environment variables, major dependency bumps, agent-intent only, and recorded conflicts.
+
+When `security-performance-check` is installed beside this skill, the same risk step also reads the trigger columns (`trigger`, `paths/patterns` / `route_pattern`) of that skill's `references/security-signals.md` and `references/performance-signals.md`, matches them on the diff, and writes `separateTests` into `risk.json` with a ready command per match (for example `/security-performance-check security`).
+Those signal files stay the single source of truth: this skill does not copy their rows.
+When the skill is not installed, `separateTests` in `risk.json` is empty and detection is skipped.
 
 - Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists K1..Kn, the conflicts, the assumptions, and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
@@ -105,7 +109,7 @@ Any other difference keeps the run at `NEEDS_REVIEW`.
 
 Skip this step with `skip: not-applicable` when the change has no runtime surface the skill supports, and say why.
 
-While reading the run's traces and observations, note passive signals for `Cần test riêng`: more requests than the base run when the suite declares a base, duplicate requests, slow responses, large payloads, and new console warnings. Run axe on the changed pages only when the project already has `@axe-core/playwright`; otherwise state the limit. Never install it.
+While reading the run's traces and observations, note passive signals for `Cần test riêng` that the signal-file match did not already cover: more requests than the base run when the suite declares a base, duplicate requests, slow responses, large payloads, and new console warnings. Run axe on the changed pages only when the project already has `@axe-core/playwright`; otherwise state the limit. Never install it.
 
 ## 6. Independent audit (high risk only)
 
@@ -141,14 +145,14 @@ Write `run.json`:
     {"skill": "audit", "status": "RAN", "artifact": ".runtime-e2e/orders/validate/audit.json"},
     {"skill": "security-performance-check", "status": "SKIPPED", "skip": "recommended", "reason": "separateTests lists security or performance signals"}
   ],
-  "separateTests": [{"area": "performance", "signal": "GET /api/orders twice per load", "evidence": "trace.zip", "command": "/security-performance-check /orders"}],
+  "separateTests": [{"area": "security", "signal": "object-id-access: src/orders/get.ts", "command": "/security-performance-check security PR#12"}],
   "limits": []
 }
 ```
 
 - Steps appear in this order, each once. The three specialist steps are required; record a missing skill as `MISSING`, never leave it out.
 - `security-performance-check` is optional and never changes the overall status. Record it as `MISSING` only when the skill is not installed. When it is installed, record `SKIPPED` with `skip: recommended` if `separateTests` is nonempty, or `skip: no-signal` if it is empty. Do not run the full check from this composite.
-- `separateTests` are prompts for a human decision, never defects, and never change the status.
+- Start `separateTests` from `risk.json` (signal-file matches when the skill is installed). Append the target label to each ready command (for example `PR#12`). Add any extra passive runtime or accessibility notes that are not already covered. They are prompts for a human decision, never defects, and never change the status.
 
 Then run `validate_change.py report <run-dir>`.
 It checks every file against its contract and the current head, verifies the runtime bundle with the runtime tool, and computes the status, worst first: `NEEDS_HUMAN`, `BLOCKED`, `FAILED`, `NEEDS_REVIEW`, `PASSED`.
