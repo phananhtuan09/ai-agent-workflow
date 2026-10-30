@@ -3912,6 +3912,7 @@ test("validate-change is a manual command and the composite contracts reach revi
   const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/SKILL.md"), "utf8");
   assert.ok(skill.includes("disable-model-invocation: true"));
   assert.ok(skill.includes("skip: recommended"));
+  assert.ok(skill.includes("category `escaped-bug`"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
   const review = fs.readFileSync(path.join(SOURCE_ROOT, "skills/review-pr/SKILL.md"), "utf8");
   assert.ok(review.includes("## Called From validate-change"));
@@ -3924,7 +3925,7 @@ test("validate-change is a manual command and the composite contracts reach revi
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const skills = path.join(result.workspace, ".claude/skills");
-    ["validate-change", "quality-code-check", "review-pr", "runtime-e2e-test", "security-performance-check"].forEach((id) => assert.ok(fs.existsSync(path.join(skills, id, "SKILL.md")), id));
+    ["validate-change", "quality-code-check", "review-pr", "runtime-e2e-test", "security-performance-check", "record-workflow-friction"].forEach((id) => assert.ok(fs.existsSync(path.join(skills, id, "SKILL.md")), id));
     // The composite finds the runtime tool beside it, so an installed run can verify its bundle.
     assert.ok(fs.existsSync(path.join(skills, "validate-change/scripts/validate_change.py")));
     assert.ok(fs.existsSync(path.join(skills, "validate-change/references/risk-rules.md")));
@@ -3933,6 +3934,46 @@ test("validate-change is a manual command and the composite contracts reach revi
   } finally {
     result.cleanup();
   }
+});
+
+test("record-workflow-friction records escaped-bug with escape_class and update_target, without editing the target", () => {
+  const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/record-workflow-friction/SKILL.md"), "utf8");
+  assert.ok(skill.includes("`escaped-bug`"));
+  assert.ok(skill.includes("## Escape Analysis (Unverified)"));
+  assert.ok(skill.includes("Do not edit `update_target`"));
+  [
+    "validate_run",
+    "validate_status",
+    "found_by",
+    "escape_class",
+    "update_target",
+    "upstream_candidate",
+  ].forEach((field) => assert.ok(skill.includes(field), field));
+  const classes = {
+    "regression-miss": "runtime-e2e-test/references/project-runtime.md",
+    "edge-case-miss": "runtime-e2e-test/references/blind-spots.md",
+    "security-performance-miss": "security-performance-check/references/security-signals.md",
+    "evidence-gap": "scripts/evidence.py",
+    "surface-miss": "quality-code-check/references/surface-rules.md",
+    "intent-miss": "upstream_candidate: yes",
+    "unknown": "none",
+  };
+  Object.entries(classes).forEach(([escapeClass, targetHint]) => {
+    assert.ok(skill.includes(escapeClass), escapeClass);
+    assert.ok(skill.includes(targetHint), `${escapeClass} -> ${targetHint}`);
+  });
+  assert.ok(skill.includes("performance-signals.md"));
+  const observationsReadme = fs.readFileSync(path.join(SOURCE_ROOT, "docs/evaluation/observations/README.md"), "utf8");
+  assert.ok(observationsReadme.includes("escaped-bug"));
+  assert.ok(observationsReadme.includes("escape_class"));
+  assert.ok(observationsReadme.includes("update_target"));
+
+  const { skillIds } = resolveSkills({
+    sourceRoot: SOURCE_ROOT,
+    kitId: "coding-standard",
+    extraBundles: ["validate"],
+  });
+  assert.ok(skillIds.includes("record-workflow-friction"));
 });
 
 const CHECK_FINDINGS = path.join(SOURCE_ROOT, "skills/security-performance-check/scripts/check_findings.py");
