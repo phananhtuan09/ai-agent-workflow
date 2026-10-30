@@ -328,8 +328,9 @@ def separate_tests_from_signals(paths):
                 "signal": f"{entry['id']}: {hit}{extra}",
                 "command": "/security-performance-check performance",
             })
-    except Exception as error:
-        # check_findings.Inconsistent and parse errors become risk-step inconsistencies.
+    except (ValueError, OSError) as error:
+        # Parser/file errors (including check_findings.Inconsistent) become risk-step inconsistencies;
+        # other exceptions (bugs) propagate.
         raise Inconsistent(f"security-performance-check signal files: {error}") from None
     return entries
 
@@ -601,7 +602,7 @@ def evaluate(root, run_dir, rules_path):
     # Expectations edited after the risk step can add an intent signal, never remove the stored one.
     added = [s for s in intent_signals(expectations, rules) if s["rule"] not in {x["rule"] for x in risk["signals"]}]
     risk = {**risk, "signals": risk["signals"] + added,
-            "separateTests": risk.get("separateTests", fresh.get("separateTests", [])),
+            "separateTests": risk.get("separateTests", []),
             "gate": "required" if risk["gate"] == "required" or any(s["level"] in ("high", "gate") for s in added) else risk["gate"],
             "audit": "required" if risk["audit"] == "required" or any(s["level"] == "high" for s in added) else risk["audit"]}
     run = load(run_dir / "run.json")

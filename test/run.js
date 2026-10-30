@@ -4496,6 +4496,243 @@ test("validate-change risk skips signal detection when security-performance-chec
   }
 });
 
+function riskRepoWithPaths(relPaths) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vc-signal-risk-"));
+  const git = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  git("init", "-q");
+  git("config", "user.email", "test@example.com");
+  git("config", "user.name", "Test");
+  fs.writeFileSync(path.join(root, "README.md"), "base\n");
+  for (const rel of relPaths) {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+    fs.writeFileSync(path.join(root, rel), "export const base = 1;\n");
+  }
+  git("add", ".");
+  git("commit", "-qm", "base");
+  const base = git("rev-parse", "HEAD");
+  if (relPaths.length === 0) {
+    fs.writeFileSync(path.join(root, "README.md"), "docs only\n");
+  } else {
+    for (const rel of relPaths) {
+      fs.writeFileSync(path.join(root, rel), "export const changed = 1;\n");
+    }
+  }
+  git("add", ".");
+  git("commit", "-qm", "change");
+  const run = path.join(root, ".runtime-e2e/x/validate");
+  fs.mkdirSync(run, { recursive: true });
+  writeJson(path.join(run, "expectations.json"), {
+    schema: "validate-change/expectations@1",
+    items: [{
+      id: "K1",
+      statement: "Changed paths still work",
+      change: "modified",
+      source: "prompt",
+      sourceRef: "prompt",
+      quote: "still work",
+      confirmed: "source",
+    }],
+  });
+  return { root, base, run, cleanup() { fs.rmSync(root, { recursive: true, force: true }); } };
+}
+
+function skippedValidateSteps(spc) {
+  return [
+    { skill: "quality-code-check", status: "SKIPPED", skip: "not-applicable", reason: "signal-detection fixture" },
+    { skill: "review-pr", status: "SKIPPED", skip: "not-applicable", reason: "signal-detection fixture" },
+    { skill: "runtime-e2e-test", status: "SKIPPED", skip: "not-applicable", reason: "signal-detection fixture" },
+    spc,
+  ];
+}
+
+test("validate-change report records no-signal when installed skill matches nothing", () => {
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  // README-only change matches no security/performance path patterns.
+  const repo = riskRepoWithPaths([]);
+  try {
+    const risk = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    assert.strictEqual(risk.status, 0, risk.stderr || risk.stdout);
+    const riskData = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
+    assert.deepStrictEqual(riskData.separateTests, []);
+    writeJson(path.join(repo.run, "run.json"), {
+      schema: "validate-change/run@1",
+      target: { label: "PR#12" },
+      gate: { override: null, answer: null },
+      steps: skippedValidateSteps({
+        skill: "security-performance-check",
+        status: "SKIPPED",
+        skip: "no-signal",
+        reason: "no separateTests signals",
+      }),
+      separateTests: [],
+      limits: [],
+    });
+    const report = spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
+    assert.strictEqual(report.status, 1, report.stderr || report.stdout);
+    const reportText = fs.readFileSync(path.join(repo.run, "report.md"), "utf8");
+    assert.ok(reportText.includes("không có tín hiệu `Cần test riêng`"), reportText);
+    assert.ok(!reportText.includes("chưa được cài hoặc chưa chạy"), reportText);
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
+test("validate-change separateTests signal uses +N when one row matches several paths", () => {
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  const repo = riskRepoWithPaths(["src/api/orders.ts", "src/api/users.ts"]);
+  try {
+    const result = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const separate = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8")).separateTests;
+    const multi = separate.filter((e) => e.area === "security" && /\+\d+$/.test(e.signal));
+    assert.ok(multi.length > 0, JSON.stringify(separate));
+    assert.ok(multi.some((e) => e.signal.includes("+1")), JSON.stringify(multi));
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
+test("editing a signal file after risk makes report fail with Inconsistent", () => {
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  const signalsPath = path.join(skillsRoot, "security-performance-check/references/security-signals.md");
+  const repo = riskRepoWithApiChange();
+  try {
+    const risk = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    assert.strictEqual(risk.status, 0, risk.stderr || risk.stdout);
+    const before = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
+    assert.ok(before.separateTests.length > 0);
+
+    const original = fs.readFileSync(signalsPath, "utf8");
+    const edited = original.replace(
+      "| `object-id-access` | always | `**/api/**`, `**/routes/**`, `**/controllers/**`, `**/handlers/**`, `**/*.{ts,tsx,js,jsx,py,go}` |",
+      "| `object-id-access` | always | `**/never-match/**` |"
+    );
+    assert.ok(edited !== original);
+    fs.writeFileSync(signalsPath, edited);
+
+    writeJson(path.join(repo.run, "run.json"), {
+      schema: "validate-change/run@1",
+      target: { label: "PR#12" },
+      gate: { override: null, answer: null },
+      steps: skippedValidateSteps({
+        skill: "security-performance-check",
+        status: "SKIPPED",
+        skip: "recommended",
+        reason: "separateTests lists security signals",
+      }),
+      separateTests: before.separateTests,
+      limits: [],
+    });
+    const report = spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
+    assert.strictEqual(report.status, 2, report.stderr || report.stdout);
+    assert.ok(report.stderr.includes("Inconsistent"), report.stderr);
+    assert.ok(report.stderr.includes("installed signal files") || report.stderr.includes("run risk again"), report.stderr);
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
+test("validate-change risk fills performance separateTests from performance-signals.md", () => {
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  const repo = riskRepoWithPaths(["src/pages/orders.tsx"]);
+  try {
+    const result = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const separate = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8")).separateTests;
+    const perf = separate.filter((e) => e.area === "performance");
+    assert.ok(perf.length > 0, JSON.stringify(separate));
+    assert.ok(perf.some((e) => e.signal.startsWith("request-count:")), JSON.stringify(perf));
+    assert.ok(perf.every((e) => e.command === "/security-performance-check performance"), JSON.stringify(perf));
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
+test("check_run rejects recommended/no-signal when they disagree with separateTests", () => {
+  // Enforcement lives in check_run (validate_change.py); this proves both mismatch directions.
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  const repo = riskRepoWithApiChange();
+  try {
+    const risk = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    assert.strictEqual(risk.status, 0, risk.stderr || risk.stdout);
+    const separate = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8")).separateTests;
+    assert.ok(separate.length > 0);
+
+    const report = (mutate) => {
+      const data = {
+        schema: "validate-change/run@1",
+        target: { label: "PR#12" },
+        gate: { override: null, answer: null },
+        steps: skippedValidateSteps({
+          skill: "security-performance-check",
+          status: "SKIPPED",
+          skip: "recommended",
+          reason: "fixture",
+        }),
+        separateTests: separate,
+        limits: [],
+      };
+      mutate(data);
+      writeJson(path.join(repo.run, "run.json"), data);
+      return spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
+    };
+
+    let result = report((d) => {
+      d.separateTests = [];
+      d.steps[3] = {
+        skill: "security-performance-check",
+        status: "SKIPPED",
+        skip: "recommended",
+        reason: "wrong pairing",
+      };
+    });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("skip recommended requires nonempty separateTests"), result.stderr);
+
+    result = report((d) => {
+      d.steps[3] = {
+        skill: "security-performance-check",
+        status: "SKIPPED",
+        skip: "no-signal",
+        reason: "wrong pairing",
+      };
+    });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("skip no-signal requires empty separateTests"), result.stderr);
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
 test("temporary package workspace can be created", () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-test-"));
   assert.ok(fs.existsSync(workspace));

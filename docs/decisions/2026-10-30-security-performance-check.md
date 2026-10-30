@@ -16,7 +16,7 @@ Checking those risks needs a dedicated, report-only skill that owns the signal f
 3. Ship the performance track: `references/performance-signals.md` with exact and noisy metrics, parseable thresholds, base/head worktrees from #44, interleaved runs, an A/A noise floor, and NEW / PRE_EXISTING classification.
    Collectors stay zero-install (Playwright via runtime-e2e-test, build output); Lighthouse only when the target project already has it.
 4. When the skill is installed, `validate-change` records the optional step as `SKIPPED` with `recommended` (nonempty `separateTests`) or `no-signal` (empty). Keep `MISSING` only when the skill is not installed.
-5. When the skill is installed, the `validate-change` risk step reads the trigger columns of the installed signal files and turns diff matches into `separateTests` with a ready command; `risk-rules.md` keeps only gate and audit rows. When it is not installed, detection is skipped and the existing missing-skill limit line stays.
+5. When the skill is installed, the `validate-change` risk step reads the trigger columns of the installed signal files and turns diff matches into `separateTests` with a ready command; `risk-rules.md` keeps only gate and audit rows. When it is not installed, detection is skipped and the existing missing-skill limit line stays. A `risk.json` from before this detection (no `separateTests` key) must re-run `risk` once the skill is installed, or `evaluate` raises `Inconsistent`.
 6. Mark the capability Experimental until sandbox scorecards show stable true-positive and false-positive rates.
 
 ## Constraints

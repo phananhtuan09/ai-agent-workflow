@@ -72,6 +72,8 @@ It applies `references/risk-rules.md`, a project-editable table of deterministic
 When `security-performance-check` is installed beside this skill, the same risk step also reads the trigger columns (`trigger`, `paths/patterns` / `route_pattern`) of that skill's `references/security-signals.md` and `references/performance-signals.md`, matches them on the diff, and writes `separateTests` into `risk.json` with a ready command per match (for example `/security-performance-check security`).
 Those signal files stay the single source of truth: this skill does not copy their rows.
 When the skill is not installed, `separateTests` in `risk.json` is empty and detection is skipped.
+The risk step writes each command without the target label; the report step appends that label when copying into `run.json`.
+A `risk.json` written before this signal detection existed has no `separateTests` key: with the skill installed, `report`/`evaluate` treats that as stale and requires re-running `risk`.
 
 - Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists K1..Kn, the conflicts, the assumptions, and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
