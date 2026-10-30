@@ -167,3 +167,14 @@ Copied into a suite's `determinism` so base and head differ only in behavior.
 Unknown isolation means serialize mutation runs.
 Browser contexts do not isolate database state or external side effects.
 Never reset a shared database or stop services owned by another run.
+
+## Security and performance probes
+
+Used by `security-performance-check` for local/dev runtime probes.
+Never put secret values here; name accounts and commands only.
+
+- Allowed hosts: `<localhost / 127.0.0.1 / declared dev hostnames only; probes stop on any other host>`
+- Test accounts per role: `<two same-role accounts that each own distinct data, plus one higher-privilege account; non-secret identifiers or fixture creation method>`
+- Access-denied fingerprint: `<HTTP status and/or redirect location and/or response text that means "denied" in this app>`
+- Data reset command: `<argument array or procedure that restores baseline data after probes that write>`
+- Probe budget: `<maximum probe requests or flows per run, e.g. 30; stop and report probes not run: N when exhausted>`

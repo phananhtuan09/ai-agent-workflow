@@ -3657,6 +3657,36 @@ test("validate-change report checks the run files and computes one status from t
     assert.ok(text.includes("- performance: GET /label twice per load. Lệnh: `/security-performance-check /label`"), text);
     assert.ok(text.includes("security-performance-check chưa được cài hoặc chưa chạy"), text);
 
+    // When the skill is installed, record SKIPPED with recommended or no-signal; MISSING only when not installed.
+    result = report((d) => {
+      d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "recommended", reason: "separateTests lists a performance signal" });
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("security-performance-check đã cài nhưng chưa chạy"), result.stderr);
+    assert.ok(!fs.readFileSync(file("report.md"), "utf8").includes("chưa được cài hoặc chưa chạy"));
+    result = report((d) => {
+      d.separateTests = [];
+      d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "no-signal", reason: "no separateTests signals" });
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("không có tín hiệu `Cần test riêng`"), result.stderr);
+    result = report((d) => {
+      d.steps.push({ skill: "security-performance-check", status: "MISSING" });
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("chưa được cài hoặc chưa chạy"));
+    result = report((d) => {
+      d.separateTests = [];
+      d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "recommended", reason: "wrong pairing" });
+    });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("skip recommended requires nonempty separateTests"), result.stderr);
+    result = report((d) => {
+      d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "no-signal", reason: "wrong pairing" });
+    });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("skip no-signal requires empty separateTests"), result.stderr);
+
     // Lint failures do not stop the run; a failed build skips runtime and must be recorded that way.
     result = report((d) => { d.steps[0].checks[1].exit = 1; });
     assert.strictEqual(result.status, 1);
@@ -3881,24 +3911,162 @@ test("validate-change report checks the run files and computes one status from t
 test("validate-change is a manual command and the composite contracts reach review-pr and runtime-e2e-test", () => {
   const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/SKILL.md"), "utf8");
   assert.ok(skill.includes("disable-model-invocation: true"));
+  assert.ok(skill.includes("skip: recommended"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
   const review = fs.readFileSync(path.join(SOURCE_ROOT, "skills/review-pr/SKILL.md"), "utf8");
   assert.ok(review.includes("## Called From validate-change"));
   assert.ok(review.includes("Without that caller, never write the handoff"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/SKILL.md"), "utf8").includes('"expects": ["K1"]'));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Accept a PR or a change just made | `/validate-change` |"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Targeted security check on a change | `/security-performance-check` |"));
 
   const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--bundle", "validate"]);
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const skills = path.join(result.workspace, ".claude/skills");
-    ["validate-change", "quality-code-check", "review-pr", "runtime-e2e-test"].forEach((id) => assert.ok(fs.existsSync(path.join(skills, id, "SKILL.md")), id));
+    ["validate-change", "quality-code-check", "review-pr", "runtime-e2e-test", "security-performance-check"].forEach((id) => assert.ok(fs.existsSync(path.join(skills, id, "SKILL.md")), id));
     // The composite finds the runtime tool beside it, so an installed run can verify its bundle.
     assert.ok(fs.existsSync(path.join(skills, "validate-change/scripts/validate_change.py")));
     assert.ok(fs.existsSync(path.join(skills, "validate-change/references/risk-rules.md")));
     assert.ok(fs.existsSync(path.join(skills, "validate-change/scripts/../../runtime-e2e-test/scripts/evidence.py")));
+    assert.ok(fs.existsSync(path.join(skills, "security-performance-check/references/security-signals.md")));
   } finally {
     result.cleanup();
+  }
+});
+
+const CHECK_FINDINGS = path.join(SOURCE_ROOT, "skills/security-performance-check/scripts/check_findings.py");
+const SECURITY_SIGNALS = path.join(SOURCE_ROOT, "skills/security-performance-check/references/security-signals.md");
+
+function checkFindings(args, cwd = SOURCE_ROOT) {
+  return spawnSync("python3", [CHECK_FINDINGS, ...args], { cwd, encoding: "utf8" });
+}
+
+test("security-performance-check is a manual command and the JSON checker validates findings and summaries", () => {
+  const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/SKILL.md"), "utf8");
+  assert.ok(skill.includes("disable-model-invocation: true"));
+  assert.ok(skill.includes("disallowed-tools: Edit"));
+  assert.ok(skill.includes("performance track is not available yet"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
+  const runtime = fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/project-runtime.md"), "utf8");
+  assert.ok(runtime.includes("## Security and performance probes"));
+  assert.ok(runtime.includes("Allowed hosts:"));
+  assert.ok(runtime.includes("Probe budget:"));
+
+  const { skillIds } = resolveSkills({
+    sourceRoot: SOURCE_ROOT,
+    kitId: "coding-standard",
+    extraBundles: ["security-performance"],
+  });
+  assert.deepStrictEqual(skillIds, ["security-performance-check"]);
+
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), "spc-run-"));
+  try {
+    const finding = {
+      schema: "security-performance-check/finding@1",
+      track: "security",
+      signal_id: "object-id-access",
+      file: "src/orders/get.ts",
+      line: 42,
+      cwe: "CWE-639",
+      severity: "high",
+      status: "exploited",
+      introduced: true,
+      roles_tested: ["user-a", "user-b"],
+      requests: [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 12, body_hash: "sha256:abc" }],
+      repro_curl: "curl -s http://127.0.0.1:3000/api/orders/1",
+      evidence: { har_path: "finding-1.har", screenshot: null },
+      validator: "agent",
+    };
+    const summary = {
+      schema: "security-performance-check/summary@1",
+      track: "security",
+      target: { label: "PR #1" },
+      signals_loaded: [{ id: "object-id-access", file: "references/security-signals.md", matched_paths: ["src/orders/get.ts"] }],
+      coverage: [{ path: "src/orders/get.ts", in_scope: true, notes: "" }],
+      conditions: { host: "http://127.0.0.1:3000" },
+      limits: ["Not a penetration test, dependency CVE audit, or load test."],
+    };
+    writeJson(path.join(runDir, "finding-1.json"), finding);
+    writeJson(path.join(runDir, "summary.json"), summary);
+    let result = checkFindings(["run", runDir]);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(result.stdout.includes("1 exploited finding"));
+
+    result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
+    assert.strictEqual(result.status, 0, result.stderr);
+
+    finding.status = "hypothesis";
+    writeJson(path.join(runDir, "finding-1.json"), finding);
+    result = checkFindings(["run", runDir]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("only exploited findings"), result.stderr);
+
+    finding.status = "exploited";
+    finding.severity = "critical";
+    writeJson(path.join(runDir, "finding-1.json"), finding);
+    result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("severity is one of"), result.stderr);
+
+    summary.limits = ["Something else"];
+    writeJson(path.join(runDir, "summary.json"), summary);
+    result = checkFindings(["summary", path.join(runDir, "summary.json")]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("not a pen test"), result.stderr);
+  } finally {
+    fs.rmSync(runDir, { recursive: true, force: true });
+  }
+});
+
+test("editing security-signals.md changes signals_loaded and survives update --apply", () => {
+  const before = checkFindings(["signals", "--signals", SECURITY_SIGNALS, "--paths", "src/api/orders.ts"]);
+  assert.strictEqual(before.status, 0, before.stderr || before.stdout);
+  const beforeIds = JSON.parse(before.stdout).signals_loaded.map((s) => s.id);
+  assert.ok(beforeIds.includes("authz-route"), before.stdout);
+  assert.ok(beforeIds.includes("object-id-access"), before.stdout);
+  assert.ok(beforeIds.includes("sensitive-response"), before.stdout);
+
+  const editedCopy = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "spc-signals-")), "security-signals.md");
+  const original = fs.readFileSync(SECURITY_SIGNALS, "utf8");
+  // Narrow sensitive-response so src/api/orders.ts no longer matches; leave SKILL.md untouched.
+  const edited = original.replace(
+    "| `sensitive-response` | tag:sensitive | `**/api/**`, `**/serializers/**`, `**/dto/**`, `**/graphql/**`, `**/*response*` |",
+    "| `sensitive-response` | tag:sensitive | `**/serializers/**`, `**/dto/**`, `**/graphql/**`, `**/*response*` |"
+  );
+  assert.ok(edited !== original, "fixture edit must change the signal row");
+  fs.writeFileSync(editedCopy, edited);
+  const after = checkFindings(["signals", "--signals", editedCopy, "--paths", "src/api/orders.ts"]);
+  assert.strictEqual(after.status, 0, after.stderr || after.stdout);
+  const afterIds = JSON.parse(after.stdout).signals_loaded.map((s) => s.id);
+  assert.ok(afterIds.includes("authz-route"), after.stdout);
+  assert.ok(!afterIds.includes("sensitive-response"), after.stdout);
+
+  const fixture = createUpdateFixture("claude");
+  try {
+    const install = fixture.run(["--kit", "coding-standard", "--tool", "claude", "--bundle", "security-performance"]);
+    assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+    const installedSignals = path.join(fixture.workspace, ".claude/skills/security-performance-check/references/security-signals.md");
+    assert.ok(fs.existsSync(installedSignals));
+    fs.writeFileSync(installedSignals, edited);
+    // Change the upstream copy so an unmodified install would be updated.
+    fs.writeFileSync(
+      path.join(fixture.sourceRoot, "skills/security-performance-check/references/security-signals.md"),
+      `${original}\n<!-- upstream revision marker -->\n`
+    );
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(
+      apply.stdout.includes("SKIP LOCAL repository:.claude/skills/security-performance-check/references/security-signals.md"),
+      apply.stdout
+    );
+    assert.strictEqual(fs.readFileSync(installedSignals, "utf8"), edited);
+    const surviving = checkFindings(["signals", "--signals", installedSignals, "--paths", "src/api/orders.ts"]);
+    assert.strictEqual(surviving.status, 0, surviving.stderr || surviving.stdout);
+    assert.ok(!JSON.parse(surviving.stdout).signals_loaded.map((s) => s.id).includes("sensitive-response"), surviving.stdout);
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(path.dirname(editedCopy), { recursive: true, force: true });
   }
 });
 

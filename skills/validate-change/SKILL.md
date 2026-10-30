@@ -139,7 +139,7 @@ Write `run.json`:
     {"skill": "review-pr", "status": "RAN", "artifact": ".runtime-e2e/orders/validate/review.json"},
     {"skill": "runtime-e2e-test", "status": "RAN", "artifact": ".runtime-e2e/orders/light/runs/<run-id>"},
     {"skill": "audit", "status": "RAN", "artifact": ".runtime-e2e/orders/validate/audit.json"},
-    {"skill": "security-performance-check", "status": "MISSING"}
+    {"skill": "security-performance-check", "status": "SKIPPED", "skip": "recommended", "reason": "separateTests lists security or performance signals"}
   ],
   "separateTests": [{"area": "performance", "signal": "GET /api/orders twice per load", "evidence": "trace.zip", "command": "/security-performance-check /orders"}],
   "limits": []
@@ -147,6 +147,7 @@ Write `run.json`:
 ```
 
 - Steps appear in this order, each once. The three specialist steps are required; record a missing skill as `MISSING`, never leave it out.
+- `security-performance-check` is optional and never changes the overall status. Record it as `MISSING` only when the skill is not installed. When it is installed, record `SKIPPED` with `skip: recommended` if `separateTests` is nonempty, or `skip: no-signal` if it is empty. Do not run the full check from this composite.
 - `separateTests` are prompts for a human decision, never defects, and never change the status.
 
 Then run `validate_change.py report <run-dir>`.

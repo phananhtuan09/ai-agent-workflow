@@ -20,7 +20,7 @@ SOURCES = ("prompt", "spec", "assumption", "agent-intent")
 STEPS = ("quality-code-check", "review-pr", "runtime-e2e-test", "audit", "security-performance-check")
 REQUIRED_STEPS = ("quality-code-check", "review-pr", "runtime-e2e-test")
 STEP_STATUSES = ("RAN", "SKIPPED", "MISSING")
-SKIPS = ("build-failed", "no-human", "not-applicable")
+SKIPS = ("build-failed", "no-human", "not-applicable", "recommended", "no-signal")
 CHECK_KINDS = ("build", "lint", "typecheck", "test", "surface")
 REVIEW_STATUSES = {
     "Có thể merge": "PASSED",
@@ -381,6 +381,16 @@ def check_run(data):
             raise Inconsistent(f"run.json separateTests: area ({'|'.join(AREAS)}), signal, and command")
     if any(not text(x) for x in data.get("limits", [])):
         raise Inconsistent("run.json limits must be nonempty strings")
+    optional = named.get("security-performance-check")
+    separate = data.get("separateTests", [])
+    if optional and optional["status"] == "SKIPPED":
+        skip = optional.get("skip")
+        if skip == "recommended" and not separate:
+            raise Inconsistent("run.json security-performance-check: skip recommended requires nonempty separateTests")
+        if skip == "no-signal" and separate:
+            raise Inconsistent("run.json security-performance-check: skip no-signal requires empty separateTests")
+        if skip not in ("recommended", "no-signal", "no-human", "not-applicable"):
+            raise Inconsistent("run.json security-performance-check: when skipped use recommended, no-signal, no-human, or not-applicable")
     return named
 
 
@@ -619,8 +629,12 @@ def evaluate(root, run_dir, rules_path):
         limits.append("Audit độc lập bắt buộc cho change rủi ro cao nhưng chưa chạy.")
 
     optional = steps.get("security-performance-check")
-    if not optional or optional["status"] != "RAN":
+    if not optional or optional["status"] == "MISSING":
         limits.append("security-performance-check chưa được cài hoặc chưa chạy; các mục `Cần test riêng` chỉ là tín hiệu cần human quyết định.")
+    elif optional["status"] == "SKIPPED" and optional.get("skip") == "recommended":
+        limits.append("security-performance-check đã cài nhưng chưa chạy; các mục `Cần test riêng` khuyến nghị human quyết định có chạy `/security-performance-check` hay không.")
+    elif optional["status"] == "SKIPPED" and optional.get("skip") == "no-signal":
+        limits.append("security-performance-check đã cài; không có tín hiệu `Cần test riêng` trên change này.")
 
     overall = next(s for s in ORDER if s == "PASSED" or any(level == s for level, _ in sections))
     return {"expectations": expectations, "risk": risk, "run": run, "steps": steps, "mode": mode, "review": review, "runtime": runtime,
