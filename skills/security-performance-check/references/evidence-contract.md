@@ -111,7 +111,7 @@ Scanner rules:
 
 ### Required scan record
 
-When a run has security probe requests (`finding-*.json` with nonempty `requests`), `check_findings.py run` requires a recorded scan-bodies result:
+When the summary `track` is `security` or `both`, or when a finding has security probe requests, `check_findings.py run` requires a recorded scan-bodies result, even when the run wrote zero findings (performance-only runs are exempt):
 
 - `summary.json` field `body_scan`, or
 - run-directory file `body-scan.json`
@@ -127,4 +127,10 @@ Minimum shape:
 ```
 
 `ran` must be `true`. Skipping the scan (no record) fails the run.
-`hars` and `hit_count` are optional but recommended.
+`hars`, `hit_count`, and `allow` (`[{"key","reason"}]`, the same exemptions passed as `--allow`) are optional.
+
+`run` does not trust the record. It re-scans every HAR listed in `hars` plus every `*.har` in the run directory:
+
+- a listed HAR that does not exist is an error;
+- a declared `hit_count` that differs from the recomputed hits is an error;
+- any hit without an exploited `sensitive-response` finding in the run is an error, so a leak cannot be left as a hypothesis.

@@ -469,6 +469,88 @@ class CrossCheckAndRunTests(unittest.TestCase):
             self.assertIn("scan-bodies", str(ctx.exception))
 
 
+class RunScanEnforcementTests(unittest.TestCase):
+    LEAK = '{"author":{"name":"a","passwordHash":"$2b$10$abcdefghijklmnopqrstuuJ8S7ZqLx0lJgqv1nO3gk2Yw5o4i2K6"}}'
+
+    def summary(self, body_scan=None, track="security"):
+        data = {
+            "schema": c.SUMMARY_SCHEMA,
+            "track": track,
+            "target": {"label": "t"},
+            "signals_loaded": [],
+            "coverage": [{"path": "server/notes.ts", "in_scope": True}],
+            "conditions": {},
+            "limits": ["Not a penetration test, dependency CVE audit, or load test."],
+        }
+        if body_scan is not None:
+            data["body_scan"] = body_scan
+        return data
+
+    def write(self, run_dir, summary, har_body=None):
+        (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+        if har_body is not None:
+            (run_dir / "probes.har").write_text(json.dumps(har_doc(har_body)), encoding="utf-8")
+
+    def test_security_run_without_findings_still_needs_scan_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write(run_dir, self.summary())
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("scan-bodies", str(ctx.exception))
+
+    def test_hit_without_sensitive_finding_fails_even_with_zero_findings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write(run_dir, self.summary({"ran": True, "hars": ["probes.har"]}), self.LEAK)
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("sensitive-response", str(ctx.exception))
+
+    def test_declared_hit_count_is_recomputed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write(run_dir, self.summary({"ran": True, "hars": ["probes.har"], "hit_count": 0}), self.LEAK)
+            with self.assertRaises(c.Inconsistent) as ctx:
+                c.check_run_dir(run_dir)
+            self.assertIn("hit_count", str(ctx.exception))
+
+    def test_unlisted_har_in_run_dir_is_scanned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write(run_dir, self.summary({"ran": True, "hars": []}), self.LEAK)
+            with self.assertRaises(c.Inconsistent):
+                c.check_run_dir(run_dir)
+
+    def test_clean_security_run_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            self.write(run_dir, self.summary({"ran": True, "hars": ["probes.har"], "hit_count": 0}), '{"ok":true}')
+            result = c.check_run_dir(run_dir)
+            self.assertEqual(result["exploited"], 0)
+
+    def test_performance_only_run_without_hars_needs_no_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            summary = self.summary(track="performance")
+            try:
+                self.write(run_dir, summary)
+                c.check_run_dir(run_dir)
+            except c.Inconsistent as error:
+                self.assertNotIn("scan-bodies", str(error))
+
+
+class PathMatchingCaseAndUtilsTests(unittest.TestCase):
+    def test_glob_is_case_insensitive(self):
+        self.assertTrue(c.matcher(["**/*login*"])("src/pages/LoginPage.tsx"))
+        self.assertTrue(c.matcher(["**/auth/**"])("src/Auth/session.ts"))
+
+    def test_test_utils_files_excluded(self):
+        self.assertTrue(c.is_excluded_path("src/test-utils.ts"))
+        self.assertTrue(c.is_excluded_path("src/test_helpers.py"))
+        self.assertFalse(c.is_excluded_path("src/utils.ts"))
+
+
 class CliWiringTests(unittest.TestCase):
     def test_scan_bodies_exit_codes(self):
         with tempfile.TemporaryDirectory() as tmp:

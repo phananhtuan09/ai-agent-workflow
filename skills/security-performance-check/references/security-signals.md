@@ -20,6 +20,7 @@ Pattern notes:
 
 - `client-secrets` is limited to client-shipped surfaces (`src/`, `web/`, `client/`, `frontend/`, `public/`, client-like `app/` UI files, `*.html`, browser env/bundler config). Server-only trees are out of scope for this row.
 - `open-redirect` targets redirect/navigation/auth entrypoints (`*redirect*`, `*navigate*`, `*router*`, `auth` / `login` / `oauth`) rather than every source file. The checker has no content-trigger mechanism yet; path globs are the gate.
+- Path globs match case-insensitively (`**/*redirect*` matches `safeRedirect.ts`). Test helpers such as `test-utils.*` / `test_helpers.*` are excluded by default along with tests, fixtures, and i18n catalogs.
 
 ## Signals
 

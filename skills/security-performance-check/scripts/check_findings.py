@@ -50,6 +50,10 @@ DEFAULT_PATH_EXCLUDES = (
     "**/fixtures/**",
     "**/test-utils/**",
     "**/test-helpers/**",
+    "**/*test-utils*",
+    "**/*test_utils*",
+    "**/*test-helpers*",
+    "**/*test_helpers*",
     "**/cypress/**",
     "**/e2e/**",
     "**/playwright/**",
@@ -164,7 +168,10 @@ def cells(line):
 
 
 def glob_regex(pattern):
-    """A glob where `**` crosses directories and `*` does not; a pattern without `/` matches the file name."""
+    """A glob where `**` crosses directories and `*` does not; a pattern without `/` matches the file name.
+
+    Matching is case-insensitive so `**/*login*` matches `LoginPage.tsx` on any file system.
+    """
     out, i = "", 0
     while i < len(pattern):
         if pattern.startswith("**/", i):
@@ -177,7 +184,7 @@ def glob_regex(pattern):
             out, i = out + "[^/]", i + 1
         else:
             out, i = out + re.escape(pattern[i]), i + 1
-    return re.compile(("(?:^|.*/)" if "/" not in pattern else "^") + out + "$")
+    return re.compile(("(?:^|.*/)" if "/" not in pattern else "^") + out + "$", re.IGNORECASE)
 
 
 def matcher(patterns):
@@ -1563,6 +1570,34 @@ def load_body_scan_record(run_dir, summary):
     return None
 
 
+def security_track_ran(summary):
+    return summary.get("track") in ("security", "both")
+
+
+def rescan_recorded_hars(run_dir, record, where):
+    """Re-run scan-bodies on every HAR in the run directory and the record.
+
+    The recorded result is not trusted: hit_count must match the recomputed
+    hits, and any hit requires an exploited `sensitive-response` finding.
+    """
+    run_dir = Path(run_dir)
+    names = {str(h) for h in (record.get("hars") or [])}
+    names.update(p.name for p in run_dir.glob("*.har"))
+    allow = parse_scan_allow(record.get("allow"), f"{where}.allow")
+    hits = []
+    for name in sorted(names):
+        har_file = resolve_evidence_path(run_dir, name)
+        if har_file is None or not har_file.is_file():
+            raise Inconsistent(f"{where}: hars entry {name!r} does not exist")
+        hits.extend(scan_har_bodies(load(har_file), str(har_file), allow_list=allow)["hits"])
+    declared = record.get("hit_count")
+    if declared is not None and declared != len(hits):
+        raise Inconsistent(
+            f"{where}: hit_count {declared} does not match {len(hits)} hit(s) found by re-scanning the HARs"
+        )
+    return hits
+
+
 def security_probes_exist(findings):
     """True when the run recorded security probe requests (scan-bodies must have run)."""
     for finding in findings:
@@ -1615,14 +1650,26 @@ def check_run_dir(run_dir):
         require_evidence_file(run_dir, shot_rel, str(path), "screenshot")
         if har_file is not None:
             cross_check_finding_har(finding, str(har_file), load(har_file))
-    if security_probes_exist(loaded_findings):
+    # Performance-only runs keep HARs for request counts; they are not probes.
+    if security_track_ran(summary) or security_probes_exist(loaded_findings):
         record = load_body_scan_record(run_dir, summary)
         if record is None:
             raise Inconsistent(
-                f"{run_dir}: security probes exist but no scan-bodies record was found "
+                f"{run_dir}: security track ran but no scan-bodies record was found "
                 "(set summary.body_scan or write body-scan.json with ran:true)"
             )
-        check_body_scan_record(record, f"{run_dir}: body_scan")
+        where = f"{run_dir}: body_scan"
+        check_body_scan_record(record, where)
+        hits = rescan_recorded_hars(run_dir, record, where)
+        if hits and not any(
+            f.get("signal_id") == "sensitive-response" and f.get("status") == "exploited"
+            for f in loaded_findings
+        ):
+            keys = sorted({str(h.get("key")) for h in hits})
+            raise Inconsistent(
+                f"{where}: scan-bodies found {len(hits)} sensitive field hit(s) ({', '.join(keys)}) "
+                "but no exploited sensitive-response finding was written"
+            )
     check_summary(summary, str(run_dir / "summary.json"), finding_count=exploited)
     return {"summary": summary, "findings": len(findings), "exploited": exploited}
 
