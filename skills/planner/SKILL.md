@@ -93,7 +93,7 @@ Which command fits what the human wants:
 | The human wants to… | Command |
 | --- | --- |
 | Accept a PR or a change just made | `/validate-change` |
-| Targeted security check on a change | `/security-performance-check` |
+| Targeted security or performance check on a change | `/security-performance-check` |
 | Re-test existing features or build a durable suite | `/runtime-e2e-test` (durable) |
 | Only runtime E2E on a change | `/runtime-e2e-test` (light) |
 | Only lint, type check, or build | `/quality-code-check` |
