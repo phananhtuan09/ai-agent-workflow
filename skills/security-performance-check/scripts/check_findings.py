@@ -27,6 +27,10 @@ FINDING_SCHEMA = "security-performance-check/finding@1"
 SUMMARY_SCHEMA = "security-performance-check/summary@1"
 DEFAULT_AA_MULTIPLIER = 2.5
 NOISY_MIN_RUNS = 5
+# aa_multiplier * aa_spread must stay within this widening; beyond it the floor is unusable.
+MAX_AA_WIDENING = 1.0
+# Clamp for higher_better relative factors so base*factor never goes non-positive.
+MIN_HIGHER_BETTER_FACTOR = 0.01
 
 THRESHOLD_RE = re.compile(
     r"^(?P<left>median|count|max|min|sum)\s*(?P<op><=|>=|<|>)\s*(?P<right>base(?:\s*\*\s*(?P<factor>[0-9]+(?:\.[0-9]+)?))?|(?P<abs_only>-?[0-9]+(?:\.[0-9]+)?))$"
@@ -361,11 +365,20 @@ def compare(op, left, right):
 
 
 def aa_spread(values_a, values_b, how="median"):
-    """Relative spread between two A/A sides: |a-b| / max(|a|, eps)."""
+    """Relative spread between two A/A sides: |a-b| / max(|a|, |b|, 1)."""
     a = aggregate_values(values_a, how)
     b = aggregate_values(values_b, how)
-    denom = max(abs(a), 1e-12)
+    denom = max(abs(a), abs(b), 1.0)
     return abs(a - b) / denom
+
+
+def direction_from_op(op):
+    """Infer lower_better / higher_better from the threshold comparison operator."""
+    if op in ("<", "<="):
+        return "lower_better"
+    if op in (">", ">="):
+        return "higher_better"
+    raise Inconsistent(f"unsupported operator {op}")
 
 
 def effective_relative_factor(parsed, aa_spread_value=None, aa_multiplier=DEFAULT_AA_MULTIPLIER):
@@ -375,23 +388,34 @@ def effective_relative_factor(parsed, aa_spread_value=None, aa_multiplier=DEFAUL
     configured = parsed["factor"] if parsed["factor"] is not None else 1.0
     if aa_spread_value is None:
         return configured
-    floor = 1.0 + (aa_multiplier * float(aa_spread_value))
+    widening = aa_multiplier * float(aa_spread_value)
     # For lower_better thresholds like median < base*1.10, factor is > 1.
     # For higher_better like median > base*0.90, factor is < 1; floor from A/A still widens the band.
     if configured >= 1.0:
-        return max(configured, floor)
-    # higher_better: widen downward symmetrically
-    return min(configured, 1.0 - (aa_multiplier * float(aa_spread_value)))
+        return max(configured, 1.0 + widening)
+    # higher_better: widen downward, but never to a non-positive factor.
+    return max(MIN_HIGHER_BETTER_FACTOR, min(configured, 1.0 - widening))
 
 
-def evaluate_threshold(base_values, head_values, threshold_text, direction="lower_better",
+def evaluate_threshold(base_values, head_values, threshold_text, direction=None,
                        metric_class="exact", min_runs=1, aa_values=None, aa_multiplier=DEFAULT_AA_MULTIPLIER,
                        aggregation=None):
     """Compare head to base (and optional abs budget) with an A/A noise floor for noisy metrics."""
     parsed = parse_threshold(threshold_text)
-    how = aggregation or parsed["left"]
+    expr_agg = parsed["left"]
+    if aggregation is not None and aggregation != expr_agg:
+        raise Inconsistent(
+            f"--aggregation {aggregation} conflicts with expression aggregate {expr_agg}"
+        )
+    how = aggregation or expr_agg
     if how not in AGGREGATIONS:
         raise Inconsistent(f"aggregation is one of {', '.join(AGGREGATIONS)}")
+    inferred_direction = direction_from_op(parsed["op"])
+    if direction is not None and direction != inferred_direction:
+        raise Inconsistent(
+            f"--direction {direction} conflicts with expression operator {parsed['op']} "
+            f"(implies {inferred_direction})"
+        )
     if len(base_values) < min_runs or len(head_values) < min_runs:
         return {
             "verdict": "inconclusive",
@@ -415,6 +439,22 @@ def evaluate_threshold(base_values, head_values, threshold_text, direction="lowe
         if not side_a or not side_b:
             raise Inconsistent("aa_values sides must be nonempty")
         spread = aa_spread(side_a, side_b, how)
+
+    # Excessive A/A floor is unusable: report inconclusive instead of silently passing.
+    if spread is not None and (aa_multiplier * float(spread)) >= MAX_AA_WIDENING:
+        return {
+            "verdict": "inconclusive",
+            "reason": (
+                f"A/A spread {spread:.6g} with multiplier {aa_multiplier} exceeds usable noise floor "
+                f"(max widening {MAX_AA_WIDENING})"
+            ),
+            "base": base,
+            "head": head,
+            "delta_pct": delta_pct(base_value, head_value),
+            "threshold": threshold_text,
+            "effective_factor": None,
+            "aa_spread": spread,
+        }
 
     effective_factor = effective_relative_factor(parsed, spread, aa_multiplier)
     if parsed["relative_to_base"]:
@@ -443,8 +483,6 @@ def evaluate_threshold(base_values, head_values, threshold_text, direction="lowe
     else:
         verdict = "fail"
 
-    _ = direction  # grammar encodes the comparison; direction documents intent on the signal row
-
     return {
         "verdict": verdict,
         "reason": None,
@@ -459,6 +497,47 @@ def evaluate_threshold(base_values, head_values, threshold_text, direction="lowe
     }
 
 
+SENSITIVE_HEADERS = ("cookie", "authorization", "set-cookie")
+# Header values that look like intentional redaction placeholders.
+PLACEHOLDER_VALUE = re.compile(
+    r"^(?:<[^<>]+>|\$[A-Za-z_][A-Za-z0-9_]*|\*{2,}|REDACTED)$",
+    re.IGNORECASE,
+)
+# Cookie / Authorization / Set-Cookie appearances in repro_curl (e.g. -H 'Cookie: …').
+SENSITIVE_IN_CURL = re.compile(
+    r"(?i)(?:^|[\s\"'])(Cookie|Authorization|Set-Cookie)\s*:\s*([^\r\n\"']+)"
+)
+
+
+def is_placeholder(value):
+    """True when a sensitive header value is a placeholder, not a real secret."""
+    if not isinstance(value, str):
+        return False
+    v = value.strip().strip("'\"")
+    for prefix in ("Bearer ", "Basic ", "Token "):
+        if v.lower().startswith(prefix.lower()):
+            v = v[len(prefix) :].strip()
+            break
+    return bool(v) and bool(PLACEHOLDER_VALUE.fullmatch(v))
+
+
+def check_sensitive_header(name, value, where):
+    if name.lower() not in SENSITIVE_HEADERS:
+        return
+    if not is_placeholder(value):
+        raise Inconsistent(
+            f"{where}: {name} value must be a placeholder "
+            f"(e.g. <redacted>, REDACTED, $TOKEN, ***); got {value!r}"
+        )
+
+
+def check_repro_curl(curl, where):
+    if not text(curl):
+        return
+    for match in SENSITIVE_IN_CURL.finditer(curl):
+        check_sensitive_header(match.group(1), match.group(2).strip(), where)
+
+
 def check_request(entry, where):
     if not isinstance(entry, dict):
         raise Inconsistent(f"{where}: each request is an object")
@@ -470,6 +549,16 @@ def check_request(entry, where):
         raise Inconsistent(f"{where}: length is a non-negative integer")
     if not text(entry.get("body_hash")):
         raise Inconsistent(f"{where}: body_hash is a nonempty string")
+    headers = entry.get("headers")
+    if headers is not None:
+        if not isinstance(headers, dict):
+            raise Inconsistent(f"{where}: headers is an object when present")
+        for name, value in headers.items():
+            if not text(name):
+                raise Inconsistent(f"{where}: header names are nonempty strings")
+            if not isinstance(value, str):
+                raise Inconsistent(f"{where}: header {name!r} value is a string")
+            check_sensitive_header(name, value, where)
 
 
 def check_side_metric(side, where):
@@ -514,6 +603,8 @@ def check_performance_metric(metric, path):
 
 
 def check_finding(data, path="<finding>"):
+    if not isinstance(data, dict):
+        raise Inconsistent(f"{path}: finding JSON must be an object")
     if data.get("schema") != FINDING_SCHEMA:
         raise Inconsistent(f"{path}: schema {FINDING_SCHEMA}")
     if data.get("track") not in TRACKS:
@@ -555,6 +646,7 @@ def check_finding(data, path="<finding>"):
     for key in ("cwe", "repro_curl"):
         if not text(data.get(key)):
             raise Inconsistent(f"{path}: {key} is a nonempty string")
+    check_repro_curl(data["repro_curl"], f"{path}: repro_curl")
     roles = data.get("roles_tested")
     if not isinstance(roles, list) or not roles or any(not text(r) for r in roles):
         raise Inconsistent(f"{path}: roles_tested is a nonempty list of strings")
@@ -569,6 +661,8 @@ def check_finding(data, path="<finding>"):
 
 
 def check_summary(data, path="<summary>", finding_count=None):
+    if not isinstance(data, dict):
+        raise Inconsistent(f"{path}: summary JSON must be an object")
     if data.get("schema") != SUMMARY_SCHEMA:
         raise Inconsistent(f"{path}: schema {SUMMARY_SCHEMA}")
     if data.get("track") not in TRACKS:
@@ -761,10 +855,20 @@ def main(argv=None):
     threshold.add_argument("--head", required=True, help="comma-separated head samples")
     threshold.add_argument("--aa", default=None, help="optional A/A sides a1,a2:b1,b2")
     threshold.add_argument("--aa-multiplier", type=float, default=DEFAULT_AA_MULTIPLIER)
-    threshold.add_argument("--direction", choices=DIRECTIONS, default="lower_better")
+    threshold.add_argument(
+        "--direction",
+        choices=DIRECTIONS,
+        default=None,
+        help="must match the expression operator when set (lower_better for < / <=, higher_better for > / >=)",
+    )
     threshold.add_argument("--metric-class", choices=METRIC_CLASSES, default="exact")
     threshold.add_argument("--min-runs", type=int, default=1)
-    threshold.add_argument("--aggregation", choices=AGGREGATIONS, default=None)
+    threshold.add_argument(
+        "--aggregation",
+        choices=AGGREGATIONS,
+        default=None,
+        help="must match the expression aggregate when set",
+    )
 
     args = parser.parse_args(argv)
     try:

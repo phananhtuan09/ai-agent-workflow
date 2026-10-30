@@ -695,7 +695,11 @@ def evaluate(root, run_dir, rules_path):
         limits.append("Audit độc lập bắt buộc cho change rủi ro cao nhưng chưa chạy.")
 
     optional = steps.get("security-performance-check")
-    if not optional or optional["status"] == "MISSING":
+    if (
+        not optional
+        or optional["status"] == "MISSING"
+        or (optional["status"] == "SKIPPED" and optional.get("skip") in ("no-human", "not-applicable"))
+    ):
         limits.append("security-performance-check chưa được cài hoặc chưa chạy; các mục `Cần test riêng` chỉ là tín hiệu cần human quyết định.")
     elif optional["status"] == "SKIPPED" and optional.get("skip") == "recommended":
         limits.append("security-performance-check đã cài nhưng chưa chạy; các mục `Cần test riêng` khuyến nghị human quyết định có chạy `/security-performance-check` hay không.")

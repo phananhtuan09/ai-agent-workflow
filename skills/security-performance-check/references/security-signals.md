@@ -6,8 +6,8 @@ An edited copy is kept by `update --apply`.
 
 Columns:
 
-- `trigger`: `always` loads whenever the security track runs; `tag:<name>` loads when a changed path matches `paths/patterns` (or when the agent tags the area).
-- `paths/patterns`: comma-separated globs; `*` does not cross `/`, `**` does. A pattern without `/` matches the file name.
+- `trigger`: `always` loads whenever the security track runs; `tag:<name>` loads only when a changed path matches that row's `paths/patterns` (there is no separate agent-tag pass).
+- `paths/patterns`: comma-separated globs; `*` does not cross `/`, `**` does. A pattern without `/` matches the file name. For `always` rows these patterns do not gate loading; `matched_paths` still lists which changed paths hit them (and may be empty).
 - `risk`: `high`, `med`, or `low`.
 - `validator`: `deterministic` (script or unique marker), `agent` (reasoned judgment), or `none` (static note only).
 - `do not flag`: exclusions the static and runtime passes must honor.

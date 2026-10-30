@@ -3675,6 +3675,17 @@ test("validate-change report checks the run files and computes one status from t
     });
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("chưa được cài hoặc chưa chạy"));
+    // SKIPPED with no-human / not-applicable keeps the prior "chưa được cài hoặc chưa chạy" limit note.
+    result = report((d) => {
+      d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "no-human", reason: "headless run" });
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("chưa được cài hoặc chưa chạy"), result.stderr);
+    result = report((d) => {
+      d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "not-applicable", reason: "out of scope" });
+    });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("chưa được cài hoặc chưa chạy"), result.stderr);
     result = report((d) => {
       d.separateTests = [];
       d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "recommended", reason: "wrong pairing" });
@@ -3954,7 +3965,13 @@ test("security-performance-check is a manual command and the JSON checker valida
   assert.ok(skill.includes("## Performance flow"));
   assert.ok(skill.includes("Noise floor"));
   assert.ok(!skill.includes("performance track is not available yet"));
+  assert.ok(skill.includes("use placeholders only"));
+  assert.ok(skill.includes("always load"));
+  assert.ok(skill.includes("no `validator` field") || skill.includes("no validator field"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/security-performance-check/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
+  const signalsDoc = fs.readFileSync(SECURITY_SIGNALS, "utf8");
+  assert.ok(signalsDoc.includes("loads only when a changed path matches"));
+  assert.ok(!signalsDoc.includes("when the agent tags the area"));
   const runtime = fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/project-runtime.md"), "utf8");
   assert.ok(runtime.includes("## Security and performance probes"));
   assert.ok(runtime.includes("Allowed hosts:"));
@@ -3981,7 +3998,7 @@ test("security-performance-check is a manual command and the JSON checker valida
       introduced: true,
       roles_tested: ["user-a", "user-b"],
       requests: [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 12, body_hash: "sha256:abc" }],
-      repro_curl: "curl -s http://127.0.0.1:3000/api/orders/1",
+      repro_curl: "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1",
       evidence: { har_path: "finding-1.har", screenshot: null },
       validator: "agent",
     };
@@ -4002,6 +4019,47 @@ test("security-performance-check is a manual command and the JSON checker valida
 
     result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
     assert.strictEqual(result.status, 0, result.stderr);
+
+    // Non-object top-level JSON must be Inconsistent (exit 2), not an AttributeError traceback.
+    const badFinding = path.join(runDir, "bad-finding.json");
+    const badSummary = path.join(runDir, "bad-summary.json");
+    fs.writeFileSync(badFinding, "[]\n");
+    fs.writeFileSync(badSummary, "[]\n");
+    result = checkFindings(["finding", badFinding]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("Inconsistent:"), result.stderr);
+    assert.ok(result.stderr.includes("must be an object"), result.stderr);
+    assert.ok(!result.stderr.includes("AttributeError"), result.stderr);
+    result = checkFindings(["summary", badSummary]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("must be an object"), result.stderr);
+
+    // Redaction: real Cookie / Authorization values are rejected; placeholders pass.
+    finding.repro_curl = "curl -s -H 'Cookie: session=abc123' http://127.0.0.1:3000/api/orders/1";
+    writeJson(path.join(runDir, "finding-1.json"), finding);
+    result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("placeholder"), result.stderr);
+    finding.repro_curl = "curl -s -H 'Authorization: Bearer eyJhbGciOi' http://127.0.0.1:3000/api/orders/1";
+    writeJson(path.join(runDir, "finding-1.json"), finding);
+    result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("placeholder"), result.stderr);
+    finding.repro_curl = "curl -s -H 'Authorization: Bearer $TOKEN' http://127.0.0.1:3000/api/orders/1";
+    finding.requests = [{
+      role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 12, body_hash: "sha256:abc",
+      headers: { Cookie: "<redacted>", Authorization: "REDACTED" },
+    }];
+    writeJson(path.join(runDir, "finding-1.json"), finding);
+    result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    finding.requests[0].headers = { Cookie: "session=secret", Authorization: "***" };
+    writeJson(path.join(runDir, "finding-1.json"), finding);
+    result = checkFindings(["finding", path.join(runDir, "finding-1.json")]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("placeholder"), result.stderr);
+    finding.requests = [{ role: "user-b", method: "GET", url: "/api/orders/1", status: 200, length: 12, body_hash: "sha256:abc" }];
+    finding.repro_curl = "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1";
 
     finding.status = "hypothesis";
     writeJson(path.join(runDir, "finding-1.json"), finding);
@@ -4103,7 +4161,7 @@ test("performance threshold helper applies median, range, and A/A noise floor", 
     "threshold",
     "--expr", "median < base*1.10",
     "--base", "100,100,100,100,100",
-    "--head", "112,112,112,112,112",
+    "--head", "111,111,111,111,111",
     "--metric-class", "noisy",
     "--min-runs", "5",
     "--aa", "100,102,98,101,99:105,103,107,104,106",
@@ -4125,6 +4183,62 @@ test("performance threshold helper applies median, range, and A/A noise floor", 
   assert.strictEqual(result.status, 0, result.stderr || result.stdout);
   assert.strictEqual(JSON.parse(result.stdout).verdict, "inconclusive");
 
+  // Finding 1: A/A side near 0 with base>=1 must not silently pass; excessive floor → inconclusive.
+  result = checkFindings([
+    "threshold",
+    "--expr", "count <= base",
+    "--base", "1,1,1,1,1",
+    "--head", "3,3,3,3,3",
+    "--metric-class", "noisy",
+    "--min-runs", "5",
+    "--aggregation", "count",
+    "--aa", "0,0,0,0,0:1,1,1,1,1",
+    "--aa-multiplier", "2.5",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  const aaZero = JSON.parse(result.stdout);
+  assert.strictEqual(aaZero.verdict, "inconclusive", JSON.stringify(aaZero));
+  assert.ok(aaZero.reason && aaZero.reason.includes("A/A spread"), aaZero.reason);
+  assert.ok(aaZero.aa_spread > 0, JSON.stringify(aaZero));
+
+  // Finding 2: higher_better with a huge A/A spread is inconclusive (never a silent pass).
+  result = checkFindings([
+    "threshold",
+    "--expr", "median > base*0.90",
+    "--base", "100,100,100,100,100",
+    "--head", "10,10,10,10,10",
+    "--metric-class", "noisy",
+    "--min-runs", "5",
+    "--direction", "higher_better",
+    "--aa", "100,100,100,100,100:200,200,200,200,200",
+    "--aa-multiplier", "2.5",
+  ]);
+  assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+  const aaHigh = JSON.parse(result.stdout);
+  assert.strictEqual(aaHigh.verdict, "inconclusive", JSON.stringify(aaHigh));
+  assert.ok(aaHigh.reason && aaHigh.reason.includes("A/A spread"), aaHigh.reason);
+
+  // Findings 4–5: --direction / --aggregation that conflict with the expression are rejected.
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "100",
+    "--head", "110",
+    "--direction", "higher_better",
+  ]);
+  assert.strictEqual(result.status, 2);
+  assert.ok(result.stderr.includes("conflicts with expression"), result.stderr);
+
+  result = checkFindings([
+    "threshold",
+    "--expr", "median < base*1.10",
+    "--base", "100",
+    "--head", "110",
+    "--aggregation", "max",
+  ]);
+  assert.strictEqual(result.status, 2);
+  assert.ok(result.stderr.includes("conflicts with expression"), result.stderr);
+
   result = checkFindings(["threshold", "--expr", "not a threshold", "--base", "1", "--head", "2"]);
   assert.strictEqual(result.status, 2);
   assert.ok(result.stderr.includes("threshold grammar invalid"), result.stderr);
@@ -4133,10 +4247,17 @@ test("performance threshold helper applies median, range, and A/A noise floor", 
 test("editing security-signals.md changes signals_loaded and survives update --apply", () => {
   const before = checkFindings(["signals", "--signals", SECURITY_SIGNALS, "--paths", "src/api/orders.ts"]);
   assert.strictEqual(before.status, 0, before.stderr || before.stdout);
-  const beforeIds = JSON.parse(before.stdout).signals_loaded.map((s) => s.id);
+  const beforeLoaded = JSON.parse(before.stdout).signals_loaded;
+  const beforeIds = beforeLoaded.map((s) => s.id);
   assert.ok(beforeIds.includes("authz-route"), before.stdout);
   assert.ok(beforeIds.includes("object-id-access"), before.stdout);
   assert.ok(beforeIds.includes("sensitive-response"), before.stdout);
+  // always rows load even when matched_paths is empty (path filter does not gate them).
+  const alwaysOnly = checkFindings(["signals", "--signals", SECURITY_SIGNALS, "--paths", "README.md"]);
+  assert.strictEqual(alwaysOnly.status, 0, alwaysOnly.stderr || alwaysOnly.stdout);
+  const alwaysLoaded = JSON.parse(alwaysOnly.stdout).signals_loaded;
+  assert.ok(alwaysLoaded.some((s) => s.id === "authz-route" && Array.isArray(s.matched_paths) && s.matched_paths.length === 0), alwaysOnly.stdout);
+  assert.ok(!alwaysLoaded.some((s) => s.id === "sensitive-response"), alwaysOnly.stdout);
 
   const editedCopy = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "spc-signals-")), "security-signals.md");
   const original = fs.readFileSync(SECURITY_SIGNALS, "utf8");

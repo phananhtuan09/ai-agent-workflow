@@ -58,7 +58,8 @@ An edited copy is kept by `update --apply`.
 Editing a row changes which signals load and match without touching this `SKILL.md`.
 
 Load matching rows into `signals_loaded[]` (id, file, matched paths) via the checker or by reading the table the same way.
-Security: keep `always` rows few so context stays small; other rows match when changed paths hit their `paths/patterns`.
+Security: keep `always` rows few so context stays small; they always load, and `matched_paths` still lists which changed paths hit their `paths/patterns` (may be empty).
+Other (`tag:`) rows load only when changed paths hit their `paths/patterns`.
 Performance: skip `level: off` rows; other rows match when changed paths or routes hit `route_pattern`.
 
 ## Security flow
@@ -107,9 +108,9 @@ Do not add Mann-Whitney, KS, or Cliff's delta gates in this revision.
    With 3 vs 3 runs a two-sided rank test cannot reach p < 0.05, so 3 runs is not enough; do not judge before the minimum.
 
 4. **Noise floor**: run base against itself (A/A) for each noisy metric.
-   Effective threshold = max(configured threshold, 2–3× the A/A spread) via `check_findings.py threshold` (default multiplier 2.5).
+   Spread is `|a−b| / max(|a|, |b|, 1)`; effective threshold = max(configured threshold, 2–3× that spread) via `check_findings.py threshold` (default multiplier 2.5).
    Inside the noise → informational under `Giới hạn`, not a finding.
-   Still inconclusive after the run cap → `Giới hạn`, not a finding.
+   Excessive A/A widening (unusable floor) or still inconclusive after the run cap → `Giới hạn`, not a finding (never a silent pass).
 
 5. **Classify each breach** as NEW (`introduced: true`) or PRE_EXISTING (`introduced: false`) versus base.
    Static-only observations (no measured samples) are hypotheses under `Giới hạn`.
@@ -141,13 +142,13 @@ Security finding:
   "requests": [
     {"role": "user-b", "method": "GET", "url": "/api/orders/1", "status": 200, "length": 120, "body_hash": "sha256:..."}
   ],
-  "repro_curl": "curl -s -H 'Cookie: ...' http://127.0.0.1:3000/api/orders/1",
+  "repro_curl": "curl -s -H 'Cookie: <redacted>' http://127.0.0.1:3000/api/orders/1",
   "evidence": {"har_path": "finding-1.har", "screenshot": null},
   "validator": "agent"
 }
 ```
 
-Performance finding:
+Performance finding (no `validator` field; security findings require `validator`):
 
 ```json
 {
@@ -206,6 +207,7 @@ Run summary:
 
 Write the report in Vietnamese.
 Preserve identifiers, paths, commands, and quoted source text.
+In `repro_curl` and any `requests[].headers` values for `Cookie`, `Authorization`, or `Set-Cookie`, use placeholders only (`<redacted>`, `REDACTED`, `$TOKEN`, `***`); the checker rejects real secrets.
 
 ```markdown
 # Security performance check — {target}
