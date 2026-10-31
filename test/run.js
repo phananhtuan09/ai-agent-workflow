@@ -4655,6 +4655,8 @@ test("validate-change risk reads installed signal files into separateTests; cont
     assert.ok(securityIds.includes("authz-route"), securityIds.join(","));
     assert.ok(before.separateTests.every((e) => e.command.startsWith("/security-performance-check ")), JSON.stringify(before.separateTests));
     assert.ok(result.stdout.includes("separateTests:"), result.stdout);
+    // Loading the sibling checker must not leave bytecode inside the installed skill.
+    assert.ok(!fs.existsSync(path.join(skillsRoot, "security-performance-check/scripts/__pycache__")), "risk wrote __pycache__ into the installed skill");
 
     const original = fs.readFileSync(signalsPath, "utf8");
     // Path hints that never match do not drop the row: the changed lines still hit its content hints.

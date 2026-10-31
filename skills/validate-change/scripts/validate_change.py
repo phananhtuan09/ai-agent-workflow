@@ -293,7 +293,12 @@ def load_spc_checker():
     if spec is None or spec.loader is None:
         raise Inconsistent(f"cannot load {SPC_CHECK}")
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    # The checker lives in the project's installed skill; keep its bytecode out of the project tree.
+    writes_bytecode, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = writes_bytecode
     return mod
 
 
