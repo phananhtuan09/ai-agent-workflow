@@ -21,11 +21,15 @@
     "testing": [
       "runtime-e2e-test"
     ],
+    "security-performance": [
+      "security-performance-check"
+    ],
     "validate": [
       "validate-change",
       "quality-code-check",
       "review-pr",
-      "runtime-e2e-test"
+      "runtime-e2e-test",
+      "security-performance-check"
     ],
     "evaluation": [
       "workflow-evaluation",
