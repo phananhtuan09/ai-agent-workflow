@@ -3964,6 +3964,31 @@ test("validate-change is a manual command and the composite contracts reach revi
   }
 });
 
+test("install and update skip Python bytecode caches in skill sources", () => {
+  const fixture = createCliFixture(({ sourceRoot }) => {
+    const cache = path.join(sourceRoot, "skills/validate-change/scripts/__pycache__");
+    fs.mkdirSync(cache, { recursive: true });
+    fs.writeFileSync(path.join(cache, "validate_change.cpython-313.pyc"), "bytecode");
+    fs.writeFileSync(path.join(sourceRoot, "skills/validate-change/scripts/stray.pyc"), "bytecode");
+  });
+  try {
+    const skill = path.join(fixture.workspace, ".claude/skills/validate-change/scripts");
+    const install = fixture.run(["--kit", "coding-standard", "--tool", "claude", "--bundle", "validate"]);
+    assert.strictEqual(install.status, 0, install.stderr || install.stdout);
+    assert.ok(fs.existsSync(path.join(skill, "validate_change.py")));
+    assert.ok(!fs.existsSync(path.join(skill, "__pycache__")), "install copied __pycache__");
+    assert.ok(!fs.existsSync(path.join(skill, "stray.pyc")), "install copied a .pyc file");
+    assert.ok(!fs.readFileSync(fixture.statePath, "utf8").includes(".pyc"), "state tracks a .pyc file");
+
+    const update = fixture.run(["update", "--apply"]);
+    assert.strictEqual(update.status, 0, update.stderr || update.stdout);
+    assert.ok(!fs.existsSync(path.join(skill, "__pycache__")), "update copied __pycache__");
+    assert.ok(!fs.existsSync(path.join(skill, "stray.pyc")), "update copied a .pyc file");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("record-workflow-friction records escaped-bug with escape_class and update_target, without editing the target", () => {
   const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/record-workflow-friction/SKILL.md"), "utf8");
   assert.ok(skill.includes("`escaped-bug`"));
