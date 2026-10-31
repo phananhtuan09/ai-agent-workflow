@@ -62,6 +62,7 @@ Build exactly one expectation list in `expectations.json`; every later step cons
   - `assumption`: a point the sources leave open, with the `default` you chose.
   - `agent-intent`: behavior only the implementer's account or the diff suggests. The PR description is never an intent source: anything taken from it is `agent-intent` with `sourceRef: pr-description`.
 - When the prompt and the spec disagree, keep both items and record the conflict. Never pick one silently.
+- Read the PR description before the gate. A claim that it does something "as requested" (or otherwise on the human's behalf) that contradicts a K becomes an `agent-intent` item with `sourceRef: pr-description` and a conflict with that K, so the gate shows it.
 - Ask nothing yet; the gate asks once.
 
 ## 2. Risk gate
@@ -89,6 +90,7 @@ The audit in step 6 is required when any `high` signal fired.
 ## 3. Static checks
 
 Load `quality-code-check` in non-fixing mode, including its surface review when installed. Record each command with its kind (`build`, `lint`, `typecheck`, `test`, `surface`) and exit code in the `quality-code-check` step.
+When `quality-code-check/scripts/surface-scan.cjs` is installed, `report` rejects a run without a `surface` check.
 
 - A failing build stops before runtime: record `runtime-e2e-test` as `SKIPPED` with `skip: build-failed`.
 - Lint and type failures do not stop review or runtime.

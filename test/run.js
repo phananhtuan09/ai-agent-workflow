@@ -3637,7 +3637,8 @@ test("validate-change report checks the run files and computes one status from t
       suspicions: [{ id: "H1", location: "app.txt:1", hypothesis: "the old text is cached", proof: "runtime", kRefs: ["K1"] }], questions: [] };
     writeJson(file("review.json"), review);
     const steps = [
-      { skill: "quality-code-check", status: "RAN", checks: [{ kind: "build", command: "npm run build", exit: 0 }, { kind: "lint", command: "npm run lint", exit: 0 }] },
+      { skill: "quality-code-check", status: "RAN", checks: [{ kind: "build", command: "npm run build", exit: 0 }, { kind: "lint", command: "npm run lint", exit: 0 },
+        { kind: "surface", command: "node surface-scan.cjs --root . --base main", exit: 0 }] },
       { skill: "review-pr", status: "RAN", artifact: `${runDir}/review.json` },
       { skill: "runtime-e2e-test", status: "RAN", artifact: ".runtime-e2e/label/runs/one" },
     ];
@@ -3666,6 +3667,13 @@ test("validate-change report checks the run files and computes one status from t
     assert.ok(text.includes("- H1 `app.txt:1`: the old text is cached — kiểm bằng runtime; chưa có case"), text);
     assert.ok(text.includes("- performance: GET /label twice per load. Lệnh: `/security-performance-check /label`"), text);
     assert.ok(text.includes("security-performance-check chưa được cài hoặc chưa chạy"), text);
+
+    // quality-code-check's surface scan is installed in this tree, so a run without a surface check is inconsistent.
+    result = report((d) => {
+      d.steps[0].checks = d.steps[0].checks.filter((c) => c.kind !== "surface");
+    });
+    assert.strictEqual(result.status, 2, result.stderr || result.stdout);
+    assert.ok(result.stderr.includes("record a surface check"), result.stderr);
 
     // When the skill is installed, record SKIPPED with recommended or no-signal; MISSING only when not installed.
     result = report((d) => {

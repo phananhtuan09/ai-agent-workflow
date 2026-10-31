@@ -55,10 +55,10 @@ When the change has a description, extract its material claims by type and check
 | Type | Check against | Result |
 | --- | --- | --- |
 | Scope: what the change claims to touch | The diff | A claimed change missing from the diff → `Không có trong diff`, a `Cần sửa` finding: deliver it or remove the claim. A material change the description does not declare → `Thay đổi chưa khai báo`, reviewed with extra care; it is a finding only when it meets the finding bar on its own. |
-| Behavior or intent | The human request and approved authority | Contradicts them → `Mâu thuẫn với yêu cầu`, a `Cần sửa` finding. Behavior the change adds that no human source asks for → `Ngoài yêu cầu của human`, an `agent-intent` item raised under `Cần quyết định`, never treated as confirmed intent. |
+| Behavior or intent | The human request and approved authority | Contradicts them → `Mâu thuẫn với yêu cầu`, a `Cần sửa` finding. Behavior the change adds that no human source asks for → `Ngoài yêu cầu của human`, an `agent-intent` item raised under `Cần quyết định`, never treated as confirmed intent. When that behavior also changes existing output the request leaves alone (a shared helper, or a page, field, or format outside the requested delta), it is a regression: a `Cần sửa` finding, not a decision. |
 | Out of scope, not done, follow-ups, TODOs | The human request | Required by the request → an incomplete requirement, a `Cần sửa` finding, or `Cần quyết định` when the request is ambiguous. Not required → listed as deferred work. |
 | Important notes: breaking changes, migrations, environment variables, feature flags, manual steps, rollout or rollback, known limitations | The diff | A note the code does not reflect (a migration mentioned but absent), or code that needs a note the description lacks (a new environment variable, a breaking change) → a `Cần sửa` finding. |
-| Verification: "tested X", "no regressions", screenshots | Evidence you inspected | Never evidence by itself → `Chưa kiểm chứng`, unless you ran or inspected the proof yourself; then cite it. |
+| Verification: "tested X", "no regressions", screenshots | Evidence you inspected | Never evidence by itself → `Chưa kiểm chứng`, unless you ran or inspected the proof yourself; then cite it. A claim naming what the tests cover (a spec, a flow, "including X") → open those tests in the diff, one flow at a time; a named flow no test exercises is `Không có trong diff`, a `Cần sửa` finding: add the test or drop the claim. |
 
 A claim that holds is `Khớp`, with the evidence.
 Check behavior claims against intent only when a human request or approved authority is available; without one, check them against the diff, and state that the intended behavior is not confirmed by a human.
@@ -148,6 +148,7 @@ Do not convert uncertainty into a defect.
 Use `Cần sửa` only for a defect established by direct evidence or a complete static reasoning chain.
 Use `Cần quyết định` only when conflicting or missing authority leaves materially different product, security, compatibility, or operational outcomes unresolved.
 Behavior that only the PR description asks for is missing authority: report it as an `agent-intent` item under `Cần quyết định` when it changes an observable outcome.
+When it changes existing output outside the requested delta, report it as a regression under `Cần sửa` instead.
 
 ## Status
 
