@@ -29,7 +29,8 @@
       "quality-code-check",
       "review-pr",
       "runtime-e2e-test",
-      "security-performance-check"
+      "security-performance-check",
+      "record-workflow-friction"
     ],
     "evaluation": [
       "workflow-evaluation",

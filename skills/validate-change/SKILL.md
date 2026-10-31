@@ -164,3 +164,4 @@ Exit 2 means the run files are inconsistent: fix the file it names, never the re
 
 In chat, give the report's first lines as written (status, reasons, gate, audit), the path to `report.md`, the path to the runtime `report.html`, and the questions the report asks the human; add no others.
 When intent was never confirmed by a human, the report opens with that line; keep it first.
+A bug found later in a run that reported `PASSED` is recorded with `record-workflow-friction` (category `escaped-bug`), not by reopening this command.
