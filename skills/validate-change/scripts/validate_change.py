@@ -17,6 +17,7 @@ SPC_ROOT = SKILLS_ROOT / "security-performance-check"
 SPC_CHECK = SPC_ROOT / "scripts" / "check_findings.py"
 SPC_SECURITY_SIGNALS = SPC_ROOT / "references" / "security-signals.md"
 SPC_PERFORMANCE_SIGNALS = SPC_ROOT / "references" / "performance-signals.md"
+SURFACE_SCAN = SKILLS_ROOT / "quality-code-check" / "scripts" / "surface-scan.cjs"
 LEVELS = ("high", "gate", "advisory")
 SCOPES = ("path", "added", "removed", "changed", "builtin")
 BUILTINS = ("size", "shared", "tests-deleted", "dependency-major", "agent-intent-only", "intent-conflict")
@@ -446,6 +447,8 @@ def check_run(data):
     if named["quality-code-check"]["status"] == "RAN" and (not isinstance(checks, list) or not checks or any(
             c.get("kind") not in CHECK_KINDS or not text(c.get("command")) or not isinstance(c.get("exit"), int) or isinstance(c.get("exit"), bool) for c in checks)):
         raise Inconsistent(f"run.json quality-code-check: checks list kind ({'|'.join(CHECK_KINDS)}), command, and integer exit")
+    if named["quality-code-check"]["status"] == "RAN" and SURFACE_SCAN.is_file() and not any(c["kind"] == "surface" for c in checks):
+        raise Inconsistent(f"run.json quality-code-check: {SURFACE_SCAN.name} is installed; run it on the change and record a surface check")
     for entry in data.get("separateTests", []):
         if entry.get("area") not in AREAS or not text(entry.get("signal")) or not text(entry.get("command")):
             raise Inconsistent(f"run.json separateTests: area ({'|'.join(AREAS)}), signal, and command")
