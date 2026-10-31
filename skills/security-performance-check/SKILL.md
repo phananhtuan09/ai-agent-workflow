@@ -263,8 +263,14 @@ Run summary (the real file lists every security row in `signals_loaded` and `cov
 
 ## Finish
 
-Delete the temp capture directory and any other `/tmp` files the run created before reporting.
+Clean up before reporting.
 The checker cannot verify this; it only sees the run directory.
+
+- When you create a temp directory, worktree, or server, note its literal path or PID from the command output.
+- Clean up with those literal values, never with a path rebuilt from a variable, a file, or `$(...)`.
+- Run each step as its own command, in this order: `rm -rf <temp capture dir>` first, because it holds unredacted captures; then `kill <pid>` for each server you started; then remove each worktree.
+- If a step is denied, do not retry it verbatim.
+  List each leftover under `Giới hạn` with its path or PID, and mark the ones that hold unredacted captures.
 
 ## Output
 
