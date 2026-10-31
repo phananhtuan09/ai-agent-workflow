@@ -1,6 +1,6 @@
 ---
 name: security-performance-check
-description: Opt-in command, started only when the human invokes /security-performance-check, that runs a targeted security and/or performance check on a PR, branch, diff, or area. Report-only; never modifies application code. Default track is both; in this revision the performance track is not available yet and stops cleanly.
+description: Opt-in command, started only when the human invokes /security-performance-check, that runs a targeted security and/or performance check on a PR, branch, diff, or area. Report-only; never modifies application code. Default track is both.
 argument-hint: "[security | performance | both] [PR | branch | diff | area]"
 disable-model-invocation: true
 disallowed-tools: Edit
@@ -27,11 +27,11 @@ A standalone, report-only check for security and performance risks on a change.
 Parse the first argument as the track: `security`, `performance`, or `both` (default `both`).
 Resolve the change set as `review-pr` does (PR, refs, range, area, or working tree).
 
-| Track | This revision |
+| Track | Action |
 | --- | --- |
 | `security` | Run the security flow below. |
-| `performance` | State that the performance track is not available yet, write that under `Hiệu năng` and `Giới hạn`, and stop cleanly for that part. |
-| `both` | Run security; for performance, state it is not available yet and stop cleanly for that part. |
+| `performance` | Run the performance flow below. |
+| `both` | Run security, then performance. |
 
 ## Run directory
 
@@ -41,25 +41,26 @@ Use `<evidence root>/<slug>/security-performance/`, under the evidence root that
 | --- | --- |
 | `summary.json` | Run summary: `signals_loaded[]`, `coverage[]`, `conditions{}`, `limits[]` |
 | `finding-<n>.json` | One file per finding (only `exploited` status) |
-| HAR / screenshots | Redacted request evidence and screenshots named from the finding |
+| HAR / screenshots / traces | Redacted request evidence, screenshots, or metric dumps named from the finding |
 
-Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, or `run`).
+Validate machine-readable output with `python3 <skill-dir>/scripts/check_findings.py` (`signals`, `finding`, `summary`, `run`, `aggregate`, or `threshold`).
 
 ## Project runtime
 
 Read `runtime-e2e-test/references/project-runtime.md` for allowed hosts, role accounts, the access-denied fingerprint, the data reset command, and the probe budget.
-Reuse base/head worktree support from that skill when comparing introduced vs pre-existing probes.
+Reuse base/head worktree support from that skill (#44) when comparing introduced vs pre-existing probes and when measuring performance on base and head.
 If those fields are missing, stop before probes and record the gap under `Giới hạn`.
 
 ## Signal files
 
-`references/security-signals.md` is project-customizable: add, remove, or reword rows.
+`references/security-signals.md` and `references/performance-signals.md` are project-customizable: add, remove, or reword rows.
 An edited copy is kept by `update --apply`.
 Editing a row changes which signals load and match without touching this `SKILL.md`.
 
 Load matching rows into `signals_loaded[]` (id, file, matched paths) via the checker or by reading the table the same way.
-Keep `always` rows few so context stays small; they always load, and `matched_paths` still lists which changed paths hit their `paths/patterns` (may be empty).
+Security: keep `always` rows few so context stays small; they always load, and `matched_paths` still lists which changed paths hit their `paths/patterns` (may be empty).
 Other (`tag:`) rows load only when changed paths hit their `paths/patterns`.
+Performance: skip `level: off` rows; other rows match when changed paths or routes hit `route_pattern`.
 
 ## Security flow
 
@@ -89,10 +90,42 @@ Other (`tag:`) rows load only when changed paths hit their `paths/patterns`.
 
 5. **Stop before any probe** if the configured target is not an allowed host, with the reason under `Giới hạn`.
 
+## Performance flow
+
+Use zero-install collectors only: Playwright through `runtime-e2e-test` infra (request count, payload bytes, response time, long tasks, and Core Web Vitals via `PerformanceObserver` / trace), plus build output for bundle size per entry.
+Use Lighthouse only when the target project already has it configured; otherwise record under `Giới hạn` that Lighthouse was skipped.
+Do not add Mann-Whitney, KS, or Cliff's delta gates in this revision.
+
+1. **Build base and head** in the #44 worktrees from `runtime-e2e-test`.
+   Record a conditions header in `conditions{}`: URL/state, viewport, CPU/network throttling, cache, auth state, and tool versions (Playwright, Node, bundler).
+   Load matching rows from `performance-signals.md` into `signals_loaded[]`.
+
+2. **Exact metrics** (`metric_class: exact`): request count per flow, bundle size per entry, payload bytes.
+   One run per side; compare with an exact diff against the row's threshold (for example `count <= base`).
+
+3. **Noisy metrics** (`metric_class: noisy`): LCP, CLS, INP/TBT, response time, long tasks.
+   At least 5 runs per side (`min_runs_per_side`), interleaved base/head (B, H, B, H, …).
+   With 3 vs 3 runs a two-sided rank test cannot reach p < 0.05, so 3 runs is not enough; do not judge before the minimum.
+
+4. **Noise floor**: run base against itself (A/A) for each noisy metric.
+   Spread is `|a−b| / max(|a|, |b|, 1)`; effective threshold = max(configured threshold, 2–3× that spread) via `check_findings.py threshold` (default multiplier 2.5).
+   Inside the noise → informational under `Giới hạn`, not a finding.
+   Excessive A/A widening (unusable floor) or still inconclusive after the run cap → `Giới hạn`, not a finding (never a silent pass).
+
+5. **Classify each breach** as NEW (`introduced: true`) or PRE_EXISTING (`introduced: false`) versus base.
+   Static-only observations (no measured samples) are hypotheses under `Giới hạn`.
+   A correctness failure (broken flow, failed assertion) outranks any metric; stop metric judgment for that flow and report the correctness issue first.
+
+6. **Report** per metric: median and range per side, n per side, delta %, threshold (and effective threshold after A/A), verdict (`pass` | `fail` | `informational` | `inconclusive`).
+   Only `level: error` with verdict `fail` becomes an exploited finding file; `level: warn` failures stay under `Giới hạn` unless the project raises the level.
+   Use `check_findings.py aggregate` and `threshold` for deterministic median/range and threshold evaluation.
+
 ## Per-finding JSON
 
 One file per finding, plus `summary.json`.
 Only `status: exploited` counts as a finding; `hypothesis` and `unclear` appear under `Giới hạn` only.
+
+Security finding:
 
 ```json
 {
@@ -115,16 +148,57 @@ Only `status: exploited` counts as a finding; `hypothesis` and `unclear` appear 
 }
 ```
 
+Performance finding (no `validator` field; security findings require `validator`):
+
+```json
+{
+  "schema": "security-performance-check/finding@1",
+  "track": "performance",
+  "signal_id": "request-count",
+  "file": "src/orders/list.tsx",
+  "line": 18,
+  "severity": "high",
+  "status": "exploited",
+  "introduced": true,
+  "metric": {
+    "class": "exact",
+    "aggregation": "count",
+    "unit": "requests",
+    "base": {"median": 2, "min": 2, "max": 2, "n": 1},
+    "head": {"median": 12, "min": 12, "max": 12, "n": 1},
+    "delta_pct": 500,
+    "threshold": "count <= base",
+    "effective_threshold": "count <= base",
+    "aa_spread": null,
+    "verdict": "fail"
+  },
+  "evidence": {"har_path": "finding-1.har", "screenshot": null},
+  "fix_hint": "Collapse per-row fetches into one list endpoint."
+}
+```
+
 Run summary:
 
 ```json
 {
   "schema": "security-performance-check/summary@1",
-  "track": "security",
+  "track": "both",
   "target": {"label": "PR #12"},
-  "signals_loaded": [{"id": "authz-route", "file": "references/security-signals.md", "matched_paths": ["src/orders/get.ts"]}],
-  "coverage": [{"path": "src/orders/get.ts", "in_scope": true, "notes": ""}],
-  "conditions": {"base": "...", "head": "...", "host": "http://127.0.0.1:3000"},
+  "signals_loaded": [
+    {"id": "object-id-access", "file": "references/security-signals.md", "matched_paths": ["src/orders/get.ts"]},
+    {"id": "request-count", "file": "references/performance-signals.md", "matched_paths": ["src/orders/list.tsx"]}
+  ],
+  "coverage": [{"path": "src/orders/list.tsx", "in_scope": true, "notes": ""}],
+  "conditions": {
+    "base": "...",
+    "head": "...",
+    "host": "http://127.0.0.1:3000",
+    "viewport": "1280x720",
+    "throttle": {"cpu": 1, "network": "none"},
+    "cache": "cold",
+    "auth": "user-a",
+    "tools": {"playwright": "...", "node": "..."}
+  },
   "limits": ["Not a penetration test, dependency CVE audit, or load test."]
 }
 ```
@@ -147,11 +221,11 @@ In `repro_curl` and any `requests[].headers` values for `Cookie`, `Authorization
 - SEC-01 — {signal_id}: {vị trí}; {điều kiện} → {hậu quả}. Bằng chứng: {request/HAR hoặc screenshot}. Mức: {severity}. {introduced | pre-existing}.
 
 ## Hiệu năng
-- {Trong revision này: track chưa có sẵn; ghi rõ và dừng phần này.}
+- PERF-01 — {signal_id}: base median {m} [{min}–{max}] (n={n}) → head median {m} [{min}–{max}] (n={n}); Δ {pct}%; ngưỡng {threshold} (effective {effective}); verdict {pass|fail|informational|inconclusive}. {NEW | PRE_EXISTING}. {fix_hint}.
 
 ## Giới hạn
 - Không phải pen test, dependency CVE audit, hay load test.
-- {host không được phép / thiếu cấu hình / probes not run: N / hypothesis hoặc unclear...}
+- {host không được phép / thiếu cấu hình / probes not run: N / hypothesis / informational trong noise / inconclusive / Lighthouse không có sẵn...}
 ```
 
 If a track has no exploited findings, write that clearly under its section.
