@@ -72,7 +72,7 @@ Record which source or revision you used when comparing installations.
 | 🗺️ Planner mode | `--bundle planner-mode` | Manually invoked `/planner` mode that picks the next workflow step and suggests numbered next prompts | Experimental |
 | 🧪 Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
 | ✅ Validate change | `--bundle validate` | Manually invoked `/validate-change` that runs static checks, review, and runtime E2E on one expectation list and reports one status | Experimental |
-| 🔒 Security performance check | `--bundle security-performance` | Manually invoked `/security-performance-check` for targeted security probes on a change (performance track not available yet) | Experimental |
+| 🔒 Security performance check | `--bundle security-performance` | Manually invoked `/security-performance-check` for targeted security and performance probes on a change | Experimental |
 | 🎨 Design | `--kit design` | `docs/PRODUCT.md` and `docs/DESIGN.md` for the external Impeccable engine | Stable |
 | 📊 Workflow evaluation | `--kit workflow-eval` | Trace-first evaluation standard, templates, and skills under `docs/evaluation/` | Stable |
 | 🎓 Learning | `--kit learning-workflow` | Mini-project learning coordinator and helpers under `docs/learning/` | Stable |
@@ -93,7 +93,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
 | `validate-change` | Manually invoked composite that validates a change against one expectation list with `quality-code-check`, `review-pr`, and `runtime-e2e-test`, gates risky changes once, and reports one status (`references/risk-rules.md` is project-customizable). |
-| `security-performance-check` | Manually invoked, report-only security (and later performance) check on a PR, branch, diff, or area (`references/security-signals.md` is project-customizable). |
+| `security-performance-check` | Manually invoked, report-only security and performance check on a PR, branch, diff, or area (`references/security-signals.md` and `references/performance-signals.md` are project-customizable). |
 | `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
 | `workflow-evaluation`, `record-workflow-friction` | Evaluate AI workflows and record execution friction. |
 | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` | Run two-to-three-day learning mini-projects. |
@@ -143,7 +143,7 @@ It is experimental. Claude Code keeps it manual with `disable-model-invocation` 
 | You want to… | Command |
 | --- | --- |
 | Accept a PR or a change just made | `/validate-change` |
-| Targeted security check on a change | `/security-performance-check` |
+| Targeted security or performance check on a change | `/security-performance-check` |
 | Re-test existing features or build a durable suite | `/runtime-e2e-test` (durable) |
 | Only runtime E2E on a change | `/runtime-e2e-test` (light) |
 | Only lint, type check, or build | `/quality-code-check` |
@@ -155,9 +155,9 @@ See the [decision record](docs/decisions/2026-10-29-validate-change-composite.md
 
 The `security-performance` bundle installs `security-performance-check` alone; the `validate` bundle also includes it so `/validate-change` can record skip reasons and recommend a ready command under `Cần test riêng`.
 Type `/security-performance-check [security | performance | both] [PR | branch | diff | area]` for a standalone run.
-This revision ships the security track; the performance track states it is not available yet and stops cleanly.
+It ships security and performance tracks: security probes plus base/head metrics from `references/performance-signals.md` (exact counts and noisy timings with an A/A noise floor).
 It never modifies application code, probes only allowed local/dev hosts, and writes a Vietnamese report plus one JSON file per exploited finding.
-After installation, complete the "Security and performance probes" fields in `runtime-e2e-test/references/project-runtime.md`, and adjust `references/security-signals.md` for the project; edited signal files are kept on update.
+After installation, complete the "Security and performance probes" fields in `runtime-e2e-test/references/project-runtime.md`, and adjust `references/security-signals.md` and `references/performance-signals.md` for the project; edited signal files are kept on update.
 It is experimental. Claude Code keeps it manual with `disable-model-invocation` and Codex with `allow_implicit_invocation: false`.
 
 See the [decision record](docs/decisions/2026-10-30-security-performance-check.md) for scope.
