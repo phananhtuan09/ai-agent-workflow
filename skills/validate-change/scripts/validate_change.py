@@ -2,6 +2,7 @@
 """Deterministic parts of a validate-change run: the risk gate, the run files' contracts, coverage, and the overall status."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import random
 import re
@@ -10,7 +11,12 @@ import sys
 from pathlib import Path
 
 RULES = Path(__file__).resolve().parents[1] / "references" / "risk-rules.md"
-EVIDENCE = Path(__file__).resolve().parents[2] / "runtime-e2e-test" / "scripts" / "evidence.py"
+SKILLS_ROOT = Path(__file__).resolve().parents[2]
+EVIDENCE = SKILLS_ROOT / "runtime-e2e-test" / "scripts" / "evidence.py"
+SPC_ROOT = SKILLS_ROOT / "security-performance-check"
+SPC_CHECK = SPC_ROOT / "scripts" / "check_findings.py"
+SPC_SECURITY_SIGNALS = SPC_ROOT / "references" / "security-signals.md"
+SPC_PERFORMANCE_SIGNALS = SPC_ROOT / "references" / "performance-signals.md"
 LEVELS = ("high", "gate", "advisory")
 SCOPES = ("path", "added", "removed", "changed", "builtin")
 BUILTINS = ("size", "shared", "tests-deleted", "dependency-major", "agent-intent-only", "intent-conflict")
@@ -274,6 +280,61 @@ def intent_signals(expectations, rules):
             for r in rules if r["scope"] == "builtin" and r["check"] in INTENT_BUILTINS and found[r["check"]]]
 
 
+def spc_installed():
+    """True when security-performance-check sits beside this skill with its signal files."""
+    return SPC_CHECK.is_file() and SPC_SECURITY_SIGNALS.is_file() and SPC_PERFORMANCE_SIGNALS.is_file()
+
+
+def load_spc_checker():
+    """Load check_findings.py from the installed sibling skill; no local copy of signal data."""
+    if not spc_installed():
+        return None
+    spec = importlib.util.spec_from_file_location("spc_check_findings", SPC_CHECK)
+    if spec is None or spec.loader is None:
+        raise Inconsistent(f"cannot load {SPC_CHECK}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def separate_tests_from_signals(paths, changes=None):
+    """Recommend security-performance-check from the changed code, in any language.
+
+    Every signal row is considered. A row is reported when a changed file hits one of its hints:
+    a path hint, or a content hint found in that file's added or removed lines (`changes`).
+    A content hit is enough on its own, so a narrow path glob can never hide server, auth, or
+    render code from the recommendation.
+    """
+    checker = load_spc_checker()
+    if checker is None:
+        return []
+    path_list = list(paths)
+    entries = []
+    try:
+        tracks = (
+            ("security", checker.load_signals(SPC_SECURITY_SIGNALS)),
+            ("performance", checker.load_performance_signals(SPC_PERFORMANCE_SIGNALS)),
+        )
+        for area, rows in tracks:
+            for row_id, hits in checker.hinted_paths(rows, path_list, changes).items():
+                extra = f" +{len(hits) - 1}" if len(hits) > 1 else ""
+                entries.append({
+                    "area": area,
+                    "signal": f"{row_id}: {hits[0]}{extra}",
+                    "command": f"/security-performance-check {area}",
+                })
+    except (ValueError, OSError) as error:
+        # Parser/file errors (including check_findings.Inconsistent) become risk-step inconsistencies;
+        # other exceptions (bugs) propagate.
+        raise Inconsistent(f"security-performance-check signal files: {error}") from None
+    return entries
+
+
+def diff_changes(files):
+    """{path: changed lines} from read_diff, for content hints."""
+    return {name: "\n".join(info["added"] + info["removed"]) for name, info in files.items()}
+
+
 def assess(root, base, worktree, expectations, rules_path, untracked=None):
     settings, rules = load_rules(rules_path)
     base_sha = git(root, "rev-parse", base if worktree else git(root, "merge-base", base, "HEAD").strip()).strip()
@@ -286,6 +347,9 @@ def assess(root, base, worktree, expectations, rules_path, untracked=None):
     signals, size = diff_signals(files, settings, rules, versions)
     signals += intent_signals(expectations, rules)
     levels = {s["level"] for s in signals}
+    ignored = matcher(settings["ignore"])
+    kept_paths = [name for name in sorted(files) if not ignored(name)]
+    separate = separate_tests_from_signals(kept_paths, diff_changes(files))
     return {
         "schema": "validate-change/risk@1",
         "base": base,
@@ -296,6 +360,7 @@ def assess(root, base, worktree, expectations, rules_path, untracked=None):
         "rulesDigest": hashlib.sha256(Path(rules_path).read_bytes()).hexdigest(),
         **size,
         "signals": signals,
+        "separateTests": separate,
         "gate": "required" if levels & {"high", "gate"} else "not-required",
         "audit": "required" if "high" in levels else "not-required",
     }
@@ -531,15 +596,27 @@ def evaluate(root, run_dir, rules_path):
     rules = load_rules(rules_path)[1]
     intent_ids = {r["id"] for r in rules if r["scope"] == "builtin" and r["check"] in INTENT_BUILTINS}
     diff_only = lambda r: [s for s in r["signals"] if s["rule"] not in intent_ids]
-    if (fresh["rulesDigest"], fresh["baseSha"], diff_only(fresh)) != (risk["rulesDigest"], risk["baseSha"], diff_only(risk)):
-        raise Inconsistent("risk.json does not match the diff and the risk rules; run risk again instead of editing it")
+    if (fresh["rulesDigest"], fresh["baseSha"], diff_only(fresh), fresh.get("separateTests", [])) != (
+            risk["rulesDigest"], risk["baseSha"], diff_only(risk), risk.get("separateTests", [])):
+        raise Inconsistent("risk.json does not match the diff, the risk rules, or the installed signal files; run risk again instead of editing it")
     # Expectations edited after the risk step can add an intent signal, never remove the stored one.
     added = [s for s in intent_signals(expectations, rules) if s["rule"] not in {x["rule"] for x in risk["signals"]}]
     risk = {**risk, "signals": risk["signals"] + added,
+            "separateTests": risk.get("separateTests", []),
             "gate": "required" if risk["gate"] == "required" or any(s["level"] in ("high", "gate") for s in added) else risk["gate"],
             "audit": "required" if risk["audit"] == "required" or any(s["level"] == "high" for s in added) else risk["audit"]}
     run = load(run_dir / "run.json")
     steps = check_run(run)
+    if spc_installed() and steps.get("security-performance-check", {}).get("status", "MISSING") == "MISSING":
+        raise Inconsistent("run.json security-performance-check: the skill is installed, so record it as SKIPPED (recommended or no-signal) or RAN, never MISSING")
+    # Signal-file matches from the risk step must reach the report; the command may carry the target label.
+    listed = run.get("separateTests", [])
+    dropped = [e for e in risk["separateTests"] if not any(
+        x["area"] == e["area"] and x["signal"] == e["signal"] and (x["command"] == e["command"] or x["command"].startswith(e["command"] + " "))
+        for x in listed)]
+    if dropped:
+        raise Inconsistent("run.json separateTests omits signal-file matches from risk.json: "
+                           + ", ".join(f"{e['area']}: {e['signal']}" for e in dropped) + "; copy them from risk.json")
     sections, limits = [], list(run.get("limits", []))
 
     gate = run["gate"]
@@ -718,7 +795,8 @@ def main(argv=None):
         if args.command == "risk":
             result = assess(root, args.base, args.worktree, expectations, args.rules)
             write(run_dir / "risk.json", result)
-            print(f"Gate: {result['gate']}; audit: {result['audit']}; signals: {', '.join(s['rule'] for s in result['signals']) or 'none'}")
+            separate = ", ".join(f"{e['area']}:{e['signal'].split(':', 1)[0]}" for e in result["separateTests"]) or "none"
+            print(f"Gate: {result['gate']}; audit: {result['audit']}; signals: {', '.join(s['rule'] for s in result['signals']) or 'none'}; separateTests: {separate}")
             return 0
         if args.command == "audit-input":
             risk_data = load(run_dir / "risk.json")

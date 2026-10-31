@@ -4,6 +4,9 @@ This file is project-customizable: add, remove, or reword rules, change a level,
 `scripts/validate_change.py risk` reads the settings and the rules table below; editing them changes the next run without touching `SKILL.md`.
 The rules are deterministic, so the same diff and the same expectation list always give the same gate. The thresholds are starting values; calibrate them on the project's own changes.
 
+Keep only rules that decide the human gate and the independent audit (money, data, permissions, weakened tests, size, shared files, configuration, intent).
+Security and performance detection for `Cần test riêng` comes from the installed `security-performance-check` signal files, not from duplicate rows here.
+
 Levels:
 
 - `high`: money, data, permissions, or weakened tests. Asks the human to confirm the expectations and flows before checks run, and adds the independent audit.
