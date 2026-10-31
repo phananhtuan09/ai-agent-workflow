@@ -156,6 +156,7 @@ Write `run.json`:
 - Steps appear in this order, each once. The three specialist steps are required; record a missing skill as `MISSING`, never leave it out.
 - `security-performance-check` is optional and never changes the overall status. Record it as `MISSING` only when the skill is not installed. When it is installed, record `SKIPPED` with `skip: recommended` if `separateTests` is nonempty, or `skip: no-signal` if it is empty. Do not run the full check from this composite.
 - Start `separateTests` from `risk.json` (signal-file matches when the skill is installed). Append the target label to each ready command (for example `PR#12`). Add any extra passive runtime or accessibility notes that are not already covered. They are prompts for a human decision, never defects, and never change the status.
+- `report` refuses a `run.json` that drops a `risk.json` match or records an installed `security-performance-check` as `MISSING`.
 
 Then run `validate_change.py report <run-dir>`.
 It checks every file against its contract and the current head, verifies the runtime bundle with the runtime tool, and computes the status, worst first: `NEEDS_HUMAN`, `BLOCKED`, `FAILED`, `NEEDS_REVIEW`, `PASSED`.

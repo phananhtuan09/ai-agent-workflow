@@ -607,6 +607,16 @@ def evaluate(root, run_dir, rules_path):
             "audit": "required" if risk["audit"] == "required" or any(s["level"] == "high" for s in added) else risk["audit"]}
     run = load(run_dir / "run.json")
     steps = check_run(run)
+    if spc_installed() and steps.get("security-performance-check", {}).get("status", "MISSING") == "MISSING":
+        raise Inconsistent("run.json security-performance-check: the skill is installed, so record it as SKIPPED (recommended or no-signal) or RAN, never MISSING")
+    # Signal-file matches from the risk step must reach the report; the command may carry the target label.
+    listed = run.get("separateTests", [])
+    dropped = [e for e in risk["separateTests"] if not any(
+        x["area"] == e["area"] and x["signal"] == e["signal"] and (x["command"] == e["command"] or x["command"].startswith(e["command"] + " "))
+        for x in listed)]
+    if dropped:
+        raise Inconsistent("run.json separateTests omits signal-file matches from risk.json: "
+                           + ", ".join(f"{e['area']}: {e['signal']}" for e in dropped) + "; copy them from risk.json")
     sections, limits = [], list(run.get("limits", []))
 
     gate = run["gate"]

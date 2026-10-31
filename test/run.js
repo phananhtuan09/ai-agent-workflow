@@ -3576,7 +3576,8 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     fs.writeFileSync(path.join(root, "e2e/light.spec.ts"), "test.skip('later', () => {});\n");
     const skipped = { status: "SKIPPED", skip: "not-applicable", reason: "risk-only fixture" };
     writeJson(path.join(run, "run.json"), { schema: "validate-change/run@1", target: { label: "worktree" }, gate: { override: null, answer: "confirmed" },
-      steps: ["quality-code-check", "review-pr", "runtime-e2e-test"].map((skill) => ({ skill, ...skipped })) });
+      steps: ["quality-code-check", "review-pr", "runtime-e2e-test", "security-performance-check"].map((skill) => ({ skill, ...skipped })),
+      separateTests: untracked.separateTests });
     const later = validateChange(root, ["report", run]);
     assert.strictEqual(later.status, 1, later.stderr);
     assert.ok(!later.stdout.includes("tests-skipped"), later.stdout);
@@ -3645,6 +3646,10 @@ test("validate-change report checks the run files and computes one status from t
     const report = (mutate) => {
       const data = JSON.parse(JSON.stringify(runFile));
       if (mutate) mutate(data);
+      // The skill is installed in this tree, so a run that does not set the step records it as skipped.
+      if (!data.steps.some((s) => s.skill === "security-performance-check")) {
+        data.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "not-applicable", reason: "report fixture" });
+      }
       writeJson(file("run.json"), data);
       return validateChange(root, ["report", run]);
     };
@@ -3675,11 +3680,12 @@ test("validate-change report checks the run files and computes one status from t
     });
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("không có tín hiệu `Cần test riêng`"), result.stderr);
+    // The skill is installed in this tree, so MISSING is inconsistent; the not-installed case has its own test.
     result = report((d) => {
       d.steps.push({ skill: "security-performance-check", status: "MISSING" });
     });
-    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("chưa được cài hoặc chưa chạy"));
+    assert.strictEqual(result.status, 2, result.stderr || result.stdout);
+    assert.ok(result.stderr.includes("is installed"), result.stderr);
     // SKIPPED with no-human / not-applicable keeps the prior "chưa được cài hoặc chưa chạy" limit note.
     result = report((d) => {
       d.steps.push({ skill: "security-performance-check", status: "SKIPPED", skip: "no-human", reason: "headless run" });
@@ -3852,6 +3858,8 @@ test("validate-change report checks the run files and computes one status from t
     assert.ok(result.stderr.includes("run risk again"), result.stderr);
     assert.strictEqual(validateChange(root, ["risk", run, "--base", fixture.base]).status, 0);
     assert.deepStrictEqual([read("risk.json").gate, read("risk.json").audit], ["required", "required"]);
+    // The new file matches signal rows; run.json starts separateTests from risk.json.
+    runFile.separateTests.push(...read("risk.json").separateTests);
     result = report();
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("records no answer"), result.stderr);
@@ -4878,6 +4886,55 @@ test("check_run rejects recommended/no-signal when they disagree with separateTe
     });
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("skip no-signal requires empty separateTests"), result.stderr);
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
+test("report rejects run.json that drops risk.json signal matches or records an installed skill as MISSING", () => {
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  const repo = riskRepoWithApiChange();
+  try {
+    const risk = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
+      cwd: repo.root,
+      encoding: "utf8",
+    });
+    assert.strictEqual(risk.status, 0, risk.stderr || risk.stdout);
+    const separate = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8")).separateTests;
+    assert.ok(separate.length > 0);
+
+    const report = (spc, separateTests) => {
+      writeJson(path.join(repo.run, "run.json"), {
+        schema: "validate-change/run@1",
+        target: { label: "PR#12" },
+        gate: { override: null, answer: null },
+        steps: skippedValidateSteps(spc),
+        separateTests,
+        limits: [],
+      });
+      return spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
+    };
+    const skipped = (skip) => ({ skill: "security-performance-check", status: "SKIPPED", skip, reason: "fixture" });
+
+    let result = report(skipped("no-signal"), []);
+    assert.strictEqual(result.status, 2, result.stderr || result.stdout);
+    assert.ok(result.stderr.includes("omits signal-file matches from risk.json"), result.stderr);
+
+    result = report(skipped("recommended"), separate.slice(1));
+    assert.strictEqual(result.status, 2, result.stderr || result.stdout);
+    assert.ok(result.stderr.includes("omits signal-file matches from risk.json"), result.stderr);
+
+    result = report({ skill: "security-performance-check", status: "MISSING" }, separate);
+    assert.strictEqual(result.status, 2, result.stderr || result.stdout);
+    assert.ok(result.stderr.includes("is installed"), result.stderr);
+
+    // The report step appends the target label to each command; extra passive notes are allowed.
+    const labelled = separate.map((e) => ({ ...e, command: `${e.command} PR#12` }));
+    labelled.push({ area: "accessibility", signal: "axe not available", command: "/runtime-e2e-test" });
+    result = report(skipped("recommended"), labelled);
+    assert.notStrictEqual(result.status, 2, result.stderr || result.stdout);
   } finally {
     repo.cleanup();
     fs.rmSync(skillsRoot, { recursive: true, force: true });
