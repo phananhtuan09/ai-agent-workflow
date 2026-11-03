@@ -332,29 +332,34 @@ def _is_prose(path):
     return matcher(list(CONTENT_HINT_SKIP))(path)
 
 
-def row_hints(row, path_list, changes=None):
+def row_hints(row, path_list, changes=None, content_required=False):
     """Paths that hint a row: a path pattern hit or a content token in that file's changed lines.
 
     Hints only rank rows for the agent; they never decide whether a row loads.
+    With `content_required`, a path hit alone counts only for a file with no changed text
+    (binary or mode-only) or a row with no content hints: directory globs such as
+    `**/app/**` match every file of some frameworks, whatever the diff does.
     """
     by_path = matcher(row["patterns"]) if row["patterns"] else (lambda _p: False)
     tokens = [t.lower() for t in row.get("content_hints") or []]
     hits = []
     for p in path_list:
         body = "" if _is_prose(p) else (changes or {}).get(p) or ""
-        if by_path(p) or (tokens and any(t in body.lower() for t in tokens)):
+        by_content = bool(tokens) and any(t in body.lower() for t in tokens)
+        path_counts = not content_required or not tokens or not body.strip()
+        if by_content or (path_counts and by_path(p)):
             hits.append(p)
     return hits
 
 
-def hinted_paths(rows, paths, changes=None, exclude=None):
+def hinted_paths(rows, paths, changes=None, exclude=None, content_required=False):
     """{row id: [paths]} for rows with at least one hint."""
     path_list = filter_matchable_paths(list(paths), exclude=exclude)
     out = {}
     for row in rows:
         if row.get("level") == "off":
             continue
-        hits = row_hints(row, path_list, changes)
+        hits = row_hints(row, path_list, changes, content_required)
         if hits:
             out[row["id"]] = hits
     return out

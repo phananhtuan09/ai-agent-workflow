@@ -445,6 +445,85 @@ def validate(path: Path, mode: str, bundle: Path | None = None) -> tuple[list[st
     return errors, warnings
 
 
+def set_field(text: str, name: str, value: str, after: str | None = None) -> str:
+    """Set the first '- name: value' line; when missing, insert it after the 'after' field line."""
+    line = re.compile(rf"^- {re.escape(name)}:.*$", re.MULTILINE)
+    if line.search(text):
+        return line.sub(lambda _m: f"- {name}: {value}", text, count=1)
+    anchor = re.search(rf"^- {re.escape(after)}:.*$", text, re.MULTILINE) if after else None
+    if anchor is None:
+        return text
+    return text[: anchor.end()] + f"\n- {name}: {value}" + text[anchor.end() :]
+
+
+def fill(path: Path, bundle: Path) -> None:
+    """Copy the generated run identity, case results and existing-suite statuses into the ledger.
+
+    Observed, Evidence, Cleanup, Path match, Status and the sign-off stay the agent's and human's to write.
+    """
+    text = path.read_text(encoding="utf-8")
+    results = json.loads((bundle / "results.json").read_text(encoding="utf-8"))
+    head = json.loads((bundle / "run-manifest.json").read_text(encoding="utf-8"))
+    base_path = bundle / "base" / "run-manifest.json"
+    base = json.loads(base_path.read_text(encoding="utf-8")) if base_path.exists() else None
+    rows = {row["caseId"]: row for row in results["cases"]}
+
+    first = CASE_HEADING.search(text)
+    top, body = (text[: first.start()], text[first.start() :]) if first else (text, "")
+    pieces = []
+    for case in parse_cases(body):
+        heading = f"## Case {case.case_id} — {case.title}"
+        row = rows.get(case.case_id)
+        section = case.body
+        if row is not None and case.field("Result") != "INVALIDATED":
+            section = set_field(section, "Result", row["result"])
+            section = set_field(section, "Can-fail", row["proof"], after="Result")
+            actual = (row.get("observations") or {}).get("actualPath")
+            if actual:
+                section = set_field(section, "Actual path", actual, after="Result")
+        pieces.append(heading + section)
+    body = "".join(pieces)
+
+    top = set_field(top, "Run ID", head["runId"])
+    revisions = [f"head {head['gitHead'][:7]}"]
+    if base and base.get("gitHead") and not base.get("degraded"):
+        revisions.append(f"base {base['gitHead'][:7]}")
+    top = set_field(top, "Tested revisions", "; ".join(revisions))
+    top = set_field(top, "Last updated", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+
+    cases = parse_cases(body)
+    counts: Counter[str] = Counter()
+    release_total = release_pass = 0
+    for case in cases:
+        result = case.field("Result")
+        non_proving = result == "PASS" and case.field("Can-fail") == "NON_PROVING"
+        counts["NON_PROVING" if non_proving else result] += 1
+        if case.field("Priority") == "RELEASE_BLOCKING":
+            release_total += 1
+            release_pass += result == "PASS" and not non_proving
+    top = set_field(top, "Total", str(len(cases)))
+    for label in ("PASS", "FAIL", "BLOCKED", "NOT_RUN", "INVALIDATED"):
+        top = set_field(top, label, str(counts[label]))
+    if counts["NON_PROVING"] or top_field(top, "Non-proving") is not None:
+        top = set_field(top, "Non-proving", str(counts["NON_PROVING"]), after="INVALIDATED")
+    top = set_field(top, "Release-blocking PASS", f"{release_pass}/{release_total}")
+
+    suites = (results.get("existing") or {}).get("suites", [])
+    if suites:
+        current = re.search(r"^## Existing suites\s*$\n(?P<body>.*?)(?=^## |\Z)", top, re.MULTILINE | re.DOTALL)
+        section = current.group("body").strip("\n") if current else ""
+        for row in suites:
+            # Keep the agent's note on a listed suite; only its status comes from the bundle.
+            listed = re.compile(rf"^- `?{re.escape(row['id'])}`?:\s*[A-Z_]+", re.MULTILINE)
+            if listed.search(section):
+                section = listed.sub(lambda _m: f"- {row['id']}: {row['status']}", section, count=1)
+            else:
+                section += f"\n- {row['id']}: {row['status']} — {row.get('reason') or 'no note'}"
+        block = "## Existing suites\n\n" + section.strip("\n") + "\n\n"
+        top = top[: current.start()] + block + top[current.end() :] if current else top.rstrip("\n") + "\n\n" + block
+    path.write_text(top + body, encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Validate a runtime E2E test-plan Markdown artifact."
@@ -456,11 +535,26 @@ def main() -> int:
         type=Path,
         help="Evidence run directory; checks the ledger's run identity, case fields and existing suites against it.",
     )
+    parser.add_argument(
+        "--fill",
+        action="store_true",
+        help="With --bundle: first copy Run ID, Tested revisions, Last updated, the run summary, each case's Result, "
+        "Can-fail and Actual path, and existing-suite statuses from the bundle into the ledger.",
+    )
     args = parser.parse_args()
 
     if not args.plan.is_file():
         print(f"ERROR: plan not found: {args.plan}", file=sys.stderr)
         return 2
+    if args.fill:
+        if args.bundle is None:
+            print("ERROR: --fill needs --bundle", file=sys.stderr)
+            return 2
+        try:
+            fill(args.plan, args.bundle)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            print(f"ERROR: cannot fill the ledger from {args.bundle}: {error}", file=sys.stderr)
+            return 2
 
     errors, warnings = validate(args.plan, args.mode, args.bundle)
     for warning in warnings:

@@ -1046,8 +1046,16 @@ class NoGlobGatingTests(unittest.TestCase):
         src = VALIDATE_CHANGE.read_text(encoding="utf-8")
         self.assertNotRegex(src, r"if not \w+\.get\(\"matched_paths\"\)")
         self.assertNotIn("match_signals(", src)
-        self.assertIn("hinted_paths(rows, path_list, changes)", src)
+        self.assertIn("hinted_paths(rows, path_list, changes, content_required=True)", src)
         self.assertRegex(src, r"separate_tests_from_signals\(kept_paths, diff_changes\(files\)\)")
+
+    def test_row_hints_content_required_drops_path_only_hits(self):
+        row = {"id": "x", "patterns": ["**/app/**"], "content_hints": ["fetch("]}
+        paths = ["app/a.php", "app/b.php", "app/logo.png", "lib/c.ts"]
+        changes = {"app/a.php": "$x = 1;", "app/b.php": "", "lib/c.ts": "fetch('/x')"}
+        self.assertEqual(c.row_hints(row, paths, changes), ["app/a.php", "app/b.php", "app/logo.png", "lib/c.ts"])
+        # A path hit alone still counts for a file with no changed text (binary or mode-only).
+        self.assertEqual(c.row_hints(row, paths, changes, content_required=True), ["app/b.php", "app/logo.png", "lib/c.ts"])
 
 
 def load_validate_change():

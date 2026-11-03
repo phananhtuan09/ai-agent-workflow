@@ -1038,6 +1038,69 @@ test("runtime E2E base run proves new-behavior cases can fail", () => {
   }
 });
 
+test("runtime E2E validator --fill copies the generated run fields into the ledger", () => {
+  const fixture = createBaseHeadFixture();
+  try {
+    const run = fixture.run(null, "fill");
+    assert.ok(run.results, run.stderr || run.stdout);
+    const validator = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/validate_test_plan.py");
+    const planPath = path.join(fixture.root, "docs/testing/active/fill.md");
+    // The agent's own fields are written; the generated ones still hold their pre-run values.
+    const plan = runtimePlan(["E2E-01", "E2E-02", "PR-01"])
+      .replace("- Priority: NORMAL", "- Priority: RELEASE_BLOCKING")
+      .replaceAll("- Actual path: NOT_RUN", "- Actual path: e2e/label.spec.ts native test")
+      .replaceAll("- Path match: NOT_RUN", "- Path match: YES")
+      .replaceAll("- Observed: NOT_RUN", "- Observed: label read back")
+      .replaceAll("- Evidence: NOT_RUN", "- Evidence: summary.md")
+      .replaceAll("- Cleanup: NOT_RUN", "- Cleanup: NOT_REQUIRED");
+    fs.writeFileSync(planPath, plan);
+    const validate = (...extra) => spawnSync("python3", [validator, planPath, "--bundle", run.out, ...extra], { encoding: "utf8" });
+    const before = validate();
+    assert.strictEqual(before.status, 1);
+    assert.ok(before.stderr.includes("Release-blocking PASS"), before.stderr);
+    const filled = validate("--fill");
+    assert.strictEqual(filled.status, 0, filled.stderr || filled.stdout);
+    const text = fs.readFileSync(planPath, "utf8");
+    const manifest = JSON.parse(fs.readFileSync(path.join(run.out, "run-manifest.json"), "utf8"));
+    assert.ok(text.includes(`- Run ID: ${manifest.runId}`), text);
+    assert.ok(text.includes(`- Tested revisions: head ${manifest.gitHead.slice(0, 7)}; base ${fixture.base.slice(0, 7)}`), text);
+    assert.ok(text.includes("- Release-blocking PASS: 1/1") && text.includes("- Non-proving: 1"), text);
+    assert.ok(text.includes("- Can-fail: PROVEN") && text.includes("- Actual path: GET /label"), text);
+    // Agent-written fields are left alone.
+    assert.ok(text.includes("- Observed: label read back"), text);
+    assert.strictEqual(validate("--fill", "--mode", "plan").status, 0);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E runs the approved command in cwd for a test project nested below the evidence root", () => {
+  const fixture = createBaseHeadFixture();
+  try {
+    // The test project lives in sub/; the suite and plan stay under the root.
+    fs.mkdirSync(path.join(fixture.root, "sub/e2e"), { recursive: true });
+    fs.writeFileSync(path.join(fixture.root, "sub/app.txt"), "new\n");
+    fs.writeFileSync(path.join(fixture.root, "sub/e2e/label.spec.ts"), "head spec\n");
+    const nested = (suite) => {
+      delete suite.base;
+      suite.cwd = "sub";
+      suite.command = ["python3", "../tests/runner.py", "../tests/cases.json"];
+    };
+    const run = fixture.run(nested, "nested");
+    assert.ok(run.results, run.stderr || run.stdout);
+    const results = Object.fromEntries(run.results.cases.map((row) => [row.caseId, row.result]));
+    assert.deepStrictEqual([results["E2E-01"], results["E2E-02"]], ["PASS", "PASS"]);
+
+    for (const [cwd, message] of [["/tmp", "relative to the root"], ["../outside", "outside root"], ["app.txt", "not a directory"]]) {
+      const refused = fixture.validate((suite) => { nested(suite); suite.cwd = cwd; });
+      assert.strictEqual(refused.status, 2, cwd);
+      assert.ok(refused.stderr.includes(message), refused.stderr);
+    }
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("runtime E2E compares the project's own suites between base and head", () => {
   const fixture = createBaseHeadFixture({
     unitCases: [
@@ -3667,6 +3730,22 @@ test("validate-change report checks the run files and computes one status from t
     assert.ok(text.includes("- H1 `app.txt:1`: the old text is cached — kiểm bằng runtime; chưa có case"), text);
     assert.ok(text.includes("- performance: GET /label twice per load. Lệnh: `/security-performance-check /label`"), text);
     assert.ok(text.includes("security-performance-check chưa được cài hoặc chưa chạy"), text);
+    assert.ok(!text.includes("coverage FULL chỉ nghĩa là case pass"), text);
+
+    // Without a base, E2E-01 passes but nothing proves it could fail; FULL then carries a limit.
+    const nobase = fixture.run((suite) => {
+      delete suite.base;
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.cases[0].expects = ["K1"];
+      suite.cases[0].flows = ["F1"];
+      suite.cases[1].expects = ["K2"];
+    }, "label/runs/nobase");
+    assert.ok(nobase.results, nobase.stderr || nobase.stdout);
+    result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/nobase"; });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const unproven = fs.readFileSync(file("report.md"), "utf8");
+    assert.ok(unproven.includes("| K1: The label shows the new text | modified | prompt (`prompt`) | source | E2E-01 | FULL | — |"), unproven);
+    assert.ok(unproven.includes("- K1: coverage FULL chỉ nghĩa là case pass"), unproven);
 
     // quality-code-check's surface scan is installed in this tree, so a run without a surface check is inconsistent.
     result = report((d) => {
@@ -4621,7 +4700,7 @@ function riskRepoWithApiChange() {
   git("add", ".");
   git("commit", "-qm", "base");
   const base = git("rev-parse", "HEAD");
-  fs.writeFileSync(path.join(root, "src/api/orders.ts"), "export const get = (req) => Order.findById(req.params.id);\n");
+  fs.writeFileSync(path.join(root, "src/api/orders.ts"), "export const get = (req) => Order.findById(req.params.id);\nrouter.get(\"/orders/:id\", get);\n");
   git("commit", "-qam", "api");
   const run = path.join(root, ".runtime-e2e/x/validate");
   fs.mkdirSync(run, { recursive: true });
@@ -4734,7 +4813,7 @@ test("validate-change risk skips signal detection when security-performance-chec
   }
 });
 
-function riskRepoWithPaths(relPaths) {
+function riskRepoWithPaths(relPaths, changed = "export const changed = 1;\n") {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "vc-signal-risk-"));
   const git = (...args) => {
     const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -4756,7 +4835,7 @@ function riskRepoWithPaths(relPaths) {
     fs.writeFileSync(path.join(root, "README.md"), "docs only\n");
   } else {
     for (const rel of relPaths) {
-      fs.writeFileSync(path.join(root, rel), "export const changed = 1;\n");
+      fs.writeFileSync(path.join(root, rel), changed);
     }
   }
   git("add", ".");
@@ -4827,7 +4906,7 @@ test("validate-change report records no-signal when installed skill matches noth
 test("validate-change separateTests signal uses +N when one row matches several paths", () => {
   const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
   const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
-  const repo = riskRepoWithPaths(["src/api/orders.ts", "src/api/users.ts"]);
+  const repo = riskRepoWithPaths(["src/api/orders.ts", "src/api/users.ts"], "export const get = (req) => Order.findById(req.params.id);\n");
   try {
     const result = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
       cwd: repo.root,
@@ -4838,6 +4917,22 @@ test("validate-change separateTests signal uses +N when one row matches several 
     const multi = separate.filter((e) => e.area === "security" && /\+\d+$/.test(e.signal));
     assert.ok(multi.length > 0, JSON.stringify(separate));
     assert.ok(multi.some((e) => e.signal.includes("+1")), JSON.stringify(multi));
+  } finally {
+    repo.cleanup();
+    fs.rmSync(skillsRoot, { recursive: true, force: true });
+  }
+});
+
+test("validate-change separateTests ignores a directory-glob hit when no content hint is on a changed line", () => {
+  const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
+  const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
+  // Laravel keeps all source under app/, so every changed file hits **/app/** and **/controllers/**.
+  const repo = riskRepoWithPaths(["app/Http/Controllers/Web/StockController.php", "resources/views/stock/index.blade.php"], "$limit = 3;\n");
+  try {
+    const result = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], { cwd: repo.root, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const separate = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8")).separateTests;
+    assert.deepStrictEqual(separate, []);
   } finally {
     repo.cleanup();
     fs.rmSync(skillsRoot, { recursive: true, force: true });
@@ -4889,7 +4984,7 @@ test("editing a signal file after risk makes report fail with Inconsistent", () 
 test("validate-change risk fills performance separateTests from performance-signals.md", () => {
   const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
   const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
-  const repo = riskRepoWithPaths(["src/pages/orders.tsx"]);
+  const repo = riskRepoWithPaths(["src/pages/orders.tsx"], "export const load = () => fetch('/orders');\n");
   try {
     const result = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], {
       cwd: repo.root,
