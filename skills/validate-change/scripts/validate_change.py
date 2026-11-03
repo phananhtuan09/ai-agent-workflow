@@ -306,10 +306,10 @@ def load_spc_checker():
 def separate_tests_from_signals(paths, changes=None):
     """Recommend security-performance-check from the changed code, in any language.
 
-    Every signal row is considered. A row is reported when a changed file hits one of its hints:
-    a path hint, or a content hint found in that file's added or removed lines (`changes`).
-    A content hit is enough on its own, so a narrow path glob can never hide server, auth, or
-    render code from the recommendation.
+    Every signal row is considered. A row is reported when a content hint is found in a changed
+    file's added or removed lines (`changes`), wherever the file lives. A path hint alone counts
+    only for a file with no changed text or a row with no content hints, because directory globs
+    such as `**/app/**` or `**/controllers/**` match whole frameworks regardless of the change.
     """
     checker = load_spc_checker()
     if checker is None:
@@ -322,7 +322,7 @@ def separate_tests_from_signals(paths, changes=None):
             ("performance", checker.load_performance_signals(SPC_PERFORMANCE_SIGNALS)),
         )
         for area, rows in tracks:
-            for row_id, hits in checker.hinted_paths(rows, path_list, changes).items():
+            for row_id, hits in checker.hinted_paths(rows, path_list, changes, content_required=True).items():
                 extra = f" +{len(hits) - 1}" if len(hits) > 1 else ""
                 entries.append({
                     "area": area,
@@ -696,6 +696,12 @@ def evaluate(root, run_dir, rules_path):
             sections.append((runtime["status"], f"runtime-e2e-test: {runtime['audit']}"))
     covered = {i["id"]: coverage(i["id"], runtime["cases"]) if runtime else ("NOT_RUN", []) for i in items}
     thin = [k for k, (level, _) in covered.items() if level in ("NONE", "PARTIAL")]
+    if runtime:
+        # FULL counts passing cases; for an added or modified behavior it does not say a case could fail without the change.
+        unproven = [i["id"] for i in items if i["change"] in ("added", "modified") and covered[i["id"]][0] == "FULL"
+                    and not any(c["proof"] == "PROVEN" for c in runtime["cases"] if i["id"] in c["expects"])]
+        if unproven:
+            limits.append(f"{', '.join(unproven)}: coverage FULL chỉ nghĩa là case pass; chưa case nào chứng minh được là sẽ fail nếu thiếu thay đổi (can-fail chưa PROVEN).")
     if runtime and thin:
         sections.append(("NEEDS_REVIEW", f"kỳ vọng chưa được chứng minh đủ ở runtime: {', '.join(thin)}"))
 

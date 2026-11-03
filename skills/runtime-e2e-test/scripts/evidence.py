@@ -56,6 +56,17 @@ def local(root, name):
     return path
 
 
+def command_dir(root, data):
+    """The directory the approved command runs in: `cwd` (relative to the root) or the root itself."""
+    name = data.get("cwd", ".")
+    if not isinstance(name, str) or not name.strip() or Path(name).is_absolute():
+        raise ValueError("cwd must be a directory path relative to the root")
+    path = local(root, name)
+    if not path.is_dir():
+        raise ValueError(f"cwd is not a directory: {name}")
+    return path
+
+
 def contract(suite, root):
     data = load(suite)
     for key in ("plan", "environment", "revision"):
@@ -66,6 +77,7 @@ def contract(suite, root):
         raise ValueError("command must be a nonempty argument array")
     if any(x.startswith(("--output", "--reporter")) for x in command):
         raise ValueError("Runner owns --output and --reporter")
+    command_dir(root, data)
     base = data.get("base")
     if base is not None:
         if not isinstance(base, dict) or not isinstance(base.get("revision"), str) or not base["revision"].strip():
@@ -996,7 +1008,8 @@ def run_base(bundle, root, data, run_id):
                     manifest["degraded"] = f"Base setup {step} exited {code}; see base/setup.log"
                     return
         try:
-            execute(run, tree, data["command"], {**fixed, **base["env"], "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
+            # The approved head snapshot above already created cwd when it holds a listed file.
+            execute(run, local(tree, data.get("cwd", ".")), data["command"], {**fixed, **base["env"], "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
         except ValueError as error:
             manifest["degraded"] = f"Base native report unusable: {error}"[:300]
         restore_base(tree, [name for name in data["files"] if name not in base.get("keep", [])])
@@ -1112,7 +1125,7 @@ def main():
     manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout,
                 "environmentCheck": {**checked, "confirmed": bool(args.confirm_environment and checked["strong"])}}
     fixed = (data.get("determinism") or {}).get("env", {})
-    execute(bundle, root, data["command"], {**fixed, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
+    execute(bundle, command_dir(root, data), data["command"], {**fixed, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
     entries = (data.get("existing") or {}).get("suites", [])
     manifest["existing"] = {e["id"]: {"head": run_existing(bundle, root, e, {}, "head")} for e in entries}
     write(bundle / "run-manifest.json", manifest)
