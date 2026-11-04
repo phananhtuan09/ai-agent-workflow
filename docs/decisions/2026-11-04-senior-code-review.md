@@ -20,12 +20,14 @@ No skill gave the human a senior-level critique of their own code's approach, de
 
 - The skill never reads `docs/learning/` or learning state, and its result never feeds a learning assessment, rating, or progression.
 - The skill produces no merge status and does not check PR descriptions or human intent; that stays with `review-pr`.
+- Report-only is enforced by the skill's instructions: `disallowed-tools` blocks only `Edit`, and `Write` and `Bash` stay available for the optional output file and non-fixing validation.
 - The skill does not re-run `quality-code-check` surface rules or `security-performance-check` probes; it points to them instead.
 - It is not part of the `validate` bundle and `validate-change` never runs it.
 
 ## Consequences
 
 - Positive: the human gets a mentoring review that builds engineering skill, separate from the learning assessment.
+- Changed behavior: the `learning-workflow` Review section now states that code quality, design, and architecture are out of scope beyond the definition of done and implied-requirement checks, and points to `/senior-code-review`.
 - Negative: a broad review is more subjective than the other review skills; the finding cap, the failure-scenario rule, and the `preference` label are the noise controls.
 
 ## Alternatives considered

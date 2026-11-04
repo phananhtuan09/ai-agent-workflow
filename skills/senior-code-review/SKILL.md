@@ -14,7 +14,7 @@ It reviews an area of code as a whole, not only the lines of a diff, and explain
 ## Boundaries
 
 - Never modify the reviewed code, tests, schemas, configuration, requirements, or plans.
-  `disallowed-tools` blocks `Edit`; do not use `Write` on project paths.
+  `disallowed-tools` blocks only `Edit`; `Write` and `Bash` stay available, so report-only is enforced by these instructions, not by tool permissions. Do not use `Write` on project paths or `Bash` to change them.
   Return the review in the conversation unless the human supplies an output path; then write only that file.
 - Run validation in non-fixing mode only. Never run formatters, generators, migrations, `--fix`, or commands that rewrite the workspace.
 - Put any reproduction or failing test in a temporary directory outside the repository (`mktemp -d`), and remove it with its literal path before reporting.
