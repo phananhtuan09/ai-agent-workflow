@@ -139,6 +139,7 @@ The definition of done plus the case's implied requirements is the scope boundar
 ## Review
 
 Start when the learner submits or asks for feedback.
+Code quality, design, and architecture are out of scope beyond what the definition of done and implied-requirement checks need; for a deep critique of their code, point the learner to `/senior-code-review`, which runs standalone and never feeds this assessment.
 
 1. Read the submission against the checklist. When the decision the learner owns is missing or too thin to count as a first attempt, ask for it in one short message; do not run a step-by-step interview.
 2. Read and run the code in place at the submitted folder path; do not copy it into the learning workspace. When access outside the working directory is blocked, ask the learner to grant it. When the folder is a git repository, record each artifact reference as `{folder_path}@{commit_sha}`; otherwise record the folder path. When the folder sits inside a workspace that contains `docs/learning/`, say once that case answers were reachable and record that in the delivery `limitations`.

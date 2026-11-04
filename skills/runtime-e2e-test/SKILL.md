@@ -40,7 +40,8 @@ python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode plan
 python3 skills/runtime-e2e-test/validate_test_plan.py <plan.md> --mode completion --bundle <run-dir>
 ```
 
-After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run, each case's `Result`, `Can-fail` and `Actual path`, and each existing suite's status against the generated results. Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
+After every run, whatever its outcome, validate the ledger with `--bundle <run-dir>`. It checks `Run ID`, `Tested revisions` and `Last updated` against the recorded run, each case's `Result`, `Can-fail` and `Actual path`, and each existing suite's status against the generated results. Add `--fill` to copy those generated fields (and the run summary counts) from the bundle into the ledger first, instead of typing them; `Observed`, `Evidence`, `Cleanup`, `Path match`, `Status` and the sign-off stay yours to write.
+Use `--mode completion` only when claiming completion; for a `FAILED` or `BLOCKED` ledger use `--mode plan --bundle <run-dir>`, since completion mode also reports the unresolved cases.
 
 Runtime adapters rewrite the skill path when installed.
 
@@ -98,6 +99,8 @@ In light mode, follow these steps except the approval in the last one, then cont
 5. Separate agent-verifiable behavior from subjective human judgment.
 6. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
 7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit. Declare `mode`, `modeReason`, and `blindSpots` as chosen above. Declare `existing` from the reference too: every test suite the project has (unit, integration, e2e), whole and unfiltered, with a JUnit report where the runner supports one; only when it has none, the reason.
+   Declare them even when no base instance can run: the tool then runs them on head only, a passing suite reports `PASS`, and a failing one `NOT_COMPARABLE`.
+   When the Playwright project lives below the evidence root, set `cwd` to its directory instead of absolute binary or config paths in `command`.
 8. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
 9. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
 10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries. Measure layout, such as whether text wraps, with the helpers in `references/playwright-contract.md`, and record the measured number as the check's actual value.

@@ -71,7 +71,8 @@ Run `python3 <skill-dir>/scripts/validate_change.py risk <run-dir> --base <ref>`
 It applies `references/risk-rules.md`, a project-editable table of deterministic gate and audit signals: money, data, and permission paths and tokens, deleted or skipped tests, size, shared files, environment variables, major dependency bumps, agent-intent only, and recorded conflicts.
 
 When `security-performance-check` is installed beside this skill, the same risk step also reads the hint columns of that skill's `references/security-signals.md` and `references/performance-signals.md` (path hints and content hints, for any language or framework), matches them on the diff's files and changed lines, and writes `separateTests` into `risk.json` with a ready command per hinted row (for example `/security-performance-check security`).
-A content hint alone is enough (a Django `redirect(request.GET["next"])` or a Blade `{!! $bio !!}` counts wherever the file lives), so path globs never drop the recommendation for server, auth, or render code; prose files such as `*.md` never count.
+A content hint on a changed line decides it (a Django `redirect(request.GET["next"])` or a Blade `{!! $bio !!}` counts wherever the file lives); prose files such as `*.md` never count.
+A path hint alone counts only for a file with no changed text (binary or mode-only) or a row with no content hints, because directory globs such as `**/app/**` match every file of some frameworks.
 Those signal files stay the single source of truth: this skill does not copy their rows.
 When the skill is not installed, `separateTests` in `risk.json` is empty and detection is skipped.
 The risk step writes each command without the target label; the report step appends that label when copying into `run.json`.
@@ -111,6 +112,7 @@ A sweep difference is never yours to call expected.
 The report script accepts it only when it is the run's only open item, adds no console error, and each differing route is covered by a passing, proving case for an expectation the human confirmed (`confirmed` is `source` or `gate`); the report then lists it as a note with both screenshots.
 Route coverage does not prove the rest of the page, so the human still looks at the screenshots.
 Any other difference keeps the run at `NEEDS_REVIEW`.
+A K's coverage `FULL` means its cases pass; when the K is `added` or `modified` and none of its cases has can-fail `PROVEN` (no base, or a base that could not prove it), the report adds that K to `Giới hạn`.
 
 Skip this step with `skip: not-applicable` when the change has no runtime surface the skill supports, and say why.
 
