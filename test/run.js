@@ -4116,6 +4116,44 @@ test("record-workflow-friction records escaped-bug with escape_class and update_
   assert.ok(skillIds.includes("record-workflow-friction"));
 });
 
+test("senior-code-review is a manual, report-only command independent of learning", () => {
+  const skill = fs.readFileSync(path.join(SOURCE_ROOT, "skills/senior-code-review/SKILL.md"), "utf8");
+  assert.ok(skill.includes("disable-model-invocation: true"));
+  assert.ok(skill.includes("disallowed-tools: Edit"));
+  assert.ok(skill.includes("never read `docs/learning/`"));
+  assert.ok(skill.includes("never let this review feed a learning assessment"));
+  assert.ok(skill.includes("Do not produce a merge status"));
+  assert.ok(skill.includes("at most **10 findings**"));
+  for (const label of ["`blocker`", "`major`", "`minor`", "`nit`", "`preference`", "`verified`", "`suspected`", "`Sửa ngay`", "`Để sau`"]) {
+    assert.ok(skill.includes(label), label);
+  }
+  for (const other of ["`review-pr`", "`quality-code-check`", "`security-performance-check`"]) {
+    assert.ok(skill.includes(other), other);
+  }
+  const order = ["**Context.**", "**Approach.**", "**Hard-to-reverse decisions.**", "**Correctness.**", "**Internal design.**", "**Operability and tests.**", "**Details.**"];
+  order.reduce((last, step) => {
+    const index = skill.indexOf(step);
+    assert.ok(index > last, step);
+    return index;
+  }, -1);
+  for (const heading of ["## Quyết định ngầm", "## Câu hỏi cho tác giả", "## Điểm làm tốt", "## Nguyên lý nên học"]) {
+    assert.ok(skill.includes(heading), heading);
+  }
+  const catalog = fs.readFileSync(path.join(SOURCE_ROOT, "skills/senior-code-review/references/review-catalog.md"), "utf8");
+  assert.ok(catalog.includes("Type and contract modeling"));
+  assert.ok(catalog.includes("## Frontend checklist"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/senior-code-review/agents/openai.yaml"), "utf8").includes("allow_implicit_invocation: false"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/learning-workflow/SKILL.md"), "utf8").includes("`/senior-code-review`"));
+  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "README.md"), "utf8").includes("| `senior-review` | `senior-code-review` |"));
+
+  const { skillIds } = resolveSkills({
+    sourceRoot: SOURCE_ROOT,
+    kitId: "coding-standard",
+    extraBundles: ["senior-review"],
+  });
+  assert.deepStrictEqual(skillIds, ["senior-code-review"]);
+});
+
 const CHECK_FINDINGS = path.join(SOURCE_ROOT, "skills/security-performance-check/scripts/check_findings.py");
 const SECURITY_SIGNALS = path.join(SOURCE_ROOT, "skills/security-performance-check/references/security-signals.md");
 const PERFORMANCE_SIGNALS = path.join(SOURCE_ROOT, "skills/security-performance-check/references/performance-signals.md");

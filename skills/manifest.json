@@ -24,6 +24,9 @@
     "security-performance": [
       "security-performance-check"
     ],
+    "senior-review": [
+      "senior-code-review"
+    ],
     "validate": [
       "validate-change",
       "quality-code-check",

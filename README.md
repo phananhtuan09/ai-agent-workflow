@@ -73,6 +73,7 @@ Record which source or revision you used when comparing installations.
 | 🧪 Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
 | ✅ Validate change | `--bundle validate` | Manually invoked `/validate-change` that runs static checks, review, and runtime E2E on one expectation list and reports one status | Experimental |
 | 🔒 Security performance check | `--bundle security-performance` | Manually invoked `/security-performance-check` for targeted security and performance probes on a change | Experimental |
+| 🧑‍🏫 Senior code review | `--bundle senior-review` | Manually invoked `/senior-code-review` for a deep, mentoring review of your own code | Experimental |
 | 🎨 Design | `--kit design` | `docs/PRODUCT.md` and `docs/DESIGN.md` for the external Impeccable engine | Stable |
 | 📊 Workflow evaluation | `--kit workflow-eval` | Trace-first evaluation standard, templates, and skills under `docs/evaluation/` | Stable |
 | 🎓 Learning | `--kit learning-workflow` | Mini-project learning coordinator and helpers under `docs/learning/` | Stable |
@@ -94,6 +95,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
 | `validate-change` | Manually invoked composite that validates a change against one expectation list with `quality-code-check`, `review-pr`, and `runtime-e2e-test`, gates risky changes once, and reports one status (`references/risk-rules.md` is project-customizable). |
 | `security-performance-check` | Manually invoked, report-only security and performance check on a PR, branch, diff, or area (`references/security-signals.md` and `references/performance-signals.md` are project-customizable). |
+| `senior-code-review` | Manually invoked, report-only deep review of your own code: approach, hard-to-reverse decisions, correctness, design, operability, and principles to study (`references/review-catalog.md` is project-customizable). |
 | `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
 | `workflow-evaluation`, `record-workflow-friction` | Evaluate AI workflows and record execution friction. |
 | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` | Run two-to-three-day learning mini-projects. |
@@ -106,6 +108,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `testing` | `runtime-e2e-test` |
 | `validate` | `validate-change`, `quality-code-check`, `review-pr`, `runtime-e2e-test`, `security-performance-check` |
 | `security-performance` | `security-performance-check` |
+| `senior-review` | `senior-code-review` |
 | `evaluation` | `workflow-evaluation`, `record-workflow-friction` |
 | `learning` | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` |
 | `planner-mode` | `planner`, `quality-code-check`, `manage-project-knowledge` |
@@ -144,6 +147,7 @@ It is experimental. Claude Code keeps it manual with `disable-model-invocation` 
 | --- | --- |
 | Accept a PR or a change just made | `/validate-change` |
 | Targeted security or performance check on a change | `/security-performance-check` |
+| Deep senior-level review of your own code to learn from | `/senior-code-review` |
 | Re-test existing features or build a durable suite | `/runtime-e2e-test` (durable) |
 | Only runtime E2E on a change | `/runtime-e2e-test` (light) |
 | Only lint, type check, or build | `/quality-code-check` |
@@ -161,6 +165,14 @@ After installation, complete the "Security and performance probes" fields in `ru
 It is experimental. Claude Code keeps it manual with `disable-model-invocation` and Codex with `allow_implicit_invocation: false`.
 
 See the [decision record](docs/decisions/2026-10-30-security-performance-check.md) for scope.
+
+### Senior code review
+
+The `senior-review` bundle installs `senior-code-review` alone. Type `/senior-code-review [path | branch | diff | PR]` to get a senior-level critique of your own code.
+It reviews in a fixed order (context, approach, hard-to-reverse decisions, correctness, internal design, operability and tests, details), focuses on the 2–3 dimensions from `references/review-catalog.md` that matter for the code, and writes a Vietnamese report with at most 10 findings, implicit decisions, questions for the author, strengths, and principles to study.
+Every `blocker` or `major` finding needs a concrete failure scenario or change cost, and opinions are labeled `preference`.
+It never modifies code, produces no merge status, and is independent of the learning workflow: it never reads `docs/learning/` and never feeds a learning assessment.
+It is experimental. Claude Code keeps it manual with `disable-model-invocation` and Codex with `allow_implicit_invocation: false`.
 
 ### Design
 
