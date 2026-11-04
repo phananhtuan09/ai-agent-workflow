@@ -26,4 +26,3 @@ jobs:
           config.model: openrouter/deepseek/deepseek-v4.1-flash-1017
           config.custom_model_max_tokens: "100000"
           config.fallback_models: '["openrouter/qwen/qwen3.8-flash"]'
-          openrouter.reasoning_effort: "none"
