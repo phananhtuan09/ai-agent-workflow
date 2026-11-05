@@ -104,6 +104,7 @@ In light mode, follow these steps except the approval in the last one, then cont
 8. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
 9. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
 10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries. Measure layout, such as whether text wraps, with the helpers in `references/playwright-contract.md`, and record the measured number as the check's actual value.
+   Before the first scored run, open each screen a case uses once on the running head (an interactive browser is fine) and write locators, option values, dialog steps, and the wait for async completion from what it shows, not from source alone; in durable mode, stay read-only until approval.
 11. Mark `READY` only when paths, expectations, scripts, and required evidence are reviewable. Validate the Markdown and suite contracts.
 12. Durable mode: stop and ask the human to review the plan, tests, fixtures, config, and commands. Record approval only after an explicit decision, using the evidence tool's `approve` command. Light mode: run now.
 
