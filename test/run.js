@@ -3612,6 +3612,9 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     fs.mkdirSync(path.join(root, "src/auth"));
     fs.writeFileSync(path.join(root, 'src/auth/gu"ard-đ.ts'), "export const ok = (u) => isAdmin(u);\nit.skip('later', () => {});\n");
     fs.writeFileSync(path.join(root, "package-lock.json"), "x\n".repeat(50));
+    // Line rules skip test files, except the rules about tests; an enum case or string constant is not money math.
+    fs.writeFileSync(path.join(root, "src/calc.test.ts"), "const amount = 5 * x;\ndb.query('DELETE FROM rows');\nit.only('focus', () => {});\nres.redirect(req.query.next);\n");
+    fs.writeFileSync(path.join(root, "src/actions.php"), "case ExportAmountCsvAction = 'export.amountCsv';\nconst PRICE_LABEL = 'Price';\n");
     git("add", "-A");
     git("commit", "-qm", "wide");
     assert.strictEqual(validateChange(root, ["risk", run, "--base", base]).status, 0);
@@ -3624,8 +3627,10 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     assert.deepStrictEqual(hits["dependency-major"], ["package.json: react ^17.0.2 → ^18.3.1"]);
     // A renamed test file is not a deleted one; the package version is not a dependency.
     assert.deepStrictEqual(hits["tests-deleted"], ["src/old.test.ts"]);
-    // Ignored lockfiles count toward neither the size nor the file total.
-    assert.strictEqual(high.files, 7);
+    assert.deepStrictEqual(hits["tests-skipped"].map((h) => h.split(":")[0]).sort(), ['src/auth/gu"ard-đ.ts', "src/calc.test.ts"]);
+    assert.ok(high.separateTests.every((e) => !e.signal.includes("calc.test.ts")), JSON.stringify(high.separateTests));
+    // Ignored lockfiles count toward neither the size nor the file total; test files still count.
+    assert.strictEqual(high.files, 9);
 
     // With --worktree, an untracked file counts as added.
     fs.mkdirSync(path.join(root, "db/migrations"), { recursive: true });
@@ -3689,6 +3694,7 @@ test("validate-change report checks the run files and computes one status from t
     ]);
     const bundle = fixture.run((suite) => {
       suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
       suite.cases[0].expects = ["K1"];
       suite.cases[0].flows = ["F1"];
       suite.cases[1].expects = ["K2"];
@@ -3736,6 +3742,7 @@ test("validate-change report checks the run files and computes one status from t
     const nobase = fixture.run((suite) => {
       delete suite.base;
       suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
       suite.cases[0].expects = ["K1"];
       suite.cases[0].flows = ["F1"];
       suite.cases[1].expects = ["K2"];
@@ -3834,15 +3841,33 @@ test("validate-change report checks the run files and computes one status from t
     assert.ok(result.stderr.includes("review again"), result.stderr);
     writeJson(file("review.json"), review);
 
-    // An expectation with no runtime case is not proven; an unknown reference is inconsistent.
-    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [...items, { ...items[0], id: "K3", statement: "A third behavior" }] });
-    result = report();
-    assert.strictEqual(result.status, 1);
-    assert.ok(read("status.json").sections.some((s) => s.reason.includes("chưa được chứng minh đủ ở runtime: K3")));
-    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [items[0]] });
+    // A run against another expectation list is inconsistent.
+    const third = [...items, { ...items[0], id: "K3", statement: "A third behavior" }];
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: third });
     result = report();
     assert.strictEqual(result.status, 2);
-    assert.ok(result.stderr.includes("suite case E2E-02: refs must list known ids"), result.stderr);
+    assert.ok(result.stderr.includes("ran against a different expectation list"), result.stderr);
+    // The runtime tool refuses a K that no case names unless the suite says why; the report lists the reason as a limit.
+    const linked = (uncovered) => (suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
+      suite.cases[0].expects = ["K1"];
+      suite.cases[1].expects = ["K2"];
+      if (uncovered) suite.notCovered = uncovered;
+    };
+    const gap = fixture.tool(linked(), ["validate"]);
+    assert.notStrictEqual(gap.status, 0, gap.stdout);
+    assert.ok(gap.stderr.includes("K3 without a case"), gap.stderr);
+    const reason = [{ k: "K3", reason: "needs a data set the local stack cannot load" }];
+    const listed = fixture.tool(linked(reason), ["validate"]);
+    assert.strictEqual(listed.status, 0, listed.stderr);
+    assert.ok(listed.stdout.includes("Expectations without a case: K3 (needs a data set the local stack cannot load)"), listed.stdout);
+    const declared = fixture.run(linked(reason), "label/runs/declared");
+    assert.strictEqual(declared.status, 0, declared.stderr || declared.stdout);
+    result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/declared"; });
+    assert.strictEqual(result.status, 1, result.stderr);
+    assert.ok(read("status.json").sections.some((s) => s.reason.includes("chưa được chứng minh đủ ở runtime: K3")));
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- K3: không có case runtime; lý do: needs a data set the local stack cannot load"));
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
 
     // An expectation whose case fails is reported as failed, not again as unproven.
@@ -3852,6 +3877,7 @@ test("validate-change report checks the run files and computes one status from t
     ]);
     const failing = fixture.run((suite) => {
       suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
       suite.cases[0].expects = ["K1"];
       suite.cases[0].flows = ["F1"];
       suite.cases[1].expects = ["K2"];
@@ -3878,6 +3904,7 @@ test("validate-change report checks the run files and computes one status from t
     fs.writeFileSync(path.join(root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02", "SWEEP-1"]));
     const swept = (intentRoute, name) => fixture.run((suite) => {
       suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
       suite.cases[0].expects = ["K1"];
       suite.cases[0].flows = ["F1"];
       suite.cases[0].routes = [intentRoute];
@@ -3975,6 +4002,7 @@ test("validate-change report checks the run files and computes one status from t
 
     const rerun = fixture.run((suite) => {
       suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
       suite.cases[0].expects = ["K1"];
       suite.cases[1].expects = ["K2"];
     }, "label/runs/two");

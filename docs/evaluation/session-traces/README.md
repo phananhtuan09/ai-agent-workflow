@@ -50,6 +50,13 @@ Each extracted session directory contains:
 - `decision-log.json`: explicit reasoning/decision evidence when visible
 - `failure-retry-log.json`: error, retry, or blocked-step evidence when visible
 
+## Secrets
+
+The extractor replaces credential values with `[REDACTED]` by default: AWS key IDs, `base64:` keys, bearer tokens, private-key blocks, and values assigned to names containing secret, token, password, credential, or `_key`.
+`coverage.redactions` in `session-trace.json` counts the replacements, and `--no-redact` keeps raw values.
+Redaction is pattern-based, so review a trace before sharing any part of it.
+Each extracted folder also gets a `.gitignore` containing `*`, so traces stay out of version control.
+
 ## Schema Notes
 
 `session-trace.json` uses:

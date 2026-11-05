@@ -122,6 +122,8 @@ For Opencode, inspect `opencode session list` and `opencode db path`; history is
 
 After extraction:
 
+- credential values are replaced with `[REDACTED]` by default and `coverage.redactions` counts them; redaction is pattern-based, so check the output before quoting it, and pass `--no-redact` only when the human asks for raw values
+- each output folder gets a `.gitignore` that ignores it; never commit extracted traces
 - inspect `coverage` in `session-trace.json` for missing tool events, unmatched calls/results, truncation candidates, omitted media, compaction, and records without trace entries
 - compare relevant source events with normalized entries before claiming evidence completeness; tool-event counts alone do not establish full context or successful completion
 - use `session-trace.json` for metadata and normalized event access

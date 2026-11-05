@@ -337,6 +337,46 @@ class SessionTraceTests(unittest.TestCase):
             result = subprocess.run([sys.executable, "-B", str(SCRIPT), *args], capture_output=True, text=True)
             self.assertEqual(result.returncode, 2, args)
 
+    def test_credential_values_are_redacted_from_every_output_file(self):
+        secrets = ["AKIAABCDEFGHIJKLMNOP", "wJalrXUtnFEMI/K7MDENG", "QUJDREVGR0hJSktMTU5PUFFSU1RVVldY", "p@ss word",
+                   "ghp_tokenvalue1", "xyzAttr", "eyJhbGciOiJIUzI1NiJ9.sig"]
+        env = ("AWS_ACCESS_KEY_ID=AKIAABCDEFGHIJKLMNOP\nAWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG\n"
+               "APP_KEY=base64:QUJDREVGR0hJSktMTU5PUFFSU1RVVldY\nDB_PASSWORD='p@ss word'\nS3_BUCKET2=exports\n")
+        records = [
+            {"type": "assistant", "message": {"usage": {"input_tokens": 12}, "content": [
+                {"type": "tool_use", "id": "env", "name": "Bash", "input": {"command": "env | grep -E '^[A-Z0-9_]+='"}},
+                {"type": "tool_use", "id": "write", "name": "Write",
+                 "input": {"file_path": "phpunit.xml", "content": '<env name="AWS_SECRET" value="xyzAttr"/>'}}]}},
+            {"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "env", "content": env, "is_error": True},
+                {"type": "tool_result", "tool_use_id": "write",
+                 "content": json.dumps({"GITHUB_TOKEN": "ghp_tokenvalue1",
+                                        "header": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.sig"})}]}},
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": "The key is AKIAABCDEFGHIJKLMNOP."}]}},
+        ]
+        source = self.write(self.root / "claude.jsonl", records)
+        output = self.root / "output"
+        run = lambda *extra: subprocess.run([sys.executable, "-B", str(SCRIPT), "--runtime", "claude", "--input",
+                                             str(source), "--output-dir", str(output), *extra],
+                                            capture_output=True, text=True)
+        result = run()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        written = {path.name: path.read_text() for path in output.iterdir()}
+        for name, text in {**written, "stdout": result.stdout}.items():
+            for secret in secrets:
+                self.assertNotIn(secret, text, name)
+        trace = json.loads(written["session-trace.json"])
+        self.assertGreaterEqual(trace["coverage"]["redactions"], len(secrets))
+        self.assertIn("S3_BUCKET2=exports", written["session-trace.json"])
+        self.assertIn('"input_tokens": 12', written["session-trace.json"])
+        self.assertEqual(written[".gitignore"], "*\n")
+
+        result = run("--no-redact")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        trace = json.loads((output / "session-trace.json").read_text())
+        self.assertEqual(trace["coverage"]["redactions"], "disabled")
+        self.assertIn("AKIAABCDEFGHIJKLMNOP", json.dumps(trace))
+
     def test_malformed_snapshot_fails_without_partial_artifacts(self):
         source = self.root / "partial.jsonl"
         source.write_text('{"type":"session_meta"}\n{"type":')

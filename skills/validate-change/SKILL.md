@@ -62,6 +62,7 @@ Build exactly one expectation list in `expectations.json`; every later step cons
   - `assumption`: a point the sources leave open, with the `default` you chose.
   - `agent-intent`: behavior only the implementer's account or the diff suggests. The PR description is never an intent source: anything taken from it is `agent-intent` with `sourceRef: pr-description`.
 - When the prompt and the spec disagree, keep both items and record the conflict. Never pick one silently.
+  Record a conflict only when two sources expect different outcomes for the same observable state; a difference in wording, detail, or scope that one outcome satisfies is not a conflict.
 - Read the PR description before the gate. A claim that it does something "as requested" (or otherwise on the human's behalf) that contradicts a K becomes an `agent-intent` item with `sourceRef: pr-description` and a conflict with that K, so the gate shows it.
 - Ask nothing yet; the gate asks once.
 
@@ -105,6 +106,8 @@ Load `review-pr` with the target, the base, and `expectations.json` as its inten
 Load `runtime-e2e-test` in light mode with `expectations.json` and `review.json`. Its cases come from three pillars:
 
 - Intent: at least one case per K, naming it in the case's `expects`. Derive cases from K, never from review findings or the implementer's summary.
+  The suite links `<run-dir>/expectations.json` in `expectations`; the report rejects a runtime bundle whose suite does not.
+  A K no case can reach goes in `notCovered` with the reason. When `validate` lists any, send the human one message naming each K and its reason before the first run, and add a case for any K they ask for; the report lists every `notCovered` K under `Giới hạn`.
 - Regression: the impact map, `unchanged` items, and the review's flows, named in `flows`.
 - Edge cases: the blind-spot catalog and the review's suspicions that need runtime proof, named in `suspicions`.
 

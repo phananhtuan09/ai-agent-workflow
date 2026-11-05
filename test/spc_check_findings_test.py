@@ -1047,7 +1047,7 @@ class NoGlobGatingTests(unittest.TestCase):
         self.assertNotRegex(src, r"if not \w+\.get\(\"matched_paths\"\)")
         self.assertNotIn("match_signals(", src)
         self.assertIn("hinted_paths(rows, path_list, changes, content_required=True)", src)
-        self.assertRegex(src, r"separate_tests_from_signals\(kept_paths, diff_changes\(files\)\)")
+        self.assertRegex(src, r"separate_tests_from_signals\(code_paths, diff_changes\(files\)\)")
 
     def test_row_hints_content_required_drops_path_only_hits(self):
         row = {"id": "x", "patterns": ["**/app/**"], "content_hints": ["fetch("]}

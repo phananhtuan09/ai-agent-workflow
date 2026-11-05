@@ -89,6 +89,13 @@ A durable suite needs `approve` before `run`. A light suite lives with its plan 
 Before every run the tool checks the suite's env values and files for production-like hosts (anything but loopback, `.localhost`, `.local`, `.test`, `.internal`), real-looking credentials (live API keys, cloud access keys, tokens, private keys), shared stage hosts (`staging`, `dev`, `qa`, private networks), and credential-named variables with values. It stores the result as `environmentCheck` in `run-manifest.json`.
 In a light run a strong signal (production-like host, real-looking credential) stops the run before anything executes; rerun with `--confirm-environment` only after the human confirms, and the confirmation is recorded. Weak signals are listed among the limits. A durable run records the same check without stopping, because the human approved its environment.
 
+## Expectations
+
+`expectations` names an expectation list (`validate-change/expectations@1`, relative to the project root) when one exists, such as the `expectations.json` that `validate-change` supplies.
+With it, every K in the list must be named in some case's `expects`, or declared in `notCovered` as `{"k": "K5", "reason": "needs a data set the local stack cannot load"}`.
+`validate` and `run` reject a K that is neither, a K named in both, and an `expects` entry the list does not have; `validate` prints each `notCovered` K with its reason so the human hears about the gap before any case runs.
+The list is snapshotted with the other inputs, so editing it after a run makes that run stale.
+
 ## Blind spots
 
 `blindSpots` accounts for every item in the installed `references/blind-spots.md`, by the IDs in its table: `cases` lists the cases that apply it, `skipped` gives the reason it does not apply, and `question` asks the human when the right behavior is undecidable (it may also name cases).
