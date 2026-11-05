@@ -1,7 +1,9 @@
 # Product Knowledge
 
-Store durable product behavior, business rules, domain language, and externally observable requirements here.
+Store durable product behavior, business rules, and externally observable requirements here.
 This location answers what the system should do.
+Accepted names for project-specific concepts live in `../glossary/`.
+Link to that glossary instead of defining the same term again.
 Add only accepted repository-specific truth that should outlive one implementation task.
 Do not invent examples or policies merely to populate this directory.
 
@@ -30,7 +32,7 @@ Superseded by: <relative link; include only when applicable>
 
 ## Definitions
 
-<Define repository-specific terms needed to interpret the rules. Omit when unnecessary.>
+<Define a term that exists only to interpret these rules and is not project vocabulary. Omit when unnecessary. Link to `../glossary/` for a term that namespace already defines.>
 
 ## Rules
 

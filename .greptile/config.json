@@ -20,7 +20,7 @@
     },
     {
       "id": "durable-docs-namespace",
-      "rule": "A new durable artifact namespace under docs/ must be indexed in docs/README.md and provide its own local README.md contract before it contains artifacts. Do not treat docs/PRODUCT.md as product authority; durable product rules belong in docs/product/ and decisions in docs/decisions/.",
+      "rule": "A new durable artifact namespace under docs/ must be indexed in docs/README.md and provide its own local README.md contract before it contains artifacts. Do not treat docs/PRODUCT.md as product authority; durable product rules belong in docs/product/, accepted project vocabulary belongs in docs/glossary/, and decisions belong in docs/decisions/. Do not add a second decision system such as docs/adr/.",
       "scope": ["docs/**"],
       "severity": "medium"
     },

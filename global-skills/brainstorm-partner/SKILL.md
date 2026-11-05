@@ -1,6 +1,6 @@
 ---
 name: brainstorm-partner
-description: Use when the user wants a read-only thinking partner to break down a vague idea, hard bug, unclear feature logic, or difficult technical decision before implementation. Focus on dialogue, codebase inspection, grounded hypotheses, web research when needed, and concrete next steps without editing files.
+description: Use when the user wants a read-only thinking partner to break down a vague idea, hard bug, unclear feature logic, or difficult technical decision before implementation. Continue in question rounds when decisions depend on each other. Focus on dialogue, codebase inspection, grounded hypotheses, web research when needed, and concrete next steps without editing files.
 ---
 
 # Brainstorm Partner
@@ -40,6 +40,7 @@ Not allowed:
 - edit files
 - create files
 - refactor or implement
+- write a glossary entry or a decision record, even after the human confirms a term or a choice
 - run commands with side effects such as builds, test runs, dev servers, installs, or generators unless the user explicitly changes scope
 
 If the user asks for implementation:
@@ -56,7 +57,10 @@ Start by identifying:
 - what is verified vs assumed
 - what is still unclear
 
-If missing context is critical, ask 1-3 concise questions before going deeper.
+When a decision depends on another decision, run question rounds instead of stopping after one short batch.
+Load `design-interview` when it is installed and follow its rounds, reply syntax, and vocabulary checks.
+Stay inside this skill's read-only boundary.
+When `design-interview` is not installed, follow the fallback in Question rounds below and say that the shared skill is missing.
 
 Good question types:
 - expected behavior vs actual behavior
@@ -64,6 +68,34 @@ Good question types:
 - constraints and non-goals
 - what changed
 - what has already been tried
+
+### Question rounds
+
+Map the open choices as a tree.
+Each round asks every question whose prerequisites are resolved, numbered Q1 onward.
+A question that depends on an open question waits.
+Each question has lettered options and exactly one recommended option marked ★.
+Word it so `ok` accepts that recommendation.
+`ok`, or a short affirmative reply with no override, accepts every recommended option.
+`Q2: b` sets that question to option b and accepts the recommendation for every unnamed question.
+Do not show a next-step list in the same turn.
+A bare number does not answer the round.
+
+Research facts yourself.
+Use a sub-agent when the runtime provides one and the lookup is more than a quick read.
+Do not ask the human for a fact you can look up.
+A running lookup blocks only the questions that depend on it.
+Ask the rest of the frontier in the current round.
+
+When a glossary exists, challenge a term that conflicts with it.
+Propose one canonical term for a fuzzy term.
+Invent a concrete edge-case scenario when a boundary is soft.
+When the human's statement contradicts the code, report the drift and cite the code.
+Leave accepted vocabulary and other authority unchanged.
+When the human confirms a term, say what would be recorded and that this mode does not write it.
+
+The rounds are done when no question remains and the human confirms the shared understanding.
+Until then, do not propose implementation as the next edit.
 
 ### 2. Investigate without changing anything
 

@@ -36,7 +36,10 @@ Keep each complete sentence on its own line when substantially editing Markdown.
 
 ## Authority and handoff
 
-An unapproved proposal does not override `docs/product/`, `docs/decisions/`, or the current human request.
+An unapproved proposal does not override `docs/product/`, `docs/glossary/`, `docs/decisions/`, or the current human request.
+Use a canonical term from `docs/glossary/` when that namespace defines it.
+Keep a synonym listed under `_Avoid_` out of the proposal wording.
+Record a newly accepted term in the glossary rather than only inside the proposal.
 An approved proposal records the human's direction for its initiative, but durable accepted product rules and architecture decisions belong in their existing namespaces when they should outlive the task.
 Do not infer approval from a reviewer finding or from work proceeding in code.
 Review findings are advisory and may be incorporated into the same proposal; the reviewer does not approve it.

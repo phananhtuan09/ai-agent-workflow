@@ -14,6 +14,7 @@ const PROTOCOL_FILES = [
   "docs/README.md",
   "docs/WORKFLOW.md",
   "docs/product/README.md",
+  "docs/glossary/README.md",
   "docs/decisions/README.md",
   "docs/plans/active/README.md",
   "docs/plans/completed/README.md",
@@ -495,6 +496,76 @@ test("clean coding-standard install includes protocol without legacy artifacts",
   } finally {
     result.cleanup();
   }
+});
+
+test("coding-standard ships the glossary contract and decision admission tests", () => {
+  const { PROTOCOL_FILES: managedProtocolFiles } = require("../lib/managed-files");
+  assert.ok(managedProtocolFiles.includes("docs/glossary/README.md"));
+  assert.ok(PROTOCOL_FILES.includes("docs/glossary/README.md"));
+
+  const result = runCli(["--kit", "coding-standard", "--tool", "opencode"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const installed = fs.readFileSync(path.join(result.workspace, "docs/glossary/README.md"), "utf8");
+    const source = fs.readFileSync(path.join(SOURCE_ROOT, "docs/glossary/README.md"), "utf8");
+    assert.strictEqual(installed, source);
+    assert.ok(installed.includes("## Contexts"));
+    assert.ok(installed.includes("**Term**"));
+    assert.ok(installed.includes("_Avoid_"));
+    const decisions = fs.readFileSync(path.join(result.workspace, "docs/decisions/README.md"), "utf8");
+    assert.ok(decisions.includes("Hard to reverse"));
+    assert.ok(decisions.includes("Surprising without context"));
+    assert.ok(decisions.includes("A real trade-off"));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("update adds a missing glossary contract to an existing install", () => {
+  const fixture = createUpdateFixture("opencode");
+  try {
+    const glossaryPath = path.join(fixture.workspace, "docs/glossary/README.md");
+    assert.ok(fs.existsSync(glossaryPath));
+    fs.rmSync(glossaryPath);
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    state.files = state.files.filter((file) => file.path !== "docs/glossary/README.md");
+    fs.writeFileSync(fixture.statePath, JSON.stringify(state));
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("ADD repository:docs/glossary/README.md"), apply.stdout);
+    assert.strictEqual(
+      fs.readFileSync(glossaryPath, "utf8"),
+      fs.readFileSync(path.join(SOURCE_ROOT, "docs/glossary/README.md"), "utf8")
+    );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("design interview skills keep round replies and global install loops", () => {
+  const readme = fs.readFileSync(path.join(SOURCE_ROOT, "global-skills/README.md"), "utf8");
+  const loops = readme.match(/for skill in [^;]+;/g);
+  assert.ok(loops && loops.length === 3);
+  loops.forEach((loop) => {
+    assert.ok(loop.includes("design-interview"), loop);
+    assert.ok(loop.includes("sharpen-design"), loop);
+  });
+  const interview = fs.readFileSync(path.join(SOURCE_ROOT, "global-skills/design-interview/SKILL.md"), "utf8");
+  assert.ok(interview.includes("Q2: b"));
+  assert.ok(interview.includes("`ok`"));
+  const sharpen = fs.readFileSync(path.join(SOURCE_ROOT, "global-skills/sharpen-design/SKILL.md"), "utf8");
+  assert.ok(sharpen.includes("disable-model-invocation: true"));
+  assert.ok(sharpen.includes("experimental"));
+  const planner = fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8");
+  assert.ok(planner.includes("design-interview"));
+  assert.ok(planner.includes("Q2: b"));
+  assert.ok(planner.includes("A bare number does not answer a question round."));
+  const proposal = fs.readFileSync(path.join(SOURCE_ROOT, "skills/proposal-designer/SKILL.md"), "utf8");
+  assert.ok(proposal.includes("## Glossary check before approval"));
+  assert.ok(proposal.includes("## Question rounds"));
+  const brainstorm = fs.readFileSync(path.join(SOURCE_ROOT, "global-skills/brainstorm-partner/SKILL.md"), "utf8");
+  assert.ok(brainstorm.includes("### Question rounds"));
+  assert.ok(brainstorm.includes("does not write it"));
 });
 
 test("coding-standard preserves an existing project protocol file", () => {

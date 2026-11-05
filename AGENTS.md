@@ -12,7 +12,10 @@
 - Intent authority defines intended behavior.
 - The current explicit human request is immediate intent authority for the requested delta when it clearly authorizes a behavior change.
 - Approved product and domain rules define durable intended externally observable behavior.
+- Accepted project vocabulary in `docs/glossary/` defines what a project-specific term is.
+  A term inferred only from code stays in `docs/observed/`.
 - Approved architecture, security, and compatibility decisions constrain implementation choices.
+  Record a decision only when it is hard to reverse, would surprise a future reader without the context, and came from a real trade-off.
 - Code, tests, schemas, configuration, and runtime evidence are current-state evidence.
 - Current-state evidence describes what exists now and disagreements between those sources normally require investigation before deciding what to change.
 - Active plans record work state but do not override product or architecture authority.

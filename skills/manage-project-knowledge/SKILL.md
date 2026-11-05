@@ -1,6 +1,6 @@
 ---
 name: manage-project-knowledge
-description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, patterns, runbooks, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
+description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, vocabulary, patterns, runbooks, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
 ---
 
 # Manage Project Knowledge
@@ -16,6 +16,8 @@ Do not write artifacts merely because ordinary work occurred.
 
 Change only artifact documents governed by the repository's documentation contracts.
 Do not change production code, tests, dependencies, schemas, runtime configuration, workflow policy, namespace `README.md` contracts, or installer state.
+Updating an index the namespace contract tells you to maintain, such as a glossary context list, is part of writing the artifact.
+Do not rewrite that contract's admission rules, format, or writing rules.
 Do not create scan reports, task trackers, plans, or placeholder artifacts to record that synchronization occurred.
 
 ## Discover the artifact system
@@ -47,6 +49,17 @@ A verified operational procedure is the exception and follows the runbook namesp
 
 Do not fabricate policy, rationale, approval, ownership, dates, verification, alternatives, or operational evidence.
 Do not convert a suggestion, experiment, brainstorm, or unanswered question into an active artifact.
+
+## Record a confirmed term immediately
+
+When the documentation index declares a vocabulary namespace, and the human explicitly confirms a project-specific term, record it in that namespace before the next question round.
+Follow that namespace's `README.md`.
+Do not wait until the end of the task.
+A term inferred from code, tests, history, or runtime behavior is not confirmed.
+Leave it in the observed namespace, or as an open question there.
+Do not put it in the vocabulary namespace.
+When an accepted decision meets every admission test in the decisions namespace contract, record it the same way, without asking for a separate permission step.
+When any test fails, do not create a decision record.
 Before mutating knowledge, when intended-behavior sources conflict and the current request does not resolve the conflict, leave the disputed content unchanged and ask the smallest question needed.
 When current-state evidence disagrees with accepted documentation, preserve the accepted intent and report the implementation drift instead of rewriting authority to match code.
 
@@ -106,7 +119,8 @@ If the human asks for a preview, dry run, or proposal, show the proposed changes
 
 Before reporting a task, check whether it:
 
-1. accepted new product behavior, a decision, a pattern, or a verified procedure; record it and cite the accepting request in `References`;
+1. accepted new product behavior, a decision, a pattern, a verified procedure, or a project-specific term; record it and cite the accepting request in `References`;
+   Record a confirmed term before the next question round when a design interview is in progress.
 2. explicitly stated that an observed fact is intended behavior; move it to the matching authority namespace and remove the observed entry;
 3. changed code that recorded knowledge describes; update observed facts to match, and update authority only when the human requested that change;
 4. changed code against authority without a human request; leave the authority unchanged and report the drift;
@@ -151,6 +165,7 @@ Do not weaken a required section, invent placeholder content, or mark unsupporte
 Ask the human only when intended-behavior sources conflict and the conversation does not resolve the conflict.
 Before asking, inspect the relevant authority, existing artifacts, and available evidence.
 Group independent unresolved questions into one focused round.
+When a design interview is in progress, follow that skill's rounds, and hold back a question whose prerequisite is still open.
 For each question, identify the conflicting or missing fact and the artifact field or claim it blocks.
 Do not ask for information already available in the repository.
 

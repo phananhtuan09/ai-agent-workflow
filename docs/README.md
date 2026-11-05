@@ -4,7 +4,8 @@ This tree stores durable repository knowledge for repository-driven work.
 Read only the locations relevant to the requested outcome.
 
 - `WORKFLOW.md` defines authority, work shapes, durable-memory thresholds, proof selection, and completion.
-- `product/` stores accepted product and domain behavior.
+- `product/` stores accepted product behavior and externally observable requirements.
+- `glossary/` stores accepted project-specific terms: what each term is, which synonyms to avoid, and which context it belongs to.
 - `decisions/` stores durable architecture, security, compatibility, operational, or product decisions.
 - `plans/active/` stores resumable working memory for complex ongoing work.
 - `plans/completed/` stores useful execution history for completed complex work.
