@@ -21,6 +21,7 @@ Scopes:
 
 A regular expression is Python syntax; start it with `(?i)` to ignore case, and write a literal `|` as `\|` inside the table.
 Files under `ignore` are left out of every rule and every count.
+Files under `tests` are left out of `added`, `removed`, and `changed` rules whose ID does not start with `tests-`, and out of the `Cần test riêng` signals; they still count toward `size` and the path rules.
 
 ## Settings
 
@@ -40,7 +41,7 @@ Files under `ignore` are left out of every rule and every count.
 | `ci-path` | high | path | `(^\|/)\.github/workflows/\|(^\|/)CODEOWNERS$` | A CI workflow or code-owner rule. |
 | `destructive-sql` | high | added | `(?i)\b(drop\s+(table\|column\|database\|index)\|truncate\|alter\s+table\|delete\s+from)\b` | A statement that drops, truncates, alters, or deletes stored data. |
 | `access-check` | high | changed | `\b(isAdmin\|authorize\|requireRole\|hasRole\|hasPermission\|canAccess\|checkPermission\|verifyToken\|jwt\|bcrypt\|csrf)\b` | An access check or credential handling added or removed. |
-| `money-math` | high | changed | `(?i)(amount\|currency\|refund\|charge\|discount\|subtotal\|price)\w*\s*(=[^=>]\|[*+/-]\s*[\w(]\|[<>]=?\s*\d)` | Arithmetic, assignment, or a limit on a money value. |
+| `money-math` | high | changed | `(?i)^(?!\s*case\b).*?(amount\|currency\|refund\|charge\|discount\|subtotal\|price)\w*\s*(=(?![=>])(?!\s*['"])\|[*+/-]\s*[\w(]\|[<>]=?\s*\d)` | Arithmetic, assignment, or a limit on a money value; an enum `case` or a string-literal assignment is a name, not money. |
 | `tests-skipped` | high | added | `\b(it\|test\|describe)\.(skip\|only\|todo)\(\|\bx(it\|describe)\(\|@pytest\.mark\.skip` | A test skipped, focused, or left as a todo. |
 | `tests-deleted` | high | builtin | `builtin:tests-deleted` | A test file deleted by the change; a renamed one does not count. |
 | `size` | gate | builtin | `builtin:size` | The change is larger than `max-lines` changed lines or `max-files` files. |

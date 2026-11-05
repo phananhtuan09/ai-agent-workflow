@@ -186,6 +186,72 @@ def discover_paseo(project_path):
     return sessions, issues
 
 
+REDACTED = "[REDACTED]"
+SECRET_WORD = r"(?:secret|token|password|passwd|credential|_key|api[_-]?key|access[_-]?key|private[_-]?key)"
+# A whole name run that contains a secret word; the lookahead keeps the scan linear on long runs.
+SECRET_NAME = rf"(?=[\w.-]*?{SECRET_WORD})[\w.-]+"
+SECRET_NAME_ONLY = re.compile(rf"(?i)^{SECRET_NAME}$")
+# Start a name only where a name run starts, so a long dotted or word run is scanned once.
+NAME_START = r"(?<![\w.-])"
+# Values that carry no secret even under a secret-looking name, such as token counts or flags.
+NOT_SECRET = re.compile(r"(?i)^(?:\d+|true|false|null|none|\[REDACTED\])$")
+# The extractor's own fields whose names look secret but hold none.
+OWN_FIELDS = {"project_key"}
+SECRET_PATTERNS = [
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{12,}\b"),
+    re.compile(r"\bbase64:[A-Za-z0-9+/]{16,}={0,2}"),
+    re.compile(r"(?i)(?<=\bbearer )[A-Za-z0-9._~+/-]{8,}=*"),
+]
+# NAME="any value", NAME: 'any value', "NAME": "value"; a quoted value runs to its closing quote.
+# A backslash before a quote covers JSON that was itself stored as a string.
+SECRET_QUOTED = re.compile(rf"""(?i)({NAME_START}{SECRET_NAME}\\?["']?\s*[=:]\s*\\?(["']))(.*?)(?=\\?\2)""")
+# NAME=value, NAME: value; an unquoted value ends at whitespace or a separator.
+SECRET_ASSIGNMENT = re.compile(rf"""(?i)({NAME_START}{SECRET_NAME}\\?["']?\s*[=:]\s*)([^\s"'<>,;&`(){{}}\[\]\\]+)""")
+# <env name="NAME" value="value"/> and similar XML or HTML attribute pairs.
+SECRET_ATTRIBUTE = re.compile(rf"""(?i)(\bname\s*=\s*\\?["']{SECRET_NAME}\\?["'][^<>]*?\bvalue\s*=\s*\\?["'])([^"'\\]*)""")
+
+
+def redact_text(text):
+    """Replace credential values in free text; returns the text and how many values were replaced."""
+    count = 0
+
+    def keep_name(match):
+        nonlocal count
+        value = match.group(match.lastindex)
+        if not value or NOT_SECRET.match(value):
+            return match.group(0)
+        count += 1
+        return match.group(1) + REDACTED
+
+    for pattern in SECRET_PATTERNS:
+        text, hits = pattern.subn(REDACTED, text)
+        count += hits
+    text = SECRET_ATTRIBUTE.sub(keep_name, text)
+    text = SECRET_QUOTED.sub(keep_name, text)
+    text = SECRET_ASSIGNMENT.sub(keep_name, text)
+    return text, count
+
+
+def redact(value, key=None):
+    """Redact every string in a JSON-like value; a string under a secret-looking key is replaced whole."""
+    if isinstance(value, dict):
+        total = 0
+        result = {}
+        for name, item in value.items():
+            result[name], hits = redact(item, name)
+            total += hits
+        return result, total
+    if isinstance(value, list):
+        items = [redact(item, key) for item in value]
+        return [item for item, _ in items], sum(hits for _, hits in items)
+    if isinstance(value, str):
+        if isinstance(key, str) and key not in OWN_FIELDS and SECRET_NAME_ONLY.match(key) and value and not NOT_SECRET.match(value):
+            return REDACTED, 1
+        return redact_text(value)
+    return value, 0
+
+
 def ensure_dir(dir_path: Path):
     dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -1158,6 +1224,10 @@ def assess_coverage(artifact, records):
 
 def write_artifact_set(artifact, output_dir: Path):
     ensure_dir(output_dir)
+    # Traces hold raw transcript content; keep every extracted folder out of version control.
+    ignore = output_dir / ".gitignore"
+    if not ignore.exists():
+        ignore.write_text("*\n", encoding="utf-8")
     write_json(output_dir / "session-trace.json", artifact)
     write_json(output_dir / "metadata.json", {
         "schema_version": artifact["schema_version"],
@@ -1401,6 +1471,8 @@ def parse_args():
                         help="--triage session or Paseo agent ID to exclude, such as the audit session (repeatable).")
     parser.add_argument("--output-dir", help="Target output directory.")
     parser.add_argument("--stdout", action="store_true", help="Print session-trace.json to stdout.")
+    parser.add_argument("--no-redact", action="store_true",
+                        help="Keep credential values in the output; by default they are replaced with [REDACTED].")
     args = parser.parse_args()
     triage_only = args.since or args.until or args.exclude_session or args.top != 5
     if args.triage:
@@ -1488,6 +1560,16 @@ def main():
 
     if paseo_source:
         artifact["source"]["paseo"] = paseo_source
+
+    if args.no_redact:
+        artifact["coverage"] = {**(artifact.get("coverage") or {}), "redactions": "disabled"}
+    else:
+        artifact, redactions = redact(artifact)
+        artifact["coverage"] = {**(artifact.get("coverage") or {}), "redactions": redactions}
+        artifact["extraction_notes"].append(
+            "Credential values (AWS key IDs, base64 keys, bearer tokens, private keys, and secret, token, password, "
+            "or key assignments) are replaced with [REDACTED]; coverage.redactions counts them. Redaction is "
+            "pattern-based, so review the output before sharing it.")
 
     if artifact["session"]["id"] is None:
         artifact["session"]["id"] = input_path.stem
