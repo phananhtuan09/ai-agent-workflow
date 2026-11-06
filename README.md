@@ -134,7 +134,7 @@ See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for s
 
 `plan` mode writes a Markdown plan plus mapped Playwright tests for human approval; `run` mode executes approved scripts against real web or HTTP API boundaries.
 Versioned evidence bundles keep inputs, results, observations, traces, retries, and cleanup for independent audit.
-After installation, run `/runtime-e2e-test setup`: it starts the app, waits for it to be ready, runs one sample test, serves another ref beside it on its own ports, and writes only the proven commands into `<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md`; then review the rest of that file (fixtures, safety limits), without secret values. Adjust `references/blind-spots.md`, the edge-case catalog every plan walks, to the project; an edited copy is kept on update.
+After installation, run `/runtime-e2e-test setup`: it asks whether worktree instances share the local stack's ports and data or get their own, starts the app, waits for it to be ready, runs one sample test, serves another ref from its own worktree, and writes only the proven commands into `<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md`; then review the rest of that file (fixtures, safety limits), without secret values. Later runs fetch head and base from `origin` and test each in its own worktree with that recipe. Adjust `references/blind-spots.md`, the edge-case catalog every plan walks, to the project; an edited copy is kept on update.
 
 ### Validate change
 

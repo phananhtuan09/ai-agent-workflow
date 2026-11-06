@@ -36,7 +36,9 @@ Never hand-edit a generated file. The tool recomputes `risk.json` from the diff 
 
 ## 1. Scope and expectations
 
-Resolve the change set as `review-pr` does (PR, refs, range, or working tree), and record the base ref.
+Resolve the change set as `review-pr` does (PR, refs, range, or working tree).
+For a PR or pushed branch, run `runtime-e2e-test/scripts/evidence.py refs --source <branch or pull/<n>/head> --into <target>`: it fetches both from the remote and prints the head SHA and the merge-base SHA. Record both, pass them to `risk` as `--base <merge-base SHA> --head <head SHA>`, and hand the same `head` and `base` to the runtime suite, so every step sees the same commits whatever the local branches or the checkout hold.
+For a change not pushed yet, use `refs --local --into <target>` and `risk --worktree`, and state in the report that head is the local checkout.
 
 Build exactly one expectation list in `expectations.json`; every later step consumes it and none derives intent again:
 

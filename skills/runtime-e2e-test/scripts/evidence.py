@@ -26,6 +26,8 @@ KINDS = {"browser", "api", "pr-test", "sweep"}
 CLASSIFICATIONS = {"new-behavior", "invariant"}
 MODES = {"durable", "light"}
 CATALOG = Path(__file__).resolve().parents[1] / "references" / "blind-spots.md"
+REFERENCE = Path(__file__).resolve().parents[1] / "references" / "project-runtime.md"
+SHA = re.compile(r"[0-9a-f]{40}")
 LOCAL_HOSTS = re.compile(r"(localhost|127(\.\d+){3}|0\.0\.0\.0|\[?::1\]?|host\.docker\.internal|[\w.-]+\.(localhost|local|test|internal))$")
 # Hosts named for a shared non-production stage, or on a private network: recorded, not stopped.
 SHARED_HOSTS = re.compile(r"(^|[.-])(staging|stage|dev|develop|test|qa|uat|sandbox|preview)([.-]|$)|^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\.")
@@ -68,6 +70,19 @@ def command_dir(root, data):
     return path
 
 
+def reference_recipe(path=REFERENCE):
+    """The instance recipe that setup proved and wrote under `## Base instance`."""
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    section = re.search(r"^## Base instance\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    state = re.search(r"^- Base instance: (.*)$", section[1], re.M) if section else None
+    if not state or not state[1].startswith("READY"):
+        raise ValueError(f"project-runtime.md has no proven base instance ({state[1] if state else 'not set up'}); run /runtime-e2e-test setup first")
+    block = re.search(r"```json\n(.*?)\n```", section[1], re.S)
+    if not block:
+        raise ValueError("project-runtime.md says Base instance: READY but has no recipe; run /runtime-e2e-test setup again")
+    return instance.validate(json.loads(block[1]))
+
+
 def contract(suite, root):
     data = load(suite)
     for key in ("plan", "environment", "revision"):
@@ -80,15 +95,27 @@ def contract(suite, root):
         raise ValueError("Runner owns --output and --reporter")
     command_dir(root, data)
     if "instance" in data:
-        instance.validate(data["instance"])
+        source = data["instance"]
+        # "project-runtime" reads the recipe setup proved, so a run never depends on a hand-copied one.
+        data["instance"] = reference_recipe() if source == "project-runtime" else instance.validate(source)
+        data["instanceDigest"] = hashlib.sha256(json.dumps(data["instance"], sort_keys=True).encode()).hexdigest()
+    head = data.get("head")
+    if head is not None:
+        if not isinstance(head, dict) or set(head) - {"revision", "source", "uncommitted"} or not isinstance(head.get("revision"), str) or not SHA.fullmatch(head["revision"]):
+            raise ValueError("head takes revision (a full commit SHA from `evidence.py refs`), source, and uncommitted")
+        if not isinstance(head.get("uncommitted", False), bool) or not isinstance(head.get("source", ""), str):
+            raise ValueError("head uncommitted is true or false, and source names where the revision came from")
+        if "instance" not in data:
+            raise ValueError("head needs an instance: the tool serves the head worktree from the setup recipe")
+    if (data.get("instance") or {}).get("resources") == "shared" and data.get("base") is not None and head is None:
+        raise ValueError("shared resources run base on the local stack's ports, so head must be served from its own worktree too: declare head")
     base = data.get("base")
     if base is not None:
         if not isinstance(base, dict) or not isinstance(base.get("revision"), str) or not base["revision"].strip():
             raise ValueError("base needs a revision")
         env = base.get("env", {})
-        # A proven instance recipe gives the base its own ports; without one, base env must.
-        own_ports = bool((data.get("instance") or {}).get("ports"))
-        if not isinstance(env, dict) or not (env or own_ports) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
+        # A proven instance recipe decides the base's ports and data; without one, base env must.
+        if not isinstance(env, dict) or not (env or "instance" in data) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
             raise ValueError("base env must give the base instance its own ports and data")
         for step in base.get("setup", []):
             if not isinstance(step, list) or not step or any(not isinstance(x, str) or not x for x in step):
@@ -938,6 +965,10 @@ def audit(bundle):
     for name, value in approval["hashes"].items():
         if digest(local(bundle / "inputs", name)) != value:
             raise ValueError("Approved input snapshot mismatch")
+    if "instance" in approval:
+        used = load(bundle / "instance.json") if (bundle / "instance.json").is_file() else None
+        if hashlib.sha256(json.dumps(used, sort_keys=True).encode()).hexdigest() != approval["instance"]:
+            raise ValueError("Recorded instance recipe disagrees with the approved one")
     result = score(bundle)
     if result != load(bundle / "results.json") or summary(result) != (bundle / "summary.md").read_text():
         raise ValueError("Generated report disagrees with native evidence")
@@ -1026,6 +1057,83 @@ def serve(run, tree, recipe, env, fixed, manifest, label):
     return handle
 
 
+def run_setup(steps, tree, env, log_path, records):
+    """Run setup steps in a worktree; returns the first failing (step, exit code), or None."""
+    with log_path.open("w", encoding="utf-8") as log:
+        for step in steps:
+            try:
+                # Setup steps are human-approved argument arrays (hashed with the suite) and run without a shell.
+                done = subprocess.run(step, cwd=tree, env={**os.environ, **env}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+                code, output = done.returncode, done.stdout + done.stderr
+            except subprocess.TimeoutExpired:
+                code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
+            except OSError as error:
+                code, output = 127, str(error)
+            log.write(f"$ {step}\n{output}\n[exit {code}]\n")
+            records.append({"command": step, "exitCode": code})
+            if code:
+                return step, code
+    return None
+
+
+def add_worktree(root, revision, prefix):
+    tree = Path(tempfile.mkdtemp(prefix=prefix))
+    added = subprocess.run(["git", "worktree", "add", "--detach", str(tree), revision], cwd=root, capture_output=True, text=True)
+    return tree, (added.stderr.strip()[:300] if added.returncode else None)
+
+
+def remove_worktree(root, tree):
+    removed = subprocess.run(["git", "worktree", "remove", "--force", str(tree)], cwd=root, capture_output=True, text=True)
+    shutil.rmtree(tree, ignore_errors=True)
+    subprocess.run(["git", "worktree", "prune"], cwd=root, capture_output=True)
+    listed = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=root, capture_output=True, text=True).stdout
+    left = tree.exists() or f"worktree {tree}" in listed
+    return "INCOMPLETE: " + removed.stderr.strip()[:300] if left else "COMPLETE"
+
+
+def place_snapshot(bundle, tree, names):
+    """Tests come from the approved snapshot, never from whatever the checkout holds now."""
+    for name in names:
+        dest = local(tree, name)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(local(bundle / "inputs", name).read_bytes())
+
+
+def open_head(bundle, root, data, sha, manifest):
+    """Build the head worktree: the resolved commit, plus the uncommitted change when declared, plus the approved tests."""
+    tree, error = add_worktree(root, sha, "runtime-e2e-head-")
+    if error:
+        shutil.rmtree(tree, ignore_errors=True)
+        raise ValueError("Head worktree could not be created: " + error)
+    record = manifest["head"] = {"revision": data["head"]["revision"], "gitHead": sha, "uncommitted": bool(data["head"].get("uncommitted")), "projectRoot": str(tree), "setup": []}
+    try:
+        if record["uncommitted"]:
+            # The change is not on the remote yet: apply exactly the checkout's diff and untracked files once, now.
+            patch = subprocess.run(["git", "diff", "--binary", "HEAD"], cwd=root, capture_output=True, text=True).stdout
+            (bundle / "head.patch").write_text(patch, encoding="utf-8")
+            if patch:
+                applied = subprocess.run(["git", "apply", "--binary", "-"], cwd=tree, input=patch, capture_output=True, text=True)
+                if applied.returncode:
+                    raise ValueError("Uncommitted change does not apply to the head worktree: " + applied.stderr.strip()[:300])
+            untracked = [n for n in subprocess.run(["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=root, capture_output=True, text=True).stdout.split("\0") if n]
+            for name in untracked:
+                dest = local(tree, name)
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(local(root, name), dest)
+            record["untracked"] = untracked
+        place_snapshot(bundle, tree, data["files"])
+        recipe = data["instance"]
+        record["copied"] = instance.copy_local(root, tree, recipe)
+        failed = run_setup(recipe.get("setup", []), tree, {**(data.get("determinism") or {}).get("env", {}), **instance.instance_env(recipe, tree)}, bundle / "head-setup.log", record["setup"])
+        if failed:
+            raise ValueError(f"Head setup {failed[0]} exited {failed[1]}; see head-setup.log")
+    except Exception:
+        record["worktreeCleanup"] = remove_worktree(root, tree)
+        write(bundle / "run-manifest.json", manifest)
+        raise
+    return tree
+
+
 def run_base(bundle, root, data, run_id):
     """Run the approved tests against the base revision in a separate worktree."""
     run = bundle / "base"
@@ -1039,38 +1147,23 @@ def run_base(bundle, root, data, run_id):
         write(run / "run-manifest.json", manifest)
         return
     manifest["gitHead"] = resolved.stdout.strip()
-    tree = Path(tempfile.mkdtemp(prefix="runtime-e2e-base-"))
+    tree, error = add_worktree(root, manifest["gitHead"], "runtime-e2e-base-")
     try:
-        added = subprocess.run(["git", "worktree", "add", "--detach", str(tree), manifest["gitHead"]], cwd=root, capture_output=True, text=True)
-        if added.returncode:
-            manifest["degraded"] = "Base worktree could not be created: " + added.stderr.strip()[:300]
+        if error:
+            manifest["degraded"] = "Base worktree could not be created: " + error
             return
         manifest["projectRoot"] = str(tree)
         # Tests come from the approved head snapshot; the application and kept files stay at base.
-        for name in data["files"]:
-            if name in base.get("keep", []):
-                continue
-            dest = local(tree, name)
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(local(bundle / "inputs", name).read_bytes())
+        place_snapshot(bundle, tree, [name for name in data["files"] if name not in base.get("keep", [])])
         recipe = data.get("instance")
-        served = instance.instance_env(recipe, tree, fresh=True) if recipe else {}
+        if recipe:
+            manifest["copied"] = instance.copy_local(root, tree, recipe)
+        served = instance.instance_env(recipe, tree) if recipe else {}
         env = {**fixed, **base.get("env", {}), **served}
-        with (run / "setup.log").open("w", encoding="utf-8") as log:
-            for step in base.get("setup", []) + (recipe or {}).get("setup", []):
-                try:
-                    # Setup steps are human-approved argument arrays (hashed with the suite) and run without a shell.
-                    done = subprocess.run(step, cwd=tree, env={**os.environ, **env}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
-                    code, output = done.returncode, done.stdout + done.stderr
-                except subprocess.TimeoutExpired:
-                    code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
-                except OSError as error:
-                    code, output = 127, str(error)
-                log.write(f"$ {step}\n{output}\n[exit {code}]\n")
-                manifest["setup"].append({"command": step, "exitCode": code})
-                if code:
-                    manifest["degraded"] = f"Base setup {step} exited {code}; see base/setup.log"
-                    return
+        failed = run_setup(base.get("setup", []) + (recipe or {}).get("setup", []), tree, env, run / "setup.log", manifest["setup"])
+        if failed:
+            manifest["degraded"] = f"Base setup {failed[0]} exited {failed[1]}; see base/setup.log"
+            return
         served_instance = serve(run, tree, recipe, served, fixed, manifest, "base") if recipe else None
         try:
             if served_instance is not False:
@@ -1084,13 +1177,34 @@ def run_base(bundle, root, data, run_id):
         restore_base(tree, [name for name in data["files"] if name not in base.get("keep", [])])
         manifest["existing"] = {e["id"]: run_existing(run, tree, e, {**base.get("env", {}), **served}, "base") for e in (data.get("existing") or {}).get("suites", [])}
     finally:
-        removed = subprocess.run(["git", "worktree", "remove", "--force", str(tree)], cwd=root, capture_output=True, text=True)
-        shutil.rmtree(tree, ignore_errors=True)
-        subprocess.run(["git", "worktree", "prune"], cwd=root, capture_output=True)
-        listed = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=root, capture_output=True, text=True).stdout
-        left = tree.exists() or f"worktree {tree}" in listed
-        manifest["worktreeCleanup"] = "INCOMPLETE: " + removed.stderr.strip()[:300] if left else "COMPLETE"
+        manifest["worktreeCleanup"] = remove_worktree(root, tree)
         write(run / "run-manifest.json", manifest)
+
+
+def refs(root, source, into, remote, use_local):
+    """Resolve head and base from the remote, so a stale local branch never decides what is tested."""
+    def git(*args):
+        done = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+        if done.returncode:
+            raise ValueError(f"git {' '.join(args)} failed: {done.stderr.strip()[:300]}")
+        return done.stdout.strip()
+
+    def fetched(ref):
+        git("fetch", "--quiet", remote, ref)
+        return git("rev-parse", "FETCH_HEAD^{commit}")
+
+    target = fetched(into)
+    if use_local:
+        head = {"revision": git("rev-parse", "HEAD"), "source": "local HEAD (not on the remote)"}
+        if git("status", "--porcelain"):
+            head["uncommitted"] = True
+    else:
+        if not source:
+            raise ValueError("refs needs --source (a branch or pull/<n>/head on the remote), or --local")
+        head = {"revision": fetched(source), "source": f"{remote}/{source}"}
+    base = {"revision": git("merge-base", target, head["revision"]), "source": f"merge base with {remote}/{into}"}
+    print(json.dumps({"head": head, "base": base}, indent=2))
+    return 0
 
 
 def promote(bundle, root, to):
@@ -1127,8 +1241,12 @@ def promote(bundle, root, to):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report", "promote"])
-    parser.add_argument("target", type=Path)
+    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report", "promote", "refs"])
+    parser.add_argument("target", type=Path, nargs="?")
+    parser.add_argument("--source", help="refs: the change's branch, or pull/<n>/head, on the remote")
+    parser.add_argument("--into", help="refs: the branch the change merges into")
+    parser.add_argument("--remote", default="origin", help="refs: the remote to fetch from")
+    parser.add_argument("--local", action="store_true", help="refs: the change is not on the remote yet; use HEAD and its uncommitted change")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--reviewer")
     parser.add_argument("--out", type=Path)
@@ -1136,6 +1254,12 @@ def main():
     parser.add_argument("--confirm-environment", action="store_true", help="run: the human confirmed a light run despite strong environment signals")
     parser.add_argument("--to", type=Path, default=Path("docs/testing/active"), help="promote: directory for the durable plan and suite")
     args = parser.parse_args()
+    if args.mode == "refs":
+        if not args.into:
+            raise ValueError("refs needs --into, the branch the change merges into")
+        return refs(args.root.resolve(), args.source, args.into, args.remote, args.local)
+    if args.target is None:
+        raise ValueError(f"{args.mode} needs a target")
     if args.mode == "audit":
         return audit(args.target.resolve())
     if args.mode == "report":
@@ -1173,20 +1297,36 @@ def main():
             raise ValueError("A light suite runs without an approval gate; promote its run to get a durable plan to approve")
         if not args.reviewer:
             raise ValueError("Explicit human reviewer required")
-        write(approval_path, {"reviewer": args.reviewer, "approvedAt": datetime.now(timezone.utc).isoformat(), "hashes": hashes})
+        write(approval_path, {"reviewer": args.reviewer, "approvedAt": datetime.now(timezone.utc).isoformat(), "hashes": hashes,
+                              **({"instance": data["instanceDigest"]} if "instanceDigest" in data else {})})
         return 0
     checked = environment_check(root, data)
     if light and checked["strong"] and not args.confirm_environment:
         raise ValueError("Strong environment signals stop a light run; ask the human, and rerun with --confirm-environment only after they confirm: " + "; ".join(checked["strong"]))
     if light:
         # Light mode has no approval gate; the snapshot hashes still pin exactly what ran.
-        approval = {"mode": "light", "reviewer": None, "approvedAt": None, "hashes": hashes}
+        approval = {"mode": "light", "reviewer": None, "approvedAt": None, "hashes": hashes,
+                    **({"instance": data["instanceDigest"]} if "instanceDigest" in data else {})}
     else:
         approval = load(approval_path)
-        if approval["hashes"] != hashes or not approval.get("reviewer"):
+        if approval["hashes"] != hashes or approval.get("instance") != data.get("instanceDigest") or not approval.get("reviewer"):
             raise ValueError("Approval missing or stale; human reapproval required")
     if args.out is None:
         raise ValueError("--out must name a new run directory")
+    recipe = data.get("instance")
+    head_sha = None
+    if data.get("head") is not None:
+        head_sha = subprocess.run(["git", "rev-parse", "--verify", data["head"]["revision"] + "^{commit}"], cwd=root, capture_output=True, text=True).stdout.strip()
+        if not head_sha:
+            raise ValueError(f"Head revision {data['head']['revision']} is not in this repository; fetch it (evidence.py refs) first")
+        local_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+        if data["head"].get("uncommitted") and head_sha != local_head:
+            raise ValueError("An uncommitted head is applied on top of the checkout's HEAD; its revision must be that commit")
+    if recipe and recipe["resources"] == "shared" and (head_sha or data.get("base") is not None):
+        busy = instance.busy_ports(recipe, instance.instance_env(recipe, root))
+        if busy:
+            # Checked before anything runs, so the human hears it now rather than after a full run.
+            raise ValueError(f"Shared resources run each worktree on the local stack's ports and {', '.join(busy)} is in use; stop the local stack and rerun, or rerun setup and choose isolated")
     bundle = args.out.resolve()
     bundle.mkdir(parents=True, exist_ok=False)
     for name in hashes:
@@ -1194,40 +1334,52 @@ def main():
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(local(root, name).read_bytes())
     write(bundle / "approval.json", approval)
+    if recipe:
+        write(bundle / "instance.json", recipe)
     run_id = str(uuid.uuid4())
     git = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True)
     dirty = subprocess.run(["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True)
     manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout,
                 "environmentCheck": {**checked, "confirmed": bool(args.confirm_environment and checked["strong"])}}
     fixed = (data.get("determinism") or {}).get("env", {})
-    recipe = data.get("instance")
-    served = instance.instance_env(recipe, root, fresh=True) if recipe and recipe.get("head") else {}
-    handle = serve(bundle, root, recipe, served, fixed, manifest, "head") if recipe and recipe.get("head") else None
-    try:
-        # A head instance that never became ready still runs the tests: they fail, and the manifest says why.
-        execute(bundle, command_dir(root, data), data["command"], {**fixed, **served, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
-    finally:
-        if handle:
-            manifest["instance"].update(handle.stop())
-            write(bundle / "run-manifest.json", manifest)
     entries = (data.get("existing") or {}).get("suites", [])
-    manifest["existing"] = {e["id"]: {"head": run_existing(bundle, root, e, {}, "head")} for e in entries}
-    write(bundle / "run-manifest.json", manifest)
-    if data.get("base") is not None:
-        run_base(bundle, root, data, run_id)
-    if data.get("regression") is not None:
-        base_head = load(bundle / "base" / "run-manifest.json").get("gitHead")
+    if head_sha:
+        manifest["gitHead"] = head_sha
+        manifest["headSource"] = data["head"].get("source") or ("local HEAD with its uncommitted change" if data["head"].get("uncommitted") else "")
+        write(bundle / "run-manifest.json", manifest)
+    tree = open_head(bundle, root, data, head_sha, manifest) if head_sha else None
+    where = tree or root
+    try:
+        served = instance.instance_env(recipe, tree) if tree else {}
+        handle = serve(bundle, tree, recipe, served, fixed, manifest, "head") if tree else None
+        if handle is False:
+            raise ValueError(f"Head instance not ready: {manifest['instance']['error']}; see {bundle / 'instance.log'}")
         try:
-            if not base_head:
-                raise ValueError("base revision did not resolve")
-            write(bundle / "impact-map.json", impact.build(root, base_head, data["regression"]))
-        except (ValueError, OSError) as error:
-            write(bundle / "impact-map.json", {"error": str(error)[:300]})
-    # A test that passes on base and fails on head is run once more on head before it counts as a new failure.
-    for row in (existing_status(bundle, data, {}) or {}).get("suites", []):
-        if "NEW_FAILURE" in row["tests"]:
-            entry = next(e for e in entries if e["id"] == row["id"])
-            manifest["existing"][row["id"]]["rerun"] = run_existing(bundle, root, entry, {}, "rerun")
+            execute(bundle, command_dir(where, data), data["command"], {**fixed, **served, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
+        finally:
+            if handle:
+                manifest["instance"].update(handle.stop())
+                write(bundle / "run-manifest.json", manifest)
+        manifest["existing"] = {e["id"]: {"head": run_existing(bundle, where, e, served, "head")} for e in entries}
+        write(bundle / "run-manifest.json", manifest)
+        if data.get("base") is not None:
+            run_base(bundle, root, data, run_id)
+        if data.get("regression") is not None:
+            base_head = load(bundle / "base" / "run-manifest.json").get("gitHead")
+            try:
+                if not base_head:
+                    raise ValueError("base revision did not resolve")
+                write(bundle / "impact-map.json", impact.build(where, base_head, data["regression"]))
+            except (ValueError, OSError) as error:
+                write(bundle / "impact-map.json", {"error": str(error)[:300]})
+        # A test that passes on base and fails on head is run once more on head before it counts as a new failure.
+        for row in (existing_status(bundle, data, {}) or {}).get("suites", []):
+            if "NEW_FAILURE" in row["tests"]:
+                entry = next(e for e in entries if e["id"] == row["id"])
+                manifest["existing"][row["id"]]["rerun"] = run_existing(bundle, where, entry, served, "rerun")
+    finally:
+        if tree:
+            manifest["head"]["worktreeCleanup"] = remove_worktree(root, tree)
     write(bundle / "run-manifest.json", manifest)
     result = score(bundle)
     write(bundle / "results.json", result)

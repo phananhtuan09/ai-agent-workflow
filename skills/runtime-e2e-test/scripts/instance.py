@@ -9,7 +9,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-RECIPE_KEYS = {"name", "cwd", "start", "ready", "stop", "ports", "env", "setup", "timeout", "shares", "head"}
+RECIPE_KEYS = {"name", "cwd", "resources", "copy", "start", "ready", "stop", "ports", "env", "setup", "timeout", "shares"}
+RESOURCES = {"shared", "isolated"}
 SECRET_VALUES = re.compile(r"(sk_live_[0-9A-Za-z]{8,}|AKIA[0-9A-Z]{16}|gh[pousr]_[0-9A-Za-z]{30,}|xox[abprs]-[0-9A-Za-z-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)")
 SECRET_NAMES = re.compile(r"(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|APP_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIAL|DSN|DATABASE_URL)", re.I)
 ENV_LINE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$")
@@ -49,8 +50,11 @@ def validate(recipe):
     shares = recipe.get("shares")
     if not isinstance(shares, list) or any(not isinstance(x, str) or not x.strip() for x in shares):
         raise ValueError("instance shares lists what it shares with the main stack (database, queues, storage), or []")
-    if not isinstance(recipe.get("head", False), bool):
-        raise ValueError("instance head is true or false")
+    if recipe.get("resources") not in RESOURCES:
+        raise ValueError("instance resources is the human's setup choice: shared (the local stack's ports, database, and services) or isolated (fresh ports and its own data)")
+    copy = recipe.get("copy", [])
+    if not isinstance(copy, list) or any(not isinstance(x, str) or not x or Path(x).is_absolute() or ".." in Path(x).parts for x in copy):
+        raise ValueError("instance copy lists local files, relative to the project root, to copy into each worktree")
     return recipe
 
 
@@ -99,11 +103,32 @@ def fill(value, names):
     return TEMPLATE.sub(lambda m: names.get(m[1], m[0]), value)
 
 
-def instance_env(recipe, tree, fresh):
-    """Ports: the main stack's values, or fresh free ones; other values may name a port or {tree}."""
+def instance_env(recipe, tree, fresh=None):
+    """Ports: the local stack's values (shared resources) or fresh free ones (isolated); other values may name a port or {tree}."""
+    if fresh is None:
+        fresh = recipe.get("resources") == "isolated"
     ports = {k: (free_port() if fresh else v) for k, v in recipe.get("ports", {}).items()}
     names = {**ports, "tree": str(tree)}
     return {**ports, **{k: fill(v, names) for k, v in recipe.get("env", {}).items()}}
+
+
+def busy_ports(recipe, env):
+    return [f"{k}={env[k]}" for k in recipe.get("ports", {}) if port_open(env[k])]
+
+
+def copy_local(root, tree, recipe):
+    """Copy the human's untracked local files (such as .env) into a worktree; their content is never read."""
+    copied, missing = [], []
+    for name in recipe.get("copy", []):
+        source = Path(root) / name
+        if source.is_file():
+            dest = Path(tree) / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(source.read_bytes())
+            copied.append(name)
+        else:
+            missing.append(name)
+    return {"copied": copied, "missing": missing}
 
 
 def is_ready(recipe, env, log_path):
@@ -130,9 +155,9 @@ class Instance:
         """Start and wait for the ready signal; returns None when ready, else the reason."""
         full = {**os.environ, **(extra_env or {}), **self.env}
         self.full_env = full
-        busy = [k for k, v in self.record["ports"].items() if port_open(v)]
+        busy = busy_ports(self.recipe, self.env)
         if busy:
-            return "port already in use: " + ", ".join(f"{k}={self.record['ports'][k]}" for k in busy)
+            return "port already in use: " + ", ".join(busy)
         log = self.log_path.open("w", encoding="utf-8")
         try:
             # The start command is a human-reviewed argument array from the project runtime reference; no shell.

@@ -26,6 +26,10 @@ FIXTURE_WORDS = re.compile(r"(seed|reset|fixture|migrate|db:)")
 COMMAND_LINE = re.compile(r"^\s*(?:\$\s*)?((?:npm|pnpm|yarn|npx|make|docker|docker-compose|python3?|pip|bundle|rails|php|composer|go|cargo|uv|poetry)\b.*)$")
 DESTRUCTIVE = re.compile(r"(drop|truncate|reset|wipe|destroy|rm\s+-rf|down\s+-v|--force)", re.I)
 RECIPE_KEYS = instance.RECIPE_KEYS | {"sample", "requires", "sources"}
+RESOURCE_TEXT = {
+    "shared": "shared, chosen by the human: worktree instances use the local stack's ports, database, and services, so each runs only while the local stack is stopped",
+    "isolated": "isolated, chosen by the human: worktree instances get fresh ports and their own data, beside the local stack",
+}
 
 
 def write(path, value):
@@ -185,12 +189,17 @@ def prove(root, recipe_path, out, ref):
             if added.returncode:
                 return finish("BLOCKED", "worktree", added.stderr.strip()[:300])
             cwd = tree / recipe.get("cwd", ".")
+            evidence["copied"] = instance.copy_local(root, tree, recipe)
         else:
             evidence["gitHead"] = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip() or None
             cwd = root / recipe.get("cwd", ".")
-        env = instance.instance_env(recipe, tree or root, fresh=bool(ref))
+        env = instance.instance_env(recipe, tree or root, fresh=bool(ref) and recipe["resources"] == "isolated")
         evidence["ports"] = {k: env[k] for k in recipe.get("ports", {})}
         evidence["envNames"] = sorted(env)
+        busy = instance.busy_ports(recipe, env) if ref else []
+        if busy:
+            # Shared resources run on the local stack's ports: say so before any setup step spends time.
+            return finish("BLOCKED", "ports", f"shared resources use the local stack's ports and {', '.join(busy)} is in use; stop the local stack, or choose isolated resources")
         for i, step in enumerate(recipe.get("setup", []) if ref else []):
             row = run_step(f"setup-{i + 1}", step, cwd, env, out, secrets, SETUP_TIMEOUT)
             evidence["steps"].append(row)
@@ -293,8 +302,9 @@ def fill_reference(reference, main_dir, parallel_dirs):
             state = "READY"
         block = {k: v for k, v in recipe.items() if k in instance.RECIPE_KEYS}
         body = ("Used when a suite declares `base` to prove that new-behavior tests can fail.\n"
-                "Copy the recipe below into the suite's `instance`; `evidence.py` starts, waits for, and stops the base instance with it on fresh ports (and the head instance too with `\"head\": true`).\n\n"
+                "A suite uses it with `\"instance\": \"project-runtime\"`; `evidence.py` reads the JSON below and serves each worktree from it.\n\n"
                 f"- Base instance: {state}\n"
+                f"- Resources: {RESOURCE_TEXT[recipe['resources']]}\n"
                 f"- Proven refs: {', '.join(p['ref'] for p in parallel) or 'none'}\n"
                 f"- Shares with the main stack: {', '.join(recipe.get('shares', [])) or 'nothing'}\n\n"
                 "```json\n" + json.dumps(block, indent=2, ensure_ascii=False) + "\n```")

@@ -164,12 +164,12 @@ def unquote(path):
     return out.decode("utf-8", "replace")
 
 
-def read_diff(root, base, worktree, untracked=None):
+def read_diff(root, base, worktree, untracked=None, head="HEAD"):
     """Files of the change with their added and removed lines, and whether each was deleted or renamed away.
 
     With `worktree`, untracked files count as added; `untracked` limits them to a list recorded earlier.
     """
-    ref = [base] if worktree else [f"{base}...HEAD"]
+    ref = [base] if worktree else [f"{base}...{head}"]
     text = git(root, "diff", "--no-color", "--no-renames", "--no-ext-diff", "-U0", *ref)
     files, current, header, old = {}, None, False, None
     for line in text.splitlines():
@@ -343,15 +343,17 @@ def diff_changes(files):
     return {name: "\n".join(info["added"] + info["removed"]) for name, info in files.items()}
 
 
-def assess(root, base, worktree, expectations, rules_path, untracked=None):
+def assess(root, base, worktree, expectations, rules_path, untracked=None, head=None):
+    """`head` is the change's commit from the remote; without it the change is the checkout's HEAD."""
     settings, rules = load_rules(rules_path)
-    base_sha = git(root, "rev-parse", base if worktree else git(root, "merge-base", base, "HEAD").strip()).strip()
+    head = head or "HEAD"
+    base_sha = git(root, "rev-parse", base if worktree else git(root, "merge-base", base, head).strip()).strip()
 
     def versions(name):
-        after = (root / name).read_text(encoding="utf-8") if worktree and (root / name).is_file() else show(root, "HEAD", name)
+        after = (root / name).read_text(encoding="utf-8") if worktree and (root / name).is_file() else show(root, head, name)
         return show(root, base_sha, name), after
 
-    files, found = read_diff(root, base, worktree, untracked)
+    files, found = read_diff(root, base, worktree, untracked, head)
     signals, size = diff_signals(files, settings, rules, versions)
     signals += intent_signals(expectations, rules)
     levels = {s["level"] for s in signals}
@@ -364,7 +366,8 @@ def assess(root, base, worktree, expectations, rules_path, untracked=None):
         "schema": "validate-change/risk@1",
         "base": base,
         "baseSha": base_sha,
-        "headSha": git(root, "rev-parse", "HEAD").strip(),
+        "headSha": git(root, "rev-parse", head).strip(),
+        **({"head": head} if head != "HEAD" else {}),
         "worktree": worktree,
         "untracked": found,
         "rulesDigest": hashlib.sha256(Path(rules_path).read_bytes()).hexdigest(),
@@ -607,11 +610,11 @@ def evaluate(root, run_dir, rules_path):
     known = check_expectations(expectations)
     items = expectations["items"]
     risk = load(run_dir / "risk.json")
-    head = git(root, "rev-parse", "HEAD").strip()
+    head = git(root, "rev-parse", risk.get("head", "HEAD")).strip()
     if risk.get("headSha") != head:
-        raise Inconsistent(f"risk.json was computed for {risk.get('headSha')}, but HEAD is {head}; run risk again")
+        raise Inconsistent(f"risk.json was computed for {risk.get('headSha')}, but {risk.get('head', 'HEAD')} is {head}; run risk again")
     # Light tests written after the risk step are untracked too, so only the files recorded then are compared.
-    fresh = assess(root, risk["base"], risk["worktree"], expectations, rules_path, risk.get("untracked", []))
+    fresh = assess(root, risk["base"], risk["worktree"], expectations, rules_path, risk.get("untracked", []), risk.get("head"))
     rules = load_rules(rules_path)[1]
     intent_ids = {r["id"] for r in rules if r["scope"] == "builtin" and r["check"] in INTENT_BUILTINS}
     diff_only = lambda r: [s for s in r["signals"] if s["rule"] not in intent_ids]
@@ -809,18 +812,21 @@ def main(argv=None):
     risk.add_argument("run_dir")
     risk.add_argument("--base", required=True, help="base ref; the change is base...HEAD, or base..working tree with --worktree")
     risk.add_argument("--worktree", action="store_true", help="include uncommitted changes")
+    risk.add_argument("--head", help="the change's commit SHA from `evidence.py refs`; the change is base...head, whatever the checkout holds")
     for name in ("audit-input", "report"):
         sub.add_parser(name).add_argument("run_dir")
     for command in sub.choices.values():
         command.add_argument("--rules", default=str(RULES))
     args = parser.parse_args(argv)
+    if getattr(args, "head", None) and args.worktree:
+        parser.error("--head names a commit on the remote; --worktree is for a change only the checkout has")
     run_dir = Path(args.run_dir)
     try:
         root = Path(git(Path.cwd(), "rev-parse", "--show-toplevel").strip())
         expectations = load(run_dir / "expectations.json")
         check_expectations(expectations)
         if args.command == "risk":
-            result = assess(root, args.base, args.worktree, expectations, args.rules)
+            result = assess(root, args.base, args.worktree, expectations, args.rules, head=args.head)
             write(run_dir / "risk.json", result)
             separate = ", ".join(f"{e['area']}:{e['signal'].split(':', 1)[0]}" for e in result["separateTests"]) or "none"
             print(f"Gate: {result['gate']}; audit: {result['audit']}; signals: {', '.join(s['rule'] for s in result['signals']) or 'none'}; separateTests: {separate}")

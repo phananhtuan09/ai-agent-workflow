@@ -22,6 +22,9 @@ When an output path is supplied, write only the requested review artifact.
 Prefer the target and base supplied by the user.
 A review target may be a PR URL or number, refs, a commit range, the current branch relative to its merge base, or a staged, unstaged, or working-tree diff.
 
+For a PR or a pushed branch, fetch the source and the target from the remote and review the fetched commits by SHA (`git diff <merge base>...<head SHA>`, `git show <head SHA>:<path>`), never a local branch that may be stale or a checkout that someone may be editing; when `runtime-e2e-test` is installed, `scripts/evidence.py refs --source <branch or pull/<n>/head> --into <target>` prints both SHAs.
+Review the working tree only for a change that is not on the remote yet, and say so.
+
 If no target is supplied, infer the most reasonable local change set and state the inference.
 Ask one focused question only when multiple materially different change sets remain plausible after inspection.
 Use `Không thể đánh giá` only when no reliable change set can be determined or inspected.

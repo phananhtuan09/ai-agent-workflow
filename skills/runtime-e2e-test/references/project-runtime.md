@@ -115,9 +115,10 @@ Tests must emit structured checkpoint observations, not screenshot-only proof.
 ## Base instance
 
 Used when a suite declares `base` to prove that new-behavior tests can fail.
-`setup` replaces this section with the proven recipe as a JSON block, which suites copy into `instance`.
+`setup` replaces this section with the proven recipe as a JSON block, which suites read with `"instance": "project-runtime"`.
 
 - Base instance: `<READY, or BLOCKED — <ref>: <step>: <reason>; written by setup>`
+- Resources: `<shared or isolated, the human's choice at setup>`
 - Proven refs: `<refs served beside the main stack>`
 - Shares with the main stack: `<database, queues, external storage, or nothing>`
 
