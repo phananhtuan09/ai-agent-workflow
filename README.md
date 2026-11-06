@@ -134,7 +134,7 @@ See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for s
 
 `plan` mode writes a Markdown plan plus mapped Playwright tests for human approval; `run` mode executes approved scripts against real web or HTTP API boundaries.
 Versioned evidence bundles keep inputs, results, observations, traces, retries, and cleanup for independent audit.
-After installation, complete `<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md` with the project's service commands, readiness checks, fixtures, and safety limits, without secret values. Adjust `references/blind-spots.md`, the edge-case catalog every plan walks, to the project; an edited copy is kept on update.
+After installation, run `/runtime-e2e-test setup`: it starts the app, waits for it to be ready, runs one sample test, serves another ref beside it on its own ports, and writes only the proven commands into `<runtime-skill-root>/runtime-e2e-test/references/project-runtime.md`; then review the rest of that file (fixtures, safety limits), without secret values. Adjust `references/blind-spots.md`, the edge-case catalog every plan walks, to the project; an edited copy is kept on update.
 
 ### Validate change
 
@@ -161,7 +161,7 @@ The `security-performance` bundle installs `security-performance-check` alone; t
 Type `/security-performance-check [security | performance | both] [PR | branch | diff | area]` for a standalone run.
 It ships security and performance tracks: security probes plus base/head metrics from `references/performance-signals.md` (exact counts and noisy timings with an A/A noise floor).
 It never modifies application code, probes only allowed local/dev hosts, and writes a Vietnamese report plus one JSON file per exploited finding.
-After installation, complete the "Security and performance probes" fields in `runtime-e2e-test/references/project-runtime.md`, and adjust `references/security-signals.md` and `references/performance-signals.md` for the project; edited signal files are kept on update.
+After installation, run `/runtime-e2e-test setup`, then complete the "Security and performance probes" fields in `runtime-e2e-test/references/project-runtime.md`, and adjust `references/security-signals.md` and `references/performance-signals.md` for the project; edited signal files are kept on update.
 It is experimental. Claude Code keeps it manual with `disable-model-invocation` and Codex with `allow_implicit_invocation: false`.
 
 See the [decision record](docs/decisions/2026-10-30-security-performance-check.md) for scope.

@@ -79,6 +79,10 @@ When the skill is not installed, `separateTests` in `risk.json` is empty and det
 The risk step writes each command without the target label; the report step appends that label when copying into `run.json`.
 A `risk.json` written before this signal detection existed has no `separateTests` key: with the skill installed, `report`/`evaluate` treats that as stale and requires re-running `risk`.
 
+Before the gate, read `Status` and `Base instance` in `runtime-e2e-test/references/project-runtime.md`.
+When `Status` is not `READY`, say so in the gate message (or in chat when no gate is needed) and suggest `/runtime-e2e-test setup`; never rediscover the runtime silently.
+When `Base instance` is `BLOCKED` or missing, the gate message also states that no runtime case can prove it fails, so every `new-behavior` case will report `Can-fail: NOT_PROVEN`, with the recorded reason.
+
 - Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists K1..Kn, the conflicts, the assumptions, and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
   - Edited: apply the edits; an item the human adds is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.

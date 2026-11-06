@@ -20,6 +20,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import impact  # noqa: E402
+import instance  # noqa: E402
 
 KINDS = {"browser", "api", "pr-test", "sweep"}
 CLASSIFICATIONS = {"new-behavior", "invariant"}
@@ -78,12 +79,16 @@ def contract(suite, root):
     if any(x.startswith(("--output", "--reporter")) for x in command):
         raise ValueError("Runner owns --output and --reporter")
     command_dir(root, data)
+    if "instance" in data:
+        instance.validate(data["instance"])
     base = data.get("base")
     if base is not None:
         if not isinstance(base, dict) or not isinstance(base.get("revision"), str) or not base["revision"].strip():
             raise ValueError("base needs a revision")
-        env = base.get("env")
-        if not isinstance(env, dict) or not env or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
+        env = base.get("env", {})
+        # A proven instance recipe gives the base its own ports; without one, base env must.
+        own_ports = bool((data.get("instance") or {}).get("ports"))
+        if not isinstance(env, dict) or not (env or own_ports) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
             raise ValueError("base env must give the base instance its own ports and data")
         for step in base.get("setup", []):
             if not isinstance(step, list) or not step or any(not isinstance(x, str) or not x for x in step):
@@ -97,7 +102,7 @@ def contract(suite, root):
         env = det.get("env", {})
         if not isinstance(env, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
             raise ValueError("determinism env must map names to string values")
-        if base is not None and set(env) & set(base["env"]):
+        if base is not None and set(env) & set(base.get("env", {})):
             raise ValueError("base env must not override determinism env")
         rules = det.get("normalize", [])
         if not isinstance(rules, list) or any(not isinstance(r, dict) or set(r) != {"pattern", "replacement"} or not isinstance(r["pattern"], str) or not r["pattern"] or not isinstance(r["replacement"], str) for r in rules):
@@ -731,6 +736,8 @@ def base_status(bundle, suite):
     if not degraded and errors:
         degraded = "Base run reported global errors: " + str(errors[0].get("message", errors[0]))[:300]
     status = {"revision": manifest["revision"], "gitHead": manifest.get("gitHead", ""), "exitCode": manifest.get("exitCode"), "nativeErrors": errors, "degraded": degraded}
+    if "instance" in manifest:
+        status["instance"] = manifest["instance"]
     return status, rows
 
 
@@ -791,6 +798,8 @@ def score(bundle):
         result["mode"] = {"name": suite["mode"], "reason": suite["modeReason"], "approved": suite["mode"] == "durable"}
     if "environmentCheck" in manifest:
         result["environment"] = manifest["environmentCheck"]
+    if "instance" in manifest:
+        result["headInstance"] = manifest["instance"]
     if suite.get("blindSpots") is not None:
         result["blindSpots"] = blind_spots_status(suite, head)
     return result
@@ -829,6 +838,10 @@ def summary(result):
     else:
         lines.append(f"Base revision: {base['revision']} ({base['gitHead'] or 'unresolved'})")
         lines.append(f"Base run: {'DEGRADED: ' + base['degraded'] if base['degraded'] else 'completed'}")
+    for label, served in (("Base", (base or {}).get("instance")), ("Head", result.get("headInstance"))):
+        if served:
+            state = served.get("error") or "ready on " + ", ".join(f"{k}={v}" for k, v in served["ports"].items())
+            lines.append(f"{label} instance: {state}; ports {'released' if served.get('portsReleased') else 'still held: ' + ', '.join(served.get('portsHeld', []))}")
     det = result["determinism"]
     if det is None:
         lines.append("Determinism: not declared; time, seed data, randomness, and IDs are uncontrolled")
@@ -999,6 +1012,20 @@ def execute(run, cwd, command, extra_env, manifest):
     write(native_path, normalize(run, load(native_path), cwd))
 
 
+def serve(run, tree, recipe, env, fixed, manifest, label):
+    """Start one instance from the suite's proven recipe; returns the handle, or False after recording why it did not become ready."""
+    handle = instance.Instance(recipe, local(tree, recipe.get("cwd", ".")), env, run / "instance.log")
+    reason = handle.start(fixed)
+    manifest["instance"] = {"label": label, "log": "instance.log", **handle.record}
+    if reason:
+        manifest["instance"]["error"] = reason
+        manifest["instance"].update(handle.stop())
+        if label == "base":
+            manifest["degraded"] = f"Base instance not ready: {reason}; see base/instance.log"
+        return False
+    return handle
+
+
 def run_base(bundle, root, data, run_id):
     """Run the approved tests against the base revision in a separate worktree."""
     run = bundle / "base"
@@ -1026,11 +1053,14 @@ def run_base(bundle, root, data, run_id):
             dest = local(tree, name)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(local(bundle / "inputs", name).read_bytes())
+        recipe = data.get("instance")
+        served = instance.instance_env(recipe, tree, fresh=True) if recipe else {}
+        env = {**fixed, **base.get("env", {}), **served}
         with (run / "setup.log").open("w", encoding="utf-8") as log:
-            for step in base.get("setup", []):
+            for step in base.get("setup", []) + (recipe or {}).get("setup", []):
                 try:
                     # Setup steps are human-approved argument arrays (hashed with the suite) and run without a shell.
-                    done = subprocess.run(step, cwd=tree, env={**os.environ, **fixed, **base["env"]}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+                    done = subprocess.run(step, cwd=tree, env={**os.environ, **env}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
                     code, output = done.returncode, done.stdout + done.stderr
                 except subprocess.TimeoutExpired:
                     code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
@@ -1041,13 +1071,18 @@ def run_base(bundle, root, data, run_id):
                 if code:
                     manifest["degraded"] = f"Base setup {step} exited {code}; see base/setup.log"
                     return
+        served_instance = serve(run, tree, recipe, served, fixed, manifest, "base") if recipe else None
         try:
-            # The approved head snapshot above already created cwd when it holds a listed file.
-            execute(run, local(tree, data.get("cwd", ".")), data["command"], {**fixed, **base["env"], "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
+            if served_instance is not False:
+                # The approved head snapshot above already created cwd when it holds a listed file.
+                execute(run, local(tree, data.get("cwd", ".")), data["command"], {**env, "RUNTIME_E2E_RUN_ID": run_id + "-base"}, manifest)
         except ValueError as error:
             manifest["degraded"] = f"Base native report unusable: {error}"[:300]
+        finally:
+            if served_instance:
+                manifest["instance"].update(served_instance.stop())
         restore_base(tree, [name for name in data["files"] if name not in base.get("keep", [])])
-        manifest["existing"] = {e["id"]: run_existing(run, tree, e, base["env"], "base") for e in (data.get("existing") or {}).get("suites", [])}
+        manifest["existing"] = {e["id"]: run_existing(run, tree, e, {**base.get("env", {}), **served}, "base") for e in (data.get("existing") or {}).get("suites", [])}
     finally:
         removed = subprocess.run(["git", "worktree", "remove", "--force", str(tree)], cwd=root, capture_output=True, text=True)
         shutil.rmtree(tree, ignore_errors=True)
@@ -1119,6 +1154,9 @@ def main():
     approval_path = suite.with_name(suite.name + ".approval.json")
     if args.mode == "validate":
         print("Suite and Markdown contract valid")
+        if data.get("base") is None and any(c.get("classification") == "new-behavior" for c in data["cases"]):
+            # Plan-time view, so the human hears it before any case runs rather than in the final report.
+            print("No base instance: no case can prove it fails; every new-behavior case will report Can-fail: NOT_PROVEN")
         if data.get("notCovered"):
             # Plan-time view, so the human hears about each gap before any case runs.
             print("Expectations without a case: " + "; ".join(f"{e['k']} ({e['reason']})" for e in data["notCovered"]))
@@ -1162,7 +1200,16 @@ def main():
     manifest = {"runId": run_id, "suite": str(suite.relative_to(root)), "projectRoot": str(root), "environment": data["environment"], "revision": data["revision"], "gitHead": git.stdout.strip(), "gitStatus": dirty.stdout,
                 "environmentCheck": {**checked, "confirmed": bool(args.confirm_environment and checked["strong"])}}
     fixed = (data.get("determinism") or {}).get("env", {})
-    execute(bundle, command_dir(root, data), data["command"], {**fixed, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
+    recipe = data.get("instance")
+    served = instance.instance_env(recipe, root, fresh=True) if recipe and recipe.get("head") else {}
+    handle = serve(bundle, root, recipe, served, fixed, manifest, "head") if recipe and recipe.get("head") else None
+    try:
+        # A head instance that never became ready still runs the tests: they fail, and the manifest says why.
+        execute(bundle, command_dir(root, data), data["command"], {**fixed, **served, "RUNTIME_E2E_RUN_ID": run_id}, manifest)
+    finally:
+        if handle:
+            manifest["instance"].update(handle.stop())
+            write(bundle / "run-manifest.json", manifest)
     entries = (data.get("existing") or {}).get("suites", [])
     manifest["existing"] = {e["id"]: {"head": run_existing(bundle, root, e, {}, "head")} for e in entries}
     write(bundle / "run-manifest.json", manifest)

@@ -147,12 +147,26 @@ A check with no `actual` value is reported by name as unmeasured: the case is a 
 `base` is optional.
 When present, `run` creates a detached worktree at `base.revision`, copies the approved `files` from the snapshot over it except those named in `keep`, runs each `setup` step there, then runs the same `command` with `base.env` added.
 The tests therefore come from head and only the application comes from base; keep application code out of `files`, and list in `keep` any dependency manifest or lockfile that must stay at its base version.
-`base.env` is required and must give the base instance its own ports and data so the two instances share no mutable state; setup steps and the test command both receive it.
+`base.env` must give the base instance its own ports and data so the two instances share no mutable state; setup steps and the test command both receive it.
+It may be left out when the suite declares an `instance` with `ports`.
 Setup must reproduce what the head run relies on (dependencies, seed data, fixtures) so a base failure reflects the behavior rather than a missing prerequisite.
 The rest of the environment is inherited as for the head run, so every shared or stateful endpoint the app reads must be overridden there.
 `base.env` values are snapshotted into the bundle: use non-secret values only.
 Setup steps run with a 30-minute timeout and log both output streams to `base/setup.log`.
 The worktree is removed after the run and the outcome is recorded as `worktreeCleanup` in `base/run-manifest.json`.
+
+## Served instance
+
+`instance` is optional; copy it verbatim from the JSON block under `## Base instance` in the project runtime reference, which `scripts/setup.py fill` writes from a proven setup run.
+With it, `run` serves the base app itself instead of relying on the test command to start one:
+
+- it gives every variable in `ports` a fresh free port and fills `{NAME}` and `{tree}` placeholders in `env`;
+- it runs `base.setup` and then the recipe's `setup` in the base worktree, starts `start` there, and waits up to `timeout` seconds for `ready` (`{"url": ...}` answering below 500, or `{"log": <regex>}` in its log);
+- it runs the tests with the instance's ports, then runs `stop` (or terminates the start process group) and records in `base/run-manifest.json` whether the ports were released;
+- a start that exits or never signals ready degrades the base run with that reason and the log in `base/instance.log`.
+
+With `"head": true`, the head run is served the same way from the project root on its own fresh ports, recorded in `run-manifest.json` and `instance.log`; otherwise head uses the stack that is already running.
+`shares` names what the instance shares with the main stack (database, queues, storage); keep the run marker and lock rules from the reference's `## Parallel execution` for each of them.
 
 ## Determinism
 

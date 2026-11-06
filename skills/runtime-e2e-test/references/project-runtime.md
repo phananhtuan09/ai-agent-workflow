@@ -1,15 +1,16 @@
 # Project Runtime E2E Reference
 
-This file is a project-local operational reference. Complete it after installing the
-skill, keep commands and paths current, and never store secret values here.
+This file is a project-local operational reference.
+Run `/runtime-e2e-test setup` after installing the skill: it proves the runtime and fills the proven fields, then review the rest.
+Keep commands and paths current, and never store secret values here.
 
 - Status: UNCONFIGURED
 - Maintainer: —
 - Last verified: —
 - Applies to: —
 
-Use `Status: READY` only after the preflight commands and environment assumptions
-below have been verified in this project.
+`Status` is `UNCONFIGURED`, `READY` (setup proved the main stack from executed evidence), or `BLOCKED — <step>: <reason>`.
+Never set `READY` by hand for a command that was not executed.
 
 ## Runtime topology
 
@@ -114,10 +115,11 @@ Tests must emit structured checkpoint observations, not screenshot-only proof.
 ## Base instance
 
 Used when a suite declares `base` to prove that new-behavior tests can fail.
+`setup` replaces this section with the proven recipe as a JSON block, which suites copy into `instance`.
 
-- Base environment: `<variable names and values that give the base instance its own ports and data, e.g. WEB_PORT, DATA_DIR>`
-- Base setup: `<argument arrays run in the base worktree, e.g. dependency install, or NONE>`
-- Base start limitations: `<revisions that cannot start, missing migrations, or NONE>`
+- Base instance: `<READY, or BLOCKED — <ref>: <step>: <reason>; written by setup>`
+- Proven refs: `<refs served beside the main stack>`
+- Shares with the main stack: `<database, queues, external storage, or nothing>`
 
 ## Existing test suites
 

@@ -2,7 +2,7 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 
 const { SOURCE_ROOT } = require("../lib/config");
 const { resolveSkills } = require("../lib/skills");
@@ -1701,6 +1701,306 @@ test("runtime E2E labels cases without a usable base as not proven", () => {
     assert.strictEqual(missing.status, 0, missing.stderr || missing.stdout);
     assert.ok(missing.results.base.degraded.includes("cannot be resolved"));
     assert.strictEqual(fixture.audit(missing.out).status, 0);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+const SAMPLE_APP = `import http.server, os, pathlib, sys
+# Sample project: loads .env like a dotenv app, needs APP_KEY, serves app.txt on WEB_PORT.
+env = pathlib.Path(".env")
+if env.exists():
+    for line in env.read_text().splitlines():
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+if not os.environ.get("APP_KEY"):
+    print("APP_KEY missing", flush=True)
+    sys.exit(4)
+print("booting with APP_KEY=" + os.environ["APP_KEY"], flush=True)
+label = pathlib.Path("app.txt").read_text().strip()
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(label.encode() if self.path == "/label" else b"ok")
+    def log_message(self, *args):
+        pass
+server = http.server.HTTPServer(("127.0.0.1", int(os.environ["WEB_PORT"])), Handler)
+print("listening", flush=True)
+server.serve_forever()
+`;
+
+const HTTP_RUNNER = `import base64, json, os, sys, urllib.request
+from pathlib import Path
+# Stand-in for Playwright Test that reads the label over HTTP from the instance on WEB_PORT.
+try:
+    app = urllib.request.urlopen(f"http://127.0.0.1:{os.environ['WEB_PORT']}/label", timeout=5).read().decode()
+except Exception as error:
+    app = f"unreachable: {error}"
+specs = []
+for item in json.loads(Path(sys.argv[1]).read_text()):
+    passed = item["expect"] == app or (item["expect"] == "*" and not app.startswith("unreachable"))
+    observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED",
+                "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": item["expect"] if passed else app}]}
+    attachments = [{"name": "runtime-observations", "contentType": "application/json", "body": base64.b64encode(json.dumps(observed).encode()).decode()}]
+    specs.append({"title": item["title"], "file": "case.spec.ts", "tests": [{"expectedStatus": "passed", "results": [
+        {"status": "passed" if passed else "failed", "attachments": attachments, **({} if passed else {"error": {"message": app}})}]}]})
+Path(os.environ["PLAYWRIGHT_JSON_OUTPUT_NAME"]).write_text(json.dumps({"suites": [{"title": "", "specs": specs}], "errors": []}))
+sys.exit(0 if all(s["tests"][0]["results"][0]["status"] == "passed" for s in specs) else 1)
+`;
+
+const SECRET = "supersecretvalue123";
+
+function createSetupFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-setup-"));
+  const git = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  git("init", "-q");
+  git("config", "user.email", "test@example.com");
+  git("config", "user.name", "Test");
+  fs.writeFileSync(path.join(root, ".gitignore"), ".env\n.runtime-e2e/\n");
+  fs.writeFileSync(path.join(root, "app.py"), SAMPLE_APP);
+  fs.writeFileSync(path.join(root, "app.txt"), "old\n");
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ scripts: { dev: "python3 app.py", test: "python3 -m unittest" } }, null, 2));
+  git("add", ".");
+  git("commit", "-qm", "base");
+  const base = git("rev-parse", "HEAD");
+  fs.writeFileSync(path.join(root, "app.txt"), "new\n");
+  git("commit", "-qam", "head");
+  // The human's local env file: never committed, so a worktree of another ref does not have it.
+  fs.writeFileSync(path.join(root, ".env"), `APP_KEY=${SECRET}\n`);
+  const port = spawnSync("python3", ["-c", "import socket; s = socket.socket(); s.bind(('127.0.0.1', 0)); print(s.getsockname()[1])"], { encoding: "utf8" }).stdout.trim();
+  const recipe = {
+    name: "web",
+    start: ["python3", "app.py"],
+    ready: { url: "http://127.0.0.1:{WEB_PORT}/health" },
+    ports: { WEB_PORT: port },
+    timeout: 20,
+    shares: [],
+    sample: ["python3", "-c", "import os, sys, urllib.request; sys.exit(urllib.request.urlopen('http://127.0.0.1:%s/label' % os.environ['WEB_PORT']).status != 200)"],
+    requires: { env: ["APP_KEY"] },
+    sources: { start: "package.json:3" },
+  };
+  const recipePath = path.join(root, ".runtime-e2e/recipe.json");
+  fs.mkdirSync(path.dirname(recipePath), { recursive: true });
+  fs.writeFileSync(recipePath, JSON.stringify(recipe, null, 2));
+  const reference = path.join(root, ".runtime-e2e/project-runtime.md");
+  fs.copyFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/project-runtime.md"), reference);
+  const setupTool = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/setup.py");
+  const env = { ...process.env };
+  delete env.APP_KEY;
+  let stack = null;
+  return {
+    root,
+    base,
+    port,
+    recipe,
+    recipePath,
+    reference,
+    setup(args, extraEnv = {}) {
+      return spawnSync("python3", [setupTool, ...args], { cwd: root, env: { ...env, ...extraEnv }, encoding: "utf8" });
+    },
+    prove(name, extra = [], extraEnv = {}) {
+      const out = path.join(root, ".runtime-e2e/setup", name);
+      const result = this.setup(["prove", recipePath, "--out", out, "--root", root, ...extra], extraEnv);
+      const evidence = JSON.parse(fs.readFileSync(path.join(out, "setup-evidence.json"), "utf8"));
+      return { ...result, out, evidence };
+    },
+    startStack() {
+      stack = spawn("python3", ["app.py"], { cwd: root, env: { ...env, WEB_PORT: port }, detached: true, stdio: "ignore" });
+      const ready = spawnSync("python3", ["-c", `import time, urllib.request
+for _ in range(100):
+    try:
+        urllib.request.urlopen('http://127.0.0.1:${port}/health'); break
+    except Exception:
+        time.sleep(0.1)
+else:
+    raise SystemExit(1)`]);
+      assert.strictEqual(ready.status, 0, "the main stack did not start");
+    },
+    stackUp() {
+      return spawnSync("python3", ["-c", `import socket; s = socket.socket(); raise SystemExit(s.connect_ex(('127.0.0.1', ${port})))`]).status === 0;
+    },
+    cleanup() {
+      if (stack) process.kill(-stack.pid, "SIGTERM");
+      fs.rmSync(root, { recursive: true, force: true });
+    },
+  };
+}
+
+// Every file under dir, as text, to check that a secret value never reached evidence or the reference.
+function allText(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? allText(full) : fs.readFileSync(full, "utf8");
+  }).join("\n");
+}
+
+test("runtime E2E setup detects candidates with sources and reads env files for names only", () => {
+  const fixture = createSetupFixture();
+  try {
+    const detected = fixture.setup(["detect", "--root", fixture.root]);
+    assert.strictEqual(detected.status, 0, detected.stderr);
+    const candidates = JSON.parse(detected.stdout).candidates;
+    assert.ok(candidates.some((c) => c.field === "start" && c.value.startsWith("npm run dev") && c.source === "package.json:3"), detected.stdout);
+    assert.ok(candidates.some((c) => c.field === "test" && c.source === "package.json:4"), detected.stdout);
+    assert.ok(candidates.some((c) => c.field === "env" && c.value === "APP_KEY" && c.source === ".env:1"), detected.stdout);
+    assert.ok(!detected.stdout.includes(SECRET));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup proves the main stack and a parallel instance, then fills the reference", () => {
+  const fixture = createSetupFixture();
+  try {
+    // Nothing running: setup starts the app, waits for ready, runs the sample, stops it, and the port is released.
+    const cold = fixture.prove("main-cold");
+    assert.strictEqual(cold.status, 0, cold.stdout + cold.stderr);
+    assert.strictEqual(cold.evidence.status, "READY");
+    assert.deepStrictEqual(cold.evidence.steps.map((s) => [s.step, s.exitCode ?? null]), [["start", null], ["sample", 0], ["stop", null]]);
+    assert.strictEqual(cold.evidence.steps[2].portsReleased, true);
+    assert.ok(!fixture.stackUp());
+
+    // The human's stack is up: setup proves against it and never stops it.
+    fixture.startStack();
+    const warm = fixture.prove("main-warm");
+    assert.strictEqual(warm.evidence.status, "READY", warm.stdout);
+    assert.ok(warm.evidence.steps[0].skipped.includes("already running"));
+    assert.ok(fixture.stackUp());
+
+    // A worktree of the base ref lacks the untracked .env: BLOCKED on the missing key, by name.
+    const blocked = fixture.prove("base-no-key", ["--ref", fixture.base]);
+    assert.strictEqual(blocked.status, 1);
+    assert.strictEqual(blocked.evidence.failedStep, "prerequisites");
+    assert.ok(blocked.evidence.reason.includes("missing variables: APP_KEY"));
+    assert.strictEqual(blocked.evidence.worktreeCleanup, "COMPLETE");
+
+    // With the key provided, the base ref serves beside the running stack on its own port.
+    const parallel = fixture.prove("base", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(parallel.evidence.status, "READY", parallel.stdout + JSON.stringify(parallel.evidence));
+    assert.notStrictEqual(parallel.evidence.ports.WEB_PORT, fixture.port);
+    assert.strictEqual(parallel.evidence.mainStackUntouched, true);
+    assert.strictEqual(parallel.evidence.steps.find((s) => s.step === "stop").portsReleased, true);
+    assert.ok(fixture.stackUp());
+
+    const fill = (...dirs) => fixture.setup(["fill", fixture.reference, "--main", warm.out, ...dirs.flatMap((d) => ["--parallel", d])]);
+    let filled = fill(blocked.out);
+    assert.strictEqual(filled.status, 0, filled.stderr);
+    let text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Status: READY"));
+    assert.ok(text.includes("- Base instance: BLOCKED — " + fixture.base + ": prerequisites: missing variables: APP_KEY"), text);
+
+    filled = fill(parallel.out);
+    text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Base instance: READY"), text);
+    assert.ok(text.includes("| `web` | `.` | `python3 app.py` |"));
+    assert.ok(text.includes("- Required variable names: `APP_KEY`"));
+    const recipe = JSON.parse(text.match(/## Base instance[\s\S]*?```json\n([\s\S]*?)\n```/)[1]);
+    assert.deepStrictEqual(recipe.start, fixture.recipe.start);
+    assert.ok(!("sample" in recipe));
+    assert.ok(/- Last verified: \d{4}-\d{2}-\d{2}/.test(text));
+
+    // Re-running setup on an unchanged project changes nothing, even with a new evidence directory.
+    const again = fixture.prove("main-again");
+    const before = fs.readFileSync(fixture.reference, "utf8");
+    filled = fixture.setup(["fill", fixture.reference, "--main", again.out, "--parallel", parallel.out]);
+    assert.ok(filled.stdout.includes("unchanged"), filled.stdout);
+    assert.strictEqual(fs.readFileSync(fixture.reference, "utf8"), before);
+
+    // No secret value anywhere: logs, evidence, or the reference.
+    const leaked = allText(path.join(fixture.root, ".runtime-e2e"));
+    assert.ok(!leaked.includes(SECRET), leaked.split("\n").filter((line) => line.includes(SECRET)).join("\n"));
+    assert.ok(fs.readFileSync(path.join(cold.out, "start.log"), "utf8").includes("APP_KEY=[REDACTED]"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup marks a failed main stack BLOCKED and leaves unproven fields as placeholders", () => {
+  const fixture = createSetupFixture();
+  try {
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, start: ["python3", "-c", "import sys; sys.exit(3)"] }));
+    const failed = fixture.prove("main-fails");
+    assert.strictEqual(failed.status, 1);
+    assert.strictEqual(failed.evidence.failedStep, "start");
+    const filled = fixture.setup(["fill", fixture.reference, "--main", failed.out]);
+    assert.strictEqual(filled.status, 0, filled.stderr);
+    const text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Status: BLOCKED — start: start exited 3 before the ready signal"), text);
+    assert.ok(text.includes("| `<web>` | `<path>` | `<command>` |"));
+    assert.ok(!text.includes("python3 -c"));
+
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, stop: ["npm", "run", "db:reset"] }));
+    const refused = fixture.setup(["prove", fixture.recipePath, "--out", path.join(fixture.root, ".runtime-e2e/x")]);
+    assert.strictEqual(refused.status, 2);
+    assert.ok(refused.stderr.includes("destructive-looking"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E serves base and head from the setup recipe and proves a case can fail", () => {
+  const fixture = createSetupFixture();
+  try {
+    fs.mkdirSync(path.join(fixture.root, "tests"));
+    fs.writeFileSync(path.join(fixture.root, "tests/runner.py"), HTTP_RUNNER);
+    fs.writeFileSync(path.join(fixture.root, "tests/cases.json"), JSON.stringify([
+      { title: "[E2E-01] shows the new label", expect: "new" },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+    ]));
+    fs.mkdirSync(path.join(fixture.root, "docs/testing/active"), { recursive: true });
+    fs.writeFileSync(path.join(fixture.root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02"]));
+    const { sample, requires, sources, ...recipe } = fixture.recipe;
+    const check = { id: "label", expected: "label", source: "fresh API read" };
+    const suite = {
+      plan: "docs/testing/active/label.md",
+      files: ["tests/runner.py", "tests/cases.json"],
+      command: ["python3", "tests/runner.py", "tests/cases.json"],
+      environment: "isolated-local",
+      revision: "head",
+      instance: { ...recipe, head: true },
+      base: { revision: fixture.base },
+      existing: { suites: [], reason: "The fixture project has no test suite of its own" },
+      blindSpots: blindSpotItems().map((item) => ({ item, skipped: "The fixture has no form, state, or layout" })),
+      cases: [
+        { id: "E2E-01", kind: "api", classification: "new-behavior", checks: [check] },
+        { id: "E2E-02", kind: "api", classification: "invariant", checks: [check] },
+      ],
+    };
+    const suitePath = path.join(fixture.root, "docs/testing/active/label.suite.json");
+    const evidence = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
+    const tool = (data, args, extraEnv = {}) => {
+      fs.writeFileSync(suitePath, JSON.stringify(data, null, 2));
+      const env = { ...process.env, ...extraEnv };
+      delete env.APP_KEY;
+      return spawnSync("python3", [evidence, args[0], suitePath, ...args.slice(1), "--root", fixture.root], { cwd: fixture.root, env: { ...env, ...extraEnv }, encoding: "utf8" });
+    };
+
+    const noBase = tool({ ...suite, base: undefined, instance: undefined }, ["validate"]);
+    assert.strictEqual(noBase.status, 0, noBase.stderr);
+    assert.ok(noBase.stdout.includes("No base instance: no case can prove it fails"), noBase.stdout);
+
+    assert.strictEqual(tool(suite, ["approve", "--reviewer", "owner"]).status, 0);
+    const out = path.join(fixture.root, ".runtime-e2e/served");
+    const run = tool(suite, ["run", "--out", out], { APP_KEY: SECRET });
+    assert.strictEqual(run.status, 0, run.stdout + run.stderr);
+    const results = JSON.parse(fs.readFileSync(path.join(out, "results.json"), "utf8"));
+    assert.deepStrictEqual(proofs(results), { "E2E-01": "PROVEN", "E2E-02": "NOT_REQUIRED" });
+    assert.strictEqual(results.base.instance.portsReleased, true);
+    assert.strictEqual(results.headInstance.portsReleased, true);
+    assert.notStrictEqual(results.base.instance.ports.WEB_PORT, results.headInstance.ports.WEB_PORT);
+    assert.ok(fs.readFileSync(path.join(out, "summary.md"), "utf8").includes("Base instance: ready on WEB_PORT="));
+
+    // Without the key the base instance never becomes ready: degraded with the reason, not proven.
+    const out2 = path.join(fixture.root, ".runtime-e2e/served-no-key");
+    tool(suite, ["run", "--out", out2]);
+    const degraded = JSON.parse(fs.readFileSync(path.join(out2, "results.json"), "utf8"));
+    assert.ok(degraded.base.degraded.startsWith("Base instance not ready: start exited 4"), degraded.base.degraded);
+    assert.strictEqual(proofs(degraded)["E2E-01"], "NOT_PROVEN");
   } finally {
     fixture.cleanup();
   }
