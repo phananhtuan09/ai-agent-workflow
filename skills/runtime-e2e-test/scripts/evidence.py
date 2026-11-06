@@ -1059,6 +1059,8 @@ def serve(run, tree, recipe, env, fixed, manifest, label):
 
 def run_setup(steps, tree, env, log_path, records):
     """Run setup steps in a worktree; returns the first failing (step, exit code), or None."""
+    # Kept logs are evidence: a step that echoes config must not leave a credential in the bundle.
+    secrets = sorted(set(instance.secret_values(tree)) | {v for k, v in env.items() if instance.SECRET_NAMES.search(k) and len(v) >= 4}, key=len, reverse=True)
     with log_path.open("w", encoding="utf-8") as log:
         for step in steps:
             try:
@@ -1069,7 +1071,7 @@ def run_setup(steps, tree, env, log_path, records):
                 code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
             except OSError as error:
                 code, output = 127, str(error)
-            log.write(f"$ {step}\n{output}\n[exit {code}]\n")
+            log.write(f"$ {step}\n{instance.redact(output, secrets)}\n[exit {code}]\n")
             records.append({"command": step, "exitCode": code})
             if code:
                 return step, code
@@ -1188,6 +1190,10 @@ def refs(root, source, into, remote, use_local):
         if done.returncode:
             raise ValueError(f"git {' '.join(args)} failed: {done.stderr.strip()[:300]}")
         return done.stdout.strip()
+
+    for value in (source, into, remote):
+        if value and value.startswith("-"):
+            raise ValueError(f"{value} is not a ref or remote name")
 
     def fetched(ref):
         git("fetch", "--quiet", remote, ref)

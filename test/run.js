@@ -1923,6 +1923,14 @@ test("runtime E2E setup proves the main stack and a parallel instance, then fill
     assert.ok(filled.stdout.includes("unchanged"), filled.stdout);
     assert.strictEqual(fs.readFileSync(fixture.reference, "utf8"), before);
 
+    // A later failed main stack also withdraws the base instance, so no suite runs on a recipe that no longer starts.
+    fixture.stopStack();
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, start: ["python3", "-c", "import sys; sys.exit(3)"] }));
+    const broken = fixture.prove("main-broken");
+    fixture.setup(["fill", fixture.reference, "--main", broken.out]);
+    text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Base instance: BLOCKED — main stack: start: start exited 3 before the ready signal"), text);
+
     // No secret value anywhere: logs, evidence, or the reference.
     const leaked = allText(path.join(fixture.root, ".runtime-e2e"));
     assert.ok(!leaked.includes(SECRET), leaked.split("\n").filter((line) => line.includes(SECRET)).join("\n"));
@@ -1950,6 +1958,23 @@ test("runtime E2E setup marks a failed main stack BLOCKED and leaves unproven fi
     const refused = fixture.setup(["prove", fixture.recipePath, "--out", path.join(fixture.root, ".runtime-e2e/x")]);
     assert.strictEqual(refused.status, 2);
     assert.ok(refused.stderr.includes("destructive-looking"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup recognizes a running stack whose ready signal is a log line", () => {
+  const fixture = createSetupFixture();
+  try {
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, ready: { log: "listening" } }));
+    fixture.startStack();
+    const warm = fixture.prove("main-warm-log");
+    assert.strictEqual(warm.evidence.status, "READY", warm.stdout + JSON.stringify(warm.evidence));
+    assert.ok(warm.evidence.steps[0].skipped.includes("already running"));
+    assert.ok(fixture.stackUp());
+    const parallel = fixture.prove("base-log", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(parallel.evidence.status, "READY", JSON.stringify(parallel.evidence));
+    assert.strictEqual(parallel.evidence.mainStackUntouched, true);
   } finally {
     fixture.cleanup();
   }
@@ -2016,6 +2041,9 @@ test("runtime E2E resolves refs from the remote and serves head and base from th
     assert.strictEqual(resolved.status, 0, resolved.stderr);
     const refs = JSON.parse(resolved.stdout);
     assert.deepStrictEqual(refs, { head: { revision: pushed, source: "origin/feature" }, base: { revision: fixture.base, source: "merge base with origin/main" } });
+    const option = tool(["refs", "--source=--upload-pack=touch", "--into", "main"]);
+    assert.strictEqual(option.status, 2);
+    assert.ok(option.stderr.includes("is not a ref or remote name"), option.stderr);
     const localRefs = JSON.parse(tool(["refs", "--local", "--into", "main"]).stdout);
     assert.deepStrictEqual(localRefs.head, { revision: head, source: "local HEAD (not on the remote)", uncommitted: true });
 
@@ -2094,7 +2122,8 @@ test("runtime E2E resolves refs from the remote and serves head and base from th
     assert.ok(fs.readFileSync(path.join(localRun.out, "head.patch"), "utf8").includes("+dirty"));
 
     // Shared resources: the local stack's port. Busy, the run stops before anything runs; free, both run on it in turn.
-    const sharedSuite = { ...suite, instance: { ...JSON.parse(proven.match(/```json\n([\s\S]*?)\n```/)[1]), resources: "shared", copy: [".env"] } };
+    // Its setup step prints the copied .env; the kept setup logs mask the value.
+    const sharedSuite = { ...suite, instance: { ...JSON.parse(proven.match(/```json\n([\s\S]*?)\n```/)[1]), resources: "shared", copy: [".env"], setup: [["python3", "-c", "print(open('.env').read())"]] } };
     cases("newest");
     fixture.startStack();
     fs.writeFileSync(suitePath, JSON.stringify(sharedSuite, null, 2));

@@ -144,6 +144,14 @@ def is_ready(recipe, env, log_path):
         return False
 
 
+def stack_up(recipe, env):
+    """Whether the human's local stack is up: its ready URL answers or, for a log signal (whose log is not ours to read), every port is open."""
+    if "url" in recipe["ready"]:
+        return is_ready(recipe, env, None)
+    ports = recipe.get("ports", {})
+    return bool(ports) and all(port_open(env[k]) for k in ports)
+
+
 class Instance:
     """One started instance; always call stop(), which records whether its ports were released."""
 

@@ -167,12 +167,12 @@ def prove(root, recipe_path, out, ref):
                 "recipeDigest": hashlib.sha256(recipe_path.read_bytes()).hexdigest(), "recipeContent": recipe, "startedAt": now(), "steps": []}
     secrets = instance.secret_values(root / recipe.get("cwd", "."))
     tree = None
-    main_ready_before = instance.is_ready(recipe, instance.instance_env(recipe, root, fresh=False), Path(os.devnull))
+    main_ready_before = instance.stack_up(recipe, instance.instance_env(recipe, root, fresh=False))
 
     def finish(status, step=None, reason=None):
         evidence.update(status=status, failedStep=step, reason=reason, finishedAt=now())
         if ref:
-            evidence["mainStackUntouched"] = instance.is_ready(recipe, instance.instance_env(recipe, root, fresh=False), Path(os.devnull)) == main_ready_before
+            evidence["mainStackUntouched"] = instance.stack_up(recipe, instance.instance_env(recipe, root, fresh=False)) == main_ready_before
         write(out / "setup-evidence.json", evidence)
         print(f"{evidence['kind']}: {status}" + (f" at {step}: {reason}" if step else "") + f"; evidence {out / 'setup-evidence.json'}")
         return 0 if status == "READY" else 1
@@ -281,7 +281,10 @@ def fill_reference(reference, main_dir, parallel_dirs):
     old = reference.read_text(encoding="utf-8")
     if main["status"] != "READY":
         # Unproven fields stay as they are; only the status and its reason change.
-        text = replace_line(old, "Status", f"BLOCKED — {main['failedStep']}: {main['reason']}")
+        blocked = f"BLOCKED — {main['failedStep']}: {main['reason']}"
+        text = replace_line(old, "Status", blocked)
+        # A base instance proven earlier is withdrawn too: evidence.py reads only this line.
+        text = replace_line(text, "Base instance", blocked.replace("BLOCKED — ", "BLOCKED — main stack: ", 1))
     else:
         text = replace_line(old, "Status", "READY")
         ready = next(iter(recipe["ready"].items()))
