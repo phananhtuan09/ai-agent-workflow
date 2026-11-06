@@ -1045,9 +1045,14 @@ def execute(run, cwd, command, extra_env, manifest):
 
 def serve(run, tree, recipe, env, fixed, manifest, label):
     """Start one instance from the suite's proven recipe; returns the handle, or False after recording why it did not become ready."""
-    handle = instance.Instance(recipe, local(tree, recipe.get("cwd", ".")), env, run / "instance.log")
+    cwd = local(tree, recipe.get("cwd", "."))
+    handle = instance.Instance(recipe, cwd, env, run / "instance.log")
     reason = handle.start(fixed)
     manifest["instance"] = {"label": label, "log": "instance.log", **handle.record}
+    if not reason and "identity" in recipe:
+        # A ready answer alone can come from an instance serving another checkout; prove this worktree's code answers.
+        reason = instance.check_identity(recipe, cwd, {**fixed, **env})
+        manifest["instance"]["identity"] = "MISMATCH" if reason else "MATCH"
     if reason:
         manifest["instance"]["error"] = reason
         manifest["instance"].update(handle.stop())
@@ -1329,6 +1334,10 @@ def main():
         if data["head"].get("uncommitted") and head_sha != local_head:
             raise ValueError("An uncommitted head is applied on top of the checkout's HEAD; its revision must be that commit")
     if recipe and recipe["resources"] == "shared" and (head_sha or data.get("base") is not None):
+        # Held until this process exits, across head and base, so no other run takes the local ports in between.
+        shared_lock = instance.lock_shared(root)  # noqa: F841
+        if shared_lock is None:
+            raise ValueError("Shared resources: " + instance.SHARED_LOCK_HELD)
         busy = instance.busy_ports(recipe, instance.instance_env(recipe, root))
         if busy:
             # Checked before anything runs, so the human hears it now rather than after a full run.

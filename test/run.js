@@ -1843,6 +1843,28 @@ else:
   };
 }
 
+// Another run holding the repository's shared-resources lock; returns a function that releases it.
+function holdSharedLock(root) {
+  const ready = path.join(root, ".git", "lock-held");
+  const holder = spawn("python3", ["-c", `import fcntl, pathlib, time
+handle = open(${JSON.stringify(path.join(root, ".git", "runtime-e2e-shared.lock"))}, "a")
+fcntl.flock(handle, fcntl.LOCK_EX)
+pathlib.Path(${JSON.stringify(ready)}).touch()
+time.sleep(120)`], { detached: true, stdio: "ignore" });
+  const wait = spawnSync("python3", ["-c", `import os, time
+for _ in range(100):
+    if os.path.exists(${JSON.stringify(ready)}):
+        break
+    time.sleep(0.1)
+else:
+    raise SystemExit(1)`]);
+  assert.strictEqual(wait.status, 0, "the lock holder did not start");
+  return () => {
+    process.kill(-holder.pid, "SIGKILL");
+    fs.rmSync(ready, { force: true });
+  };
+}
+
 // Every file under dir, as text, to check that a secret value never reached evidence or the reference.
 function allText(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
@@ -1997,6 +2019,42 @@ test("runtime E2E setup with shared resources reports a busy local port before a
     assert.strictEqual(shared.evidence.ports.WEB_PORT, fixture.port);
     assert.deepStrictEqual(shared.evidence.copied, { copied: [".env"], missing: [] });
     assert.ok(!allText(shared.out).includes(SECRET));
+    // Another run on the local ports: blocked at once, before any step.
+    const release = holdSharedLock(fixture.root);
+    try {
+      const locked = fixture.prove("shared-locked", ["--ref", fixture.base]);
+      assert.strictEqual(locked.evidence.failedStep, "lock", JSON.stringify(locked.evidence));
+      assert.deepStrictEqual(locked.evidence.steps, []);
+    } finally {
+      release();
+    }
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup proves a worktree instance serves the worktree's own code", () => {
+  const fixture = createSetupFixture();
+  try {
+    const write = (recipe) => fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, ...recipe }));
+    // A container start without an identity check is refused before anything runs.
+    write({ start: ["docker", "compose", "up", "-d"], stop: ["docker", "compose", "stop"] });
+    const container = fixture.setup(["prove", fixture.recipePath, "--out", path.join(fixture.root, ".runtime-e2e/setup/container"), "--root", fixture.root, "--ref", fixture.base]);
+    assert.strictEqual(container.status, 2);
+    assert.ok(container.stderr.includes("a container start needs identity"), container.stderr);
+    // The identity command reads the worktree's own file: the instance serves this worktree.
+    write({ identity: ["cat", ".runtime-e2e-identity"] });
+    const own = fixture.prove("identity-own", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(own.evidence.status, "READY", JSON.stringify(own.evidence));
+    assert.strictEqual(own.evidence.identity, "MATCH");
+    // An identity command that sees the main checkout, as a container mounting it would: BLOCKED, never READY.
+    fs.writeFileSync(path.join(fixture.root, ".runtime-e2e-identity"), "main checkout\n");
+    write({ identity: ["cat", path.join(fixture.root, ".runtime-e2e-identity")] });
+    const other = fixture.prove("identity-other", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(other.evidence.status, "BLOCKED");
+    assert.strictEqual(other.evidence.failedStep, "identity");
+    assert.strictEqual(other.evidence.identity, "MISMATCH");
+    assert.ok(!fixture.stackUp(), "the worktree instance was not stopped");
   } finally {
     fixture.cleanup();
   }
@@ -2124,7 +2182,7 @@ test("runtime E2E resolves refs from the remote and serves head and base from th
 
     // Shared resources: the local stack's port. Busy, the run stops before anything runs; free, both run on it in turn.
     // Its setup step prints the copied .env; the kept setup logs mask the value.
-    const sharedSuite = { ...suite, instance: { ...JSON.parse(proven.match(/```json\n([\s\S]*?)\n```/)[1]), resources: "shared", copy: [".env"], setup: [["python3", "-c", "print(open('.env').read())"]] } };
+    const sharedSuite = { ...suite, instance: { ...JSON.parse(proven.match(/```json\n([\s\S]*?)\n```/)[1]), resources: "shared", copy: [".env"], setup: [["python3", "-c", "print(open('.env').read())"]], identity: ["cat", ".runtime-e2e-identity"] } };
     cases("newest");
     fixture.startStack();
     fs.writeFileSync(suitePath, JSON.stringify(sharedSuite, null, 2));
@@ -2134,12 +2192,24 @@ test("runtime E2E resolves refs from the remote and serves head and base from th
     assert.ok(blocked.stderr.includes(`WEB_PORT=${fixture.port} is in use`), blocked.stderr);
     assert.ok(!fs.existsSync(path.join(root, ".runtime-e2e/shared-busy")));
     fixture.stopStack();
+    // Another run holds the local ports: stopped before anything runs.
+    const release = holdSharedLock(root);
+    try {
+      const locked = tool(["run", suitePath, "--out", path.join(root, ".runtime-e2e/shared-locked")]);
+      assert.strictEqual(locked.status, 2);
+      assert.ok(locked.stderr.includes("another run with shared resources"), locked.stderr);
+      assert.ok(!fs.existsSync(path.join(root, ".runtime-e2e/shared-locked")));
+    } finally {
+      release();
+    }
     // A variable the suite declares for base reaches the base app, not just its tests.
     const sharedRun = runSuite({ ...sharedSuite, base: { ...sharedSuite.base, env: { LABEL_SUFFIX: "-base" } } }, "shared");
     assert.strictEqual(sharedRun.status, 0, sharedRun.stdout + sharedRun.stderr);
     assert.strictEqual(proofs(sharedRun.results)["E2E-01"], "PROVEN");
     assert.strictEqual(sharedRun.results.headInstance.ports.WEB_PORT, fixture.port);
     assert.strictEqual(sharedRun.results.base.instance.ports.WEB_PORT, fixture.port);
+    assert.strictEqual(sharedRun.results.headInstance.identity, "MATCH");
+    assert.strictEqual(sharedRun.results.base.instance.identity, "MATCH");
     assert.ok(fs.readFileSync(path.join(sharedRun.out, "base/instance.log"), "utf8").includes("label suffix -base"));
     assert.ok(!allText(path.join(root, ".runtime-e2e")).includes(SECRET));
 

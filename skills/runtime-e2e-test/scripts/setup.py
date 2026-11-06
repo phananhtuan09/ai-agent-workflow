@@ -121,7 +121,7 @@ def load_recipe(path):
         host = re.match(r"https?://(\[[^\]]*\]|[^:/?#]*)", url)
         if not host or not LOCAL_HOSTS.fullmatch(host[1].lower()):
             raise ValueError(f"setup proves local targets only; refusing {url}")
-    for command in [recipe["start"], recipe.get("stop") or [], recipe["sample"], *recipe.get("setup", [])]:
+    for command in [recipe["start"], recipe.get("stop") or [], recipe.get("identity") or [], recipe["sample"], *recipe.get("setup", [])]:
         if DESTRUCTIVE.search(" ".join(command)):
             raise ValueError(f"refusing a destructive-looking command during setup: {command}")
     return recipe
@@ -196,6 +196,11 @@ def prove(root, recipe_path, out, ref):
         env = instance.instance_env(recipe, tree or root, fresh=bool(ref) and recipe["resources"] == "isolated")
         evidence["ports"] = {k: env[k] for k in recipe.get("ports", {})}
         evidence["envNames"] = sorted(env)
+        if recipe["resources"] == "shared" and (ref or not main_ready_before):
+            # Held until this process exits: no other run starts an instance on the same local ports meanwhile.
+            lock = instance.lock_shared(root)  # noqa: F841
+            if lock is None:
+                return finish("BLOCKED", "lock", instance.SHARED_LOCK_HELD)
         busy = instance.busy_ports(recipe, env) if ref else []
         if busy:
             # Shared resources run on the local stack's ports: say so before any setup step spends time.
@@ -217,6 +222,11 @@ def prove(root, recipe_path, out, ref):
             evidence["steps"].append({"step": "start", "command": recipe["start"], "log": "start.log", **handle.record})
             if reason:
                 return finish("BLOCKED", "start", reason)
+        if ref:
+            mismatch = instance.check_identity(recipe, cwd, env)
+            evidence["identity"] = "NOT_DECLARED" if "identity" not in recipe else "MISMATCH" if mismatch else "MATCH"
+            if mismatch:
+                return finish("BLOCKED", "identity", mismatch)
         row = run_step("sample", recipe["sample"], cwd, env, out, secrets, SAMPLE_TIMEOUT)
         evidence["steps"].append(row)
         if row["exitCode"]:

@@ -181,8 +181,10 @@ A head that cannot be built or never becomes ready stops the run with the reason
 
 `resources` is the human's choice at setup:
 
-- `shared`: each worktree instance uses the local stack's ports, database, and services, so it runs only while the local stack is stopped. A suite with `base` must then declare `head` too, and `run` stops before anything runs when a port is in use, naming it.
+- `shared`: each worktree instance uses the local stack's ports, database, and services, so it runs only while the local stack is stopped. A suite with `base` must then declare `head` too, and `run` stops before anything runs when a port is in use, naming it, or when another shared run holds the repository's lock.
 - `isolated`: each instance gets fresh ports, and `env` (with `{NAME}` and `{tree}` placeholders) gives it its own data, beside the running local stack.
+
+With `identity` in the recipe, each instance must print the token the tool writes to `.runtime-e2e-identity` in its worktree once it is ready; a mismatch fails that instance like a missing ready signal.
 
 `shares` names what an instance shares with the local stack (database, queues, storage); keep the run marker and lock rules from the reference's `## Parallel execution` for each of them.
 Without `head`, the head run uses the checkout and whatever stack is already running, as before.

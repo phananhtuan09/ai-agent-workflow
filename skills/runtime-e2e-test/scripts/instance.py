@@ -1,6 +1,8 @@
 """Start, wait for, and stop one app instance from a proven recipe, on its own free ports."""
+import fcntl
 import os
 import re
+import secrets
 import signal
 import socket
 import subprocess
@@ -9,13 +11,15 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-RECIPE_KEYS = {"name", "cwd", "resources", "copy", "start", "ready", "stop", "ports", "env", "setup", "timeout", "shares"}
+RECIPE_KEYS = {"name", "cwd", "resources", "copy", "start", "ready", "stop", "ports", "env", "setup", "timeout", "shares", "identity"}
 RESOURCES = {"shared", "isolated"}
 SECRET_VALUES = re.compile(r"(sk_live_[0-9A-Za-z]{8,}|AKIA[0-9A-Z]{16}|gh[pousr]_[0-9A-Za-z]{30,}|xox[abprs]-[0-9A-Za-z-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)")
 SECRET_NAMES = re.compile(r"(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|APP_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIAL|DSN|DATABASE_URL)", re.I)
 ENV_LINE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$")
 TEMPLATE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 STOP_TIMEOUT = 60
+IDENTITY_FILE = ".runtime-e2e-identity"
+CONTAINER_TOOLS = {"docker", "podman", "nerdctl", "docker-compose"}
 
 
 def argv(value):
@@ -52,6 +56,11 @@ def validate(recipe):
         raise ValueError("instance shares lists what it shares with the main stack (database, queues, storage), or []")
     if recipe.get("resources") not in RESOURCES:
         raise ValueError("instance resources is the human's setup choice: shared (the local stack's ports, database, and services) or isolated (fresh ports and its own data)")
+    if "identity" in recipe and not argv(recipe["identity"]):
+        raise ValueError("instance identity must be a nonempty argument array")
+    if "identity" not in recipe and any(Path(x).name in CONTAINER_TOOLS for x in recipe["start"] + recipe.get("stop", [])):
+        # A container can keep serving the main checkout's mount; only a check from inside it shows which code answers.
+        raise ValueError(f"a container start needs identity: a command, run in the instance's cwd, that prints {IDENTITY_FILE} as the running app sees it")
     copy = recipe.get("copy", [])
     if not isinstance(copy, list) or any(not isinstance(x, str) or not x or Path(x).is_absolute() or ".." in Path(x).parts for x in copy):
         raise ValueError("instance copy lists local files, relative to the project root, to copy into each worktree")
@@ -110,6 +119,37 @@ def instance_env(recipe, tree, fresh=None):
     ports = {k: (free_port() if fresh else v) for k, v in recipe.get("ports", {}).items()}
     names = {**ports, "tree": str(tree)}
     return {**ports, **{k: fill(v, names) for k, v in recipe.get("env", {}).items()}}
+
+
+def lock_shared(root):
+    """Hold the repository-wide lock for an instance on the local stack's ports; None when another run holds it."""
+    common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=root, capture_output=True, text=True).stdout.strip()
+    handle = (Path(common) / "runtime-e2e-shared.lock").open("a")
+    try:
+        # Released when the process exits, also on a crash, so a stale lock never blocks the next run.
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        return None
+    return handle
+
+
+SHARED_LOCK_HELD = "another run with shared resources holds the local stack's ports; wait for it to finish, or choose isolated resources"
+
+
+def check_identity(recipe, cwd, env):
+    """Whether the running instance serves this worktree: its identity command must print a token written only here."""
+    if "identity" not in recipe:
+        return None
+    token = secrets.token_hex(16)
+    (Path(cwd) / IDENTITY_FILE).write_text(token + "\n", encoding="utf-8")
+    try:
+        # The identity command is a human-reviewed argument array from the project runtime reference; no shell.
+        done = subprocess.run(recipe["identity"], cwd=cwd, env={**os.environ, **env}, capture_output=True, text=True, timeout=30)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+        output = done.stdout
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return f"identity check failed: {str(error)[:200]}"
+    return None if token in output else "the running instance does not see this worktree's identity file, so it serves another checkout"
 
 
 def busy_ports(recipe, env):
