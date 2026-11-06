@@ -114,6 +114,7 @@ Load `runtime-e2e-test` in light mode with `expectations.json` and `review.json`
 - Intent: at least one case per K, naming it in the case's `expects`. Derive cases from K, never from review findings or the implementer's summary.
   The suite links `<run-dir>/expectations.json` in `expectations`; the report rejects a runtime bundle whose suite does not.
   A K no case can reach goes in `notCovered` with the reason. When `validate` lists any, send the human one message naming each K and its reason before the first run, and add a case for any K they ask for; the report lists every `notCovered` K under `Giới hạn`.
+  A K that needs another server configuration than the suite's instance (a variable unset or set differently, another flag) is not one no case can reach: run it in an extra light suite whose `determinism.env` sets that configuration (it reaches the head and base instances), with the other K in its `notCovered` as "covered by the main suite", and list its bundle in the runtime step's `extraArtifacts`.
 - Regression: the impact map, `unchanged` items, and the review's flows, named in `flows`.
 - Edge cases: the blind-spot catalog and the review's suspicions that need runtime proof, named in `suspicions`.
 
@@ -129,7 +130,7 @@ While reading the run's traces and observations, note passive signals for `Cần
 
 ## 6. Independent audit (high risk only)
 
-Run `validate_change.py audit-input <run-dir>`, then start one subagent with a fresh context. Give it only `audit-input.json` and the runtime bundle path; never the PR description, the review, `run.json`, or your own summary.
+Run `validate_change.py audit-input <run-dir>`, then start one subagent with a fresh context. Give it only `audit-input.json` and the runtime bundle paths (the main bundle and each of `extraArtifacts`); never the PR description, the review, `run.json`, or your own summary.
 It reads each K and the evidence files and writes `audit.json`:
 
 ```json
@@ -143,7 +144,7 @@ It reads each K and the evidence files and writes `audit.json`:
 - `UNSUPPORTED`: evidence exists but does not establish the behavior.
 - `MISSING`: no evidence covers it.
 
-Evidence files are paths inside the bundle; the tool rejects anything else. If the runtime offers no subagent, record the audit step as `MISSING` and say so.
+Evidence files are paths inside the main bundle, or inside an extra bundle named by the entry's `bundle` (its `extraArtifacts` path); the tool rejects anything else. If the runtime offers no subagent, record the audit step as `MISSING` and say so.
 
 ## 7. Report
 
@@ -169,6 +170,7 @@ Write `run.json`:
 - Steps appear in this order, each once. The three specialist steps are required; record a missing skill as `MISSING`, never leave it out.
 - `security-performance-check` is optional and never changes the overall status. Record it as `MISSING` only when the skill is not installed. When it is installed, record `SKIPPED` with `skip: recommended` if `separateTests` is nonempty, or `skip: no-signal` if it is empty. Do not run the full check from this composite.
 - Start `separateTests` from `risk.json` (signal-file matches when the skill is installed). Append the target label to each ready command (for example `PR#12`). Add any extra passive runtime or accessibility notes that are not already covered. They are prompts for a human decision, never defects, and never change the status.
+- `extraArtifacts` on the `runtime-e2e-test` step lists the extra suites' bundles; their cases count toward each K, and a K one of them covers leaves `Giới hạn`.
 - `report` refuses a `run.json` that drops a `risk.json` match or records an installed `security-performance-check` as `MISSING`.
 
 Then run `validate_change.py report <run-dir>`.

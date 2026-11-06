@@ -4432,6 +4432,23 @@ test("validate-change report checks the run files and computes one status from t
     assert.strictEqual(result.status, 1, result.stderr);
     assert.ok(read("status.json").sections.some((s) => s.reason.includes("chưa được chứng minh đủ ở runtime: K3")));
     assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- K3: không có case runtime; lý do: needs a data set the local stack cannot load"));
+    // A K that needs another server configuration runs in an extra suite; the report counts its cases and drops the gap.
+    const extra = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      delete suite.cases[1].expects;
+      suite.expectations = `${runDir}/expectations.json`;
+      suite.cases[0].expects = ["K3"];
+      suite.notCovered = [{ k: "K1", reason: "covered by the main suite" }, { k: "K2", reason: "covered by the main suite" }];
+    }, "label/runs/extra");
+    assert.strictEqual(extra.status, 0, extra.stderr || extra.stdout);
+    result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/declared"; d.steps[2].extraArtifacts = [".runtime-e2e/label/runs/extra"]; });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(read("status.json").overall, "PASSED");
+    assert.ok(!fs.readFileSync(file("report.md"), "utf8").includes("không có case runtime"));
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- extra/E2E-01: PASS"));
+    result = report((d) => { d.steps[1].extraArtifacts = [".runtime-e2e/label/runs/extra"]; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("extraArtifacts lists further runtime bundles"), result.stderr);
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
 
     // An expectation whose case fails is reported as failed, not again as unproven.
@@ -4601,6 +4618,24 @@ test("validate-change report checks the run files and computes one status from t
     result = report(withAudit);
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("SUPPORTED cites the evidence it rests on"), result.stderr);
+    // Evidence from an extra bundle names it; an unknown bundle is refused.
+    const twoExtra = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
+      delete suite.cases[0].expects;
+      suite.cases[1].expects = ["K2"];
+      suite.notCovered = [{ k: "K1", reason: "covered by the main suite" }];
+    }, "label/runs/two-extra");
+    assert.strictEqual(twoExtra.status, 0, twoExtra.stderr || twoExtra.stdout);
+    const withExtra = (d) => { withAudit(d); d.steps[2].extraArtifacts = [".runtime-e2e/label/runs/two-extra"]; };
+    const fromExtra = (bundle) => ({ ...verdict("K2", "SUPPORTED", "results.json"), evidence: [{ bundle, file: "results.json", locator: "cases" }] });
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED", "results.json"), fromExtra(".runtime-e2e/label/runs/two-extra")] });
+    result = report(withExtra);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED", "results.json"), fromExtra(".runtime-e2e/label/runs/other")] });
+    result = report(withExtra);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("inside the runtime bundle"), result.stderr);
     // A malformed file is reported as inconsistent, not as a crash.
     writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [{ verdict: "MISSING" }, verdict("K2", "MISSING")] });
     result = report(withAudit);

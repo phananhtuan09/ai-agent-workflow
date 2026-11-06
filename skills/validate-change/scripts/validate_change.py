@@ -450,6 +450,10 @@ def check_run(data):
             raise Inconsistent(f"{where}: a skipped step names skip ({'|'.join(SKIPS)}) and a reason")
         if step["status"] == "RAN" and step["skill"] not in ("quality-code-check", "security-performance-check") and not text(step.get("artifact")):
             raise Inconsistent(f"{where}: a step that ran names its artifact")
+        extra = step.get("extraArtifacts", [])
+        if extra and (step["skill"] != "runtime-e2e-test" or step["status"] != "RAN" or not isinstance(extra, list)
+                      or any(not text(a) for a in extra) or len(set(extra)) != len(extra) or step.get("artifact") in extra):
+            raise Inconsistent(f"{where}: extraArtifacts lists further runtime bundles of a runtime-e2e-test step that ran, each once")
     checks = named["quality-code-check"].get("checks", [])
     if named["quality-code-check"]["status"] == "RAN" and (not isinstance(checks, list) or not checks or any(
             c.get("kind") not in CHECK_KINDS or not text(c.get("command")) or not isinstance(c.get("exit"), int) or isinstance(c.get("exit"), bool) for c in checks)):
@@ -514,7 +518,8 @@ def check_review(data, known, items, head):
         raise Inconsistent(f"review.json: unconfirmed agent-intent items need a human question: {', '.join(unasked)}")
 
 
-def check_audit(data, known, bundle):
+def check_audit(data, known, bundles):
+    """bundles maps None to the main runtime bundle and each extraArtifacts path to its bundle; evidence names one with `bundle`."""
     if data.get("schema") != "validate-change/audit@1" or not isinstance(data.get("verdicts"), list):
         raise Inconsistent("audit.json: schema validate-change/audit@1 with verdicts")
     named = [v.get("k") for v in data["verdicts"]]
@@ -527,9 +532,10 @@ def check_audit(data, known, bundle):
         if verdict["verdict"] in ("SUPPORTED", "CONTRADICTED") and not verdict["evidence"]:
             raise Inconsistent(f"{where}: {verdict['verdict']} cites the evidence it rests on")
         for entry in verdict["evidence"]:
+            bundle = bundles.get(entry.get("bundle"))
             target = (bundle / str(entry.get("file", ""))).resolve() if bundle else None
             if not bundle or not text(entry.get("file")) or not text(entry.get("locator")) or bundle.resolve() not in target.parents or not target.is_file():
-                raise Inconsistent(f"{where}: evidence names a file inside the runtime bundle and a locator")
+                raise Inconsistent(f"{where}: evidence names a file inside the runtime bundle (or the extra bundle its `bundle` names) and a locator")
     return {v["k"]: v for v in data["verdicts"]}
 
 
@@ -571,6 +577,24 @@ def runtime_status(bundle, known, confirmed, review, head):
     status = "FAILED" if failed else "BLOCKED" if blocked else "NEEDS_REVIEW" if audited.returncode and not notes else "PASSED"
     return {"status": status, "audit": line, "cases": cases, "failed": failed, "blocked": blocked, "notes": notes,
             "notCovered": suite.get("notCovered", [])}
+
+
+def merge_runtime(parts, names):
+    """One runtime result from the main bundle and the extra bundles that run cases needing another server configuration."""
+    if len(parts) == 1:
+        return parts[0]
+    label = lambda i, ident: ident if i == 0 else f"{names[i]}/{ident}"
+    cases = [{**c, "id": label(i, c["id"])} for i, p in enumerate(parts) for c in p["cases"]]
+    covered = {k for c in cases for k in c["expects"]}
+    not_covered = []
+    for part in parts:
+        # An extra suite declares the main suite's K as not covered; a K some case reaches is covered.
+        not_covered += [e for e in part["notCovered"] if e["k"] not in covered and e["k"] not in {x["k"] for x in not_covered}]
+    return {"status": next(s for s in ORDER if any(p["status"] == s for p in parts)),
+            "audit": "; ".join(p["audit"] if i == 0 else f"{names[i]}: {p['audit']}" for i, p in enumerate(parts)),
+            "cases": cases, "failed": [label(i, x) for i, p in enumerate(parts) for x in p["failed"]],
+            "blocked": [label(i, x) for i, p in enumerate(parts) for x in p["blocked"]],
+            "notes": [n for p in parts for n in p["notes"]], "notCovered": not_covered}
 
 
 def intent_sweep_notes(line, results, cases, suite, confirmed):
@@ -702,10 +726,13 @@ def evaluate(root, run_dir, rules_path):
         if status != "PASSED":
             sections.append((status, f"review-pr: {review['status']}"))
 
-    runtime, bundle = None, None
+    runtime, bundles = None, {}
     if steps["runtime-e2e-test"]["status"] == "RAN":
-        bundle = root / steps["runtime-e2e-test"]["artifact"]
-        runtime = runtime_status(bundle, known, {i["id"] for i in items if i["confirmed"] != "none"}, review, head)
+        step = steps["runtime-e2e-test"]
+        bundles = {None: root / step["artifact"], **{a: root / a for a in step.get("extraArtifacts", [])}}
+        confirmed = {i["id"] for i in items if i["confirmed"] != "none"}
+        runtime = merge_runtime([runtime_status(b, known, confirmed, review, head) for b in bundles.values()],
+                                [Path(a).name for a in [step["artifact"], *step.get("extraArtifacts", [])]])
         if runtime["status"] != "PASSED":
             sections.append((runtime["status"], f"runtime-e2e-test: {runtime['audit']}"))
     covered = {i["id"]: coverage(i["id"], runtime["cases"]) if runtime else ("NOT_RUN", []) for i in items}
@@ -724,7 +751,7 @@ def evaluate(root, run_dir, rules_path):
     audit_step = steps.get("audit")
     verdicts = {}
     if audit_step and audit_step["status"] == "RAN":
-        verdicts = check_audit(load(root / audit_step["artifact"]), known, bundle)
+        verdicts = check_audit(load(root / audit_step["artifact"]), known, bundles)
         contradicted = [k for k, v in verdicts.items() if v["verdict"] == "CONTRADICTED"]
         weak = [k for k, v in verdicts.items() if v["verdict"] in ("UNSUPPORTED", "MISSING")]
         if contradicted:
