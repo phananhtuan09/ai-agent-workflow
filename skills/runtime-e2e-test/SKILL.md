@@ -79,6 +79,20 @@ Only local targets are in scope: the tool refuses a ready or sibling URL on any 
 
 Secret values never reach a file: the tool reads env files and the environment by name only and masks credential-like values in every log it keeps.
 
+Retry limit, for the main stack and for each ref separately:
+
+- Prove at most 3 times, and change the recipe before each new attempt according to the reason the last attempt recorded.
+- Stop retrying early when two attempts fail at the same step for the same reason, or when the fix is not yours to make: a secret value, system-level tooling, a non-local target, a destructive command, or a change to the human's running stack.
+- When retries stop, run `fill` anyway so the reference records `BLOCKED` with the last reason; never keep the run going by guessing a value or by writing a command that did not execute.
+
+Report setup in chat in the human's language, with only these parts, in this order:
+
+1. `Setup: READY` or `Setup: BLOCKED — <step>: <reason>`, copied from the main run.
+2. `Base instance: READY` or `Base instance: BLOCKED — <ref>: <step>: <reason>`, copied from the reference.
+3. One line per attempt: the target (main or the ref), its status, the reason when blocked, and what you changed in the recipe before the next attempt.
+4. What only the human can do, with exact variable names, files, or commands, for example "set `APP_KEY` in the environment you start the agent from"; omit this part when nothing is needed.
+5. The path of each evidence directory and whether the reference was `updated` or `unchanged`, as `fill` printed it.
+
 ## Scope and boundaries
 
 Support browser web flows and real HTTP APIs through Playwright Test, including runtime observations of permitted downstream state.
