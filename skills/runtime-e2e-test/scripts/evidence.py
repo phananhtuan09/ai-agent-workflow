@@ -1166,7 +1166,7 @@ def run_base(bundle, root, data, run_id):
         if failed:
             manifest["degraded"] = f"Base setup {failed[0]} exited {failed[1]}; see base/setup.log"
             return
-        served_instance = serve(run, tree, recipe, served, fixed, manifest, "base") if recipe else None
+        served_instance = serve(run, tree, recipe, served, {**fixed, **base.get("env", {})}, manifest, "base") if recipe else None
         try:
             if served_instance is not False:
                 # The approved head snapshot above already created cwd when it holds a listed file.

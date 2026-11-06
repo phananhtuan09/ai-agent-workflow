@@ -1717,6 +1717,7 @@ if not os.environ.get("APP_KEY"):
     print("APP_KEY missing", flush=True)
     sys.exit(4)
 print("booting with APP_KEY=" + os.environ["APP_KEY"], flush=True)
+print("label suffix " + os.environ.get("LABEL_SUFFIX", "none"), flush=True)
 label = pathlib.Path("app.txt").read_text().strip()
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -2133,11 +2134,13 @@ test("runtime E2E resolves refs from the remote and serves head and base from th
     assert.ok(blocked.stderr.includes(`WEB_PORT=${fixture.port} is in use`), blocked.stderr);
     assert.ok(!fs.existsSync(path.join(root, ".runtime-e2e/shared-busy")));
     fixture.stopStack();
-    const sharedRun = runSuite(sharedSuite, "shared");
+    // A variable the suite declares for base reaches the base app, not just its tests.
+    const sharedRun = runSuite({ ...sharedSuite, base: { ...sharedSuite.base, env: { LABEL_SUFFIX: "-base" } } }, "shared");
     assert.strictEqual(sharedRun.status, 0, sharedRun.stdout + sharedRun.stderr);
     assert.strictEqual(proofs(sharedRun.results)["E2E-01"], "PROVEN");
     assert.strictEqual(sharedRun.results.headInstance.ports.WEB_PORT, fixture.port);
     assert.strictEqual(sharedRun.results.base.instance.ports.WEB_PORT, fixture.port);
+    assert.ok(fs.readFileSync(path.join(sharedRun.out, "base/instance.log"), "utf8").includes("label suffix -base"));
     assert.ok(!allText(path.join(root, ".runtime-e2e")).includes(SECRET));
 
     fs.writeFileSync(suitePath, JSON.stringify({ ...sharedSuite, head: undefined }, null, 2));
