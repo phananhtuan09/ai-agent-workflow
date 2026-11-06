@@ -2,7 +2,7 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { spawnSync } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 
 const { SOURCE_ROOT } = require("../lib/config");
 const { resolveSkills } = require("../lib/skills");
@@ -1703,6 +1703,570 @@ test("runtime E2E labels cases without a usable base as not proven", () => {
     assert.strictEqual(fixture.audit(missing.out).status, 0);
   } finally {
     fixture.cleanup();
+  }
+});
+
+const SAMPLE_APP = `import http.server, os, pathlib, sys
+# Sample project: loads .env like a dotenv app, needs APP_KEY, serves app.txt on WEB_PORT.
+env = pathlib.Path(".env")
+if env.exists():
+    for line in env.read_text().splitlines():
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+if not os.environ.get("APP_KEY"):
+    print("APP_KEY missing", flush=True)
+    sys.exit(4)
+print("booting with APP_KEY=" + os.environ["APP_KEY"], flush=True)
+print("label suffix " + os.environ.get("LABEL_SUFFIX", "none"), flush=True)
+label = pathlib.Path("app.txt").read_text().strip()
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(label.encode() if self.path == "/label" else b"ok")
+    def log_message(self, *args):
+        pass
+server = http.server.HTTPServer(("127.0.0.1", int(os.environ["WEB_PORT"])), Handler)
+print("listening", flush=True)
+server.serve_forever()
+`;
+
+const HTTP_RUNNER = `import base64, json, os, sys, urllib.request
+from pathlib import Path
+# Stand-in for Playwright Test that reads the label over HTTP from the instance on WEB_PORT.
+try:
+    app = urllib.request.urlopen(f"http://127.0.0.1:{os.environ['WEB_PORT']}/label", timeout=5).read().decode()
+except Exception as error:
+    app = f"unreachable: {error}"
+specs = []
+for item in json.loads(Path(sys.argv[1]).read_text()):
+    passed = item["expect"] == app or (item["expect"] == "*" and not app.startswith("unreachable"))
+    observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED",
+                "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], "actual": item["expect"] if passed else app}]}
+    attachments = [{"name": "runtime-observations", "contentType": "application/json", "body": base64.b64encode(json.dumps(observed).encode()).decode()}]
+    specs.append({"title": item["title"], "file": "case.spec.ts", "tests": [{"expectedStatus": "passed", "results": [
+        {"status": "passed" if passed else "failed", "attachments": attachments, **({} if passed else {"error": {"message": app}})}]}]})
+Path(os.environ["PLAYWRIGHT_JSON_OUTPUT_NAME"]).write_text(json.dumps({"suites": [{"title": "", "specs": specs}], "errors": []}))
+sys.exit(0 if all(s["tests"][0]["results"][0]["status"] == "passed" for s in specs) else 1)
+`;
+
+const SECRET = "supersecretvalue123";
+
+function createSetupFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-setup-"));
+  const git = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  git("init", "-q");
+  git("config", "user.email", "test@example.com");
+  git("config", "user.name", "Test");
+  fs.writeFileSync(path.join(root, ".gitignore"), ".env\n.runtime-e2e/\n");
+  fs.writeFileSync(path.join(root, "app.py"), SAMPLE_APP);
+  fs.writeFileSync(path.join(root, "app.txt"), "old\n");
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ scripts: { dev: "python3 app.py", test: "python3 -m unittest" } }, null, 2));
+  git("add", ".");
+  git("commit", "-qm", "base");
+  const base = git("rev-parse", "HEAD");
+  fs.writeFileSync(path.join(root, "app.txt"), "new\n");
+  git("commit", "-qam", "head");
+  // The human's local env file: never committed, so a worktree of another ref does not have it.
+  fs.writeFileSync(path.join(root, ".env"), `APP_KEY=${SECRET}\n`);
+  const port = spawnSync("python3", ["-c", "import socket; s = socket.socket(); s.bind(('127.0.0.1', 0)); print(s.getsockname()[1])"], { encoding: "utf8" }).stdout.trim();
+  const recipe = {
+    name: "web",
+    start: ["python3", "app.py"],
+    ready: { url: "http://127.0.0.1:{WEB_PORT}/health" },
+    resources: "isolated",
+    ports: { WEB_PORT: port },
+    timeout: 20,
+    shares: [],
+    sample: ["python3", "-c", "import os, sys, urllib.request; sys.exit(urllib.request.urlopen('http://127.0.0.1:%s/label' % os.environ['WEB_PORT']).status != 200)"],
+    requires: { env: ["APP_KEY"] },
+    sources: { start: "package.json:3" },
+  };
+  const recipePath = path.join(root, ".runtime-e2e/recipe.json");
+  fs.mkdirSync(path.dirname(recipePath), { recursive: true });
+  fs.writeFileSync(recipePath, JSON.stringify(recipe, null, 2));
+  const reference = path.join(root, ".runtime-e2e/project-runtime.md");
+  fs.copyFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/references/project-runtime.md"), reference);
+  const setupTool = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/setup.py");
+  const env = { ...process.env };
+  delete env.APP_KEY;
+  let stack = null;
+  return {
+    root,
+    base,
+    port,
+    recipe,
+    recipePath,
+    reference,
+    setup(args, extraEnv = {}) {
+      return spawnSync("python3", [setupTool, ...args], { cwd: root, env: { ...env, ...extraEnv }, encoding: "utf8" });
+    },
+    prove(name, extra = [], extraEnv = {}) {
+      const out = path.join(root, ".runtime-e2e/setup", name);
+      const result = this.setup(["prove", recipePath, "--out", out, "--root", root, ...extra], extraEnv);
+      const evidence = JSON.parse(fs.readFileSync(path.join(out, "setup-evidence.json"), "utf8"));
+      return { ...result, out, evidence };
+    },
+    stopStack() {
+      if (stack) process.kill(-stack.pid, "SIGTERM");
+      stack = null;
+      const down = spawnSync("python3", ["-c", `import socket, time
+for _ in range(100):
+    if socket.socket().connect_ex(('127.0.0.1', ${port})):
+        break
+    time.sleep(0.1)`]);
+      assert.strictEqual(down.status, 0);
+    },
+    startStack() {
+      stack = spawn("python3", ["app.py"], { cwd: root, env: { ...env, WEB_PORT: port }, detached: true, stdio: "ignore" });
+      const ready = spawnSync("python3", ["-c", `import time, urllib.request
+for _ in range(100):
+    try:
+        urllib.request.urlopen('http://127.0.0.1:${port}/health'); break
+    except Exception:
+        time.sleep(0.1)
+else:
+    raise SystemExit(1)`]);
+      assert.strictEqual(ready.status, 0, "the main stack did not start");
+    },
+    stackUp() {
+      return spawnSync("python3", ["-c", `import socket; s = socket.socket(); raise SystemExit(s.connect_ex(('127.0.0.1', ${port})))`]).status === 0;
+    },
+    cleanup() {
+      if (stack) process.kill(-stack.pid, "SIGTERM");
+      fs.rmSync(root, { recursive: true, force: true });
+    },
+  };
+}
+
+// Another run holding the repository's shared-resources lock through the tool; it writes `cleaned` when its cleanup runs.
+function holdSharedLock(root) {
+  const ready = path.join(root, ".git", "lock-held");
+  const cleaned = path.join(root, ".git", "lock-cleaned");
+  const holder = spawn("python3", ["-c", `import pathlib, sys, time
+sys.path.insert(0, ${JSON.stringify(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts"))})
+import instance
+handle, _ = instance.lock_shared(${JSON.stringify(root)}, "other agent run")
+try:
+    pathlib.Path(${JSON.stringify(ready)}).touch()
+    time.sleep(120)
+finally:
+    pathlib.Path(${JSON.stringify(cleaned)}).touch()`], { detached: true, stdio: "ignore" });
+  const wait = spawnSync("python3", ["-c", `import os, time
+for _ in range(100):
+    if os.path.exists(${JSON.stringify(ready)}):
+        break
+    time.sleep(0.1)
+else:
+    raise SystemExit(1)`]);
+  assert.strictEqual(wait.status, 0, "the lock holder did not start");
+  return {
+    pid: holder.pid,
+    cleaned,
+    release() {
+      try {
+        process.kill(-holder.pid, "SIGKILL");
+      } catch {
+        // Already stopped by release-lock.
+      }
+      fs.rmSync(ready, { force: true });
+      fs.rmSync(cleaned, { force: true });
+    },
+  };
+}
+
+// Every file under dir, as text, to check that a secret value never reached evidence or the reference.
+function allText(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? allText(full) : fs.readFileSync(full, "utf8");
+  }).join("\n");
+}
+
+test("runtime E2E setup detects candidates with sources and reads env files for names only", () => {
+  const fixture = createSetupFixture();
+  try {
+    const detected = fixture.setup(["detect", "--root", fixture.root]);
+    assert.strictEqual(detected.status, 0, detected.stderr);
+    const candidates = JSON.parse(detected.stdout).candidates;
+    assert.ok(candidates.some((c) => c.field === "start" && c.value.startsWith("npm run dev") && c.source === "package.json:3"), detected.stdout);
+    assert.ok(candidates.some((c) => c.field === "test" && c.source === "package.json:4"), detected.stdout);
+    assert.ok(candidates.some((c) => c.field === "env" && c.value === "APP_KEY" && c.source === ".env:1"), detected.stdout);
+    assert.ok(!detected.stdout.includes(SECRET));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup proves the main stack and a parallel instance, then fills the reference", () => {
+  const fixture = createSetupFixture();
+  try {
+    // Nothing running: setup starts the app, waits for ready, runs the sample, stops it, and the port is released.
+    const cold = fixture.prove("main-cold");
+    assert.strictEqual(cold.status, 0, cold.stdout + cold.stderr);
+    assert.strictEqual(cold.evidence.status, "READY");
+    assert.deepStrictEqual(cold.evidence.steps.map((s) => [s.step, s.exitCode ?? null]), [["start", null], ["sample", 0], ["stop", null]]);
+    assert.strictEqual(cold.evidence.steps[2].portsReleased, true);
+    assert.ok(!fixture.stackUp());
+
+    // The human's stack is up: setup proves against it and never stops it.
+    fixture.startStack();
+    const warm = fixture.prove("main-warm");
+    assert.strictEqual(warm.evidence.status, "READY", warm.stdout);
+    assert.ok(warm.evidence.steps[0].skipped.includes("already running"));
+    assert.ok(fixture.stackUp());
+
+    // A worktree of the base ref lacks the untracked .env: BLOCKED on the missing key, by name.
+    const blocked = fixture.prove("base-no-key", ["--ref", fixture.base]);
+    assert.strictEqual(blocked.status, 1);
+    assert.strictEqual(blocked.evidence.failedStep, "prerequisites");
+    assert.ok(blocked.evidence.reason.includes("missing variables: APP_KEY"));
+    assert.strictEqual(blocked.evidence.worktreeCleanup, "COMPLETE");
+
+    // With the key provided, the base ref serves beside the running stack on its own port.
+    const parallel = fixture.prove("base", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(parallel.evidence.status, "READY", parallel.stdout + JSON.stringify(parallel.evidence));
+    assert.notStrictEqual(parallel.evidence.ports.WEB_PORT, fixture.port);
+    assert.strictEqual(parallel.evidence.mainStackUntouched, true);
+    assert.strictEqual(parallel.evidence.steps.find((s) => s.step === "stop").portsReleased, true);
+    assert.ok(fixture.stackUp());
+
+    const fill = (...dirs) => fixture.setup(["fill", fixture.reference, "--main", warm.out, ...dirs.flatMap((d) => ["--parallel", d])]);
+    let filled = fill(blocked.out);
+    assert.strictEqual(filled.status, 0, filled.stderr);
+    let text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Status: READY"));
+    assert.ok(text.includes("- Base instance: BLOCKED — " + fixture.base + ": prerequisites: missing variables: APP_KEY"), text);
+
+    filled = fill(parallel.out);
+    text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Base instance: READY"), text);
+    assert.ok(text.includes("- Resources: isolated, chosen by the human"), text);
+    assert.ok(text.includes("| `web` | `.` | `python3 app.py` |"));
+    assert.ok(text.includes("- Required variable names: `APP_KEY`"));
+    const recipe = JSON.parse(text.match(/## Base instance[\s\S]*?```json\n([\s\S]*?)\n```/)[1]);
+    assert.deepStrictEqual(recipe.start, fixture.recipe.start);
+    assert.ok(!("sample" in recipe));
+    assert.ok(/- Last verified: \d{4}-\d{2}-\d{2}/.test(text));
+
+    // Re-running setup on an unchanged project changes nothing, even with a new evidence directory.
+    const again = fixture.prove("main-again");
+    const before = fs.readFileSync(fixture.reference, "utf8");
+    filled = fixture.setup(["fill", fixture.reference, "--main", again.out, "--parallel", parallel.out]);
+    assert.ok(filled.stdout.includes("unchanged"), filled.stdout);
+    assert.strictEqual(fs.readFileSync(fixture.reference, "utf8"), before);
+
+    // A later failed main stack also withdraws the base instance, so no suite runs on a recipe that no longer starts.
+    fixture.stopStack();
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, start: ["python3", "-c", "import sys; sys.exit(3)"] }));
+    const broken = fixture.prove("main-broken");
+    fixture.setup(["fill", fixture.reference, "--main", broken.out]);
+    text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Base instance: BLOCKED — main stack: start: start exited 3 before the ready signal"), text);
+
+    // No secret value anywhere: logs, evidence, or the reference.
+    const leaked = allText(path.join(fixture.root, ".runtime-e2e"));
+    assert.ok(!leaked.includes(SECRET), leaked.split("\n").filter((line) => line.includes(SECRET)).join("\n"));
+    assert.ok(fs.readFileSync(path.join(cold.out, "start.log"), "utf8").includes("APP_KEY=[REDACTED]"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup marks a failed main stack BLOCKED and leaves unproven fields as placeholders", () => {
+  const fixture = createSetupFixture();
+  try {
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, start: ["python3", "-c", "import sys; sys.exit(3)"] }));
+    const failed = fixture.prove("main-fails");
+    assert.strictEqual(failed.status, 1);
+    assert.strictEqual(failed.evidence.failedStep, "start");
+    const filled = fixture.setup(["fill", fixture.reference, "--main", failed.out]);
+    assert.strictEqual(filled.status, 0, filled.stderr);
+    const text = fs.readFileSync(fixture.reference, "utf8");
+    assert.ok(text.includes("- Status: BLOCKED — start: start exited 3 before the ready signal"), text);
+    assert.ok(text.includes("| `<web>` | `<path>` | `<command>` |"));
+    assert.ok(!text.includes("python3 -c"));
+
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, stop: ["npm", "run", "db:reset"] }));
+    const refused = fixture.setup(["prove", fixture.recipePath, "--out", path.join(fixture.root, ".runtime-e2e/x")]);
+    assert.strictEqual(refused.status, 2);
+    assert.ok(refused.stderr.includes("destructive-looking"));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup recognizes a running stack whose ready signal is a log line", () => {
+  const fixture = createSetupFixture();
+  try {
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, ready: { log: "listening" } }));
+    fixture.startStack();
+    const warm = fixture.prove("main-warm-log");
+    assert.strictEqual(warm.evidence.status, "READY", warm.stdout + JSON.stringify(warm.evidence));
+    assert.ok(warm.evidence.steps[0].skipped.includes("already running"));
+    assert.ok(fixture.stackUp());
+    const parallel = fixture.prove("base-log", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(parallel.evidence.status, "READY", JSON.stringify(parallel.evidence));
+    assert.strictEqual(parallel.evidence.mainStackUntouched, true);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup with shared resources reports a busy local port before any step and copies local files", () => {
+  const fixture = createSetupFixture();
+  try {
+    fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, resources: "shared", copy: [".env"] }));
+    fixture.startStack();
+    const busy = fixture.prove("shared-busy", ["--ref", fixture.base]);
+    assert.strictEqual(busy.evidence.failedStep, "ports", JSON.stringify(busy.evidence));
+    assert.ok(busy.evidence.reason.includes(`WEB_PORT=${fixture.port} is in use`));
+    assert.deepStrictEqual(busy.evidence.steps, []);
+    fixture.stopStack();
+    // Same port as the local stack, and the copied .env supplies APP_KEY without it being in the environment.
+    const shared = fixture.prove("shared", ["--ref", fixture.base]);
+    assert.strictEqual(shared.evidence.status, "READY", JSON.stringify(shared.evidence));
+    assert.strictEqual(shared.evidence.ports.WEB_PORT, fixture.port);
+    assert.deepStrictEqual(shared.evidence.copied, { copied: [".env"], missing: [] });
+    assert.ok(!allText(shared.out).includes(SECRET));
+    // Another run on the local ports: blocked at once, before any step.
+    // The human hears who holds it, and only the named holder is stopped, through its own cleanup.
+    const holder = holdSharedLock(fixture.root);
+    try {
+      const locked = fixture.prove("shared-locked", ["--ref", fixture.base]);
+      assert.strictEqual(locked.evidence.failedStep, "lock", JSON.stringify(locked.evidence));
+      assert.ok(locked.evidence.reason.includes(`pid ${holder.pid} (other agent run`), locked.evidence.reason);
+      assert.ok(locked.evidence.reason.includes(`release-lock --pid ${holder.pid}`));
+      assert.deepStrictEqual(locked.evidence.steps, []);
+      const evidenceTool = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
+      const wrong = spawnSync("python3", [evidenceTool, "release-lock", "--pid", String(holder.pid + 1), "--root", fixture.root], { encoding: "utf8" });
+      assert.strictEqual(wrong.status, 2);
+      assert.ok(wrong.stderr.includes("nothing was stopped"), wrong.stderr);
+      const released = spawnSync("python3", [evidenceTool, "release-lock", "--pid", String(holder.pid), "--root", fixture.root], { encoding: "utf8" });
+      assert.strictEqual(released.status, 0, released.stderr);
+      assert.ok(fs.existsSync(holder.cleaned), "the released run did not clean up");
+      const after = fixture.prove("shared-after-release", ["--ref", fixture.base]);
+      assert.strictEqual(after.evidence.status, "READY", JSON.stringify(after.evidence));
+    } finally {
+      holder.release();
+    }
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E setup proves a worktree instance serves the worktree's own code", () => {
+  const fixture = createSetupFixture();
+  try {
+    const write = (recipe) => fs.writeFileSync(fixture.recipePath, JSON.stringify({ ...fixture.recipe, ...recipe }));
+    // A container start without an identity check is refused before anything runs.
+    write({ start: ["docker", "compose", "up", "-d"], stop: ["docker", "compose", "stop"] });
+    const container = fixture.setup(["prove", fixture.recipePath, "--out", path.join(fixture.root, ".runtime-e2e/setup/container"), "--root", fixture.root, "--ref", fixture.base]);
+    assert.strictEqual(container.status, 2);
+    assert.ok(container.stderr.includes("a container start needs identity"), container.stderr);
+    // The identity command reads the worktree's own file: the instance serves this worktree.
+    write({ identity: ["cat", ".runtime-e2e-identity"] });
+    const own = fixture.prove("identity-own", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(own.evidence.status, "READY", JSON.stringify(own.evidence));
+    assert.strictEqual(own.evidence.identity, "MATCH");
+    // An identity command that sees the main checkout, as a container mounting it would: BLOCKED, never READY.
+    fs.writeFileSync(path.join(fixture.root, ".runtime-e2e-identity"), "main checkout\n");
+    write({ identity: ["cat", path.join(fixture.root, ".runtime-e2e-identity")] });
+    const other = fixture.prove("identity-other", ["--ref", fixture.base], { APP_KEY: SECRET });
+    assert.strictEqual(other.evidence.status, "BLOCKED");
+    assert.strictEqual(other.evidence.failedStep, "identity");
+    assert.strictEqual(other.evidence.identity, "MISMATCH");
+    assert.ok(!fixture.stackUp(), "the worktree instance was not stopped");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runtime E2E resolves refs from the remote and serves head and base from their own worktrees", () => {
+  const fixture = createSetupFixture();
+  const skills = copySkillTree(["runtime-e2e-test"]);
+  const tools = path.join(skills, "runtime-e2e-test/scripts");
+  const remote = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-remote-"));
+  const other = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-other-"));
+  const git = (cwd, ...args) => {
+    const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  try {
+    const root = fixture.root;
+    // origin: main at the base commit, feature at the change; the local feature branch then falls behind origin.
+    const head = git(root, "rev-parse", "HEAD");
+    git(root, "checkout", "-qb", "feature");
+    git(root, "branch", "-f", "main", fixture.base);
+    git(remote, "init", "-q", "--bare");
+    git(root, "remote", "add", "origin", remote);
+    git(root, "push", "-q", "origin", "main", "feature");
+    git(other, "clone", "-q", "-b", "feature", remote, ".");
+    git(other, "config", "user.email", "test@example.com");
+    git(other, "config", "user.name", "Test");
+    fs.writeFileSync(path.join(other, "app.txt"), "newest\n");
+    git(other, "commit", "-qam", "newest");
+    git(other, "push", "-q", "origin", "feature");
+    const pushed = git(other, "rev-parse", "HEAD");
+    // Someone is editing the human's checkout meanwhile.
+    fs.writeFileSync(path.join(root, "app.txt"), "dirty\n");
+
+    const evidence = path.join(tools, "evidence.py");
+    const tool = (args, extraEnv = {}) => {
+      const env = { ...process.env, ...extraEnv };
+      if (!extraEnv.APP_KEY) delete env.APP_KEY;
+      return spawnSync("python3", [evidence, ...args, "--root", root], { cwd: root, env, encoding: "utf8" });
+    };
+    const resolved = tool(["refs", "--source", "feature", "--into", "main"]);
+    assert.strictEqual(resolved.status, 0, resolved.stderr);
+    const refs = JSON.parse(resolved.stdout);
+    assert.deepStrictEqual(refs, { head: { revision: pushed, source: "origin/feature" }, base: { revision: fixture.base, source: "merge base with origin/main" } });
+    const option = tool(["refs", "--source=--upload-pack=touch", "--into", "main"]);
+    assert.strictEqual(option.status, 2);
+    assert.ok(option.stderr.includes("is not a ref or remote name"), option.stderr);
+    const localRefs = JSON.parse(tool(["refs", "--local", "--into", "main"]).stdout);
+    assert.deepStrictEqual(localRefs.head, { revision: head, source: "local HEAD (not on the remote)", uncommitted: true });
+
+    // Setup writes the recipe into the copied skill's reference; suites read it from there.
+    const setupTool = path.join(tools, "setup.py");
+    const reference = path.join(skills, "runtime-e2e-test/references/project-runtime.md");
+    const prove = (name, extra, extraEnv = {}) => {
+      const out = path.join(root, ".runtime-e2e/setup", name);
+      spawnSync("python3", [setupTool, "prove", fixture.recipePath, "--out", out, "--root", root, ...extra], { cwd: root, env: { ...process.env, ...extraEnv }, encoding: "utf8" });
+      return out;
+    };
+    const mainOut = prove("main", [], { APP_KEY: SECRET });
+    const parallelOut = prove("base", ["--ref", fixture.base], { APP_KEY: SECRET });
+    const filled = spawnSync("python3", [setupTool, "fill", reference, "--main", mainOut, "--parallel", parallelOut], { encoding: "utf8" });
+    assert.strictEqual(filled.status, 0, filled.stderr);
+
+    fs.mkdirSync(path.join(root, "tests"));
+    fs.writeFileSync(path.join(root, "tests/runner.py"), HTTP_RUNNER);
+    const cases = (label) => fs.writeFileSync(path.join(root, "tests/cases.json"), JSON.stringify([
+      { title: "[E2E-01] shows the new label", expect: label },
+      { title: "[E2E-02] label endpoint responds", expect: "*" },
+    ]));
+    fs.mkdirSync(path.join(root, "docs/testing/active"), { recursive: true });
+    fs.writeFileSync(path.join(root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02"]));
+    const check = { id: "label", expected: "label", source: "fresh API read" };
+    const suite = {
+      plan: "docs/testing/active/label.md",
+      files: ["tests/runner.py", "tests/cases.json"],
+      command: ["python3", "tests/runner.py", "tests/cases.json"],
+      environment: "isolated-local",
+      revision: "head",
+      instance: "project-runtime",
+      head: refs.head,
+      base: { revision: refs.base.revision },
+      existing: { suites: [], reason: "The fixture project has no test suite of its own" },
+      blindSpots: blindSpotItems().map((item) => ({ item, skipped: "The fixture has no form, state, or layout" })),
+      cases: [
+        { id: "E2E-01", kind: "api", classification: "new-behavior", checks: [check] },
+        { id: "E2E-02", kind: "api", classification: "invariant", checks: [check] },
+      ],
+    };
+    const suitePath = path.join(root, "docs/testing/active/label.suite.json");
+    const runSuite = (data, name, extraEnv) => {
+      fs.writeFileSync(suitePath, JSON.stringify(data, null, 2));
+      const approved = tool(["approve", suitePath, "--reviewer", "owner"]);
+      assert.strictEqual(approved.status, 0, approved.stderr);
+      const out = path.join(root, ".runtime-e2e", name);
+      const result = tool(["run", suitePath, "--out", out], extraEnv);
+      const results = fs.existsSync(path.join(out, "results.json")) ? JSON.parse(fs.readFileSync(path.join(out, "results.json"), "utf8")) : null;
+      return { ...result, out, results };
+    };
+
+    // Head is the pushed commit, not the stale local branch or the dirty checkout.
+    cases("newest");
+    const pushedRun = runSuite(suite, "pushed", { APP_KEY: SECRET });
+    assert.strictEqual(pushedRun.status, 0, pushedRun.stdout + pushedRun.stderr);
+    assert.deepStrictEqual(proofs(pushedRun.results), { "E2E-01": "PROVEN", "E2E-02": "NOT_REQUIRED" });
+    const manifest = JSON.parse(fs.readFileSync(path.join(pushedRun.out, "run-manifest.json"), "utf8"));
+    assert.strictEqual(manifest.gitHead, pushed);
+    assert.strictEqual(manifest.head.worktreeCleanup, "COMPLETE");
+    assert.strictEqual(pushedRun.results.headInstance.portsReleased, true);
+    assert.strictEqual(fs.readFileSync(path.join(root, "app.txt"), "utf8"), "dirty\n");
+    assert.strictEqual(git(root, "worktree", "list").split("\n").length, 1);
+
+    // Editing the reference's recipe after approval makes the approval stale.
+    const proven = fs.readFileSync(reference, "utf8");
+    fs.writeFileSync(reference, proven.replace('"timeout": 20', '"timeout": 21'));
+    assert.ok(tool(["run", suitePath, "--out", path.join(root, ".runtime-e2e/stale")]).stderr.includes("Approval missing or stale"));
+    fs.writeFileSync(reference, proven);
+
+    // A change only the checkout has: HEAD plus its uncommitted edit, in a worktree.
+    cases("dirty");
+    const localRun = runSuite({ ...suite, head: localRefs.head, base: { revision: localRefs.base.revision } }, "local", { APP_KEY: SECRET });
+    assert.strictEqual(localRun.status, 0, localRun.stdout + localRun.stderr);
+    assert.strictEqual(proofs(localRun.results)["E2E-01"], "PROVEN");
+    assert.ok(fs.readFileSync(path.join(localRun.out, "head.patch"), "utf8").includes("+dirty"));
+
+    // Shared resources: the local stack's port. Busy, the run stops before anything runs; free, both run on it in turn.
+    // Its setup step prints the copied .env; the kept setup logs mask the value.
+    const sharedSuite = { ...suite, instance: { ...JSON.parse(proven.match(/```json\n([\s\S]*?)\n```/)[1]), resources: "shared", copy: [".env"], setup: [["python3", "-c", "print(open('.env').read())"]], identity: ["cat", ".runtime-e2e-identity"] } };
+    cases("newest");
+    fixture.startStack();
+    fs.writeFileSync(suitePath, JSON.stringify(sharedSuite, null, 2));
+    assert.strictEqual(tool(["approve", suitePath, "--reviewer", "owner"]).status, 0);
+    const blocked = tool(["run", suitePath, "--out", path.join(root, ".runtime-e2e/shared-busy")]);
+    assert.strictEqual(blocked.status, 2);
+    assert.ok(blocked.stderr.includes(`WEB_PORT=${fixture.port} is in use`), blocked.stderr);
+    assert.ok(!fs.existsSync(path.join(root, ".runtime-e2e/shared-busy")));
+    fixture.stopStack();
+    // Another run holds the local ports: stopped before anything runs.
+    const holder = holdSharedLock(root);
+    try {
+      const locked = tool(["run", suitePath, "--out", path.join(root, ".runtime-e2e/shared-locked")]);
+      assert.strictEqual(locked.status, 2);
+      assert.ok(locked.stderr.includes(`another run with shared resources holds the local stack's ports: pid ${holder.pid}`), locked.stderr);
+      assert.ok(!fs.existsSync(path.join(root, ".runtime-e2e/shared-locked")));
+    } finally {
+      holder.release();
+    }
+    // A variable the suite declares for base reaches the base app, not just its tests.
+    const sharedRun = runSuite({ ...sharedSuite, base: { ...sharedSuite.base, env: { LABEL_SUFFIX: "-base" } } }, "shared");
+    assert.strictEqual(sharedRun.status, 0, sharedRun.stdout + sharedRun.stderr);
+    assert.strictEqual(proofs(sharedRun.results)["E2E-01"], "PROVEN");
+    assert.strictEqual(sharedRun.results.headInstance.ports.WEB_PORT, fixture.port);
+    assert.strictEqual(sharedRun.results.base.instance.ports.WEB_PORT, fixture.port);
+    assert.strictEqual(sharedRun.results.headInstance.identity, "MATCH");
+    assert.strictEqual(sharedRun.results.base.instance.identity, "MATCH");
+    assert.ok(fs.readFileSync(path.join(sharedRun.out, "base/instance.log"), "utf8").includes("label suffix -base"));
+    assert.ok(!allText(path.join(root, ".runtime-e2e")).includes(SECRET));
+
+    fs.writeFileSync(suitePath, JSON.stringify({ ...sharedSuite, head: undefined }, null, 2));
+    assert.ok(tool(["validate", suitePath]).stderr.includes("declare head"));
+    fs.writeFileSync(suitePath, JSON.stringify({ ...suite, instance: undefined }, null, 2));
+    assert.ok(tool(["validate", suitePath]).stderr.includes("head needs an instance"));
+    fs.writeFileSync(suitePath, JSON.stringify({ ...suite, base: undefined, head: undefined, instance: undefined }, null, 2));
+    assert.ok(tool(["validate", suitePath]).stdout.includes("No base instance: no case can prove it fails"));
+  } finally {
+    fixture.cleanup();
+    [skills, remote, other].forEach((dir) => fs.rmSync(dir, { recursive: true, force: true }));
+  }
+});
+
+test("validate-change risk takes the change from a remote head, whatever the checkout holds", () => {
+  const repo = riskRepoWithApiChange();
+  const script = path.join(SOURCE_ROOT, "skills/validate-change/scripts/validate_change.py");
+  try {
+    const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repo.root, encoding: "utf8" }).stdout.trim();
+    spawnSync("git", ["checkout", "-q", repo.base], { cwd: repo.root });
+    const risk = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base, "--head", head], { cwd: repo.root, encoding: "utf8" });
+    assert.strictEqual(risk.status, 0, risk.stderr);
+    const written = JSON.parse(fs.readFileSync(path.join(repo.run, "risk.json"), "utf8"));
+    assert.strictEqual(written.headSha, head);
+    assert.strictEqual(written.files, 1);
+    assert.strictEqual(written.head, head);
+    const both = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base, "--head", head, "--worktree"], { cwd: repo.root, encoding: "utf8" });
+    assert.strictEqual(both.status, 2);
+  } finally {
+    repo.cleanup();
   }
 });
 
@@ -3868,6 +4432,23 @@ test("validate-change report checks the run files and computes one status from t
     assert.strictEqual(result.status, 1, result.stderr);
     assert.ok(read("status.json").sections.some((s) => s.reason.includes("chưa được chứng minh đủ ở runtime: K3")));
     assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- K3: không có case runtime; lý do: needs a data set the local stack cannot load"));
+    // A K that needs another server configuration runs in an extra suite; the report counts its cases and drops the gap.
+    const extra = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      delete suite.cases[1].expects;
+      suite.expectations = `${runDir}/expectations.json`;
+      suite.cases[0].expects = ["K3"];
+      suite.notCovered = [{ k: "K1", reason: "covered by the main suite" }, { k: "K2", reason: "covered by the main suite" }];
+    }, "label/runs/extra");
+    assert.strictEqual(extra.status, 0, extra.stderr || extra.stdout);
+    result = report((d) => { d.steps[2].artifact = ".runtime-e2e/label/runs/declared"; d.steps[2].extraArtifacts = [".runtime-e2e/label/runs/extra"]; });
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    assert.strictEqual(read("status.json").overall, "PASSED");
+    assert.ok(!fs.readFileSync(file("report.md"), "utf8").includes("không có case runtime"));
+    assert.ok(fs.readFileSync(file("report.md"), "utf8").includes("- extra/E2E-01: PASS"));
+    result = report((d) => { d.steps[1].extraArtifacts = [".runtime-e2e/label/runs/extra"]; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("extraArtifacts lists further runtime bundles"), result.stderr);
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
 
     // An expectation whose case fails is reported as failed, not again as unproven.
@@ -4037,6 +4618,24 @@ test("validate-change report checks the run files and computes one status from t
     result = report(withAudit);
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("SUPPORTED cites the evidence it rests on"), result.stderr);
+    // Evidence from an extra bundle names it; an unknown bundle is refused.
+    const twoExtra = fixture.run((suite) => {
+      suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+      suite.expectations = `${runDir}/expectations.json`;
+      delete suite.cases[0].expects;
+      suite.cases[1].expects = ["K2"];
+      suite.notCovered = [{ k: "K1", reason: "covered by the main suite" }];
+    }, "label/runs/two-extra");
+    assert.strictEqual(twoExtra.status, 0, twoExtra.stderr || twoExtra.stdout);
+    const withExtra = (d) => { withAudit(d); d.steps[2].extraArtifacts = [".runtime-e2e/label/runs/two-extra"]; };
+    const fromExtra = (bundle) => ({ ...verdict("K2", "SUPPORTED", "results.json"), evidence: [{ bundle, file: "results.json", locator: "cases" }] });
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED", "results.json"), fromExtra(".runtime-e2e/label/runs/two-extra")] });
+    result = report(withExtra);
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [verdict("K1", "SUPPORTED", "results.json"), fromExtra(".runtime-e2e/label/runs/other")] });
+    result = report(withExtra);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("inside the runtime bundle"), result.stderr);
     // A malformed file is reported as inconsistent, not as a crash.
     writeJson(file("audit.json"), { schema: "validate-change/audit@1", verdicts: [{ verdict: "MISSING" }, verdict("K2", "MISSING")] });
     result = report(withAudit);

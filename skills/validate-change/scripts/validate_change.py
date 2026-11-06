@@ -164,12 +164,12 @@ def unquote(path):
     return out.decode("utf-8", "replace")
 
 
-def read_diff(root, base, worktree, untracked=None):
+def read_diff(root, base, worktree, untracked=None, head="HEAD"):
     """Files of the change with their added and removed lines, and whether each was deleted or renamed away.
 
     With `worktree`, untracked files count as added; `untracked` limits them to a list recorded earlier.
     """
-    ref = [base] if worktree else [f"{base}...HEAD"]
+    ref = [base] if worktree else [f"{base}...{head}"]
     text = git(root, "diff", "--no-color", "--no-renames", "--no-ext-diff", "-U0", *ref)
     files, current, header, old = {}, None, False, None
     for line in text.splitlines():
@@ -343,15 +343,17 @@ def diff_changes(files):
     return {name: "\n".join(info["added"] + info["removed"]) for name, info in files.items()}
 
 
-def assess(root, base, worktree, expectations, rules_path, untracked=None):
+def assess(root, base, worktree, expectations, rules_path, untracked=None, head=None):
+    """`head` is the change's commit from the remote; without it the change is the checkout's HEAD."""
     settings, rules = load_rules(rules_path)
-    base_sha = git(root, "rev-parse", base if worktree else git(root, "merge-base", base, "HEAD").strip()).strip()
+    head = head or "HEAD"
+    base_sha = git(root, "rev-parse", base if worktree else git(root, "merge-base", base, head).strip()).strip()
 
     def versions(name):
-        after = (root / name).read_text(encoding="utf-8") if worktree and (root / name).is_file() else show(root, "HEAD", name)
+        after = (root / name).read_text(encoding="utf-8") if worktree and (root / name).is_file() else show(root, head, name)
         return show(root, base_sha, name), after
 
-    files, found = read_diff(root, base, worktree, untracked)
+    files, found = read_diff(root, base, worktree, untracked, head)
     signals, size = diff_signals(files, settings, rules, versions)
     signals += intent_signals(expectations, rules)
     levels = {s["level"] for s in signals}
@@ -364,7 +366,8 @@ def assess(root, base, worktree, expectations, rules_path, untracked=None):
         "schema": "validate-change/risk@1",
         "base": base,
         "baseSha": base_sha,
-        "headSha": git(root, "rev-parse", "HEAD").strip(),
+        "headSha": git(root, "rev-parse", head).strip(),
+        **({"head": head} if head != "HEAD" else {}),
         "worktree": worktree,
         "untracked": found,
         "rulesDigest": hashlib.sha256(Path(rules_path).read_bytes()).hexdigest(),
@@ -447,6 +450,10 @@ def check_run(data):
             raise Inconsistent(f"{where}: a skipped step names skip ({'|'.join(SKIPS)}) and a reason")
         if step["status"] == "RAN" and step["skill"] not in ("quality-code-check", "security-performance-check") and not text(step.get("artifact")):
             raise Inconsistent(f"{where}: a step that ran names its artifact")
+        extra = step.get("extraArtifacts", [])
+        if extra and (step["skill"] != "runtime-e2e-test" or step["status"] != "RAN" or not isinstance(extra, list)
+                      or any(not text(a) for a in extra) or len(set(extra)) != len(extra) or step.get("artifact") in extra):
+            raise Inconsistent(f"{where}: extraArtifacts lists further runtime bundles of a runtime-e2e-test step that ran, each once")
     checks = named["quality-code-check"].get("checks", [])
     if named["quality-code-check"]["status"] == "RAN" and (not isinstance(checks, list) or not checks or any(
             c.get("kind") not in CHECK_KINDS or not text(c.get("command")) or not isinstance(c.get("exit"), int) or isinstance(c.get("exit"), bool) for c in checks)):
@@ -511,7 +518,8 @@ def check_review(data, known, items, head):
         raise Inconsistent(f"review.json: unconfirmed agent-intent items need a human question: {', '.join(unasked)}")
 
 
-def check_audit(data, known, bundle):
+def check_audit(data, known, bundles):
+    """bundles maps None to the main runtime bundle and each extraArtifacts path to its bundle; evidence names one with `bundle`."""
     if data.get("schema") != "validate-change/audit@1" or not isinstance(data.get("verdicts"), list):
         raise Inconsistent("audit.json: schema validate-change/audit@1 with verdicts")
     named = [v.get("k") for v in data["verdicts"]]
@@ -524,9 +532,10 @@ def check_audit(data, known, bundle):
         if verdict["verdict"] in ("SUPPORTED", "CONTRADICTED") and not verdict["evidence"]:
             raise Inconsistent(f"{where}: {verdict['verdict']} cites the evidence it rests on")
         for entry in verdict["evidence"]:
+            bundle = bundles.get(entry.get("bundle"))
             target = (bundle / str(entry.get("file", ""))).resolve() if bundle else None
             if not bundle or not text(entry.get("file")) or not text(entry.get("locator")) or bundle.resolve() not in target.parents or not target.is_file():
-                raise Inconsistent(f"{where}: evidence names a file inside the runtime bundle and a locator")
+                raise Inconsistent(f"{where}: evidence names a file inside the runtime bundle (or the extra bundle its `bundle` names) and a locator")
     return {v["k"]: v for v in data["verdicts"]}
 
 
@@ -570,6 +579,24 @@ def runtime_status(bundle, known, confirmed, review, head):
             "notCovered": suite.get("notCovered", [])}
 
 
+def merge_runtime(parts, names):
+    """One runtime result from the main bundle and the extra bundles that run cases needing another server configuration."""
+    if len(parts) == 1:
+        return parts[0]
+    label = lambda i, ident: ident if i == 0 else f"{names[i]}/{ident}"
+    cases = [{**c, "id": label(i, c["id"])} for i, p in enumerate(parts) for c in p["cases"]]
+    covered = {k for c in cases for k in c["expects"]}
+    not_covered = []
+    for part in parts:
+        # An extra suite declares the main suite's K as not covered; a K some case reaches is covered.
+        not_covered += [e for e in part["notCovered"] if e["k"] not in covered and e["k"] not in {x["k"] for x in not_covered}]
+    return {"status": next(s for s in ORDER if any(p["status"] == s for p in parts)),
+            "audit": "; ".join(p["audit"] if i == 0 else f"{names[i]}: {p['audit']}" for i, p in enumerate(parts)),
+            "cases": cases, "failed": [label(i, x) for i, p in enumerate(parts) for x in p["failed"]],
+            "blocked": [label(i, x) for i, p in enumerate(parts) for x in p["blocked"]],
+            "notes": [n for p in parts for n in p["notes"]], "notCovered": not_covered}
+
+
 def intent_sweep_notes(line, results, cases, suite, confirmed):
     """Notes for sweep differences when they are the audit's only open item, add no console error, and each sits on
     a route that a passing, proving case for a human-confirmed expectation covers; otherwise [] and the run stays
@@ -607,11 +634,11 @@ def evaluate(root, run_dir, rules_path):
     known = check_expectations(expectations)
     items = expectations["items"]
     risk = load(run_dir / "risk.json")
-    head = git(root, "rev-parse", "HEAD").strip()
+    head = git(root, "rev-parse", risk.get("head", "HEAD")).strip()
     if risk.get("headSha") != head:
-        raise Inconsistent(f"risk.json was computed for {risk.get('headSha')}, but HEAD is {head}; run risk again")
+        raise Inconsistent(f"risk.json was computed for {risk.get('headSha')}, but {risk.get('head', 'HEAD')} is {head}; run risk again")
     # Light tests written after the risk step are untracked too, so only the files recorded then are compared.
-    fresh = assess(root, risk["base"], risk["worktree"], expectations, rules_path, risk.get("untracked", []))
+    fresh = assess(root, risk["base"], risk["worktree"], expectations, rules_path, risk.get("untracked", []), risk.get("head"))
     rules = load_rules(rules_path)[1]
     intent_ids = {r["id"] for r in rules if r["scope"] == "builtin" and r["check"] in INTENT_BUILTINS}
     diff_only = lambda r: [s for s in r["signals"] if s["rule"] not in intent_ids]
@@ -699,10 +726,13 @@ def evaluate(root, run_dir, rules_path):
         if status != "PASSED":
             sections.append((status, f"review-pr: {review['status']}"))
 
-    runtime, bundle = None, None
+    runtime, bundles = None, {}
     if steps["runtime-e2e-test"]["status"] == "RAN":
-        bundle = root / steps["runtime-e2e-test"]["artifact"]
-        runtime = runtime_status(bundle, known, {i["id"] for i in items if i["confirmed"] != "none"}, review, head)
+        step = steps["runtime-e2e-test"]
+        bundles = {None: root / step["artifact"], **{a: root / a for a in step.get("extraArtifacts", [])}}
+        confirmed = {i["id"] for i in items if i["confirmed"] != "none"}
+        runtime = merge_runtime([runtime_status(b, known, confirmed, review, head) for b in bundles.values()],
+                                [Path(a).name for a in [step["artifact"], *step.get("extraArtifacts", [])]])
         if runtime["status"] != "PASSED":
             sections.append((runtime["status"], f"runtime-e2e-test: {runtime['audit']}"))
     covered = {i["id"]: coverage(i["id"], runtime["cases"]) if runtime else ("NOT_RUN", []) for i in items}
@@ -721,7 +751,7 @@ def evaluate(root, run_dir, rules_path):
     audit_step = steps.get("audit")
     verdicts = {}
     if audit_step and audit_step["status"] == "RAN":
-        verdicts = check_audit(load(root / audit_step["artifact"]), known, bundle)
+        verdicts = check_audit(load(root / audit_step["artifact"]), known, bundles)
         contradicted = [k for k, v in verdicts.items() if v["verdict"] == "CONTRADICTED"]
         weak = [k for k, v in verdicts.items() if v["verdict"] in ("UNSUPPORTED", "MISSING")]
         if contradicted:
@@ -809,18 +839,21 @@ def main(argv=None):
     risk.add_argument("run_dir")
     risk.add_argument("--base", required=True, help="base ref; the change is base...HEAD, or base..working tree with --worktree")
     risk.add_argument("--worktree", action="store_true", help="include uncommitted changes")
+    risk.add_argument("--head", help="the change's commit SHA from `evidence.py refs`; the change is base...head, whatever the checkout holds")
     for name in ("audit-input", "report"):
         sub.add_parser(name).add_argument("run_dir")
     for command in sub.choices.values():
         command.add_argument("--rules", default=str(RULES))
     args = parser.parse_args(argv)
+    if getattr(args, "head", None) and args.worktree:
+        parser.error("--head names a commit on the remote; --worktree is for a change only the checkout has")
     run_dir = Path(args.run_dir)
     try:
         root = Path(git(Path.cwd(), "rev-parse", "--show-toplevel").strip())
         expectations = load(run_dir / "expectations.json")
         check_expectations(expectations)
         if args.command == "risk":
-            result = assess(root, args.base, args.worktree, expectations, args.rules)
+            result = assess(root, args.base, args.worktree, expectations, args.rules, head=args.head)
             write(run_dir / "risk.json", result)
             separate = ", ".join(f"{e['area']}:{e['signal'].split(':', 1)[0]}" for e in result["separateTests"]) or "none"
             print(f"Gate: {result['gate']}; audit: {result['audit']}; signals: {', '.join(s['rule'] for s in result['signals']) or 'none'}; separateTests: {separate}")

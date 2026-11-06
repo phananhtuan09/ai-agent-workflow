@@ -49,6 +49,7 @@ Read `references/evidence-contract.md` for the HAR body, redaction, coverage, pr
 ## Project runtime
 
 Read `runtime-e2e-test/references/project-runtime.md` for allowed hosts, role accounts, the access-denied fingerprint, the data reset command, and the probe budget.
+When its `Status` is not `READY`, report that and suggest `/runtime-e2e-test setup` instead of rediscovering how the app runs; when `Base instance` is `BLOCKED` or missing, base/head comparisons cannot run, so record it under `Giới hạn`.
 Reuse base/head worktree support from that skill (#44) when comparing introduced vs pre-existing probes and when measuring performance on base and head.
 If those fields are missing, stop before probes and record the gap under `Giới hạn`.
 

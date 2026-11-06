@@ -1,7 +1,7 @@
 ---
 name: runtime-e2e-test
 description: Plan and run real web and HTTP API runtime E2E acceptance or regression tests using Playwright scripts. Use for multi-case user flows, forms, authentication, permissions, persistence, async integrations, uploads/downloads, and approved visual baselines. Produce a human-reviewed Markdown plan, mapped executable tests, and auditable runtime evidence; never pass cases using screenshots alone, mocks, or source inspection.
-argument-hint: "<scope> | plan <scope> | run <suite.json> | light <scope>"
+argument-hint: "<scope> | plan <scope> | run <suite.json> | light <scope> | setup"
 ---
 
 # Runtime E2E Test
@@ -20,7 +20,7 @@ Choose the mode first. Both modes plan and run the same way, with the same evide
 An explicit human instruction ("keep this test", "quick run only") overrides the choice.
 Declare the choice in the suite as `mode` with `modeReason` naming the signal; the first line of the chat report states the mode and that signal.
 Do not rely on the implementer's summary or PR description for intent or for what was tested; derive both from the human's request and the change itself, as `review-pr` does.
-When `validate-change` invokes this skill, it supplies `expectations.json` (K1..Kn) and the review handoff `review.json`; use them instead of deriving intent again. Link the list in the suite's `expectations` and cover each K with at least one case that names it in an `expects` list; a K no case can reach goes in `notCovered` with the reason, and the tool rejects a suite that leaves a K out of both (see `references/playwright-contract.md`, "Expectations"), and name the review's flows and suspicions a case covers in `flows` and `suspicions` (for example `"expects": ["K1"], "flows": ["F1"], "suspicions": ["H1"]`). Derive intent cases from K, never from review findings or the implementer's summary.
+When `validate-change` invokes this skill, it supplies `expectations.json` (K1..Kn) and the review handoff `review.json`; use them instead of deriving intent again. Link the list in the suite's `expectations` and cover each K with at least one case that names it in an `expects` list; a K no case can reach goes in `notCovered` with the reason (a K that only needs another server configuration gets an extra suite instead, as `validate-change` describes), and the tool rejects a suite that leaves a K out of both (see `references/playwright-contract.md`, "Expectations"), and name the review's flows and suspicions a case covers in `flows` and `suspicions` (for example `"expects": ["K1"], "flows": ["F1"], "suspicions": ["H1"]`). Derive intent cases from K, never from review findings or the implementer's summary.
 
 Durable mode is `plan`, then explicit human approval, then `run`. Light mode does the same planning steps and runs straight away:
 
@@ -47,20 +47,64 @@ Runtime adapters rewrite the skill path when installed.
 
 ## Project runtime reference
 
-Before planning or execution, read
-`skills/runtime-e2e-test/references/project-runtime.md`. This file is a
-project-local template that maintainers customize after installation with the
-actual service commands, readiness signals, environment profile, required
-variable names, authentication, fixtures, evidence locations, cleanup, and safety
-constraints.
+Before planning or execution, read `skills/runtime-e2e-test/references/project-runtime.md`.
+It is project-local operational configuration (service commands, readiness signals, environment, variable names, fixtures, evidence locations, cleanup, safety limits), not product authority.
+`Status: READY` means `setup` proved the main stack; `Base instance: READY` means it also served another ref from its own worktree, with the resources the human chose.
+Later runs read that recipe from the reference (`"instance": "project-runtime"`) and never ask the resource question again.
+Never execute placeholder commands or invent environment values, and never write secret values into the reference or a test plan.
 
-Treat the reference as operational configuration, not product authority. Never
-execute placeholder commands or invent environment values. `Status: READY` means
-the project has verified the documented preflight. If the file is missing or
-unconfigured, inspect existing repository configuration and runbooks for facts
-you can establish safely. Record unresolved runtime prerequisites as blockers;
-never compensate with a lower-level or mocked path. Never write secret values into
-the reference or a test plan.
+When `Status` is not `READY`, say so and suggest `/runtime-e2e-test setup` before planning, instead of rediscovering the runtime silently; if the human wants to go on without it, record each unresolved prerequisite as a blocker and never compensate with a lower-level or mocked path.
+When `Base instance` is `BLOCKED` or missing, state in the plan, before any case runs, that no case can prove it fails (every `new-behavior` case will report `Can-fail: NOT_PROVEN`) and why; `evidence.py validate` prints the same line for a suite without a base.
+
+## Mode: `setup`
+
+Run it when the human asks (`/runtime-e2e-test setup`) or accepts the suggestion above.
+It proves how the project runs, so a later validation run never stops on environment configuration.
+Only local targets are in scope: the tool refuses a ready or sibling URL on any other host, and it never swaps or restarts the human's running stack.
+
+1. Run `scripts/setup.py detect` and read the candidates it prints; each cites the file and line it came from (`package.json`, `Makefile`, compose files, `playwright.config.*`, env-file names, `README.md`, `docs/runbooks/`).
+   It never prints an env-file value.
+2. Ask the human once, before writing the recipe, which resources a worktree instance uses, and record the answer as `resources`:
+   - `shared`: the local stack's ports, database, services, and local files such as `.env` (listed in `copy`). Nothing new is created; the instance runs only while the local stack is stopped.
+   - `isolated`: fresh ports and its own data (database, data directories) through `env` and `setup`, beside the running local stack.
+   Never choose for the human; without an answer, stop setup and report the question.
+3. Write one recipe JSON outside the reference (for example `.runtime-e2e/setup/recipe.json`) from those candidates: `resources`, `copy`, `start`, `ready`, optional `stop`, `ports` (each port variable with the main stack's value), `env`, `setup` (steps a fresh worktree needs, such as a dependency install or copying a non-secret config), `timeout`, `shares`, the one `sample` test or smoke request, `requires` (`env` variable names, `writable` directories, `siblings` with a URL each, such as the other apps a cross-app cookie needs), and `sources` naming where each field came from.
+   Show the commands to the human before running them; the tool refuses a destructive-looking command (drop, truncate, reset, `down -v`).
+   When the app runs in a container, never reuse a running container or one that mounts the main checkout: `start` creates the app container from the same image with the worktree mounted (for example a compose override listed in `copy` that mounts the project directory relatively and drops a fixed `container_name`, and a run-unique `COMPOSE_PROJECT_NAME` in `env`), while the database and other services stay as `resources` says.
+   Add `identity`, a command run in the instance's cwd that prints `.runtime-e2e-identity` as the running app sees it (for example `["docker", "compose", "exec", "-T", "app", "cat", ".runtime-e2e-identity"]`); the tool refuses a container start without it.
+   When no override can mount the worktree, record the blocker and ask the human to make the mount configurable or to choose `isolated`.
+4. Prove the main stack: `scripts/setup.py prove <recipe> --out <evidence root>/setup/main`.
+   It checks `requires` by name, starts the app unless it is already up, waits for the ready signal, runs the sample, stops what it started, and verifies the ports are released.
+5. Prove a worktree instance for the merge base with the default branch and for a head ref, both resolved from the remote with `scripts/evidence.py refs`: `scripts/setup.py prove <recipe> --ref <sha> --out <evidence root>/setup/<name>`.
+   Each runs in its own worktree and records whether the main stack's state stayed the same.
+   With `identity`, the tool writes a fresh token to the worktree and requires the running instance to print it; otherwise it is `BLOCKED — identity`, because the code answering is another checkout's.
+   With `shared` resources, only one run at a time holds the local ports: another run already holding them stops this one at once with `BLOCKED — lock`, naming its pid, what it is, and since when.
+   Tell the human at once, with those details; stop that run only when the human asks, with `scripts/evidence.py release-lock --pid <pid>`, which stops only the named holder and waits for its cleanup (instances stopped, worktrees removed).
+   A busy port with no lock holder is the human's own stack or another tool's session: never stop it yourself; ask the human.
+   With `isolated` resources it runs on fresh ports beside the running stack; with `shared` resources it uses the local ports and, when one is in use, stops at once with `BLOCKED — ports`, before any step: ask the human to stop the local stack, then prove again.
+   When one is `BLOCKED`, fix the recipe from its recorded reason (a missing key, a memory limit, an unwritable cache directory, a sibling not served) and prove again; record a resource limit you set in `env` or `setup` and a prerequisite only a human can provide in `## Known limitations`.
+6. Run `scripts/setup.py fill <reference> --main <dir> [--parallel <dir> ...]`.
+   It writes only proven fields: `Status`, the topology row, required variable names, `Setup sample`, `## Base instance` with the resources choice and the recipe as JSON, `Last verified`, and `Setup evidence`.
+   A failed main stack sets `Status: BLOCKED — <step>: <reason>` and leaves every unproven field a placeholder; a proven main stack with no ready parallel instance keeps `Status: READY` and sets `Base instance: BLOCKED` with the reason.
+   An unchanged result leaves the file untouched, so a re-run on an unchanged project makes no edits.
+7. Fill the remaining fields of the reference only from what you executed; leave the rest for the human.
+8. Write or update `docs/runbooks/local-startup.md` from the proven steps, following `docs/runbooks/README.md`, unless an equivalent runbook already exists; update `Last verified` there only when the procedure ran.
+
+Secret values never reach a file: the tool reads env files and the environment by name only and masks credential-like values in every log it keeps.
+
+Retry limit, for the main stack and for each ref separately:
+
+- Prove at most 3 times, and change the recipe before each new attempt according to the reason the last attempt recorded.
+- Stop retrying early when two attempts fail at the same step for the same reason, or when the fix is not yours to make: a secret value, system-level tooling, a non-local target, a destructive command, or a change to the human's running stack.
+- When retries stop, run `fill` anyway so the reference records `BLOCKED` with the last reason; never keep the run going by guessing a value or by writing a command that did not execute.
+
+Report setup in chat in the human's language, with only these parts, in this order:
+
+1. `Setup: READY` or `Setup: BLOCKED — <step>: <reason>`, copied from the main run.
+2. `Base instance: READY` or `Base instance: BLOCKED — <ref>: <step>: <reason>`, copied from the reference.
+3. One line per attempt: the target (main or the ref), its status, the reason when blocked, and what you changed in the recipe before the next attempt.
+4. What only the human can do, with exact variable names, files, or commands, for example "set `APP_KEY` in the environment you start the agent from"; omit this part when nothing is needed.
+5. The path of each evidence directory and whether the reference was `updated` or `unchanged`, as `fill` printed it.
 
 ## Scope and boundaries
 
@@ -98,12 +142,13 @@ In light mode, follow these steps except the approval in the last one, then cont
 4. Trace each release-blocking case far enough to name the real production path: user action or operational trigger, runtime entrypoint, boundary request, and persisted or visible outcome.
 5. Separate agent-verifiable behavior from subjective human judgment.
 6. Define isolated fixtures, authentication, cleanup, environment restrictions, and concurrency safety.
-7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Declare the base revision (normally the merge base with the target branch) and the base instance's environment from the project runtime reference. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit. Declare `mode`, `modeReason`, and `blindSpots` as chosen above. Declare `existing` from the reference too: every test suite the project has (unit, integration, e2e), whole and unfiltered, with a JUnit report where the runner supports one; only when it has none, the reason.
+7. Write native Playwright tests and a `suite.json` contract mapping every case to one uniquely tagged test (or, for a `pr-test`, its file and title) and its required checks. Resolve head and base with `scripts/evidence.py refs --source <branch or pull/<n>/head> --into <target branch>` (it fetches from the remote; use `--local` only for a change not pushed yet, which adds the checkout's uncommitted edit), and declare `head` and `base.revision` from its output, never from a local branch name. Declare `"instance": "project-runtime"` so the tool serves head and base, each from its own worktree, with the recipe setup proved; without a proven recipe, give the base its environment in `base.env` and leave `head` out. Declare `determinism` from the same reference: frozen time, seed data, and stubbed randomness where supported, normalization rules for IDs and timestamps, and every unsupported item as a limit. Declare `mode`, `modeReason`, and `blindSpots` as chosen above. Declare `existing` from the reference too: every test suite the project has (unit, integration, e2e), whole and unfiltered, with a JUnit report where the runner supports one; only when it has none, the reason.
    Declare them even when no base instance can run: the tool then runs them on head only, a passing suite reports `PASS`, and a failing one `NOT_COMPARABLE`.
    When the Playwright project lives below the evidence root, set `cwd` to its directory instead of absolute binary or config paths in `command`.
 8. For each expected outcome, name the assertion and observation source. Persistence claims require a fresh persisted-state observation; a successful response or toast is insufficient.
 9. Capture baseline values before mutation when proving invariants such as unchanged totals. Assert the final UI after reload and persisted state separately where both are required.
 10. Use real controls, stable unique locators, event-based waits, and bounded timeouts rather than arbitrary sleeps. No mocked production boundaries. Measure layout, such as whether text wraps, with the helpers in `references/playwright-contract.md`, and record the measured number as the check's actual value.
+   Before the first scored run, open each screen a case uses once on the running head (an interactive browser is fine) and write locators, option values, dialog steps, and the wait for async completion from what it shows, not from source alone; in durable mode, stay read-only until approval.
 11. Mark `READY` only when paths, expectations, scripts, and required evidence are reviewable. Validate the Markdown and suite contracts.
 12. Durable mode: stop and ask the human to review the plan, tests, fixtures, config, and commands. Record approval only after an explicit decision, using the evidence tool's `approve` command. Light mode: run now.
 
@@ -118,7 +163,7 @@ Do not freeze an implementation detail unless it identifies the production path 
 1. Read the entire plan, project runtime reference, and current repository authority.
 2. Run the documented preflight where needed; do not start against a prohibited or unidentified environment.
 3. Record the environment and configuration identity without storing secrets. Inspect environment variables by name only (for example `env | cut -d= -f1`), never print their values, and read config files for key names rather than echoing secret values. The tool generates the run ID and records the head and base commits and start/finish times in `run-manifest.json`. Copy them from there into the ledger.
-4. Check approval (durable mode) and snapshot the declared files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session. When the suite declares a base, the tool runs the same approved tests against the base revision in a separate worktree and app instance.
+4. Check approval (durable mode) and snapshot the declared files, then execute through `scripts/evidence.py run`. Launch independent browsers; never attach to a shared Chrome DevTools MCP/CDP session. With `head` declared, the tool runs the approved tests in a head worktree and, when the suite declares a base, again in a base worktree, each with its own app instance, so edits in the checkout never change the result. With `shared` resources it stops before anything runs when a local port is in use or another shared run holds the lock; report that to the human at once, and run `release-lock` only when they ask.
 5. Let Playwright drive the declared path and assert observable outcomes. Fresh contexts isolate sessions; run-marked fixtures isolate data. Serialize shared mutations or acquire the project lock before execution.
 6. Use the tool-generated native results, observations, attempts, trace, cleanup, and summary. Never hand-edit evidence or generated reports. Copy each case's `Actual path` from its recorded observations, then set `Path match` by comparing it with the case's `Runtime path`: `YES` only when both name the same entrypoint, boundary and outcome.
 7. Mark:

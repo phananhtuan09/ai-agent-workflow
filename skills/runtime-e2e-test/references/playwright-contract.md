@@ -147,12 +147,47 @@ A check with no `actual` value is reported by name as unmeasured: the case is a 
 `base` is optional.
 When present, `run` creates a detached worktree at `base.revision`, copies the approved `files` from the snapshot over it except those named in `keep`, runs each `setup` step there, then runs the same `command` with `base.env` added.
 The tests therefore come from head and only the application comes from base; keep application code out of `files`, and list in `keep` any dependency manifest or lockfile that must stay at its base version.
-`base.env` is required and must give the base instance its own ports and data so the two instances share no mutable state; setup steps and the test command both receive it.
+`base.env` must give the base instance its own ports and data so the two instances share no mutable state; setup steps and the test command both receive it.
+It may be left out when the suite declares an `instance`.
 Setup must reproduce what the head run relies on (dependencies, seed data, fixtures) so a base failure reflects the behavior rather than a missing prerequisite.
 The rest of the environment is inherited as for the head run, so every shared or stateful endpoint the app reads must be overridden there.
 `base.env` values are snapshotted into the bundle: use non-secret values only.
 Setup steps run with a 30-minute timeout and log both output streams to `base/setup.log`.
 The worktree is removed after the run and the outcome is recorded as `worktreeCleanup` in `base/run-manifest.json`.
+
+## Head and served instance
+
+Resolve both revisions with `scripts/evidence.py refs --source <branch or pull/<n>/head> --into <target branch>`; it fetches from `origin` (`--remote` to change it) and prints the head commit and the merge base as full SHAs, so a stale local branch never decides what is tested.
+For a change that is not on the remote yet, `refs --local --into <target branch>` gives the checkout's `HEAD` and marks `uncommitted` when the checkout has edits.
+Copy its `head` object into the suite's `head` and its base revision into `base.revision`.
+
+```json
+{
+  "instance": "project-runtime",
+  "head": {"revision": "<40-hex SHA>", "source": "origin/feature"},
+  "base": {"revision": "<40-hex SHA>"}
+}
+```
+
+`instance` is `"project-runtime"`: the tool reads the recipe under `## Base instance` in the installed project runtime reference, which `scripts/setup.py fill` writes from a proven setup run, and refuses the suite when that section is not `READY`.
+An inline recipe object is accepted too, for example in a fixture.
+Approval pins the recipe it read; editing it in the reference makes the approval stale, and the bundle keeps the recipe used as `instance.json`.
+
+With `head`, `run` tests no file of the checkout: it creates a head worktree at `head.revision`, and with `"uncommitted": true` (allowed only when `head.revision` is the checkout's `HEAD`) applies the checkout's `git diff --binary HEAD` and copies its untracked files once, keeping the patch as `head.patch`.
+Each worktree, head and base, then gets the approved test files from the snapshot, the recipe's `copy` files from the checkout (for example `.env`, never read), and the recipe's `setup` steps (after `base.setup` on base).
+The tool starts `start` there, waits up to `timeout` seconds for `ready` (`{"url": ...}` answering below 500, or `{"log": <regex>}` in its log), runs the tests and the existing suites, runs `stop` (or terminates the start process group), and records whether the ports were released.
+Head and base run one after the other, and both worktrees are removed afterwards (`worktreeCleanup`).
+A head that cannot be built or never becomes ready stops the run with the reason; a base that never becomes ready degrades the base run with the reason and the log in `base/instance.log`.
+
+`resources` is the human's choice at setup:
+
+- `shared`: each worktree instance uses the local stack's ports, database, and services, so it runs only while the local stack is stopped. A suite with `base` must then declare `head` too, and `run` stops before anything runs when a port is in use, naming it, or when another shared run holds the repository's lock.
+- `isolated`: each instance gets fresh ports, and `env` (with `{NAME}` and `{tree}` placeholders) gives it its own data, beside the running local stack.
+
+With `identity` in the recipe, each instance must print the token the tool writes to `.runtime-e2e-identity` in its worktree once it is ready; a mismatch fails that instance like a missing ready signal.
+
+`shares` names what an instance shares with the local stack (database, queues, storage); keep the run marker and lock rules from the reference's `## Parallel execution` for each of them.
+Without `head`, the head run uses the checkout and whatever stack is already running, as before.
 
 ## Determinism
 
@@ -168,7 +203,7 @@ Copy its settings from the project runtime reference.
 `existing` lists the project's own test suites (unit, integration, e2e), copied from the project runtime reference.
 A suite with a `base` must declare it; when the project has no suites of its own, write `"existing": {"suites": [], "reason": "<why>"}`.
 Without a `base` it still runs them on head only: a passing suite is `PASS` ("no usable base run"), and a failing one is `NOT_COMPARABLE`, since head failures cannot be told apart from earlier ones.
-`run` runs each suite on head in the project root and on base in the base worktree, after putting every file it copied from the head snapshot back to its base version, so each revision runs its own tests. Base runs also receive `base.env`; neither receives `determinism.env`.
+`run` runs each suite on head in the project root (or the head worktree) and on base in the base worktree, after putting every file it copied from the head snapshot back to its base version, so each revision runs its own tests. Base runs also receive `base.env`; neither receives `determinism.env`.
 Write `{report}` where the suite takes its JUnit XML output path, in an argument or an `env` value; the tool replaces it with a file in the bundle.
 With a report the tool compares each test; without one it compares exit codes only.
 Tests in one of the suite's `files` whose name carries one of the plan's case tags (`[E2E-01]`) are left out: the plan's own cases are judged as cases. Tagged tests in other files, such as earlier plans' committed specs, stay existing tests.
