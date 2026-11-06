@@ -1252,13 +1252,14 @@ def promote(bundle, root, to):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report", "promote", "refs"])
+    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report", "promote", "refs", "release-lock"])
     parser.add_argument("target", type=Path, nargs="?")
     parser.add_argument("--source", help="refs: the change's branch, or pull/<n>/head, on the remote")
     parser.add_argument("--into", help="refs: the branch the change merges into")
     parser.add_argument("--remote", default="origin", help="refs: the remote to fetch from")
     parser.add_argument("--local", action="store_true", help="refs: the change is not on the remote yet; use HEAD and its uncommitted change")
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--pid", type=int, help="release-lock: the pid the BLOCKED — lock message named; run only when the human asks")
     parser.add_argument("--reviewer")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--notes", type=Path, help="report: JSON of agent inference by case ID or 'general', shown labeled as inference")
@@ -1269,6 +1270,11 @@ def main():
         if not args.into:
             raise ValueError("refs needs --into, the branch the change merges into")
         return refs(args.root.resolve(), args.source, args.into, args.remote, args.local)
+    if args.mode == "release-lock":
+        if args.pid is None:
+            raise ValueError("release-lock needs --pid, the holder the BLOCKED — lock message named")
+        print(instance.release_shared(args.root.resolve(), args.pid))
+        return 0
     if args.target is None:
         raise ValueError(f"{args.mode} needs a target")
     if args.mode == "audit":
@@ -1335,9 +1341,9 @@ def main():
             raise ValueError("An uncommitted head is applied on top of the checkout's HEAD; its revision must be that commit")
     if recipe and recipe["resources"] == "shared" and (head_sha or data.get("base") is not None):
         # Held until this process exits, across head and base, so no other run takes the local ports in between.
-        shared_lock = instance.lock_shared(root)  # noqa: F841
+        shared_lock, holder = instance.lock_shared(root, f"evidence.py run {args.out}")  # noqa: F841
         if shared_lock is None:
-            raise ValueError("Shared resources: " + instance.SHARED_LOCK_HELD)
+            raise ValueError("Shared resources: " + instance.lock_held(holder))
         busy = instance.busy_ports(recipe, instance.instance_env(recipe, root))
         if busy:
             # Checked before anything runs, so the human hears it now rather than after a full run.

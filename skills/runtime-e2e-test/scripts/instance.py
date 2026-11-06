@@ -1,5 +1,6 @@
 """Start, wait for, and stop one app instance from a proven recipe, on its own free ports."""
 import fcntl
+import json
 import os
 import re
 import secrets
@@ -121,20 +122,77 @@ def instance_env(recipe, tree, fresh=None):
     return {**ports, **{k: fill(v, names) for k, v in recipe.get("env", {}).items()}}
 
 
-def lock_shared(root):
-    """Hold the repository-wide lock for an instance on the local stack's ports; None when another run holds it."""
+RELEASE_WAIT = 150
+
+
+def lock_path(root):
     common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=root, capture_output=True, text=True).stdout.strip()
-    handle = (Path(common) / "runtime-e2e-shared.lock").open("a")
+    return Path(common) / "runtime-e2e-shared.lock"
+
+
+def _terminate(signum, frame):
+    # A released run unwinds through its cleanup: instances stopped, worktrees removed.
+    raise SystemExit(128 + signum)
+
+
+def _holder(text):
+    try:
+        info = json.loads(text)
+        return info if isinstance(info, dict) else {}
+    except ValueError:
+        return {}
+
+
+def lock_shared(root, what):
+    """Hold the repository-wide lock for an instance on the local stack's ports: (handle, None), or (None, holder) when another run holds it."""
+    handle = lock_path(root).open("a+")
     try:
         # Released when the process exits, also on a crash, so a stale lock never blocks the next run.
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
+        handle.seek(0)
+        holder = _holder(handle.read())
         handle.close()
-        return None
-    return handle
+        return None, holder
+    handle.seek(0)
+    handle.truncate()
+    handle.write(json.dumps({"pid": os.getpid(), "what": what, "since": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}))
+    handle.flush()
+    signal.signal(signal.SIGTERM, _terminate)
+    return handle, None
 
 
-SHARED_LOCK_HELD = "another run with shared resources holds the local stack's ports; wait for it to finish, or choose isolated resources"
+def lock_held(holder):
+    who = f"pid {holder.get('pid', 'unknown')} ({holder.get('what', 'unknown run')}, since {holder.get('since', 'unknown')})"
+    return (f"another run with shared resources holds the local stack's ports: {who}; tell the human now, "
+            f"and stop it only when they ask, with evidence.py release-lock --pid {holder.get('pid', '<pid>')}, or choose isolated resources")
+
+
+def release_shared(root, pid):
+    """Stop the run holding the shared lock, after the human asked: it gets SIGTERM and cleans up; returns once the lock is free."""
+    path = lock_path(root)
+    handle = path.open("a+")
+    try:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return "no run holds the shared lock"
+        except BlockingIOError:
+            pass
+        handle.seek(0)
+        holder = _holder(handle.read())
+        if holder.get("pid") != pid:
+            raise ValueError(f"the shared lock is held by pid {holder.get('pid', 'unknown')}, not {pid}; nothing was stopped")
+        os.kill(pid, signal.SIGTERM)
+        deadline = time.monotonic() + RELEASE_WAIT
+        while time.monotonic() < deadline:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return f"stopped pid {pid} ({holder.get('what', 'unknown run')}); the shared lock is free"
+            except BlockingIOError:
+                time.sleep(0.5)
+        raise ValueError(f"pid {pid} still holds the shared lock after {RELEASE_WAIT}s; ask the human before stopping it any other way")
+    finally:
+        handle.close()
 
 
 def check_identity(recipe, cwd, env):

@@ -1843,14 +1843,19 @@ else:
   };
 }
 
-// Another run holding the repository's shared-resources lock; returns a function that releases it.
+// Another run holding the repository's shared-resources lock through the tool; it writes `cleaned` when its cleanup runs.
 function holdSharedLock(root) {
   const ready = path.join(root, ".git", "lock-held");
-  const holder = spawn("python3", ["-c", `import fcntl, pathlib, time
-handle = open(${JSON.stringify(path.join(root, ".git", "runtime-e2e-shared.lock"))}, "a")
-fcntl.flock(handle, fcntl.LOCK_EX)
-pathlib.Path(${JSON.stringify(ready)}).touch()
-time.sleep(120)`], { detached: true, stdio: "ignore" });
+  const cleaned = path.join(root, ".git", "lock-cleaned");
+  const holder = spawn("python3", ["-c", `import pathlib, sys, time
+sys.path.insert(0, ${JSON.stringify(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts"))})
+import instance
+handle, _ = instance.lock_shared(${JSON.stringify(root)}, "other agent run")
+try:
+    pathlib.Path(${JSON.stringify(ready)}).touch()
+    time.sleep(120)
+finally:
+    pathlib.Path(${JSON.stringify(cleaned)}).touch()`], { detached: true, stdio: "ignore" });
   const wait = spawnSync("python3", ["-c", `import os, time
 for _ in range(100):
     if os.path.exists(${JSON.stringify(ready)}):
@@ -1859,9 +1864,18 @@ for _ in range(100):
 else:
     raise SystemExit(1)`]);
   assert.strictEqual(wait.status, 0, "the lock holder did not start");
-  return () => {
-    process.kill(-holder.pid, "SIGKILL");
-    fs.rmSync(ready, { force: true });
+  return {
+    pid: holder.pid,
+    cleaned,
+    release() {
+      try {
+        process.kill(-holder.pid, "SIGKILL");
+      } catch {
+        // Already stopped by release-lock.
+      }
+      fs.rmSync(ready, { force: true });
+      fs.rmSync(cleaned, { force: true });
+    },
   };
 }
 
@@ -2020,13 +2034,25 @@ test("runtime E2E setup with shared resources reports a busy local port before a
     assert.deepStrictEqual(shared.evidence.copied, { copied: [".env"], missing: [] });
     assert.ok(!allText(shared.out).includes(SECRET));
     // Another run on the local ports: blocked at once, before any step.
-    const release = holdSharedLock(fixture.root);
+    // The human hears who holds it, and only the named holder is stopped, through its own cleanup.
+    const holder = holdSharedLock(fixture.root);
     try {
       const locked = fixture.prove("shared-locked", ["--ref", fixture.base]);
       assert.strictEqual(locked.evidence.failedStep, "lock", JSON.stringify(locked.evidence));
+      assert.ok(locked.evidence.reason.includes(`pid ${holder.pid} (other agent run`), locked.evidence.reason);
+      assert.ok(locked.evidence.reason.includes(`release-lock --pid ${holder.pid}`));
       assert.deepStrictEqual(locked.evidence.steps, []);
+      const evidenceTool = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
+      const wrong = spawnSync("python3", [evidenceTool, "release-lock", "--pid", String(holder.pid + 1), "--root", fixture.root], { encoding: "utf8" });
+      assert.strictEqual(wrong.status, 2);
+      assert.ok(wrong.stderr.includes("nothing was stopped"), wrong.stderr);
+      const released = spawnSync("python3", [evidenceTool, "release-lock", "--pid", String(holder.pid), "--root", fixture.root], { encoding: "utf8" });
+      assert.strictEqual(released.status, 0, released.stderr);
+      assert.ok(fs.existsSync(holder.cleaned), "the released run did not clean up");
+      const after = fixture.prove("shared-after-release", ["--ref", fixture.base]);
+      assert.strictEqual(after.evidence.status, "READY", JSON.stringify(after.evidence));
     } finally {
-      release();
+      holder.release();
     }
   } finally {
     fixture.cleanup();
@@ -2193,14 +2219,14 @@ test("runtime E2E resolves refs from the remote and serves head and base from th
     assert.ok(!fs.existsSync(path.join(root, ".runtime-e2e/shared-busy")));
     fixture.stopStack();
     // Another run holds the local ports: stopped before anything runs.
-    const release = holdSharedLock(root);
+    const holder = holdSharedLock(root);
     try {
       const locked = tool(["run", suitePath, "--out", path.join(root, ".runtime-e2e/shared-locked")]);
       assert.strictEqual(locked.status, 2);
-      assert.ok(locked.stderr.includes("another run with shared resources"), locked.stderr);
+      assert.ok(locked.stderr.includes(`another run with shared resources holds the local stack's ports: pid ${holder.pid}`), locked.stderr);
       assert.ok(!fs.existsSync(path.join(root, ".runtime-e2e/shared-locked")));
     } finally {
-      release();
+      holder.release();
     }
     // A variable the suite declares for base reaches the base app, not just its tests.
     const sharedRun = runSuite({ ...sharedSuite, base: { ...sharedSuite.base, env: { LABEL_SUFFIX: "-base" } } }, "shared");

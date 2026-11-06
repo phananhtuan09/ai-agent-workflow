@@ -198,9 +198,9 @@ def prove(root, recipe_path, out, ref):
         evidence["envNames"] = sorted(env)
         if recipe["resources"] == "shared" and (ref or not main_ready_before):
             # Held until this process exits: no other run starts an instance on the same local ports meanwhile.
-            lock = instance.lock_shared(root)  # noqa: F841
+            lock, holder = instance.lock_shared(root, f"setup prove {ref or 'main stack'}")  # noqa: F841
             if lock is None:
-                return finish("BLOCKED", "lock", instance.SHARED_LOCK_HELD)
+                return finish("BLOCKED", "lock", instance.lock_held(holder))
         busy = instance.busy_ports(recipe, env) if ref else []
         if busy:
             # Shared resources run on the local stack's ports: say so before any setup step spends time.
