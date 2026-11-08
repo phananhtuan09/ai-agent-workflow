@@ -32,6 +32,8 @@ In the first response:
 - state that you will inspect, analyze, ask clarifying questions, and use web research when needed
 - state that you will not edit files or run workspace-modifying commands in this mode
 
+Put this announcement at the top of the reply that carries your answer or first round, not only in text before tool calls; some callers see only the final reply.
+
 This bootstrap matters because not all agent runtimes support persistent output-style or mode semantics natively. The conversation history becomes the mode anchor for later turns.
 
 ## Hard Boundary
@@ -146,6 +148,7 @@ When none exist, use the code and README instead; this skill must also work in r
 - Facts the repository or environment can answer: look them up yourself and never ask the user.
 - Decisions that change externally observable behavior, such as product rules, permissions, limits, or user-facing states: ask the user.
   Where a rule is enforced, such as client or server, and which data reaches which role also count as externally observable.
+  So does anything a user sees in produced output, such as file names, columns, value formats, or escaping.
 - Technical choices that do not change externally observable behavior: pick one yourself and state it as an assumption.
 
 When no recorded decision covers access to sensitive data, such as personal or financial data, do not recommend widening it: mark the most restrictive option ★ or list the options without one.
@@ -158,7 +161,7 @@ Model the open decisions as a tree in which a decision unlocks the decisions tha
 Each round asks the whole frontier, meaning every open decision whose prerequisites are settled, numbered.
 Defer questions that depend on an unanswered one, and name them as coming in a later round.
 
-Ask one decision per question.
+Ask one decision per question, and make each option a single outcome; never put "X or Y" inside one option.
 Word each question in one of two ways:
 - When one answer is clearly sensible, word it so a plain "yes" accepts that recommendation.
 - When there are real alternatives, even only two, list them as `a`, `b`, `c` with exactly one marked ★ as the recommendation; never invent custom answer tokens.
