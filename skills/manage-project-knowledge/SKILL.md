@@ -21,7 +21,7 @@ Do not create scan reports, task trackers, plans, or placeholder artifacts to re
 ## Discover the artifact system
 
 Read the repository instructions and workflow authority before editing artifacts.
-When present, read `docs/WORKFLOW.md` to distinguish durable repository authority from capability-owned or derived documentation, then read `docs/README.md` for the artifact namespace index.
+When present, read `docs/WORKFLOW.md` to distinguish durable repository authority from capability-owned or derived documentation; its repository knowledge layout is the artifact namespace index, and its namespace contracts section holds the rules shared by every namespace. An older installation may keep the index in `docs/README.md` instead.
 Manage only namespaces that the current workflow classifies as durable repository knowledge, unless a future namespace contract explicitly opts into this skill.
 Do not assume that the namespaces or formats known when this skill was authored are complete.
 
@@ -29,7 +29,7 @@ For every candidate artifact:
 
 1. Locate its declared namespace through the repository documentation index.
 2. Read that namespace's `README.md` in full.
-3. Treat the local `README.md` as the authority for admission criteria, filenames, metadata, required and optional sections, statuses, and writing rules.
+3. Treat the local `README.md`, together with the shared namespace rules in `docs/WORKFLOW.md`, as the authority for admission criteria, filenames, metadata, required and optional sections, statuses, and writing rules; the local `README.md` wins where they differ.
 4. Inspect existing artifacts in that namespace for topic ownership, identifiers, links, and local conventions allowed by the contract.
 5. Update an existing artifact that owns the topic before creating another.
 

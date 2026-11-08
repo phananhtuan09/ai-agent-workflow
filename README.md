@@ -222,7 +222,7 @@ docs/
 
 Optional namespaces are not product authority and are not loaded by ordinary coding work.
 The agent maintains durable knowledge itself: it records what you accept in conversation, keeps facts it infers from code in `docs/observed/`, and asks only when intent sources conflict.
-See [`docs/README.md`](docs/README.md) for each location's contract.
+See [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the layout and shared rules, and each location's `README.md` for its contract.
 
 </details>
 
@@ -283,6 +283,7 @@ For an A/B benchmark, also compare globally available skills and instructions, r
 | [`paseo-plugins/`](paseo-plugins) | [Paseo](https://paseo.sh) plugins (`attention`, `usage-pill`) | No; follow its README |
 | `cli.js`, `lib/` | The `ai-workflow-init` installer and updater | — |
 | `docs/braintorm/` | Exploratory design notes, not product authority | No |
+| `docs/other/` | Preserved historical workflow documents, not the active protocol | No |
 
 ## CLI
 

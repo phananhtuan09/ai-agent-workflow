@@ -1,36 +1,27 @@
 # Product Knowledge
 
-Store durable product behavior, business rules, domain language, and externally observable requirements here.
-This location answers what the system should do.
-Add only accepted repository-specific truth that should outlive one implementation task.
-Do not invent examples or policies merely to populate this directory.
+Accepted product behavior, business rules, domain language, and externally observable requirements: what the system should do.
+Shared rules: `../WORKFLOW.md` (Namespace contracts).
 
 ## Admission
 
-Create or update a product artifact only when the knowledge is accepted intent, not merely behavior inferred from code or tests.
-Record inferred behavior in `../observed/` instead.
-Update an existing topic before creating a competing document.
-Use a lowercase kebab-case topic filename, such as `account-recovery.md`.
-`README.md` defines this namespace and is not a product artifact.
+Add only accepted intent that should outlive one implementation task; behavior inferred from code or tests belongs in `../observed/`.
 
 ## Document format
-
-Use this structure:
 
 ```md
 # <Product rule or domain topic>
 
 Status: Active | Superseded
 Scope: <affected users, systems, or domain boundary>
-Superseded by: <relative link; include only when applicable>
 
 ## Purpose
 
-<Why this behavior or domain rule exists and what outcome it protects.>
+<Why this behavior exists and what outcome it protects.>
 
 ## Definitions
 
-<Define repository-specific terms needed to interpret the rules. Omit when unnecessary.>
+<Repository-specific terms needed to interpret the rules. Conditional.>
 
 ## Rules
 
@@ -38,26 +29,22 @@ Superseded by: <relative link; include only when applicable>
 
 ## Examples
 
-<Concrete examples that clarify boundaries without creating new rules. Omit when unnecessary.>
+<Concrete boundary examples that create no new rules. Conditional.>
 
 ## Exceptions
 
-<Accepted exceptions and their exact boundaries. Omit when none exist.>
+<Accepted exceptions and their exact boundaries. Conditional.>
 
 ## References
 
-- <Accepting human request as `Human request, YYYY-MM-DD: <one-line summary>`.>
-- <Related decision, schema, contract, or other durable artifact.>
+- <Accepting request or decision; related schema, contract, or artifact.>
 ```
 
-`Purpose`, `Rules`, and `References` are required; `References` must cite the accepting request or decision.
-All other sections are conditional, but the `Status` and `Scope` fields are required.
+`Status`, `Scope`, `Purpose`, `Rules`, and `References` are required.
 
 ## Writing rules
 
-Write behavior from the consumer or domain perspective rather than describing implementation.
-Use normative terms such as MUST, MUST NOT, SHOULD, and MAY only when the strength is intentional.
+Write behavior from the consumer or domain perspective, not implementation.
 Make boundaries, precedence, failure behavior, and exceptions explicit when they affect observable behavior.
-Keep one rule per bullet so later changes can update a rule without rewriting unrelated content.
-Link to decisions for rationale and constraints instead of duplicating them.
-Do not include task history, implementation plans, speculative behavior, source-code walkthroughs, or unaccepted proposals.
+Link to decisions for rationale and constraints.
+Do not include implementation plans, speculative behavior, source-code walkthroughs, or unaccepted proposals.

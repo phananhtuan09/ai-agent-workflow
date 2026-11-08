@@ -41,24 +41,30 @@ Apply these conflict rules:
 - If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/product/` or `docs/decisions/`, treat the durable location as authority and correct the derived file.
 - If code changes that no human request authorized disagree with durable intent, report the drift and keep the intent unchanged.
 
-Newly accepted durable knowledge belongs in the following locations:
+## Repository knowledge layout
 
-| Knowledge | Location |
+Read only the locations relevant to the requested outcome.
+New repository knowledge uses these locations:
+
+| Location | Contents |
 | --- | --- |
-| Product and domain rules | `docs/product/` |
-| Architecture and compatibility decisions | `docs/decisions/` |
-| Active durable plans | `docs/plans/active/` |
-| Completed durable plans | `docs/plans/completed/` |
-| Recurring technical patterns | `docs/patterns/` |
-| Verified operating procedures | `docs/runbooks/` |
-| Observed current-state knowledge | `docs/observed/` |
+| `docs/product/` | Accepted product and domain rules |
+| `docs/decisions/` | Architecture, security, compatibility, operational, or product decisions |
+| `docs/plans/` | Durable plans: `active/` for resumable work memory, `completed/` for useful history |
+| `docs/patterns/` | Accepted recurring technical patterns and invariants |
+| `docs/runbooks/` | Verified operational procedures |
+| `docs/observed/` | Agent-maintained current-state facts; context, never authority |
 
-Proposal, evaluation, learning, and design artifacts are optional capability-owned namespaces:
+Optional capability-owned locations exist only when their capability is installed:
 
-- `docs/proposals/` contains optional proposal working material and human approval records when the proposal capability is selected; it does not replace accepted product or decision authority.
-- `docs/evaluation/` contains workflow evaluation standards, observations, traces, and reports.
-- `docs/learning/` contains learning standards and durable learning state.
-- `docs/PRODUCT.md` and `docs/DESIGN.md` contain the design capability's product brief and visual system record.
+| Location | Contents |
+| --- | --- |
+| `docs/proposals/` | Proposal drafts and human approval records; never replace accepted product or decision authority |
+| `docs/testing/` | Runtime E2E plans, execution evidence, cleanup state, and human sign-off |
+| `docs/evaluation/` | Workflow evaluation standards, observations, session traces, and reports |
+| `docs/learning/` | Learning constitution, standard, project context, schedule, cases, and sessions |
+| `docs/PRODUCT.md` | Design capability's derived one-page product brief |
+| `docs/DESIGN.md` | Design capability's accepted visual system record |
 
 The evaluation and learning namespaces are independent of repository product authority and must not be silently merged into it.
 
@@ -143,13 +149,28 @@ Knowledge inferred from code, tests, history, or runtime behavior is observed, n
 Record it only in `docs/observed/`, never treat it as intent authority, and correct or remove it when the code it describes changes.
 A verified operational procedure is the exception: record it in `docs/runbooks/` under that namespace's contract.
 When a human explicitly states that an observed fact is intended behavior, move it to the matching authority namespace and remove the observed entry.
-After a task, keep current the knowledge that task touched or made stale: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/`.
+After a task, keep current the knowledge that task touched or made stale: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/` or delete them when no future reader needs them.
 Tidy the rest of the tree only during a whole-project maintenance pass.
 Ask the human only when intended-behavior sources conflict and the current request does not resolve the conflict.
 
-Each durable artifact namespace governed by this protocol defines its current admission criteria and document contract in that namespace's `README.md`.
-Capabilities managing durable repository knowledge must discover eligible namespaces through `docs/README.md` and follow the selected namespace contract rather than carrying a second embedded format.
-When adding a durable artifact namespace, classify and index it in `docs/README.md` and provide its local contract before creating artifacts in it.
+### Namespace contracts
+
+Each namespace's `README.md` defines its admission criteria, filename convention, document format, and namespace-specific writing rules; the `README.md` itself is never an artifact.
+Capabilities managing durable repository knowledge must discover namespaces through the layout tables above and follow the target namespace's `README.md` instead of carrying a second embedded format.
+When adding a durable artifact namespace, index it in the layout tables and provide its local `README.md` before creating artifacts in it.
+A namespace without a `README.md`, such as `docs/plans/active/`, follows its parent's contract; create the directory when its first artifact is written.
+
+These rules apply to every artifact namespace unless its `README.md` says otherwise:
+
+- Use a lowercase kebab-case topic filename, such as `account-recovery.md`.
+- Update an existing artifact on the topic before creating a competing one.
+- Put metadata fields as plain `Field: value` lines directly under the title; include `Superseded by: <relative link>` only when applicable.
+- When replacing an artifact, mark the old one `Superseded`, and link old and new in both directions; do not rewrite history to make an old artifact appear current.
+- Cite the accepting request in `References` as `Human request, YYYY-MM-DD: <one-line summary>` for accepted knowledge.
+- Link to the owning artifact for rationale, rules, or facts instead of duplicating them.
+- Use normative terms such as MUST, MUST NOT, SHOULD, and MAY only for intentional, accepted strength.
+- Do not invent examples, policies, rationale, or evidence to populate a namespace, and do not include task history or routine work logs.
+- Omit a conditional section when it is genuinely inapplicable.
 
 ## Proof selection
 

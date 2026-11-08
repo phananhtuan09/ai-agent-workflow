@@ -10,8 +10,10 @@ A plan is execution memory, not product authority. Derive expected behavior from
 
 ## Locations
 
-- `docs/testing/active/<slug>.md`: ready, running, failed, blocked, or awaiting human review.
-- `docs/testing/completed/<slug>.md`: completed plans whose evidence remains useful.
+- `docs/testing/active/<slug>.md`: draft, ready, running, failed, blocked, or awaiting human review. Keep execution evidence current.
+- `docs/testing/completed/<slug>.md`: completed plans whose evidence remains useful for audit, regression design, release history, or future investigation; historical evidence, not product authority.
+
+Create either directory when its first plan is written.
 
 Delete routine completed plans when their history has no future reader.
 

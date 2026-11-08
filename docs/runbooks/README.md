@@ -1,20 +1,15 @@
 # Runbooks
 
-Store verified operational procedures for the real system here.
-Suitable topics include local startup, migrations, releases, runtime diagnosis, recovery, and cleanup.
-Record only commands, prerequisites, ownership, and safety steps that have been verified for this repository.
-Do not invent credentials or procedures.
+Verified operational procedures for the real system, such as local startup, migrations, releases, runtime diagnosis, recovery, and cleanup.
+Shared rules: `../WORKFLOW.md` (Namespace contracts).
 
 ## Admission
 
-Create a runbook only for a procedure that has trustworthy execution evidence or can be safely verified while documenting it.
-Update the existing procedure instead of creating a competing sequence.
-Use a lowercase kebab-case operation filename, such as `restore-database-backup.md`.
-`README.md` defines this namespace and is not a runbook.
+Create a runbook only for a procedure with trustworthy execution evidence or one safely verified while documenting it.
+If safe verification is unavailable, leave the runbook uncreated or unchanged and report the missing evidence.
+Use an operation filename, such as `restore-database-backup.md`.
 
 ## Document format
-
-Use this structure:
 
 ```md
 # <Operational procedure>
@@ -33,7 +28,7 @@ Last verified: YYYY-MM-DD
 
 ## Safety
 
-- <Destructive effects, stop conditions, credential handling, and rollback prerequisites.>
+- <Destructive effects, stop conditions, credential handling, rollback prerequisites. Required when an action creates material risk.>
 
 ## Procedure
 
@@ -41,33 +36,28 @@ Last verified: YYYY-MM-DD
 
 ## Verification
 
-1. <How to prove the intended outcome and detect partial failure.>
+1. <How to prove the outcome and detect partial failure.>
 
 ## Recovery
 
-1. <How to stop, roll back, or restore a safe state after failure.>
+1. <How to stop, roll back, or restore a safe state. Required when the procedure changes state or can fail partially.>
 
 ## Troubleshooting
 
 ### <Observed symptom>
 
-<Verified cause and corrective action. Omit this section when none are known.>
+<Verified cause and corrective action. Conditional.>
 
 ## References
 
-- <Related decision, system documentation, dashboard, or script. Omit when none exist.>
+- <Related decision, documentation, dashboard, or script. Conditional.>
 ```
 
-`Outcome`, `Preconditions`, `Procedure`, and `Verification` are required.
-`Safety` is required when an action can create material risk, and `Recovery` is required when the procedure changes state or can fail partially; omit either section when it is genuinely inapplicable.
-The metadata fields `Status`, `Applies to`, and `Last verified` are required.
+`Status`, `Applies to`, `Last verified`, `Outcome`, `Preconditions`, `Procedure`, and `Verification` are required.
 
 ## Writing rules
 
-Use numbered steps in execution order and keep one action per step.
-Show exact commands and identify every variable, environment, and expected result.
+Use numbered steps in execution order and show exact commands, identifying every variable, environment, and expected result.
 Place warnings and stop conditions before the action that creates risk.
-Never expose secrets or present placeholders as runnable values.
-Do not claim a command or recovery path is verified without execution evidence.
-If safe verification is unavailable, leave the runbook uncreated or unchanged and report the missing evidence.
+Never expose secrets or present placeholders as runnable values, and never invent credentials or procedures.
 Update `Last verified` only when the documented procedure itself has been exercised successfully.

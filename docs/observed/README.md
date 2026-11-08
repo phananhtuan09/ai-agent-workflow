@@ -1,23 +1,17 @@
 # Observed Knowledge
 
-Store current-state facts that the agent inferred from code, tests, history, or runtime behavior here.
-Verified operational procedures belong in `../runbooks/`, not here.
-This location answers how the system behaves now, not how it should behave.
-Observed knowledge is context for future work and never product, decision, or pattern authority.
-An observed fact may describe a defect; do not use it to justify keeping or reproducing that behavior.
+Current-state facts the agent inferred from code, tests, history, or runtime behavior: how the system behaves now, not how it should behave.
+Observed knowledge is context, never product, decision, or pattern authority; a fact may describe a defect and never justifies keeping that behavior.
+Verified operational procedures belong in `../runbooks/`.
+Shared rules: `../WORKFLOW.md` (Namespace contracts).
 
 ## Admission
 
-Create or update an observed artifact only for a fact that future work needs and cannot cheaply rediscover from the code.
+Record only a fact future work needs and cannot cheaply rediscover from the code.
 Every fact must cite repository evidence such as a path, stable symbol, commit, or test.
-Do not record facts that an authority namespace already states; link to that artifact instead.
-Update an existing topic before creating a competing document.
-Use a lowercase kebab-case topic filename, such as `order-cancellation.md`.
-`README.md` defines this namespace and is not an observed artifact.
+Do not restate facts an authority namespace already holds.
 
 ## Document format
-
-Use this structure:
 
 ```md
 # <Observed topic>
@@ -30,23 +24,22 @@ Scope: <affected modules, systems, or domain boundary>
 
 ## Open questions
 
-- <Behavior whose intent is unclear, such as a possible defect. Omit when none exist.>
+- <Behavior whose intent is unclear, such as a possible defect. Conditional.>
 
 ## References
 
-- <Related authority artifact. Omit when none exist.>
+- <Related authority artifact. Conditional.>
 ```
 
-`Facts` and the `Scope` field are required.
+`Scope` and `Facts` are required.
 
 ## Lifecycle
 
-When code changes a recorded fact, correct or remove the fact in the same task.
+When code changes a recorded fact, correct or remove it in the same task.
 When a human explicitly states that a fact is intended behavior, move it to the matching authority namespace and remove it here.
 Delete an artifact that has no remaining facts.
 
 ## Writing rules
 
-Describe observable behavior and boundaries, not code walkthroughs.
-State facts without normative terms such as MUST or SHOULD.
+Describe observable behavior and boundaries, not code walkthroughs, without normative terms.
 Do not guess rationale or intent; record the uncertainty under `Open questions`.
