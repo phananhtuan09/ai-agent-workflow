@@ -79,7 +79,7 @@ If a skill is not installed, apply `docs/WORKFLOW.md` directly and say the skill
 | Lint, type, build, or CI failures | `quality-code-check` |
 | Vague product idea that needs framing | `proposal-designer` |
 | Multi-case user flow or API acceptance, proved now (light) or kept re-runnable (durable) | `runtime-e2e-test` |
-| Hard bug, unclear logic, or technical trade-off to think through | `brainstorm-partner` |
+| Hard bug, unclear logic, or technical trade-off to think through, or feature logic to settle before implementation (Grill mode on request) | `brainstorm-partner` |
 | Review a PR, branch, or diff | `review-pr` |
 | The human invokes `/validate-change` to accept a change just made | `validate-change`; never start it yourself |
 | The human invokes `/security-performance-check` for a targeted security or performance check | `security-performance-check`; never start it yourself |
