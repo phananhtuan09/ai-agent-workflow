@@ -12,12 +12,9 @@ const { getCliSelectedBundles } = require("../lib/selection");
 const PROTOCOL_FILES = [
   "AGENTS.md",
   "docs/WORKFLOW.md",
-  "docs/product/README.md",
   "docs/decisions/README.md",
   "docs/plans/README.md",
   "docs/patterns/README.md",
-  "docs/runbooks/README.md",
-  "docs/observed/README.md",
 ];
 
 function runCli(args, setup) {
@@ -2545,13 +2542,16 @@ test("update preserves pre-hard-cut legacy files", () => {
   }
 });
 
-test("update retires merged protocol docs and keeps a locally edited one", () => {
+test("update retires merged or removed protocol docs and keeps a locally edited one", () => {
   const fixture = createUpdateFixture();
   try {
     const hash = require("../lib/update").hashBytes;
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     const legacy = [
       "docs/README.md",
+      "docs/product/README.md",
+      "docs/runbooks/README.md",
+      "docs/observed/README.md",
       "docs/plans/active/README.md",
       "docs/plans/completed/README.md",
       "docs/testing/active/README.md",
@@ -2577,6 +2577,10 @@ test("update retires merged protocol docs and keeps a locally edited one", () =>
     assert.ok(!fs.existsSync(path.join(fixture.workspace, "docs/README.md")));
     assert.ok(!fs.existsSync(path.join(fixture.workspace, "docs/plans/active/README.md")));
     assert.ok(!fs.existsSync(path.join(fixture.workspace, "docs/testing/active/README.md")));
+    ["product", "runbooks", "observed"].forEach((name) => {
+      assert.ok(apply.stdout.includes(`RETIRE repository:docs/${name}/README.md`), apply.stdout);
+      assert.ok(!fs.existsSync(path.join(fixture.workspace, `docs/${name}/README.md`)));
+    });
     assert.ok(apply.stdout.includes("SKIP LOCAL repository:docs/plans/completed/README.md"), apply.stdout);
     assert.strictEqual(fs.readFileSync(edited, "utf8"), "# Project-owned notes\n");
     assert.ok(fs.existsSync(path.join(fixture.workspace, "docs/plans/README.md")));

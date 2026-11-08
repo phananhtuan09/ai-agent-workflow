@@ -1,11 +1,12 @@
 # Decisions
 
-Accepted architecture, security, compatibility, operational, or product decisions whose direction, constraints, and rationale future work must respect.
+Accepted product and domain rules, and architecture, security, compatibility, or operational decisions, whose direction, constraints, and rationale future work must respect.
 Shared rules: `../WORKFLOW.md` (Namespace contracts).
 
 ## Admission
 
-Create a record only for an accepted choice whose rationale or constraints future work must preserve, not for routine implementation choices.
+Create a record only for accepted behavior or an accepted choice whose rules, rationale, or constraints future work must preserve, not for routine implementation choices or behavior merely inferred from code.
+For a product or domain rule, state the externally observable rules from the consumer's perspective under `Decision`, one per bullet, with boundaries, precedence, failure behavior, and exceptions when they matter.
 Filename: `YYYY-MM-DD-<lowercase-kebab-topic>.md`.
 
 ## Document format
@@ -40,7 +41,7 @@ Scope: <affected systems or boundary>
 
 ## References
 
-- <Accepting request; related product rule, pattern, runbook, code boundary, or source.>
+- <Accepting request; related decision, pattern, code boundary, or source.>
 ```
 
 `Status`, `Date`, `Scope`, `Context`, `Decision`, `Consequences`, and `References` are required.

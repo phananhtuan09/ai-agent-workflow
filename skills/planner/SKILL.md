@@ -27,7 +27,7 @@ When the assigning prompt specifies a report format, such as an orchestrator wor
    A bare number answers the latest choice list: do exactly that option as written.
    With no pending list, treat a number as an ordinary prompt.
    A new request replaces pending choices; do not repeat them.
-2. Resolve ambiguity from evidence before guessing or asking: the conversation, the working-tree diff, `docs/plans/active/`, `docs/product/`, and `docs/decisions/`.
+2. Resolve ambiguity from evidence before guessing or asking: the conversation, the working-tree diff, `docs/plans/active/` and `docs/decisions/`.
    For a prompt such as "continue" or "keep going", inspect active plans, `git status`, and recent commits read-only, then offer choices without acting.
 3. Weigh what a wrong guess would cost.
    - Cheap: internal, reversible code, or a visible UI change that does not change logic or data.
@@ -61,7 +61,7 @@ Idea → Proposal → Approval → Plan (if durable) → Implement → Prove →
 | Bug or regression | Reproduce → fix → prove → check similar code → commit |
 | Vague feature idea | Proposal → approval → plan → one plan step per turn |
 | Small change | Change → visual or focused check → commit |
-| Question | Answer with evidence → optional pattern, runbook, or test |
+| Question | Answer with evidence → optional pattern or test |
 | Technical decision | Brainstorm → record the decision → spike |
 | Finished work | Commit → review → PR |
 

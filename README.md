@@ -22,7 +22,7 @@ A repository-driven protocol for AI coding assistants, installed by the `ai-work
 ## Why
 
 - 🎯 **No ceremony.** There is no mandatory spec → plan → execute → verify chain and no coordinator state.
-- 📚 **The repository is the memory.** Intent, decisions, and observed facts live in `docs/`, so any session or contributor can pick up the work.
+- 📚 **The repository is the memory.** Accepted decisions, patterns, and plans live in `docs/`, so any session or contributor can pick up the work.
 - ✅ **Evidence over claims.** Every change ends with the cheapest reliable proof and an honest report of what remains risky.
 - 🧩 **Opt-in capabilities.** Start with the core protocol and add skills only when they materially help.
 
@@ -206,12 +206,9 @@ Existing project and global instruction files are always preserved.
 AGENTS.md
 docs/
 ├── WORKFLOW.md          # authority, work shapes, durable memory, proof
-├── product/             # accepted product and domain behavior
-├── decisions/           # architecture, security, compatibility, operations
+├── decisions/           # accepted product rules and architecture, security, compatibility, operations
 ├── plans/               # active and completed durable working memory
 ├── patterns/            # accepted recurring technical patterns
-├── runbooks/            # verified operating procedures
-├── observed/            # agent-maintained current-state facts, not authority
 ├── proposals/           # optional proposal drafts and human decisions
 ├── testing/             # optional runtime E2E plans and evidence
 ├── evaluation/          # optional workflow evaluation capability
@@ -221,7 +218,7 @@ docs/
 ```
 
 Optional namespaces are not product authority and are not loaded by ordinary coding work.
-The agent maintains durable knowledge itself: it records what you accept in conversation, keeps facts it infers from code in `docs/observed/`, and asks only when intent sources conflict.
+The agent maintains durable knowledge itself: it records what you accept in conversation, never records facts it only inferred from code, and asks only when intent sources conflict.
 See [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the layout and shared rules, and each location's `README.md` for its contract.
 
 </details>

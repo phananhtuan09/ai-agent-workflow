@@ -14,8 +14,7 @@ Separate intent authority, current-state evidence, and work memory.
 Intent authority describes what behavior is intended:
 
 1. The current explicit human request is immediate intent authority for the requested delta when it clearly authorizes a behavior change.
-2. Approved product and domain rules describe durable intended externally observable behavior.
-3. Approved architecture, security, and compatibility decisions constrain implementation choices.
+2. Accepted decisions in `docs/decisions/` record durable product and domain rules, which describe intended externally observable behavior, and architecture, security, and compatibility choices, which constrain implementation.
 
 Current-state evidence describes what exists now:
 
@@ -35,10 +34,10 @@ Evaluation, learning, and design standards govern only their explicitly selected
 Apply these conflict rules:
 
 - If the current explicit request clearly changes existing behavior, treat the request as authority for that requested delta.
-- If durable product or decision docs become stale because of an accepted change, update them as part of the task when the new behavior should outlive the current task.
+- If accepted decisions become stale because of an accepted change, update them as part of the task when the new behavior should outlive the current task.
 - If code, tests, schemas, configuration, or runtime evidence disagree, investigate the current-state inconsistency.
 - If multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and ask the smallest necessary human question.
-- If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/product/` or `docs/decisions/`, treat the durable location as authority and correct the derived file.
+- If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/decisions/`, treat the decision as authority and correct the derived file.
 - If code changes that no human request authorized disagree with durable intent, report the drift and keep the intent unchanged.
 
 ## Repository knowledge layout
@@ -48,12 +47,9 @@ New repository knowledge uses these locations:
 
 | Location | Contents |
 | --- | --- |
-| `docs/product/` | Accepted product and domain rules |
-| `docs/decisions/` | Architecture, security, compatibility, operational, or product decisions |
+| `docs/decisions/` | Accepted product and domain rules, and architecture, security, compatibility, or operational decisions |
 | `docs/plans/` | Durable plans: `active/` for resumable work memory, `completed/` for useful history |
 | `docs/patterns/` | Accepted recurring technical patterns and invariants |
-| `docs/runbooks/` | Verified operational procedures |
-| `docs/observed/` | Agent-maintained current-state facts; context, never authority |
 
 Optional capability-owned locations exist only when their capability is installed:
 
@@ -123,7 +119,7 @@ Preserve unrelated local changes.
 Treat specialized skills as optional capabilities and load one only when it materially improves the work.
 Do not make normal repository-driven execution depend on feature artifacts or coordinator state.
 Do not add a fixed execution chain or require workflow artifacts for ordinary work.
-Do not fabricate product rules, decisions, plans, runbooks, proof, or execution state.
+Do not fabricate product rules, decisions, plans, proof, or execution state.
 When counting, filtering, aggregating, or extracting from bulk data of roughly five or more files or 300 or more lines, write a small script that prints only the needed result instead of reading the raw data into context.
 Bulk data means logs, test or build output, payloads, and statistics across many files; reading code to understand or change it is not bulk data, and a search script never replaces reading a component you are about to change.
 Keep such scripts in a temporary or git-ignored directory so they can be rerun to show how a result was produced without polluting the repository.
@@ -134,21 +130,15 @@ These thresholds are approximate guidance, not hard limits.
 The agent maintains durable knowledge; the human does not need to request, approve, or edit documentation.
 The human sees knowledge changes in the task report and the diff, and a revert or later request corrects them.
 
-Write to `docs/product/` only for accepted behavior that should outlive one implementation task.
-Write to `docs/decisions/` only for meaningful decisions and rationale future work must respect.
+Write to `docs/decisions/` only for accepted behavior or meaningful decisions and rationale that should outlive one implementation task.
 Write to `docs/patterns/` only for accepted recurring technical guidance.
-Write to `docs/runbooks/` only for verified operational procedures.
-Write to `docs/observed/` only for current-state facts that future work needs and cannot cheaply rediscover from the code.
 Do not create durable files merely to record that ordinary work occurred.
 
 Knowledge is accepted when a human explicitly states lasting behavior, a decision, or a convention in the conversation, or answers a decision question.
 Choosing a next step, such as running tests or committing, accepts no knowledge.
 A request scoped to one task is not a lasting rule unless the human says it should apply going forward.
 Record accepted knowledge in its namespace before reporting the task, and cite the accepting request in the artifact.
-Knowledge inferred from code, tests, history, or runtime behavior is observed, not accepted.
-Record it only in `docs/observed/`, never treat it as intent authority, and correct or remove it when the code it describes changes.
-A verified operational procedure is the exception: record it in `docs/runbooks/` under that namespace's contract.
-When a human explicitly states that an observed fact is intended behavior, move it to the matching authority namespace and remove the observed entry.
+Knowledge inferred from code, tests, history, or runtime behavior is not accepted and is never recorded as durable knowledge; rediscover it from the repository when needed, and report intent that looks unclear, such as a possible defect, in the task report.
 After a task, keep current the knowledge that task touched or made stale: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/` or delete them when no future reader needs them.
 Tidy the rest of the tree only during a whole-project maintenance pass.
 Ask the human only when intended-behavior sources conflict and the current request does not resolve the conflict.

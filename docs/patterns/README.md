@@ -6,7 +6,7 @@ Shared rules: `../WORKFLOW.md` (Namespace contracts).
 ## Admission
 
 Create a pattern only when guidance is accepted, recurring, and useful across more than one implementation.
-A convention inferred from code but never confirmed by a human belongs in `../observed/`.
+A convention inferred from code but never confirmed by a human is not a pattern; follow it from the code.
 
 ## Document format
 
@@ -42,7 +42,7 @@ Applies to: <modules, layers, languages, or situations>
 
 ## References
 
-- <Related decision, product rule, runbook, or stable symbol. Conditional.>
+- <Related decision or stable symbol. Conditional.>
 ```
 
 `Status`, `Applies to`, `Problem`, `Applicability`, and `Pattern` are required.

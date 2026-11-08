@@ -1,6 +1,6 @@
 ---
 name: manage-project-knowledge
-description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, patterns, runbooks, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
+description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, patterns, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
 ---
 
 # Manage Project Knowledge
@@ -8,9 +8,9 @@ description: Find, explain, and maintain durable repository knowledge. Use when 
 ## Outcome and scope
 
 Find and explain durable repository knowledge without requiring the human to know its file location, and keep it current without requiring the human to request, approve, or edit documentation.
-Use this skill when a human asks what the repository has recorded, why a durable choice exists, or how an accepted pattern or verified procedure works.
+Use this skill when a human asks what the repository has recorded, why a durable choice exists, or how an accepted pattern works.
 When a human invokes this skill without a specific question or topic, or asks to sync, audit, or review the project's docs, run Maintain the whole project.
-Also use it on your own before reporting a task in which the human accepted knowledge that should outlive the task, the work invalidated recorded knowledge, or the work established observed facts future work needs.
+Also use it on your own before reporting a task in which the human accepted knowledge that should outlive the task, or the work invalidated recorded knowledge.
 Explanation requests are read-only unless the conversation also accepted new knowledge.
 Do not write artifacts merely because ordinary work occurred.
 
@@ -42,8 +42,7 @@ Separate accepted intent from current-state evidence and work memory.
 A human's explicit statement of lasting behavior, a decision, or a convention in the conversation, or an answer to a decision question, establishes durable intent.
 Choosing a next step, such as running tests or committing, establishes nothing, and a request scoped to one task is not a lasting rule unless the human says it should apply going forward.
 Code, tests, schemas, configuration, history, and runtime observations describe current state; they do not by themselves establish intended product behavior, historical rationale, or an accepted recurring convention.
-Record such current-state facts only in the observed namespace declared by the documentation index, never in an authority namespace.
-A verified operational procedure is the exception and follows the runbook namespace contract.
+Never record such current-state facts as durable knowledge; future work rediscovers them from the repository.
 
 Do not fabricate policy, rationale, approval, ownership, dates, verification, alternatives, or operational evidence.
 Do not convert a suggestion, experiment, brainstorm, or unanswered question into an active artifact.
@@ -66,7 +65,7 @@ For an explanation request:
 
 Explain in the language used by the human unless they request another language.
 Preserve exact identifiers, status values, commands, paths, API names, normative terms, and domain vocabulary when translation or paraphrase would reduce precision.
-For runbooks, preserve the documented order, prerequisites, warnings, stop conditions, verification, and recovery steps; do not shorten away safety-critical content.
+For a documented procedure, preserve its order, prerequisites, warnings, stop conditions, verification, and recovery steps; do not shorten away safety-critical content.
 
 Distinguish what the artifacts explicitly state from interpretation needed to connect them.
 If relevant artifacts conflict, report the conflict, each artifact's status and authority, and the applicable workflow precedence rule; do not silently choose a convenient answer.
@@ -91,7 +90,7 @@ Link related artifacts instead of duplicating their content.
 Create an artifact only when:
 
 - the knowledge satisfies the target namespace's admission criteria;
-- a human accepted the knowledge in the conversation, or it is an evidenced current-state fact for the observed namespace;
+- a human accepted the knowledge in the conversation;
 - no existing artifact owns the topic; and
 - every required field and section can be supported without speculation.
 
@@ -106,12 +105,10 @@ If the human asks for a preview, dry run, or proposal, show the proposed changes
 
 Before reporting a task, check whether it:
 
-1. accepted new product behavior, a decision, a pattern, or a verified procedure; record it and cite the accepting request in `References`;
-2. explicitly stated that an observed fact is intended behavior; move it to the matching authority namespace and remove the observed entry;
-3. changed code that recorded knowledge describes; update observed facts to match, and update authority only when the human requested that change;
-4. changed code against authority without a human request; leave the authority unchanged and report the drift;
-5. established current-state facts future work needs and cannot cheaply rediscover; record them in the observed namespace;
-6. left artifacts it touched or made stale replaced, duplicated, or outdated; mark them superseded, merge them, fix links, or move finished plans as their contracts require.
+1. accepted new product behavior, a decision, or a pattern; record it and cite the accepting request in `References`;
+2. changed code that recorded knowledge describes; update the knowledge only when the human requested that change;
+3. changed code against authority without a human request; leave the authority unchanged and report the drift;
+4. left artifacts it touched or made stale replaced, duplicated, or outdated; mark them superseded, merge them, fix links, or move finished plans as their contracts require.
    Leave unrelated artifacts to Maintain the whole project.
 
 When none applies, make no edits.
@@ -124,13 +121,10 @@ Bring all durable knowledge in line with the conversation and the current reposi
 2. Check every rule, decision, and pattern in the authority namespaces against code, tests, schemas, and configuration.
    Report each disagreement as drift with its evidence; never rewrite authority to match code.
    Report authority artifacts that lack a citation their contract requires as a contract gap; never add a citation you cannot source from the conversation.
-3. Check every observed fact against current evidence; correct or remove each one that no longer holds.
-4. Survey the codebase and history for current-state facts future work needs and cannot cheaply rediscover, such as domain flows, cross-module invariants, and non-obvious boundaries.
-   Record them in the observed namespace and put unclear intent, such as a possible defect, under `Open questions`.
-5. Tidy the tree: mark replaced artifacts superseded, merge duplicates, fix broken links, move finished active plans, and delete observed artifacts with no remaining facts.
+3. Tidy the tree: mark replaced artifacts superseded, merge duplicates, fix broken links, and move or delete finished active plans.
 
-On a large repository, cover the most central and most changed areas first, and report which areas remain unsurveyed instead of recording shallow facts.
-Repeat runs on an unchanged repository should converge: once the survey has covered every area, a further run makes no edits.
+On a large repository, check the most central and most changed areas first, and report which areas remain unchecked.
+Repeat runs on an unchanged repository should converge: a further run makes no edits.
 
 ## Write through the namespace contract
 
