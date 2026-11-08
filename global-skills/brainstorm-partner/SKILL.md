@@ -163,7 +163,7 @@ Defer questions that depend on an unanswered one, and name them as coming in a l
 
 Ask one decision per question, and make each option a single outcome; never put "X or Y" inside one option.
 Word each question in one of two ways:
-- When one answer is clearly sensible, word it so a plain "yes" accepts that recommendation.
+- When one answer is clearly sensible, word it so a plain "yes" accepts that recommendation; never use this form for widening access to sensitive data.
 - When there are real alternatives, even only two, list them as `a`, `b`, `c` with exactly one marked ★ as the recommendation; never invent custom answer tokens.
 
 Before the questions, list the facts you checked and the assumptions you made.
@@ -176,7 +176,7 @@ It answers the open questions only: it never leaves read-only mode, and the roun
 Do not settle a question that was never asked.
 List the open questions, then offer separate numbered choices:
 1. Answer them and continue Grill.
-2. Accept every ★ and continue to Exit, still read-only.
+2. Accept every ★ and continue Grill, still read-only; later rounds ask any questions those answers unlock.
 3. Leave read-only mode now, with every remaining question listed as your assumption.
 
 Never offer a choice that combines accepting recommendations with leaving read-only mode.
