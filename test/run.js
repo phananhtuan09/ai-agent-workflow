@@ -2557,7 +2557,7 @@ test("install seeds docs/DECISIONS.md from the template, not this repository's d
   }
 });
 
-test("update retires merged or removed protocol docs and keeps a locally edited one", () => {
+test("update retires merged or removed protocol docs and keeps edited copies and project records", () => {
   const fixture = createUpdateFixture();
   try {
     const hash = require("../lib/update").hashBytes;
@@ -2587,6 +2587,14 @@ test("update retires merged or removed protocol docs and keeps a locally edited 
     fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
     const edited = path.join(fixture.workspace, "docs/plans/completed/README.md");
     fs.writeFileSync(edited, "# Project-owned notes\n");
+    // Records a project wrote itself are never in installed state, so update must leave them.
+    const projectRecords = {
+      "docs/decisions/2026-01-01-x.md": "# Project decision\n",
+      "docs/product/checkout.md": "# Project product rule\n",
+    };
+    Object.entries(projectRecords).forEach(([relativePath, content]) => {
+      fs.writeFileSync(path.join(fixture.workspace, relativePath), content);
+    });
 
     const apply = fixture.run(["update", "--apply"]);
     assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
@@ -2602,6 +2610,10 @@ test("update retires merged or removed protocol docs and keeps a locally edited 
     assert.ok(apply.stdout.includes("SKIP LOCAL repository:docs/plans/completed/README.md"), apply.stdout);
     assert.strictEqual(fs.readFileSync(edited, "utf8"), "# Project-owned notes\n");
     assert.ok(fs.existsSync(path.join(fixture.workspace, "docs/DECISIONS.md")));
+    Object.entries(projectRecords).forEach(([relativePath, content]) => {
+      assert.strictEqual(fs.readFileSync(path.join(fixture.workspace, relativePath), "utf8"), content);
+      assert.ok(!apply.stdout.includes(relativePath), apply.stdout);
+    });
   } finally {
     fixture.cleanup();
   }

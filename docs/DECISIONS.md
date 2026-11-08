@@ -10,7 +10,7 @@ Read the entries relevant to the change before altering behavior they may cover.
 - Update the entry that owns a topic instead of adding a competing one.
 - When a decision changes, edit its entry in place and update `Date` and `Source`. When it no longer applies, delete the entry. Git history keeps earlier versions.
 - For a product or domain rule, write externally observable behavior from the consumer's perspective, with boundaries and failure behavior when they matter. For a technical convention, state when it applies and when it does not.
-- Do not invent rules, rationale, or sources. Use MUST, SHOULD, and MAY only for intentional strength.
+- Do not invent rules, rationale, or sources. When no accepting request can be found, write `Source: Unknown: no accepting request in repository history.` Use MUST, SHOULD, and MAY only for intentional strength.
 
 ```md
 ## <Short title>
@@ -40,7 +40,7 @@ Source: Human requests, 2026-11-08: compact the installed docs; delete `docs/pro
 ## Senior code review skill
 
 Date: 2026-11-04 · Status: Experimental
-Source: Not recorded in the original decision.
+Source: Unknown: no accepting request in repository history.
 
 - Decision: `skills/senior-code-review/` is an opt-in, report-only command (`disable-model-invocation: true`, `disallowed-tools: Edit`, Codex `allow_implicit_invocation: false`), distributed alone through the `senior-review` bundle.
 - Decision: It reviews in a fixed order: context, approach, hard-to-reverse decisions, correctness, internal design, operability and tests, details. Each review picks the 2–3 dimensions that matter from the project-customizable `references/review-catalog.md`.
@@ -116,7 +116,7 @@ Source: Human request, 2026-10-19: let the AI agent manage documentation instead
 ## Manual planner mode
 
 Date: 2026-10-16 · Status: Active
-Source: Not recorded in the original decision.
+Source: Unknown: no accepting request in repository history.
 
 - Decision: `skills/planner/` is distributed through the `planner-mode` bundle with `quality-code-check` and `manage-project-knowledge`. The human turns it on with `/planner`; it then applies for the rest of the conversation and is never invoked automatically.
 - Decision: For each prompt it places the task on the workflow map, runs the fitting step or skill, and ends with two or three numbered next steps, one marked as recommended.
@@ -128,7 +128,7 @@ Source: Not recorded in the original decision.
 ## Canonical skill source
 
 Date: 2026-09-19 · Status: Active
-Source: Not recorded in the original decision.
+Source: Unknown: no accepting request in repository history.
 
 - Decision: `skills/` is the only canonical skill tree. This repository never generates or keeps `.agents/skills/` or `.claude/skills/` mirrors; runtime skill directories are installation outputs in target repositories.
 - Why: Mirrors duplicate the source, drift, and make the kit look like a consumer project.

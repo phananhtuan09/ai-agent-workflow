@@ -62,7 +62,7 @@ Run it when the human asks (`/runtime-e2e-test setup`) or accepts the suggestion
 It proves how the project runs, so a later validation run never stops on environment configuration.
 Only local targets are in scope: the tool refuses a ready or sibling URL on any other host, and it never swaps or restarts the human's running stack.
 
-1. Run `scripts/setup.py detect` and read the candidates it prints; each cites the file and line it came from (`package.json`, `Makefile`, compose files, `playwright.config.*`, env-file names, `README.md`, and `docs/runbooks/` when an older project still has it).
+1. Run `scripts/setup.py detect` and read the candidates it prints; each cites the file and line it came from (`package.json`, `Makefile`, compose files, `playwright.config.*`, env-file names, `README.md`, and, only in an older project that still has it, `docs/runbooks/`, whose commands are unverified candidates rather than authority).
    It never prints an env-file value.
 2. Ask the human once, before writing the recipe, which resources a worktree instance uses, and record the answer as `resources`:
    - `shared`: the local stack's ports, database, services, and local files such as `.env` (listed in `copy`). Nothing new is created; the instance runs only while the local stack is stopped.

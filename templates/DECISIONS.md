@@ -10,7 +10,7 @@ Read the entries relevant to the change before altering behavior they may cover.
 - Update the entry that owns a topic instead of adding a competing one.
 - When a decision changes, edit its entry in place and update `Date` and `Source`. When it no longer applies, delete the entry. Git history keeps earlier versions.
 - For a product or domain rule, write externally observable behavior from the consumer's perspective, with boundaries and failure behavior when they matter. For a technical convention, state when it applies and when it does not.
-- Do not invent rules, rationale, or sources. Use MUST, SHOULD, and MAY only for intentional strength.
+- Do not invent rules, rationale, or sources. When no accepting request can be found, write `Source: Unknown: no accepting request in repository history.` Use MUST, SHOULD, and MAY only for intentional strength.
 
 ```md
 ## <Short title>
