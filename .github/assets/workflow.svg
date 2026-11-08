@@ -130,7 +130,7 @@
     <rect x="520" y="488" width="160" height="24" rx="12" fill="#fff" stroke="#1d1d1b" stroke-width="3.5"/>
     <text x="600" y="504" class="st" text-anchor="middle" style="font-size:12px">docs/</text>
     <text x="600" y="538" class="st" text-anchor="middle">Durable memory depot</text>
-    <text x="600" y="554" class="cap" text-anchor="middle">product · decisions · plans · patterns · runbooks · observed</text>
+    <text x="600" y="554" class="cap" text-anchor="middle">decisions · plans</text>
     <g transform="translate(57.56,195)"><circle r="10" fill="#1d1d1b"/><path d="M-5,-4 h10 a2,2 0 0 1 2,2 v4 a2,2 0 0 1 -2,2 h-5 l-3,3 v-3 h-2 a2,2 0 0 1 -2,-2 v-4 a2,2 0 0 1 2,-2z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
     <g transform="translate(219.72,195)"><circle r="10" fill="#1d1d1b"/><path d="M0,-6 L5,-4 V0 C5,3.5 2.5,5.5 0,6.5 C-2.5,5.5 -5,3.5 -5,0 V-4 Z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
     <g transform="translate(375.8,195)"><circle r="10" fill="#1d1d1b"/><path d="M0,6 V0 M0,0 L-5,-5 M0,0 L5,-5 M-5,-5 h2.5 M-5,-5 v2.5 M5,-5 h-2.5 M5,-5 v2.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>

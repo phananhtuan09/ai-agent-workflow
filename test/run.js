@@ -8,18 +8,12 @@ const { SOURCE_ROOT } = require("../lib/config");
 const { resolveSkills } = require("../lib/skills");
 const { getCliSelectedSkills } = require("../lib/selection");
 const { getCliSelectedBundles } = require("../lib/selection");
+const { protocolSourcePath } = require("../lib/managed-files");
 
 const PROTOCOL_FILES = [
   "AGENTS.md",
-  "docs/README.md",
   "docs/WORKFLOW.md",
-  "docs/product/README.md",
-  "docs/decisions/README.md",
-  "docs/plans/active/README.md",
-  "docs/plans/completed/README.md",
-  "docs/patterns/README.md",
-  "docs/runbooks/README.md",
-  "docs/observed/README.md",
+  "docs/DECISIONS.md",
 ];
 
 function runCli(args, setup) {
@@ -64,6 +58,7 @@ function createUpdateFixture(tool = "opencode") {
   [
     "package.json",
     ...PROTOCOL_FILES,
+    "templates",
     "skills",
     "docs/evaluation",
     "docs/learning",
@@ -107,6 +102,7 @@ function createCliFixture(setup) {
   [
     "package.json",
     ...PROTOCOL_FILES,
+    "templates",
     "skills",
     "docs/evaluation",
     "docs/learning",
@@ -484,7 +480,7 @@ test("clean coding-standard install includes protocol without legacy artifacts",
     PROTOCOL_FILES.forEach((relativePath) => {
       assert.ok(
         fs.readFileSync(path.join(result.workspace, relativePath)).equals(
-          fs.readFileSync(path.join(SOURCE_ROOT, relativePath))
+          fs.readFileSync(path.join(SOURCE_ROOT, protocolSourcePath(relativePath)))
         ),
         relativePath
       );
@@ -633,8 +629,6 @@ test("Codex installs the testing bundle and runtime E2E namespace", () => {
     assert.ok(fs.existsSync(runtimeReference));
     assert.ok(fs.readFileSync(runtimeReference, "utf8").includes("- Status: UNCONFIGURED"));
     assert.ok(fs.existsSync(path.join(result.workspace, "docs/testing/README.md")));
-    assert.ok(fs.existsSync(path.join(result.workspace, "docs/testing/active/README.md")));
-    assert.ok(fs.existsSync(path.join(result.workspace, "docs/testing/completed/README.md")));
   } finally {
     result.cleanup();
   }
@@ -2549,25 +2543,101 @@ test("update preserves pre-hard-cut legacy files", () => {
   }
 });
 
+test("install seeds docs/DECISIONS.md from the template, not this repository's decisions", () => {
+  const result = runCli(["--kit", "coding-standard", "--tool", "codex"]);
+  try {
+    assert.strictEqual(result.status, 0, result.stderr || result.stdout);
+    const installed = fs.readFileSync(path.join(result.workspace, "docs/DECISIONS.md"), "utf8");
+    assert.strictEqual(installed, fs.readFileSync(path.join(SOURCE_ROOT, "templates/DECISIONS.md"), "utf8"));
+    assert.ok(!installed.includes("## Canonical skill source"));
+    assert.ok(!fs.existsSync(path.join(result.workspace, "docs/decisions")));
+    assert.ok(!fs.existsSync(path.join(result.workspace, "docs/plans")));
+  } finally {
+    result.cleanup();
+  }
+});
+
+test("update retires merged or removed protocol docs and keeps edited copies and project records", () => {
+  const fixture = createUpdateFixture();
+  try {
+    const hash = require("../lib/update").hashBytes;
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    const legacy = [
+      "docs/README.md",
+      "docs/product/README.md",
+      "docs/runbooks/README.md",
+      "docs/observed/README.md",
+      "docs/patterns/README.md",
+      "docs/decisions/README.md",
+      "docs/plans/README.md",
+      "docs/plans/active/README.md",
+      "docs/plans/completed/README.md",
+      "docs/testing/active/README.md",
+    ];
+    legacy.forEach((relativePath) => {
+      const target = path.join(fixture.workspace, relativePath);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, `legacy ${relativePath}\n`);
+      state.files.push({
+        scope: "repository",
+        path: relativePath,
+        hash: hash(Buffer.from(`legacy ${relativePath}\n`)),
+      });
+    });
+    fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+    const edited = path.join(fixture.workspace, "docs/plans/completed/README.md");
+    fs.writeFileSync(edited, "# Project-owned notes\n");
+    // Records a project wrote itself are never in installed state, so update must leave them.
+    const projectRecords = {
+      "docs/decisions/2026-01-01-x.md": "# Project decision\n",
+      "docs/product/checkout.md": "# Project product rule\n",
+    };
+    Object.entries(projectRecords).forEach(([relativePath, content]) => {
+      fs.writeFileSync(path.join(fixture.workspace, relativePath), content);
+    });
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes("RETIRE repository:docs/README.md"), apply.stdout);
+    assert.ok(apply.stdout.includes("RETIRE repository:docs/plans/active/README.md"), apply.stdout);
+    assert.ok(!fs.existsSync(path.join(fixture.workspace, "docs/README.md")));
+    assert.ok(!fs.existsSync(path.join(fixture.workspace, "docs/plans/active/README.md")));
+    assert.ok(!fs.existsSync(path.join(fixture.workspace, "docs/testing/active/README.md")));
+    ["product", "runbooks", "observed", "patterns", "decisions", "plans"].forEach((name) => {
+      assert.ok(apply.stdout.includes(`RETIRE repository:docs/${name}/README.md`), apply.stdout);
+      assert.ok(!fs.existsSync(path.join(fixture.workspace, `docs/${name}/README.md`)));
+    });
+    assert.ok(apply.stdout.includes("SKIP LOCAL repository:docs/plans/completed/README.md"), apply.stdout);
+    assert.strictEqual(fs.readFileSync(edited, "utf8"), "# Project-owned notes\n");
+    assert.ok(fs.existsSync(path.join(fixture.workspace, "docs/DECISIONS.md")));
+    Object.entries(projectRecords).forEach(([relativePath, content]) => {
+      assert.strictEqual(fs.readFileSync(path.join(fixture.workspace, relativePath), "utf8"), content);
+      assert.ok(!apply.stdout.includes(relativePath), apply.stdout);
+    });
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("update without installed state does not adopt pre-existing exact files", () => {
   const fixture = createUpdateFixture();
   try {
     const divergent = "# Consumer-owned workflow\n";
     fs.unlinkSync(fixture.statePath);
-    fs.unlinkSync(path.join(fixture.workspace, "docs/README.md"));
+    fs.unlinkSync(path.join(fixture.workspace, "docs/DECISIONS.md"));
     fs.writeFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), divergent);
 
     const apply = fixture.run(["update", "--apply"]);
     assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
     assert.ok(apply.stdout.includes("SKIP UNKNOWN repository:AGENTS.md"));
-    assert.ok(apply.stdout.includes("ADD repository:docs/README.md"));
+    assert.ok(apply.stdout.includes("ADD repository:docs/DECISIONS.md"));
     assert.ok(apply.stdout.includes("SKIP UNKNOWN repository:docs/WORKFLOW.md"));
     assert.strictEqual(
       fs.readFileSync(path.join(fixture.workspace, "docs/WORKFLOW.md"), "utf8"),
       divergent
     );
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
-    assert.ok(state.files.some((file) => file.path === "docs/README.md"));
+    assert.ok(state.files.some((file) => file.path === "docs/DECISIONS.md"));
     assert.ok(!state.files.some((file) => file.path === "AGENTS.md"));
     assert.ok(!state.files.some((file) => file.path === "docs/WORKFLOW.md"));
   } finally {
@@ -2581,16 +2651,16 @@ test("update rerun completes safely after file operations outpace installed stat
     const upstreamAgents = "# Interrupted update agents\n";
     const upstreamDocsReadme = "# Interrupted update docs\n";
     fs.writeFileSync(path.join(fixture.sourceRoot, "AGENTS.md"), upstreamAgents);
-    fs.writeFileSync(path.join(fixture.sourceRoot, "docs/README.md"), upstreamDocsReadme);
+    fs.writeFileSync(path.join(fixture.sourceRoot, "templates/DECISIONS.md"), upstreamDocsReadme);
 
     // This is the observable state left when a file rename succeeds before state is replaced.
     fs.writeFileSync(path.join(fixture.workspace, "AGENTS.md"), upstreamAgents);
     const apply = fixture.run(["update", "--apply"]);
     assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
     assert.ok(apply.stdout.includes("UNCHANGED repository:AGENTS.md"));
-    assert.ok(apply.stdout.includes("UPDATE repository:docs/README.md"));
+    assert.ok(apply.stdout.includes("UPDATE repository:docs/DECISIONS.md"));
     assert.strictEqual(
-      fs.readFileSync(path.join(fixture.workspace, "docs/README.md"), "utf8"),
+      fs.readFileSync(path.join(fixture.workspace, "docs/DECISIONS.md"), "utf8"),
       upstreamDocsReadme
     );
 

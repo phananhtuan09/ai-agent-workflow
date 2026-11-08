@@ -14,8 +14,7 @@ Never set `READY` by hand for a command that was not executed.
 
 ## Runtime topology
 
-List only services required for runtime E2E verification. Prefer links to an
-existing runbook over duplicated instructions.
+List only services required for runtime E2E verification.
 
 | Service | Working directory | Start command | Ready signal | Stop/reset command | Log location |
 | --- | --- | --- | --- | --- | --- |

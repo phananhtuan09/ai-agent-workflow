@@ -16,7 +16,7 @@ Read `AGENTS.md`, the relevant parts of `docs/WORKFLOW.md`, and `docs/proposals/
 Inspect the smallest relevant product rules, decisions, code, and existing behavior.
 Treat an unapproved proposal as a candidate, not accepted repository intent.
 Surface conflicts with accepted intent instead of silently replacing it.
-After approval, hand accepted long-lived product rules or decisions to their existing namespaces when the current task authorizes that work; the proposal does not replace `docs/product/` or `docs/decisions/`.
+After approval, record accepted long-lived product rules or decisions in `docs/DECISIONS.md` when the current task authorizes that work; the proposal does not replace `docs/DECISIONS.md`.
 
 Use one topic directory and one `proposal.md` per proposal.
 Keep research findings, review feedback, alternatives, and human decisions in that file when they materially affect the proposal.

@@ -42,6 +42,7 @@
     "docs/",
     ".agents/",
     "skills/",
+    "templates/",
     ".codex/",
     ".claude/",
     "README.md"

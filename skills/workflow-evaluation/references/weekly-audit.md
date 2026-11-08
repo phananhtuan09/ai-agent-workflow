@@ -101,7 +101,7 @@ These verdicts are human reference review for evaluator calibration in `docs/eva
 Every suggested experiment names the lowest rung that plausibly prevents recurrence:
 
 0. No change (one-off or model-execution).
-1. Add project context (product rules, decisions, patterns, runbooks).
+1. Add project context (accepted decisions).
 2. Edit an existing skill.
 3. Remove or merge a rule, step, or skill.
 4. Replace guidance with a deterministic script or check.

@@ -62,7 +62,7 @@ Run it when the human asks (`/runtime-e2e-test setup`) or accepts the suggestion
 It proves how the project runs, so a later validation run never stops on environment configuration.
 Only local targets are in scope: the tool refuses a ready or sibling URL on any other host, and it never swaps or restarts the human's running stack.
 
-1. Run `scripts/setup.py detect` and read the candidates it prints; each cites the file and line it came from (`package.json`, `Makefile`, compose files, `playwright.config.*`, env-file names, `README.md`, `docs/runbooks/`).
+1. Run `scripts/setup.py detect` and read the candidates it prints; each cites the file and line it came from (`package.json`, `Makefile`, compose files, `playwright.config.*`, env-file names, `README.md`, and, only in an older project that still has it, `docs/runbooks/`, whose commands are unverified candidates rather than authority).
    It never prints an env-file value.
 2. Ask the human once, before writing the recipe, which resources a worktree instance uses, and record the answer as `resources`:
    - `shared`: the local stack's ports, database, services, and local files such as `.env` (listed in `copy`). Nothing new is created; the instance runs only while the local stack is stopped.
@@ -87,8 +87,7 @@ Only local targets are in scope: the tool refuses a ready or sibling URL on any 
    It writes only proven fields: `Status`, the topology row, required variable names, `Setup sample`, `## Base instance` with the resources choice and the recipe as JSON, `Last verified`, and `Setup evidence`.
    A failed main stack sets `Status: BLOCKED — <step>: <reason>` and leaves every unproven field a placeholder; a proven main stack with no ready parallel instance keeps `Status: READY` and sets `Base instance: BLOCKED` with the reason.
    An unchanged result leaves the file untouched, so a re-run on an unchanged project makes no edits.
-7. Fill the remaining fields of the reference only from what you executed; leave the rest for the human.
-8. Write or update `docs/runbooks/local-startup.md` from the proven steps, following `docs/runbooks/README.md`, unless an equivalent runbook already exists; update `Last verified` there only when the procedure ran.
+7. Fill the remaining fields of the reference only from what you executed; leave the rest for the human. The reference is the project's record of how to start the runtime; do not write a separate runbook.
 
 Secret values never reach a file: the tool reads env files and the environment by name only and masks credential-like values in every log it keeps.
 
