@@ -68,7 +68,7 @@ Record which source or revision you used when comparing installations.
 
 | Capability | Install flag | What it adds | Status |
 | --- | --- | --- | --- |
-| 🧭 Core protocol | `--kit coding-standard` | `AGENTS.md`, `docs/WORKFLOW.md`, and the `docs/` namespaces | Stable |
+| 🧭 Core protocol | `--kit coding-standard` | `AGENTS.md`, `docs/WORKFLOW.md`, and `docs/DECISIONS.md` | Stable |
 | 🗺️ Planner mode | `--bundle planner-mode` | Manually invoked `/planner` mode that picks the next workflow step and suggests numbered next prompts | Experimental |
 | 🧪 Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
 | ✅ Validate change | `--bundle validate` | Manually invoked `/validate-change` that runs static checks, review, and runtime E2E on one expectation list and reports one status | Experimental |
@@ -128,7 +128,7 @@ It asks first before git actions, outward actions such as PR comments, and unres
 It is plain instructions with no hooks, so nothing changes until a session invokes it.
 Claude Code keeps it manual with `disable-model-invocation`; Codex and Antigravity rely on the skill description, so a session may occasionally start it on its own.
 No hook re-injects it after compaction in a very long session; invoke `/planner` again if the choices stop appearing.
-See the [decision record](docs/decisions/2026-10-16-planner-capability.md) for scope.
+See the [decision record](docs/DECISIONS.md#manual-planner-mode) for scope.
 
 ### Runtime E2E tests
 
@@ -153,7 +153,7 @@ It is experimental. Claude Code keeps it manual with `disable-model-invocation` 
 | Only lint, type check, or build | `/quality-code-check` |
 | Review someone else's PR or a diff | `/review-pr` |
 
-See the [decision record](docs/decisions/2026-10-29-validate-change-composite.md) for why it is an opt-in command and not a required chain.
+See the [decision record](docs/DECISIONS.md#validate-change-composite) for why it is an opt-in command and not a required chain.
 
 ### Security performance check
 
@@ -164,7 +164,7 @@ It never modifies application code, probes only allowed local/dev hosts, and wri
 After installation, run `/runtime-e2e-test setup`, then complete the "Security and performance probes" fields in `runtime-e2e-test/references/project-runtime.md`, and adjust `references/security-signals.md` and `references/performance-signals.md` for the project; edited signal files are kept on update.
 It is experimental. Claude Code keeps it manual with `disable-model-invocation` and Codex with `allow_implicit_invocation: false`.
 
-See the [decision record](docs/decisions/2026-10-30-security-performance-check.md) for scope.
+See the [decision record](docs/DECISIONS.md#security-and-performance-check-skill) for scope.
 
 ### Senior code review
 
@@ -206,8 +206,8 @@ Existing project and global instruction files are always preserved.
 AGENTS.md
 docs/
 ├── WORKFLOW.md          # authority, work shapes, durable memory, proof
-├── decisions/           # accepted product rules, conventions, architecture, security, operations
-├── plans/               # active and completed durable working memory
+├── DECISIONS.md         # accepted product rules, conventions, and decisions, one entry each
+├── plans/               # durable plans, created with the first one
 ├── proposals/           # optional proposal drafts and human decisions
 ├── testing/             # optional runtime E2E plans and evidence
 ├── evaluation/          # optional workflow evaluation capability
@@ -218,7 +218,7 @@ docs/
 
 Optional namespaces are not product authority and are not loaded by ordinary coding work.
 The agent maintains durable knowledge itself: it records what you accept in conversation, never records facts it only inferred from code, and asks only when intent sources conflict.
-See [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the layout and shared rules, and each location's `README.md` for its contract.
+See [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for the layout, the header of `docs/DECISIONS.md` for its entry format, and each optional namespace's `README.md` for its contract.
 
 </details>
 

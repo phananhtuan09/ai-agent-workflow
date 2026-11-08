@@ -20,7 +20,7 @@
     },
     {
       "id": "durable-docs-namespace",
-      "rule": "A new durable artifact namespace under docs/ must be indexed in the docs/WORKFLOW.md knowledge layout and provide its own local README.md contract before it contains artifacts. Do not treat docs/PRODUCT.md as product authority; durable product rules and decisions belong in docs/decisions/.",
+      "rule": "A new durable location under docs/ must be indexed in the docs/WORKFLOW.md knowledge layout and have its own contract before it holds anything. Do not treat docs/PRODUCT.md as product authority; durable product rules and decisions belong in docs/DECISIONS.md.",
       "scope": ["docs/**"],
       "severity": "medium"
     },

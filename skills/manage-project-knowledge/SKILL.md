@@ -1,6 +1,6 @@
 ---
 name: manage-project-knowledge
-description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, conventions, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
+description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, conventions, or other declared durable knowledge, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
 ---
 
 # Manage Project Knowledge
@@ -15,26 +15,26 @@ Explanation requests are read-only unless the conversation also accepted new kno
 Do not write artifacts merely because ordinary work occurred.
 
 Change only artifact documents governed by the repository's documentation contracts.
-Do not change production code, tests, dependencies, schemas, runtime configuration, workflow policy, namespace `README.md` contracts, or installer state.
+Do not change production code, tests, dependencies, schemas, runtime configuration, workflow policy, documentation contracts (the header of `docs/DECISIONS.md` or a namespace `README.md`), or installer state.
 Do not create scan reports, task trackers, plans, or placeholder artifacts to record that synchronization occurred.
 
 ## Discover the artifact system
 
 Read the repository instructions and workflow authority before editing artifacts.
-When present, read `docs/WORKFLOW.md` to distinguish durable repository authority from capability-owned or derived documentation; its repository knowledge layout is the artifact namespace index, and its namespace contracts section holds the rules shared by every namespace. An older installation may keep the index in `docs/README.md` instead.
-Manage only namespaces that the current workflow classifies as durable repository knowledge, unless a future namespace contract explicitly opts into this skill.
-Do not assume that the namespaces or formats known when this skill was authored are complete.
+When present, read `docs/WORKFLOW.md` to distinguish durable repository authority from capability-owned or derived documentation; its repository knowledge layout is the index of durable locations.
+Manage only locations that the current workflow classifies as durable repository knowledge, unless a future contract explicitly opts into this skill.
+Do not assume that the locations or formats known when this skill was authored are complete.
 
 For every candidate artifact:
 
-1. Locate its declared namespace through the repository documentation index.
-2. Read that namespace's `README.md` in full.
-3. Treat the local `README.md`, together with the shared namespace rules in `docs/WORKFLOW.md`, as the authority for admission criteria, filenames, metadata, required and optional sections, statuses, and writing rules; the local `README.md` wins where they differ.
-4. Inspect existing artifacts in that namespace for topic ownership, identifiers, links, and local conventions allowed by the contract.
-5. Update an existing artifact that owns the topic before creating another.
+1. Locate its declared location through the layout index.
+2. Read that location's contract in full: the header of `docs/DECISIONS.md`, or a namespace's `README.md`.
+3. Treat that contract as the authority for admission criteria, filenames, entry or document format, statuses, and editing rules.
+4. Inspect existing entries or artifacts there for topic ownership, links, and local conventions the contract allows.
+5. Update the entry or artifact that owns the topic before creating another.
 
-If the repository has no documentation index, the target namespace is not declared, or its `README.md` does not define a usable document contract, report the contract gap and do not invent a format.
-Future namespaces are supported through the same discovery process without changing this skill when they expose a complete local contract.
+If the repository has no layout index, the target location is not declared, or its contract does not define a usable format, report the contract gap and do not invent a format.
+Future locations are supported through the same discovery process without changing this skill when they expose a complete contract.
 
 ## Establish authority
 
@@ -96,7 +96,7 @@ Create an artifact only when:
 
 Update an artifact when accepted knowledge changes, clarification removes material ambiguity, supported references improve traceability, or the namespace contract requires lifecycle metadata to change.
 Preserve still-valid content and history.
-Apply supersession, deprecation, retirement, or replacement exactly as the namespace contract specifies.
+Apply lifecycle changes exactly as the contract specifies; in `docs/DECISIONS.md`, edit a changed entry in place and delete one that no longer applies.
 
 Apply supported documentation edits directly; no separate approval is needed.
 If the human asks for a preview, dry run, or proposal, show the proposed changes without writing them.
@@ -105,10 +105,10 @@ If the human asks for a preview, dry run, or proposal, show the proposed changes
 
 Before reporting a task, check whether it:
 
-1. accepted new product behavior, a decision, or a convention; record it and cite the accepting request in `References`;
+1. accepted new product behavior, a decision, or a convention; record it and cite the accepting request as its contract specifies;
 2. changed code that recorded knowledge describes; update the knowledge only when the human requested that change;
 3. changed code against authority without a human request; leave the authority unchanged and report the drift;
-4. left artifacts it touched or made stale replaced, duplicated, or outdated; mark them superseded, merge them, fix links, or move finished plans as their contracts require.
+4. left artifacts it touched or made stale replaced, duplicated, or outdated; edit or delete outdated entries, merge duplicates, fix links, or move or delete finished plans as their contracts require.
    Leave unrelated artifacts to Maintain the whole project.
 
 When none applies, make no edits.
@@ -118,21 +118,22 @@ When none applies, make no edits.
 Bring all durable knowledge in line with the conversation and the current repository:
 
 1. Record knowledge the human accepted in the current conversation, as in Maintain after a task.
-2. Check every rule, decision, and convention in the authority namespaces against code, tests, schemas, and configuration.
+2. Check every rule, decision, and convention in the authority locations against code, tests, schemas, and configuration.
    Report each disagreement as drift with its evidence; never rewrite authority to match code.
    Report authority artifacts that lack a citation their contract requires as a contract gap; never add a citation you cannot source from the conversation.
-3. Tidy the tree: mark replaced artifacts superseded, merge duplicates, fix broken links, and move or delete finished active plans.
+3. Merge accepted records from an older `docs/decisions/`, `docs/product/`, or `docs/patterns/` into `docs/DECISIONS.md` and delete the merged files, as `docs/WORKFLOW.md` describes.
+4. Tidy: edit or delete outdated entries, merge duplicates, fix broken links, and move or delete finished active plans.
 
 On a large repository, check the most central and most changed areas first, and report which areas remain unchecked.
 Repeat runs on an unchanged repository should converge: a further run makes no edits.
 
-## Write through the namespace contract
+## Write through the contract
 
-Use the target namespace's current `README.md` as the template and writing standard.
-Include every required metadata field and section.
+Use the target's current contract as the template and writing standard.
+Include every required field and section.
 Omit optional sections when they add no supported information.
 Follow its filename, status, linking, evidence, and lifecycle conventions exactly.
-Preserve stricter conventions already established by valid artifacts when they do not conflict with the namespace contract.
+Preserve stricter conventions already established by valid artifacts when they do not conflict with the contract.
 
 Write concise durable claims rather than task narration.
 Keep unrelated knowledge unchanged.
@@ -155,10 +156,10 @@ If required information remains unavailable, leave the affected artifact unchang
 
 After editing:
 
-1. Re-read each changed artifact against its namespace `README.md`.
+1. Re-read each changed entry or artifact against its contract.
 2. Confirm all required metadata and sections are present and supported.
-3. Check filenames, statuses, relative links, and supersession relationships.
-4. Check that no topic was duplicated across artifacts or namespaces.
+3. Check filenames, statuses, and relative links.
+4. Check that no topic was duplicated across entries, artifacts, or locations.
 5. Check consequential claims against their cited authority or evidence.
 6. For operational procedures, accept only trustworthy prior execution evidence or a safe verification performed after reviewing prerequisites and effects.
 
@@ -171,7 +172,7 @@ An unchanged repository with no newly accepted knowledge should produce no edits
 Report:
 
 - artifacts created or updated and why;
-- the namespace contract used for each artifact;
+- the contract used for each artifact;
 - evidence or authority checked;
 - verification actually performed;
 - deferred topics, contract gaps, implementation drift, or unresolved conflicts.

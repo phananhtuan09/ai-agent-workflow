@@ -82,7 +82,7 @@ A bounded command matches the bounded-change work shape; the full flow reintrodu
 
 ## Authority
 
-`docs/decisions/` outranks `docs/PRODUCT.md` and `docs/DESIGN.md` whenever they disagree.
+`docs/DECISIONS.md` outranks `docs/PRODUCT.md` and `docs/DESIGN.md` whenever they disagree.
 `docs/PRODUCT.md` is a derived summary in the engine's fixed schema and is never durable product authority.
 The full rules are in `WORKFLOW.md` under the capability-owned namespaces section.
 

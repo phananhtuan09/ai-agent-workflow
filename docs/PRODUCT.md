@@ -5,7 +5,7 @@
 > Run `/impeccable init` to complete it through an interview; it updates this file in place.
 > That command needs the design engine on your machine: `npx impeccable install --scope=global --no-hooks`.
 > Do not design a new surface or replacement visual world from this file while it is still a seed.
-> Accepted decisions in `docs/decisions/` stay authoritative whenever the two disagree, per `docs/WORKFLOW.md`.
+> Accepted decisions in `docs/DECISIONS.md` stay authoritative whenever the two disagree, per `docs/WORKFLOW.md`.
 > `## Platform` takes one bare value: `web`, `ios`, `android`, or `adaptive`. Left empty it resolves to `web`.
 
 ## Platform

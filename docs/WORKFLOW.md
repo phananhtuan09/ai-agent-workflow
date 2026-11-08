@@ -14,7 +14,7 @@ Separate intent authority, current-state evidence, and work memory.
 Intent authority describes what behavior is intended:
 
 1. The current explicit human request is immediate intent authority for the requested delta when it clearly authorizes a behavior change.
-2. Accepted decisions in `docs/decisions/` record durable product and domain rules, which describe intended externally observable behavior, and architecture, security, and compatibility choices, which constrain implementation.
+2. Accepted decisions in `docs/DECISIONS.md` record durable product and domain rules, which describe intended externally observable behavior, and architecture, security, and compatibility choices, which constrain implementation.
 
 Current-state evidence describes what exists now:
 
@@ -37,7 +37,7 @@ Apply these conflict rules:
 - If accepted decisions become stale because of an accepted change, update them as part of the task when the new behavior should outlive the current task.
 - If code, tests, schemas, configuration, or runtime evidence disagree, investigate the current-state inconsistency.
 - If multiple intended-behavior sources conflict and the current request does not resolve the conflict, stop before behavior-changing mutation and ask the smallest necessary human question.
-- If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/decisions/`, treat the decision as authority and correct the derived file.
+- If `docs/PRODUCT.md` or `docs/DESIGN.md` disagrees with `docs/DECISIONS.md`, treat the decision as authority and correct the derived file.
 - If code changes that no human request authorized disagree with durable intent, report the drift and keep the intent unchanged.
 
 ## Repository knowledge layout
@@ -47,8 +47,8 @@ New repository knowledge uses these locations:
 
 | Location | Contents |
 | --- | --- |
-| `docs/decisions/` | Accepted product and domain rules, recurring technical conventions, and architecture, security, compatibility, or operational decisions |
-| `docs/plans/` | Durable plans: `active/` for resumable work memory, `completed/` for useful history |
+| `docs/DECISIONS.md` | Accepted product and domain rules, recurring technical conventions, and architecture, security, compatibility, or operational decisions, one entry each |
+| `docs/plans/` | Durable plans: `active/` for resumable work memory, `completed/` for useful history; created with the first plan |
 
 Optional capability-owned locations exist only when their capability is installed:
 
@@ -61,6 +61,8 @@ Optional capability-owned locations exist only when their capability is installe
 | `docs/PRODUCT.md` | Design capability's derived one-page product brief |
 | `docs/DESIGN.md` | Design capability's accepted visual system record |
 
+An older installation may still have `docs/decisions/`, `docs/product/`, or `docs/patterns/`: treat their accepted records as decision entries, and merge them into `docs/DECISIONS.md` during the next whole-project maintenance pass. Content in an older `docs/observed/` or `docs/runbooks/` is not authority.
+
 The evaluation and learning namespaces are independent of repository product authority and must not be silently merged into it.
 
 Ordinary coding work must not read `docs/learning/cases/` or `docs/learning/sessions/`. They hold hidden learning facts, events, and assessment records, and only the learning capability reads them.
@@ -68,7 +70,7 @@ Ordinary coding work must not read `docs/learning/cases/` or `docs/learning/sess
 The design namespace is subordinate rather than independent:
 
 - `docs/PRODUCT.md` is a derived summary written in an external capability's fixed schema and is never durable product authority.
-- `docs/DESIGN.md` is authority for the accepted visual system and remains constrained by `docs/decisions/`.
+- `docs/DESIGN.md` is authority for the accepted visual system and remains constrained by `docs/DECISIONS.md`.
 - Both files keep these exact names directly under `docs/` because an external capability resolves them by path, so they must not be renamed, nested, or moved.
 - Do not create a repository-root `PRODUCT.md` or `DESIGN.md`, or the same names under `.agents/context/`.
   Either location silently takes precedence over `docs/` and strands the reviewed files.
@@ -97,9 +99,9 @@ Create or resume `docs/plans/active/<plan>.md` only when at least one durable-me
 - Recovery or rollback context must survive the current session.
 - The task cannot be resumed safely from the repository and diff alone.
 
-Keep only goals, current state, material decisions, dependencies, and validation evidence needed for safe resumption.
-After the work and proof are complete, move a still-useful plan to `docs/plans/completed/`.
-A plan is working memory and never product authority.
+Name the plan with a lowercase kebab-case topic, and keep only goals, current state, material decisions, dependencies, and validation evidence needed for safe resumption.
+After the work and proof are complete, move the plan to `docs/plans/completed/` when its history will help future work, and delete it otherwise; do not keep routine task logs.
+A plan is working memory and never product authority, and a completed plan is not mandatory reading for unrelated tasks.
 
 ### Decision-blocked work
 
@@ -129,36 +131,25 @@ These thresholds are approximate guidance, not hard limits.
 The agent maintains durable knowledge; the human does not need to request, approve, or edit documentation.
 The human sees knowledge changes in the task report and the diff, and a revert or later request corrects them.
 
-Write to `docs/decisions/` only for accepted behavior, accepted recurring technical conventions, or meaningful decisions and rationale that should outlive one implementation task.
+Write to `docs/DECISIONS.md` only for accepted behavior, accepted recurring technical conventions, or meaningful decisions and rationale that should outlive one implementation task.
 Do not create durable files merely to record that ordinary work occurred.
 
 Knowledge is accepted when a human explicitly states lasting behavior, a decision, or a convention in the conversation, or answers a decision question.
 Choosing a next step, such as running tests or committing, accepts no knowledge.
 A request scoped to one task is not a lasting rule unless the human says it should apply going forward.
-Record accepted knowledge in its namespace before reporting the task, and cite the accepting request in the artifact.
+Record accepted knowledge before reporting the task, and cite the accepting request.
 Knowledge inferred from code, tests, history, or runtime behavior is not accepted and is never recorded as durable knowledge; rediscover it from the repository when needed, and report intent that looks unclear, such as a possible defect, in the task report.
-After a task, keep current the knowledge that task touched or made stale: mark replaced artifacts superseded, merge duplicates, fix broken links, and move finished plans to `docs/plans/completed/` or delete them when no future reader needs them.
+After a task, keep current the knowledge that task touched or made stale: edit or delete outdated decision entries, merge duplicates, fix broken links, and move or delete finished plans.
 Tidy the rest of the tree only during a whole-project maintenance pass.
 Ask the human only when intended-behavior sources conflict and the current request does not resolve the conflict.
 
-### Namespace contracts
+### Knowledge contracts
 
-Each namespace's `README.md` defines its admission criteria, filename convention, document format, and namespace-specific writing rules; the `README.md` itself is never an artifact.
-Capabilities managing durable repository knowledge must discover namespaces through the layout tables above and follow the target namespace's `README.md` instead of carrying a second embedded format.
-When adding a durable artifact namespace, index it in the layout tables and provide its local `README.md` before creating artifacts in it.
-A namespace without a `README.md`, such as `docs/plans/active/`, follows its parent's contract; create the directory when its first artifact is written.
-
-These rules apply to every artifact namespace unless its `README.md` says otherwise:
-
-- Use a lowercase kebab-case topic filename, such as `account-recovery.md`.
-- Update an existing artifact on the topic before creating a competing one.
-- Put metadata fields as plain `Field: value` lines directly under the title; include `Superseded by: <relative link>` only when applicable.
-- When replacing an artifact, mark the old one `Superseded`, and link old and new in both directions; do not rewrite history to make an old artifact appear current.
-- Cite the accepting request in `References` as `Human request, YYYY-MM-DD: <one-line summary>` for accepted knowledge.
-- Link to the owning artifact for rationale, rules, or facts instead of duplicating them.
-- Use normative terms such as MUST, MUST NOT, SHOULD, and MAY only for intentional, accepted strength.
-- Do not invent examples, policies, rationale, or evidence to populate a namespace, and do not include task history or routine work logs.
-- Omit a conditional section when it is genuinely inapplicable.
+`docs/DECISIONS.md` defines its own entry format and editing rules at its top.
+Each optional capability namespace defines its admission criteria, filenames, and document format in its own `README.md`, which is never an artifact.
+Capabilities managing durable knowledge must discover locations through the layout tables above and follow the target's own contract instead of carrying a second embedded format.
+When adding a durable location, index it in the layout tables and give it a contract before recording anything in it.
+Never invent rules, rationale, sources, or evidence to populate a location, and link to the owning entry or artifact instead of duplicating it.
 
 ## Proof selection
 

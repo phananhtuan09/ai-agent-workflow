@@ -11,7 +11,7 @@ This namespace stores the durable state of the optional learning capability. It 
 - `sessions/` stores the single durable record for each learning session, including delivery state and artifact references.
 - `profile.json` stores the learning profile and progression state.
 
-Do not create a second learning constitution or silently promote learning artifacts into `docs/decisions/`, source code, or production configuration.
+Do not create a second learning constitution or silently promote learning artifacts into `docs/DECISIONS.md`, source code, or production configuration.
 
 ## Admission and mutation
 
