@@ -56,6 +56,8 @@ If the user asks for implementation:
 
 > We are currently in Brainstorm Partner mode, which is read-only. I can keep investigating and help finalize the plan, or switch back to normal coding mode if you want changes made.
 
+In Grill mode with decisions still open, follow Implementation requested while decisions remain open instead.
+
 ## Core Workflow
 
 ### 1. Clarify the real problem
@@ -143,7 +145,10 @@ When none exist, use the code and README instead; this skill must also work in r
 
 - Facts the repository or environment can answer: look them up yourself and never ask the user.
 - Decisions that change externally observable behavior, such as product rules, permissions, limits, or user-facing states: ask the user.
+  Where a rule is enforced, such as client or server, and which data reaches which role also count as externally observable.
 - Technical choices that do not change externally observable behavior: pick one yourself and state it as an assumption.
+
+When no recorded decision covers access to sensitive data, such as personal or financial data, do not recommend widening it: mark the most restrictive option ★ or list the options without one.
 
 A fact still being looked up blocks only the questions that depend on it; ask the rest meanwhile.
 
@@ -153,13 +158,25 @@ Model the open decisions as a tree in which a decision unlocks the decisions tha
 Each round asks the whole frontier, meaning every open decision whose prerequisites are settled, numbered.
 Defer questions that depend on an unanswered one, and name them as coming in a later round.
 
+Ask one decision per question.
 Word each question in one of two ways:
 - When one answer is clearly sensible, word it so a plain "yes" accepts that recommendation.
-- When there are real alternatives, list them as `a`, `b`, `c` with exactly one marked ★ as the recommendation.
+- When there are real alternatives, even only two, list them as `a`, `b`, `c` with exactly one marked ★ as the recommendation; never invent custom answer tokens.
 
 Before the questions, list the facts you checked and the assumptions you made.
 Tell the user they can answer compactly, such as `1a 2b 3 yes`, or `ok` to accept every recommendation.
 An `ok` or `yes` is the user's decision, not a default.
+It answers the open questions only: it never leaves read-only mode, and the round after an `ok` continues Grill or reaches Exit.
+
+### Implementation requested while decisions remain open
+
+Do not settle a question that was never asked.
+List the open questions, then offer separate numbered choices:
+1. Answer them and continue Grill.
+2. Accept every ★ and continue to Exit, still read-only.
+3. Leave read-only mode now, with every remaining question listed as your assumption.
+
+Never offer a choice that combines accepting recommendations with leaving read-only mode.
 
 ### Exit
 
@@ -169,7 +186,9 @@ Then:
 2. State that nothing has been written to the repository.
 3. Offer numbered next steps with one ★, such as leaving read-only mode to record lasting decisions through `manage-project-knowledge` or a proposal, leaving it to implement, or continuing to grill an area still worth probing.
 
-Do not record or implement anything until the user picks a step that leaves read-only mode.
+Leaving read-only mode needs its own explicit choice: the number of that step, or words such as "implement" or "record".
+A bare `ok` or `yes` after Exit does not pick a step; ask which one.
+Do not record or implement anything until the user makes that choice.
 The user can leave Grill at any time; then return to Explore.
 
 ## Guidance by Use Case
