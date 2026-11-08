@@ -47,9 +47,8 @@ New repository knowledge uses these locations:
 
 | Location | Contents |
 | --- | --- |
-| `docs/decisions/` | Accepted product and domain rules, and architecture, security, compatibility, or operational decisions |
+| `docs/decisions/` | Accepted product and domain rules, recurring technical conventions, and architecture, security, compatibility, or operational decisions |
 | `docs/plans/` | Durable plans: `active/` for resumable work memory, `completed/` for useful history |
-| `docs/patterns/` | Accepted recurring technical patterns and invariants |
 
 Optional capability-owned locations exist only when their capability is installed:
 
@@ -130,8 +129,7 @@ These thresholds are approximate guidance, not hard limits.
 The agent maintains durable knowledge; the human does not need to request, approve, or edit documentation.
 The human sees knowledge changes in the task report and the diff, and a revert or later request corrects them.
 
-Write to `docs/decisions/` only for accepted behavior or meaningful decisions and rationale that should outlive one implementation task.
-Write to `docs/patterns/` only for accepted recurring technical guidance.
+Write to `docs/decisions/` only for accepted behavior, accepted recurring technical conventions, or meaningful decisions and rationale that should outlive one implementation task.
 Do not create durable files merely to record that ordinary work occurred.
 
 Knowledge is accepted when a human explicitly states lasting behavior, a decision, or a convention in the conversation, or answers a decision question.

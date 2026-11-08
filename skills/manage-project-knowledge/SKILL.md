@@ -1,6 +1,6 @@
 ---
 name: manage-project-knowledge
-description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, patterns, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
+description: Find, explain, and maintain durable repository knowledge. Use when a human asks about accepted behavior, decisions, conventions, or other declared artifact namespaces, when a human invokes it without a specific topic to maintain all project documentation, and on your own before reporting a task that changed durable truth or produced knowledge future work needs. Discover the target repository's documentation contracts instead of embedding current or future artifact formats in this skill.
 ---
 
 # Manage Project Knowledge
@@ -8,7 +8,7 @@ description: Find, explain, and maintain durable repository knowledge. Use when 
 ## Outcome and scope
 
 Find and explain durable repository knowledge without requiring the human to know its file location, and keep it current without requiring the human to request, approve, or edit documentation.
-Use this skill when a human asks what the repository has recorded, why a durable choice exists, or how an accepted pattern works.
+Use this skill when a human asks what the repository has recorded, why a durable choice exists, or how an accepted convention works.
 When a human invokes this skill without a specific question or topic, or asks to sync, audit, or review the project's docs, run Maintain the whole project.
 Also use it on your own before reporting a task in which the human accepted knowledge that should outlive the task, or the work invalidated recorded knowledge.
 Explanation requests are read-only unless the conversation also accepted new knowledge.
@@ -84,7 +84,7 @@ An explanation response should contain:
 
 Work from the topics the human's request or the completed task touched, or from every topic during Maintain the whole project.
 Search the declared namespaces for an artifact that already owns each topic.
-Prefer the smallest coherent update that leaves one clear home for each rule, decision, pattern, or procedure.
+Prefer the smallest coherent update that leaves one clear home for each rule, decision, convention, or procedure.
 Link related artifacts instead of duplicating their content.
 
 Create an artifact only when:
@@ -105,7 +105,7 @@ If the human asks for a preview, dry run, or proposal, show the proposed changes
 
 Before reporting a task, check whether it:
 
-1. accepted new product behavior, a decision, or a pattern; record it and cite the accepting request in `References`;
+1. accepted new product behavior, a decision, or a convention; record it and cite the accepting request in `References`;
 2. changed code that recorded knowledge describes; update the knowledge only when the human requested that change;
 3. changed code against authority without a human request; leave the authority unchanged and report the drift;
 4. left artifacts it touched or made stale replaced, duplicated, or outdated; mark them superseded, merge them, fix links, or move finished plans as their contracts require.
@@ -118,7 +118,7 @@ When none applies, make no edits.
 Bring all durable knowledge in line with the conversation and the current repository:
 
 1. Record knowledge the human accepted in the current conversation, as in Maintain after a task.
-2. Check every rule, decision, and pattern in the authority namespaces against code, tests, schemas, and configuration.
+2. Check every rule, decision, and convention in the authority namespaces against code, tests, schemas, and configuration.
    Report each disagreement as drift with its evidence; never rewrite authority to match code.
    Report authority artifacts that lack a citation their contract requires as a contract gap; never add a citation you cannot source from the conversation.
 3. Tidy the tree: mark replaced artifacts superseded, merge duplicates, fix broken links, and move or delete finished active plans.

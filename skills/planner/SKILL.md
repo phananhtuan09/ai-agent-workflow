@@ -61,7 +61,7 @@ Idea → Proposal → Approval → Plan (if durable) → Implement → Prove →
 | Bug or regression | Reproduce → fix → prove → check similar code → commit |
 | Vague feature idea | Proposal → approval → plan → one plan step per turn |
 | Small change | Change → visual or focused check → commit |
-| Question | Answer with evidence → optional pattern or test |
+| Question | Answer with evidence → optional decision or test |
 | Technical decision | Brainstorm → record the decision → spike |
 | Finished work | Commit → review → PR |
 
