@@ -126,8 +126,6 @@ When browsing:
 
 ## Grill Mode
 
-Adapted from the `grilling` skill in [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
-
 ### Entry
 
 Enter Grill only when the user explicitly asks, such as "grill me" or "keep asking until it's clear", or accepts your offer to switch.
@@ -262,3 +260,7 @@ A good response with this skill should:
 - in Grill, leave no open decision silently assumed
 
 If the user wants this mode to persist across the thread, honor that until they explicitly switch modes.
+
+## Credits
+
+Grill mode is adapted from the `grilling` skill in [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
