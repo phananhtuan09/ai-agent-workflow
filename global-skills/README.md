@@ -8,7 +8,7 @@ Hand this file to an agent and ask it to install them; it fetches the content st
 
 | Skill | Role |
 | --- | --- |
-| `brainstorm-partner` | Read-only thinking partner for vague ideas, hard bugs, and technical decisions. |
+| `brainstorm-partner` | Read-only thinking partner for vague ideas, hard bugs, and technical decisions; opt-in Grill mode interviews you until every feature or design decision is settled. |
 | `herdr-guide` | Owns Herdr CLI mechanics. |
 | `idea-scout` | Experimental. Proposes a ranked shortlist of up to 5 feature ideas grounded in project intent, GitHub issues, and chosen similar products, in the user's language. |
 | `prompt-leverage` | Rewrites a raw prompt into Expected output, Effort, and How to verify, in the user's language. |

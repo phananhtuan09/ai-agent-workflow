@@ -25,6 +25,16 @@ Source: Human request, YYYY-MM-DD: <one-line summary>
 
 ## Entries
 
+## Grill mode in brainstorm-partner
+
+Date: 2026-11-08 · Status: Active
+Source: Human request, 2026-11-08: update issue #92 with the review fixes and the two `grilling` ideas, then implement it.
+
+- Decision: `brainstorm-partner` has two modes. Explore is the default and unchanged; Grill is an opt-in interview that settles every open feature or design decision before implementation, adapted from mattpocock/skills `grilling` (MIT).
+- Decision: Grill starts only when the user asks or accepts an offer. It asks the whole frontier of open decisions each round, looks up facts instead of asking, states purely technical choices as assumptions, and stays read-only; recording or implementing is offered as a choice at exit.
+- Why: Hard feature logic was being silently assumed and reworked later, and a separate grill skill would overlap `brainstorm-partner`, `proposal-designer`, and `planner`.
+- Constraints: Keep one thinking-partner skill and do not rename it. Grill must not override the minimal-questions default and must work in repositories without this kit's docs layout.
+
 ## Compact installed protocol docs
 
 Date: 2026-11-08 · Status: Active
