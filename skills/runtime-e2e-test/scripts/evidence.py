@@ -1233,7 +1233,7 @@ def literal(group):
 
 
 # Literal Playwright user-facing locators; a test built from them can be checked against what the page showed.
-LOCATOR = re.compile(r"getBy(Role|Label|Text|Placeholder|TestId|Title|AltText)\(\s*" + literal(2) + r"(\s*,\s*\{[^{}]*\})?")
+LOCATOR = re.compile(r"getBy(Role|Label|Text|Placeholder|TestId|Title|AltText)\(\s*" + literal(2) + r"(\s*,\s*\{(?:[^{}]|\$\{[^{}]*\})*\})?")
 ANY_LOCATOR = re.compile(r"getBy(Role|Label|Text|Placeholder|TestId|Title|AltText)\(")
 NAME_OPTION = re.compile(r"\bname\s*:\s*" + literal(1))
 
@@ -1338,11 +1338,11 @@ def explore(path, root, out):
         for step in flow["steps"]:
             if "value" in step and SECRET_FIELD.search(json.dumps(next(v for k, v in step.items() if k in EXPLORE_ACTIONS))):
                 step["value"] = "[REDACTED]"
-    write(bundle / "explore.json", spec)
+    # Pages can echo config or typed values, and a flow's env or values can hold one; neither kept file holds a credential.
+    secrets = sorted(set(instance.secret_values(root)) | {v for k, v in os.environ.items() if instance.SECRET_NAMES.search(k) and len(v) >= 4}, key=len, reverse=True)
+    (bundle / "explore.json").write_text(instance.redact(json.dumps(spec, indent=2, ensure_ascii=False), secrets) + "\n", encoding="utf-8")
     record = {"schema": "runtime-e2e/explore-record@1", "headSha": sha, "uncommitted": bool(spec["head"].get("uncommitted")), "writes": spec["writes"],
               **manifest, **driver}
-    # Pages can echo config or typed values; the record is evidence, so no credential stays in it.
-    secrets = sorted(set(instance.secret_values(root)) | {v for k, v in os.environ.items() if instance.SECRET_NAMES.search(k) and len(v) >= 4}, key=len, reverse=True)
     (bundle / "record.json").write_text(instance.redact(json.dumps(record, indent=2, ensure_ascii=False), secrets) + "\n", encoding="utf-8")
     if "error" in record:
         print(f"Exploration did not run: {record['error']}")
@@ -1377,8 +1377,8 @@ def locators(text):
         if "${" in m[3] and m[2] == "`":
             continue
         name = NAME_OPTION.search(options)
-        if kind == "Role" and "name" in options and not name:
-            continue  # a name from a variable or a regex is decided at runtime
+        if kind == "Role" and "name" in options and (not name or (name[1] == "`" and "${" in name[2])):
+            continue  # a name from a variable, a template, or a regex is decided at runtime
         literal.add(m.start())
         label = {"TestId": "testId", "AltText": "altText"}.get(kind, kind.lower())
         if kind == "Role":

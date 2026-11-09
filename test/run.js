@@ -2063,6 +2063,7 @@ test("runtime E2E browser cases need an exploration of the head that shows every
       "await expect(page.getByTestId('label')).toHaveText('new');",
       "await expect(page.getByText(`Saved ${id}`)).toBeVisible();",
       "await page.getByRole('button', { name: 'Resend' }).click();",
+      "await page.getByRole('row', { name: `Order ${id}` }).click();",
     ].join("\n"));
     // The change's own test was not written from the exploration, so its locators are not checked.
     fs.writeFileSync(path.join(fixture.root, "e2e/label.spec.ts"), "page.getByRole('button', { name: 'Never shown' });\n");
@@ -2092,7 +2093,7 @@ test("runtime E2E browser cases need an exploration of the head that shows every
     assert.ok(!missing.stderr.includes("Never shown"), missing.stderr);
     const waived = fixture.validate(browserSuite({ explore: [".runtime-e2e/explore/record.json"], unexplored: [{ locator: 'role=button name="Resend"', reason: "shown only after a failed delivery the exploration cannot cause" }] }));
     assert.strictEqual(waived.status, 0, waived.stderr);
-    assert.ok(waived.stdout.includes("Locators built at runtime, not checked against the exploration: 1"), waived.stdout);
+    assert.ok(waived.stdout.includes("Locators built at runtime, not checked against the exploration: 2"), waived.stdout);
     // The approved record is an input the run snapshots, so the bundle audits with it.
     const explored = fixture.run(browserSuite({ explore: [".runtime-e2e/explore/record.json"], unexplored: [{ locator: 'role=button name="Resend"', reason: "shown only after a failed delivery the exploration cannot cause" }] }), "explored");
     assert.ok(fs.existsSync(path.join(explored.out, "inputs/.runtime-e2e/explore/record.json")), explored.stderr || explored.stdout);
@@ -2158,12 +2159,15 @@ test("runtime E2E explore records what each step of a flow shows on the served h
     const head = git("rev-parse", "HEAD");
     // The checkout moved on; exploration still serves the declared head.
     fs.writeFileSync(path.join(root, "app.txt"), "dirty\n");
+    // A project secret set in a flow's env must not be kept in the bundle's copy of the flows.
+    fs.writeFileSync(path.join(root, ".env"), "PARTNER_KEY=pk-live-7731\n");
     const port = spawnSync("python3", ["-c", "import socket; s = socket.socket(); s.bind(('127.0.0.1', 0)); print(s.getsockname()[1])"], { encoding: "utf8" }).stdout.trim();
     const spec = (writes) => ({
       head: { revision: head },
       instance: { start: ["python3", "app.py"], ready: { url: "http://127.0.0.1:{WEB_PORT}/health" }, resources: "isolated", ports: { WEB_PORT: port }, shares: [] },
       baseURL: "http://127.0.0.1:{WEB_PORT}",
       writes,
+      env: { PARTNER_KEY: "pk-live-7731" },
       flows: [
         { id: "save", steps: [{ goto: "/" }, { select: { label: "Status" }, value: "done" }, { fill: { label: "Password" }, value: "hunter22" }, { click: { role: "button", name: "Save" } }, { waitFor: { text: "Saved new" } }] },
         { id: "resend", steps: [{ goto: "/" }, { click: { role: "button", name: "Resend" } }] },
@@ -2200,6 +2204,7 @@ test("runtime E2E explore records what each step of a flow shows on the served h
     assert.deepStrictEqual(run.record.flows[0].steps[1].selects[0].options.map((o) => o.value), ["open", "done", "kept"]);
     assert.ok(run.record.flows[0].steps[3].requests.some((r) => r.method === "POST" && r.url.endsWith("/save") && r.status === 200));
     assert.ok(!allText(run.out).includes("hunter22"));
+    assert.ok(!allText(run.out).includes("pk-live-7731"));
     assert.strictEqual(run.record.worktreeCleanup, "COMPLETE");
     assert.strictEqual(run.record.instance.portsReleased, true);
 

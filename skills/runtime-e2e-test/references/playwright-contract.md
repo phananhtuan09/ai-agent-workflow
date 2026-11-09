@@ -218,7 +218,8 @@ Write an exploration file outside `docs/testing`, for example next to the light 
 
 - `head` and `instance` are the suite's; `env` is the suite's `determinism.env`, so the explored app is configured as the run's.
 - `baseURL` names the app's URL with the recipe's port variables.
-- `writes` is `true` in light mode. Before approval in durable mode it is `false`: every request other than GET, HEAD, and OPTIONS is blocked and listed, so nothing is changed.
+- `writes` is `true` in light mode. Before approval in durable mode it is `false`: every request other than GET, HEAD, and OPTIONS is blocked and listed.
+  A GET that changes data (a logout link, a confirm link with a token) and WebSocket messages still reach the app, so such a step does not belong in a read-only flow.
   With shared resources a write reaches the local stack's data, as a run's does.
 - A flow starts with `goto` and walks one user path to every state a case asserts on: each step is `goto` (a path), `click`, `fill` and `select` (with `value`), `check`, `press` (with `key`), `waitFor`, or `reload: true`.
   Flows run one after another on the same app data, so a flow after one that changes data starts with the reset the project's test fixtures use, as `{"request": {"method": "POST", "path": "/api/test/reset"}}` before its `goto`; with `writes: false` such a request is blocked and listed.
@@ -242,10 +243,12 @@ List each record in the suite's `explore` (a path or a list of paths).
 
 - a record explored another commit than `head.revision`;
 - a literal locator in a listed test or helper file (`getByRole` with its `name`, `getByLabel`, `getByText`, `getByPlaceholder`, `getByTestId`, `getByTitle`, `getByAltText`) appears in no recorded step, compared case-insensitively as a substring, the way Playwright matches by default.
+  The check proves that the text was shown somewhere on that step, not that the locator matches one element; the run proves that.
+  A role's name is compared with the accessibility snapshot line, so a name computed differently there (such as from `aria-describedby`) can be refused and goes in `unexplored`.
 
 The change's own tests (`pr-test` files) are not checked.
 A locator for a state no flow can reach, such as an error only a failing partner service shows, goes in `unexplored` as `{"locator": "<as the refusal prints it>", "reason": "..."}`; the human sees it in the suite.
-`validate` counts the locators built at runtime (a variable, a template with `${}`, a regular-expression name), which it cannot check.
+`validate` counts the locators built at runtime (a variable, a template with `${}` as the target or the role's name, a regular-expression name), which it cannot check.
 Records are hashed with the suite, so approval pins them and the run bundle keeps them under `inputs/`.
 
 ## Determinism
