@@ -2077,7 +2077,7 @@ test("runtime E2E browser cases need an exploration of the head that shows every
     const browserSuite = (extra) => (data) => {
       data.files.push("e2e/order.spec.ts");
       data.head = { revision: head };
-      data.instance = { start: ["python3", "app.py"], ready: { url: "http://127.0.0.1:{WEB_PORT}/" }, resources: "isolated", ports: { WEB_PORT: "5300" }, shares: [] };
+      data.instance = { start: ["python3", "-c", "import http.server, os; http.server.HTTPServer(('127.0.0.1', int(os.environ['WEB_PORT'])), http.server.SimpleHTTPRequestHandler).serve_forever()"], ready: { url: "http://127.0.0.1:{WEB_PORT}/" }, resources: "isolated", ports: { WEB_PORT: "5300" }, shares: [] };
       data.base = { revision: fixture.base };
       data.cases[0].kind = "browser";
       Object.assign(data, extra);
@@ -2093,6 +2093,13 @@ test("runtime E2E browser cases need an exploration of the head that shows every
     const waived = fixture.validate(browserSuite({ explore: [".runtime-e2e/explore/record.json"], unexplored: [{ locator: 'role=button name="Resend"', reason: "shown only after a failed delivery the exploration cannot cause" }] }));
     assert.strictEqual(waived.status, 0, waived.stderr);
     assert.ok(waived.stdout.includes("Locators built at runtime, not checked against the exploration: 1"), waived.stdout);
+    // The approved record is an input the run snapshots, so the bundle audits with it.
+    const explored = fixture.run(browserSuite({ explore: [".runtime-e2e/explore/record.json"], unexplored: [{ locator: 'role=button name="Resend"', reason: "shown only after a failed delivery the exploration cannot cause" }] }), "explored");
+    assert.ok(fs.existsSync(path.join(explored.out, "inputs/.runtime-e2e/explore/record.json")), explored.stderr || explored.stdout);
+    assert.ok(fs.existsSync(path.join(explored.out, "integrity.json")), explored.stderr + explored.stdout);
+    const exploredAudit = fixture.audit(explored.out);
+    assert.ok(!exploredAudit.stderr.includes("Approval does not cover declared inputs"), exploredAudit.stderr);
+    assert.ok([0, 1].includes(exploredAudit.status), exploredAudit.stderr);
     fs.writeFileSync(recordPath, JSON.stringify(record(fixture.base)));
     const stale = fixture.validate(browserSuite({ explore: ".runtime-e2e/explore/record.json" }));
     assert.strictEqual(stale.status, 2);

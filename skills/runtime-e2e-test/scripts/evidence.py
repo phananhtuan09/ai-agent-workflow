@@ -951,7 +951,7 @@ def audit(bundle):
     approval = load(bundle / "approval.json")
     manifest = load(bundle / "run-manifest.json")
     suite = load(local(bundle / "inputs", manifest["suite"]))
-    required = {manifest["suite"], suite["plan"], *suite["files"], *([suite["expectations"]] if suite.get("expectations") else [])}
+    required = {manifest["suite"], suite["plan"], *suite["files"], *([suite["expectations"]] if suite.get("expectations") else []), *explore_records(suite)}
     light = suite.get("mode") == "light"
     if set(approval["hashes"]) != required or (light != (approval.get("mode") == "light")) or not (light or approval.get("reviewer")):
         raise ValueError("Approval does not cover declared inputs")
