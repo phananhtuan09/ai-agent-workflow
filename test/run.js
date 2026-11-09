@@ -2109,7 +2109,7 @@ function playwrightAvailable() {
 const EXPLORE_APP = `import http.server, os, pathlib
 label = pathlib.Path("app.txt").read_text().strip()
 PAGE = """<!doctype html><html><body><h1>Orders</h1>
-<label for=s>Status</label><select id=s><option value=open>Open</option><option value=done>Done</option></select>
+<label for=s>Status</label><select id=s><option value=open>Open</option><option value=done>Done</option><option value=kept>Saved earlier</option></select>
 <label>Password <input type=password name=p></label>
 <p data-testid=label>%s</p>
 <button onclick="fetch('/save',{method:'POST'}).then(r=>r.text()).then(t=>{document.querySelector('#out').textContent=t})">Save</button>
@@ -2160,6 +2160,8 @@ test("runtime E2E explore records what each step of a flow shows on the served h
       flows: [
         { id: "save", steps: [{ goto: "/" }, { select: { label: "Status" }, value: "done" }, { fill: { label: "Password" }, value: "hunter22" }, { click: { role: "button", name: "Save" } }, { waitFor: { text: "Saved new" } }] },
         { id: "resend", steps: [{ goto: "/" }, { click: { role: "button", name: "Resend" } }] },
+        { id: "hidden", steps: [{ goto: "/" }, { waitFor: { text: "earlier" } }] },
+        { id: "twice", steps: [{ goto: "/" }, { click: { role: "button", name: "Save" } }, { waitFor: { text: "saved" } }] },
       ],
     });
     const evidence = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
@@ -2177,11 +2179,14 @@ test("runtime E2E explore records what each step of a flow shows on the served h
     // A locator the page does not have fails at once and names what the page shows instead.
     assert.ok(run.stdout.includes('resend: FAILED at step 1') && run.stdout.includes('no element matches role=button name="Resend"'), run.stdout);
     assert.ok(run.stdout.includes('shown: - button "Save"') && run.stdout.includes('shown: - button "Cancel"'), run.stdout);
+    // Hidden matches count, as in a strict Playwright locator: an option inside a closed select is not a visible target.
+    assert.ok(run.stdout.includes('hidden: FAILED at step 1') && run.stdout.includes('text="earlier" matches 1 element, none visible'), run.stdout);
+    assert.ok(run.stdout.includes('twice: FAILED at step 2') && run.stdout.includes('text="saved" matches 2 elements (1 visible); a test locator must match one'), run.stdout);
     assert.strictEqual(run.record.headSha, head);
     const last = run.record.flows[0].steps[4];
     assert.ok(last.aria.includes("- paragraph: new") && last.aria.includes("Saved new"), last.aria);
     assert.deepStrictEqual(last.testIds, ["label"]);
-    assert.deepStrictEqual(run.record.flows[0].steps[1].selects[0].options.map((o) => o.value), ["open", "done"]);
+    assert.deepStrictEqual(run.record.flows[0].steps[1].selects[0].options.map((o) => o.value), ["open", "done", "kept"]);
     assert.ok(run.record.flows[0].steps[3].requests.some((r) => r.method === "POST" && r.url.endsWith("/save") && r.status === 200));
     assert.ok(!allText(run.out).includes("hunter22"));
     assert.strictEqual(run.record.worktreeCleanup, "COMPLETE");

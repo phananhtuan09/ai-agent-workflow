@@ -78,6 +78,25 @@ async function settle(page, inflight) {
   }
 }
 
+// Wait until the target matches exactly one visible element, as a strict Playwright locator needs; hidden matches count too.
+async function single(page, locator, target) {
+  const deadline = Date.now() + STEP_TIMEOUT;
+  let count = 0;
+  let visible = 0;
+  for (;;) {
+    count = await locator.count();
+    visible = 0;
+    for (let i = 0; i < count; i++) if (await locator.nth(i).isVisible()) visible++;
+    if (count > 1 && visible > 0) break;
+    if (count === 1 && visible === 1) return;
+    if (Date.now() >= deadline) break;
+    await page.waitForTimeout(100);
+  }
+  if (count === 0) throw new Error(`no element matches ${describe(target)} within ${STEP_TIMEOUT / 1000}s`);
+  if (visible === 0) throw new Error(`${describe(target)} matches ${count} element${count > 1 ? "s" : ""}, none visible within ${STEP_TIMEOUT / 1000}s`);
+  throw new Error(`${describe(target)} matches ${count} elements (${visible} visible); a test locator must match one`);
+}
+
 async function runFlow(browser, flow, baseURL, writes, hidden) {
   const context = await browser.newContext({ baseURL, viewport: flow.viewport || { width: 1280, height: 800 }, ...(flow.locale ? { locale: flow.locale } : {}) });
   const page = await context.newPage();
@@ -116,11 +135,7 @@ async function runFlow(browser, flow, baseURL, writes, hidden) {
       else if (action === "reload") await page.reload({ timeout: STEP_TIMEOUT * 3 });
       else {
         const locator = locate(page, target);
-        await locator.first().waitFor({ state: action === "waitFor" ? "visible" : "attached", timeout: STEP_TIMEOUT }).catch(() => {
-          throw new Error(`no element matches ${describe(target)} within ${STEP_TIMEOUT / 1000}s`);
-        });
-        const count = await locator.count();
-        if (count > 1) throw new Error(`${describe(target)} matches ${count} elements; a test locator must match one`);
+        await single(page, locator, target);
         if (action === "click") await locator.click({ timeout: STEP_TIMEOUT });
         else if (action === "fill") await locator.fill(String(step.value), { timeout: STEP_TIMEOUT });
         else if (action === "select") await locator.selectOption(String(step.value), { timeout: STEP_TIMEOUT });

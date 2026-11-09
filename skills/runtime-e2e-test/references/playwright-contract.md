@@ -229,7 +229,8 @@ python3 <skill-root>/scripts/evidence.py explore <explore.json> --root <project>
 
 `explore` serves the head worktree from the recipe, as `run` does (the shared-resources lock and port check included), and drives each flow in Chromium with the project's own Playwright.
 After each step it waits until no request has been in flight for 300 ms, then records the URL, the accessibility snapshot (the roles and names `getByRole` matches), test IDs, placeholders, titles, image alt texts, each select's option values, the requests the step made with their status, console errors, and blocked writes.
-A target that matches nothing within 5 seconds, or more than one element, fails its flow at that step; the output names what the page shows instead, such as the buttons that exist.
+A target must match exactly one visible element within 5 seconds, as a strict Playwright locator does; hidden matches, such as an option inside a closed select, count too.
+Otherwise the flow fails at that step with what matched (nothing, only hidden elements, or several), and the output names what the page shows instead, such as the buttons that exist.
 Values typed into a field whose target names a password, secret, token, key, OTP, or PIN, and the project's secret values, are replaced with `[REDACTED]`.
 It writes `record.json`, the flows as run in `explore.json`, and the instance and setup logs, and exits 1 when a flow failed.
 Fix the flow and explore again until every flow passes, then write the tests from the record.
