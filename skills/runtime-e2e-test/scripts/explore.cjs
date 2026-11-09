@@ -8,7 +8,7 @@ const { createRequire } = require("module");
 const STEP_TIMEOUT = 5000;
 const SETTLE_TIMEOUT = 3000;
 const QUIET = 300;
-const ACTIONS = ["goto", "click", "fill", "select", "check", "press", "waitFor", "reload"];
+const ACTIONS = ["request", "goto", "click", "fill", "select", "check", "press", "waitFor", "reload"];
 const TARGETS = { role: "getByRole", label: "getByLabel", text: "getByText", placeholder: "getByPlaceholder", testId: "getByTestId", title: "getByTitle", altText: "getByAltText" };
 const SECRET_FIELD = /pass|secret|token|api.?key|otp|pin\b/i;
 
@@ -131,7 +131,16 @@ async function runFlow(browser, flow, baseURL, writes, hidden) {
     }
     const entry = { index, step: shown };
     try {
-      if (action === "goto") await page.goto(target, { timeout: STEP_TIMEOUT * 3 });
+      if (action === "request") {
+        const method = target.method;
+        if (!writes && !["GET", "HEAD", "OPTIONS"].includes(method)) blocked.push(`${method} ${baseURL}${target.path}`);
+        else {
+          // The page's own request context, so the call carries the flow's cookies, as the test's request fixture does.
+          const response = await page.request.fetch(target.path, { method, timeout: STEP_TIMEOUT * 3 });
+          requests.push({ method, url: response.url(), status: response.status() });
+          if (response.status() >= 400) throw new Error(`${method} ${target.path} answered ${response.status()}`);
+        }
+      } else if (action === "goto") await page.goto(target, { timeout: STEP_TIMEOUT * 3 });
       else if (action === "reload") await page.reload({ timeout: STEP_TIMEOUT * 3 });
       else {
         const locator = locate(page, target);

@@ -203,6 +203,7 @@ Write an exploration file outside `docs/testing`, for example next to the light 
   "env": {"TZ": "UTC"},
   "flows": [
     {"id": "admin-confirm", "viewport": {"width": 320, "height": 640}, "locale": "vi-VN", "steps": [
+      {"request": {"method": "POST", "path": "/api/test/reset"}},
       {"goto": "/login"},
       {"fill": {"label": "Email"}, "value": "admin@example.test"},
       {"click": {"role": "button", "name": "Sign in"}},
@@ -220,6 +221,7 @@ Write an exploration file outside `docs/testing`, for example next to the light 
 - `writes` is `true` in light mode. Before approval in durable mode it is `false`: every request other than GET, HEAD, and OPTIONS is blocked and listed, so nothing is changed.
   With shared resources a write reaches the local stack's data, as a run's does.
 - A flow starts with `goto` and walks one user path to every state a case asserts on: each step is `goto` (a path), `click`, `fill` and `select` (with `value`), `check`, `press` (with `key`), `waitFor`, or `reload: true`.
+  Flows run one after another on the same app data, so a flow after one that changes data starts with the reset the project's test fixtures use, as `{"request": {"method": "POST", "path": "/api/test/reset"}}` before its `goto`; with `writes: false` such a request is blocked and listed.
   A target is one of `{"role", "name"}`, `label`, `text`, `placeholder`, `testId`, `title`, or `altText`, with `exact` when the test will use it: the same locator the test will use.
 - Explore each locale and viewport whose text or layout a case asserts.
 

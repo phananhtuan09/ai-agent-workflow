@@ -2162,6 +2162,8 @@ test("runtime E2E explore records what each step of a flow shows on the served h
         { id: "resend", steps: [{ goto: "/" }, { click: { role: "button", name: "Resend" } }] },
         { id: "hidden", steps: [{ goto: "/" }, { waitFor: { text: "earlier" } }] },
         { id: "twice", steps: [{ goto: "/" }, { click: { role: "button", name: "Save" } }, { waitFor: { text: "saved" } }] },
+        // A flow after one that changed data starts with the project's reset request, sent with the flow's cookies.
+        { id: "reset", steps: [{ request: { method: "POST", path: "/save" } }, { goto: "/" }] },
       ],
     });
     const evidence = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
@@ -2182,6 +2184,8 @@ test("runtime E2E explore records what each step of a flow shows on the served h
     // Hidden matches count, as in a strict Playwright locator: an option inside a closed select is not a visible target.
     assert.ok(run.stdout.includes('hidden: FAILED at step 1') && run.stdout.includes('text="earlier" matches 1 element, none visible'), run.stdout);
     assert.ok(run.stdout.includes('twice: FAILED at step 2') && run.stdout.includes('text="saved" matches 2 elements (1 visible); a test locator must match one'), run.stdout);
+    assert.ok(run.stdout.includes("reset: OK, 2 steps"), run.stdout);
+    assert.deepStrictEqual(run.record.flows[4].steps[0].requests.map((r) => [r.method, r.status]), [["POST", 200]]);
     assert.strictEqual(run.record.headSha, head);
     const last = run.record.flows[0].steps[4];
     assert.ok(last.aria.includes("- paragraph: new") && last.aria.includes("Saved new"), last.aria);
@@ -2193,14 +2197,15 @@ test("runtime E2E explore records what each step of a flow shows on the served h
     assert.strictEqual(run.record.instance.portsReleased, true);
 
     // Read-only exploration: the write never reaches the app, and the record says which one was blocked.
-    const readOnly = explore("read-only", { ...spec(false), flows: [spec(false).flows[0]] });
+    const readOnly = explore("read-only", { ...spec(false), flows: [spec(false).flows[0], spec(false).flows[4]] });
     assert.strictEqual(readOnly.status, 1);
     assert.ok(readOnly.stdout.includes("write blocked (writes is false): POST"), readOnly.stdout);
     assert.ok(readOnly.stdout.includes('no element matches text="Saved new"'), readOnly.stdout);
+    assert.ok(readOnly.stdout.includes("reset step 0: write blocked (writes is false): POST http://127.0.0.1:"), readOnly.stdout);
 
     const bad = explore("bad", { ...spec(true), flows: [{ id: "x", steps: [{ click: { role: "button" } }] }] });
     assert.strictEqual(bad.status, 2);
-    assert.ok(bad.stderr.includes("steps must start with goto"), bad.stderr);
+    assert.ok(bad.stderr.includes("steps must start with goto, after any request steps"), bad.stderr);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

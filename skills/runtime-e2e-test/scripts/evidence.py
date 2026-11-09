@@ -1218,7 +1218,7 @@ def run_base(bundle, root, data, run_id):
         write(run / "run-manifest.json", manifest)
 
 
-EXPLORE_ACTIONS = {"goto", "click", "fill", "select", "check", "press", "waitFor", "reload"}
+EXPLORE_ACTIONS = {"request", "goto", "click", "fill", "select", "check", "press", "waitFor", "reload"}
 EXPLORE_TARGETS = {"role", "label", "text", "placeholder", "testId", "title", "altText"}
 EXPLORE_DRIVER = Path(__file__).resolve().parent / "explore.cjs"
 # The driver's rule for a credential field, whose typed value is never kept.
@@ -1264,8 +1264,9 @@ def explore_spec(data):
         if not isinstance(flow.get("locale", ""), str):
             raise ValueError(f"flow {flow['id']}: locale is a string such as vi-VN")
         steps = flow.get("steps")
-        if not isinstance(steps, list) or not steps or not isinstance(steps[0], dict) or "goto" not in steps[0]:
-            raise ValueError(f"flow {flow['id']}: steps must start with goto")
+        first = next((s for s in steps if not (isinstance(s, dict) and "request" in s)), None) if isinstance(steps, list) else None
+        if not isinstance(first, dict) or "goto" not in first:
+            raise ValueError(f"flow {flow['id']}: steps must start with goto, after any request steps")
         for step in steps:
             actions = set(step) & EXPLORE_ACTIONS if isinstance(step, dict) else set()
             if len(actions) != 1:
@@ -1275,7 +1276,11 @@ def explore_spec(data):
             if set(step) - {action} != extra or any(not isinstance(step[k], str) for k in extra):
                 raise ValueError(f"flow {flow['id']}: {action} takes " + (", ".join(sorted(extra)) or "nothing else"))
             target = step[action]
-            if action == "goto":
+            if action == "request":
+                if not isinstance(target, dict) or set(target) != {"method", "path"} or target["method"] not in ("GET", "POST", "PUT", "PATCH", "DELETE") \
+                        or not isinstance(target["path"], str) or not target["path"].startswith("/"):
+                    raise ValueError(f"flow {flow['id']}: request takes method and path, such as the project's test reset endpoint")
+            elif action == "goto":
                 if not isinstance(target, str) or not target.startswith("/"):
                     raise ValueError(f"flow {flow['id']}: goto takes a path on baseURL, such as /orders")
             elif action == "reload":
