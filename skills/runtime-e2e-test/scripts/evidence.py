@@ -83,6 +83,18 @@ def reference_recipe(path=REFERENCE):
     return instance.validate(json.loads(block[1]))
 
 
+def resolve_recipe(source):
+    # "project-runtime" reads the recipe setup proved, so a run never depends on a hand-copied one.
+    return reference_recipe() if source == "project-runtime" else instance.validate(source)
+
+
+def head_contract(head):
+    if not isinstance(head, dict) or set(head) - {"revision", "source", "uncommitted"} or not isinstance(head.get("revision"), str) or not SHA.fullmatch(head["revision"]):
+        raise ValueError("head takes revision (a full commit SHA from `evidence.py refs`), source, and uncommitted")
+    if not isinstance(head.get("uncommitted", False), bool) or not isinstance(head.get("source", ""), str):
+        raise ValueError("head uncommitted is true or false, and source names where the revision came from")
+
+
 def contract(suite, root):
     data = load(suite)
     for key in ("plan", "environment", "revision"):
@@ -95,16 +107,11 @@ def contract(suite, root):
         raise ValueError("Runner owns --output and --reporter")
     command_dir(root, data)
     if "instance" in data:
-        source = data["instance"]
-        # "project-runtime" reads the recipe setup proved, so a run never depends on a hand-copied one.
-        data["instance"] = reference_recipe() if source == "project-runtime" else instance.validate(source)
+        data["instance"] = resolve_recipe(data["instance"])
         data["instanceDigest"] = hashlib.sha256(json.dumps(data["instance"], sort_keys=True).encode()).hexdigest()
     head = data.get("head")
     if head is not None:
-        if not isinstance(head, dict) or set(head) - {"revision", "source", "uncommitted"} or not isinstance(head.get("revision"), str) or not SHA.fullmatch(head["revision"]):
-            raise ValueError("head takes revision (a full commit SHA from `evidence.py refs`), source, and uncommitted")
-        if not isinstance(head.get("uncommitted", False), bool) or not isinstance(head.get("source", ""), str):
-            raise ValueError("head uncommitted is true or false, and source names where the revision came from")
+        head_contract(head)
         if "instance" not in data:
             raise ValueError("head needs an instance: the tool serves the head worktree from the setup recipe")
     if (data.get("instance") or {}).get("resources") == "shared" and data.get("base") is not None and head is None:
@@ -193,7 +200,8 @@ def contract(suite, root):
     files = data.get("files", [])
     if not isinstance(files, list) or not files:
         raise ValueError("List test/config/helper files in files")
-    names = list(dict.fromkeys([str(suite.resolve().relative_to(root)), data["plan"], *files, *linked]))
+    explored = explore_contract(data, root)
+    names = list(dict.fromkeys([str(suite.resolve().relative_to(root)), data["plan"], *files, *linked, *explored]))
     hashes = {name: digest(local(root, name)) for name in names}
     plan = local(root, data["plan"]).read_text(encoding="utf-8")
     plan_ids = re.findall(r"^## Case ([A-Za-z0-9_.-]+)\s+[—-]\s+", plan, re.M)
@@ -943,7 +951,7 @@ def audit(bundle):
     approval = load(bundle / "approval.json")
     manifest = load(bundle / "run-manifest.json")
     suite = load(local(bundle / "inputs", manifest["suite"]))
-    required = {manifest["suite"], suite["plan"], *suite["files"], *([suite["expectations"]] if suite.get("expectations") else [])}
+    required = {manifest["suite"], suite["plan"], *suite["files"], *([suite["expectations"]] if suite.get("expectations") else []), *explore_records(suite)}
     light = suite.get("mode") == "light"
     if set(approval["hashes"]) != required or (light != (approval.get("mode") == "light")) or not (light or approval.get("reviewer")):
         raise ValueError("Approval does not cover declared inputs")
@@ -1141,6 +1149,28 @@ def open_head(bundle, root, data, sha, manifest):
     return tree
 
 
+def resolve_head(root, head):
+    sha = subprocess.run(["git", "rev-parse", "--verify", head["revision"] + "^{commit}"], cwd=root, capture_output=True, text=True).stdout.strip()
+    if not sha:
+        raise ValueError(f"Head revision {head['revision']} is not in this repository; fetch it (evidence.py refs) first")
+    local_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+    if head.get("uncommitted") and sha != local_head:
+        raise ValueError("An uncommitted head is applied on top of the checkout's HEAD; its revision must be that commit")
+    return sha
+
+
+def hold_shared(root, recipe, what):
+    """Take the shared-resources lock, held until this process exits, so no other run takes the local ports in between."""
+    lock, holder = instance.lock_shared(root, what)
+    if lock is None:
+        raise ValueError("Shared resources: " + instance.lock_held(holder))
+    busy = instance.busy_ports(recipe, instance.instance_env(recipe, root))
+    if busy:
+        # Checked before anything runs, so the human hears it now rather than after a full run.
+        raise ValueError(f"Shared resources run each worktree on the local stack's ports and {', '.join(busy)} is in use; stop the local stack and rerun, or rerun setup and choose isolated")
+    return lock
+
+
 def run_base(bundle, root, data, run_id):
     """Run the approved tests against the base revision in a separate worktree."""
     run = bundle / "base"
@@ -1188,6 +1218,240 @@ def run_base(bundle, root, data, run_id):
         write(run / "run-manifest.json", manifest)
 
 
+EXPLORE_ACTIONS = {"request", "goto", "click", "fill", "select", "check", "press", "waitFor", "reload"}
+EXPLORE_TARGETS = {"role", "label", "text", "placeholder", "testId", "title", "altText"}
+EXPLORE_DRIVER = Path(__file__).resolve().parent / "explore.cjs"
+# The driver's rule for a credential field, whose typed value is never kept.
+SECRET_FIELD = re.compile(r"pass|secret|token|api.?key|otp|pin\b", re.I)
+SCRIPT_FILES = {".js", ".cjs", ".mjs", ".ts", ".tsx", ".jsx", ".mts", ".cts"}
+
+
+def literal(group):
+    """A quoted JavaScript string whose opening quote is capture group `group`, and its text the next group."""
+    back = "\\" + str(group)
+    return "(['\"`])((?:\\\\.|(?!" + back + ")[^\\\\\\n])*)" + back
+
+
+# Literal Playwright user-facing locators; a test built from them can be checked against what the page showed.
+LOCATOR = re.compile(r"getBy(Role|Label|Text|Placeholder|TestId|Title|AltText)\(\s*" + literal(2) + r"(\s*,\s*\{(?:[^{}]|\$\{[^{}]*\})*\})?")
+ANY_LOCATOR = re.compile(r"getBy(Role|Label|Text|Placeholder|TestId|Title|AltText)\(")
+NAME_OPTION = re.compile(r"\bname\s*:\s*" + literal(1))
+
+
+def explore_spec(data):
+    """Reject an exploration the driver cannot run as written."""
+    if not isinstance(data, dict) or set(data) - {"head", "instance", "baseURL", "writes", "env", "flows"}:
+        raise ValueError("an exploration takes head, instance, baseURL, writes, env, and flows")
+    head_contract(data.get("head"))
+    if "instance" not in data:
+        raise ValueError("an exploration needs instance: the tool serves the head worktree from the setup recipe")
+    if not isinstance(data.get("baseURL"), str) or not data["baseURL"].startswith(("http://", "https://")):
+        raise ValueError("baseURL is the app's URL, with port variables from the recipe, such as http://localhost:{WEB_PORT}")
+    if not isinstance(data.get("writes"), bool):
+        raise ValueError("writes is true (light mode: forms may submit) or false (durable mode before approval: every write is blocked)")
+    env = data.get("env", {})
+    if not isinstance(env, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in env.items()):
+        raise ValueError("exploration env must map names to string values, as the suite's determinism env does")
+    flows = data.get("flows")
+    if not isinstance(flows, list) or not flows or len({f.get("id") for f in flows if isinstance(f, dict)}) != len(flows):
+        raise ValueError("flows must be a nonempty list with unique ids")
+    for flow in flows:
+        if not isinstance(flow.get("id"), str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", flow["id"]) or set(flow) - {"id", "steps", "viewport", "locale"}:
+            raise ValueError("a flow takes id, steps, viewport, and locale")
+        viewport = flow.get("viewport", {"width": 1, "height": 1})
+        if not isinstance(viewport, dict) or set(viewport) != {"width", "height"} or any(not isinstance(v, int) or v <= 0 for v in viewport.values()):
+            raise ValueError(f"flow {flow['id']}: viewport is {{width, height}} in pixels")
+        if not isinstance(flow.get("locale", ""), str):
+            raise ValueError(f"flow {flow['id']}: locale is a string such as vi-VN")
+        steps = flow.get("steps")
+        first = next((s for s in steps if not (isinstance(s, dict) and "request" in s)), None) if isinstance(steps, list) else None
+        if not isinstance(first, dict) or "goto" not in first:
+            raise ValueError(f"flow {flow['id']}: steps must start with goto, after any request steps")
+        for step in steps:
+            actions = set(step) & EXPLORE_ACTIONS if isinstance(step, dict) else set()
+            if len(actions) != 1:
+                raise ValueError(f"flow {flow['id']}: each step has one of " + ", ".join(sorted(EXPLORE_ACTIONS)))
+            action = actions.pop()
+            extra = {"fill": {"value"}, "select": {"value"}, "press": {"key"}}.get(action, set())
+            if set(step) - {action} != extra or any(not isinstance(step[k], str) for k in extra):
+                raise ValueError(f"flow {flow['id']}: {action} takes " + (", ".join(sorted(extra)) or "nothing else"))
+            target = step[action]
+            if action == "request":
+                if not isinstance(target, dict) or set(target) != {"method", "path"} or target["method"] not in ("GET", "POST", "PUT", "PATCH", "DELETE") \
+                        or not isinstance(target["path"], str) or not target["path"].startswith("/"):
+                    raise ValueError(f"flow {flow['id']}: request takes method and path, such as the project's test reset endpoint")
+            elif action == "goto":
+                if not isinstance(target, str) or not target.startswith("/"):
+                    raise ValueError(f"flow {flow['id']}: goto takes a path on baseURL, such as /orders")
+            elif action == "reload":
+                if target is not True:
+                    raise ValueError(f"flow {flow['id']}: reload is true")
+            elif not isinstance(target, dict) or len(set(target) & EXPLORE_TARGETS) != 1 or set(target) - EXPLORE_TARGETS - {"name", "exact"} \
+                    or ("name" in target and "role" not in target) or any(not isinstance(v, str) for k, v in target.items() if k != "exact"):
+                raise ValueError(f"flow {flow['id']}: {action} targets one of {{role (with name), label, text, placeholder, testId, title, altText}}, as the test will")
+    return data
+
+
+def explore(path, root, out):
+    """Serve the head worktree and record what each exploration step shows, so tests are written from the page."""
+    spec = explore_spec(load(path))
+    recipe = resolve_recipe(spec["instance"])
+    sha = resolve_head(root, spec["head"])
+    if recipe["resources"] == "shared":
+        shared_lock = hold_shared(root, recipe, f"evidence.py explore {out}")  # noqa: F841
+    bundle = out.resolve()
+    bundle.mkdir(parents=True, exist_ok=False)
+    fixed = spec.get("env", {})
+    manifest = {"exploredAt": datetime.now(timezone.utc).isoformat()}
+    tree = open_head(bundle, root, {"head": spec["head"], "files": [], "instance": recipe, "determinism": {"env": fixed}}, sha, manifest)
+    driver = {}
+    try:
+        served = instance.instance_env(recipe, tree)
+        handle = serve(bundle, tree, recipe, served, fixed, manifest, "head")
+        if handle is False:
+            raise ValueError(f"Head instance not ready: {manifest['instance']['error']}; see {bundle / 'instance.log'}")
+        try:
+            env = {**os.environ, **fixed, **served, "RUNTIME_E2E_EXPLORE_BASE_URL": instance.fill(spec["baseURL"], served).rstrip("/"),
+                   "RUNTIME_E2E_EXPLORE_WRITES": "1" if spec["writes"] else "0"}
+            cwd = local(tree, recipe.get("cwd", "."))
+            # The driver needs the typed values; the bundle keeps only a redacted copy of the flows, written below.
+            with tempfile.NamedTemporaryFile("w", suffix=".json", encoding="utf-8") as flows:
+                json.dump(spec, flows)
+                flows.flush()
+                try:
+                    done = subprocess.run(["node", str(EXPLORE_DRIVER), flows.name, str(bundle / "driver.json"), str(cwd), str(tree), str(root)],
+                                          cwd=cwd, env=env, capture_output=True, text=True, timeout=900)
+                    if done.returncode or not (bundle / "driver.json").exists():
+                        driver = {"error": (done.stderr or done.stdout).strip()[-300:] or f"driver exited {done.returncode}"}
+                except (OSError, subprocess.TimeoutExpired) as error:
+                    driver = {"error": str(error)[:300]}
+        finally:
+            if handle:
+                manifest["instance"].update(handle.stop())
+    finally:
+        manifest["worktreeCleanup"] = remove_worktree(root, tree)
+    if not driver:
+        driver = load(bundle / "driver.json")
+        (bundle / "driver.json").unlink()
+    # The kept copy of the flows must not hold what was typed into a credential field either.
+    for flow in spec["flows"]:
+        for step in flow["steps"]:
+            if "value" in step and SECRET_FIELD.search(json.dumps(next(v for k, v in step.items() if k in EXPLORE_ACTIONS))):
+                step["value"] = "[REDACTED]"
+    # Pages can echo config or typed values, and a flow's env or values can hold one; neither kept file holds a credential.
+    secrets = sorted(set(instance.secret_values(root)) | {v for k, v in os.environ.items() if instance.SECRET_NAMES.search(k) and len(v) >= 4}, key=len, reverse=True)
+    (bundle / "explore.json").write_text(instance.redact(json.dumps(spec, indent=2, ensure_ascii=False), secrets) + "\n", encoding="utf-8")
+    record = {"schema": "runtime-e2e/explore-record@1", "headSha": sha, "uncommitted": bool(spec["head"].get("uncommitted")), "writes": spec["writes"],
+              **manifest, **driver}
+    (bundle / "record.json").write_text(instance.redact(json.dumps(record, indent=2, ensure_ascii=False), secrets) + "\n", encoding="utf-8")
+    if "error" in record:
+        print(f"Exploration did not run: {record['error']}")
+        return 2
+    failed = 0
+    for flow in record["flows"]:
+        last = flow["steps"][-1]
+        if flow["status"] == "OK":
+            print(f"{flow['id']}: OK, {len(flow['steps'])} steps, ends at {last['url']}")
+            continue
+        failed += 1
+        print(f"{flow['id']}: FAILED at step {last['index']} ({json.dumps(last['step'], ensure_ascii=False)}): {last['error']}")
+        for line in last.get("candidates", []):
+            print(f"  shown: {line}")
+    for flow in record["flows"]:
+        for step in flow["steps"]:
+            for blocked in step["blockedWrites"]:
+                print(f"{flow['id']} step {step['index']}: write blocked (writes is false): {blocked}")
+    print(f"Record: {bundle / 'record.json'}; list it in the suite's explore")
+    return 1 if failed else 0
+
+
+def unquote(text):
+    return re.sub(r"\\(.)", r"\1", text)
+
+
+def locators(text):
+    """(key, kind, value, name) for each literal locator, and the count of locators built at runtime."""
+    found, literal = [], set()
+    for m in LOCATOR.finditer(text):
+        kind, value, options = m[1], unquote(m[3]), m[4] or ""
+        if "${" in m[3] and m[2] == "`":
+            continue
+        name = NAME_OPTION.search(options)
+        if kind == "Role" and "name" in options and (not name or (name[1] == "`" and "${" in name[2])):
+            continue  # a name from a variable, a template, or a regex is decided at runtime
+        literal.add(m.start())
+        label = {"TestId": "testId", "AltText": "altText"}.get(kind, kind.lower())
+        if kind == "Role":
+            key = f"role={value}" + (f" name={json.dumps(unquote(name[2]), ensure_ascii=False)}" if name else "")
+        else:
+            key = f"{label}={json.dumps(value, ensure_ascii=False)}"
+        found.append((key, label, value, unquote(name[2]) if name else None))
+    dynamic = sum(1 for m in ANY_LOCATOR.finditer(text) if m.start() not in literal)
+    return found, dynamic
+
+
+def explore_records(data):
+    names = data.get("explore", [])
+    names = [names] if isinstance(names, str) else names
+    if not isinstance(names, list) or any(not isinstance(n, str) or not n for n in names):
+        raise ValueError("explore lists exploration record paths (record.json from evidence.py explore)")
+    return names
+
+
+def fold(text):
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
+def seen(label, value, name, records):
+    for step in (s for r in records for f in r.get("flows", []) for s in f["steps"]):
+        aria = step.get("aria", "")
+        if label == "role":
+            for line in aria.splitlines():
+                line = line.strip()
+                if re.match(r"- " + re.escape(value) + r"(\s|:|$)", line) and (name is None or fold(name) in fold(line)):
+                    return True
+            continue
+        pool = {"testId": step.get("testIds", []), "placeholder": step.get("placeholders", []), "title": step.get("titles", []), "altText": step.get("alts", [])}.get(label, [])
+        if any(fold(value) in fold(p) for p in pool) or (label != "testId" and fold(value) in fold(aria)):
+            return True
+    return False
+
+
+def explore_contract(data, root):
+    """Browser cases served from a head worktree need an exploration of that head; every literal locator must appear in it."""
+    names = explore_records(data)
+    browser = data.get("head") is not None and any(c.get("kind") == "browser" for c in data["cases"])
+    if not names:
+        if browser:
+            raise ValueError("browser cases need an exploration of the head before the first run: run evidence.py explore and list its record.json in explore")
+        return []
+    records = []
+    for name in names:
+        record = load(local(root, name))
+        if record.get("schema") != "runtime-e2e/explore-record@1" or "error" in record:
+            raise ValueError(f"{name} is not a completed exploration record; run evidence.py explore again")
+        if data.get("head") is None or record.get("headSha") != data["head"]["revision"]:
+            raise ValueError(f"{name} explored {str(record.get('headSha'))[:12]}, not the suite's head; explore the head again")
+        records.append(record)
+    waived = data.get("unexplored", [])
+    if not isinstance(waived, list) or any(not isinstance(w, dict) or set(w) != {"locator", "reason"} or not all(isinstance(v, str) and v.strip() for v in w.values()) for w in waived):
+        raise ValueError("unexplored lists {locator, reason} for a locator the exploration could not reach")
+    waived = {w["locator"] for w in waived}
+    own = {c["test"]["file"] for c in data["cases"] if c.get("kind") == "pr-test"}
+    missing, dynamic = [], 0
+    for name in data.get("files", []):
+        if name in own or Path(name).suffix not in SCRIPT_FILES:
+            continue  # the change's own tests were not written from this exploration
+        found, built = locators(local(root, name).read_text(encoding="utf-8", errors="replace"))
+        dynamic += built
+        missing += [f"{key} ({name})" for key, *rest in found if key not in waived and not seen(*rest, records)]
+    if missing:
+        raise ValueError("Locators not shown by the exploration: " + "; ".join(dict.fromkeys(missing))
+                         + "; explore the screen or state that shows them, fix the locator, or list it in unexplored with the reason")
+    data["exploreUnchecked"] = dynamic
+    return names
+
+
 def refs(root, source, into, remote, use_local):
     """Resolve head and base from the remote, so a stale local branch never decides what is tested."""
     def git(*args):
@@ -1230,7 +1494,7 @@ def promote(bundle, root, to):
         raise ValueError("A durable plan lives under docs/testing; pass --to inside it")
     plan_name, suite_name = (target / Path(suite["plan"]).name), (target / Path(manifest["suite"]).name)
     writes = {}
-    for name in suite["files"]:
+    for name in suite["files"] + explore_records(suite):
         content = local(bundle / "inputs", name).read_bytes()
         path = local(root, name)
         if path.exists() and path.read_bytes() != content:
@@ -1252,7 +1516,7 @@ def promote(bundle, root, to):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report", "promote", "refs", "release-lock"])
+    parser.add_argument("mode", choices=["validate", "approve", "run", "audit", "report", "promote", "refs", "release-lock", "explore"])
     parser.add_argument("target", type=Path, nargs="?")
     parser.add_argument("--source", help="refs: the change's branch, or pull/<n>/head, on the remote")
     parser.add_argument("--into", help="refs: the branch the change merges into")
@@ -1277,6 +1541,10 @@ def main():
         return 0
     if args.target is None:
         raise ValueError(f"{args.mode} needs a target")
+    if args.mode == "explore":
+        if args.out is None:
+            raise ValueError("explore needs --out, a new directory for the exploration record")
+        return explore(args.target.resolve(), args.root.resolve(), args.out)
     if args.mode == "audit":
         return audit(args.target.resolve())
     if args.mode == "report":
@@ -1295,6 +1563,8 @@ def main():
     approval_path = suite.with_name(suite.name + ".approval.json")
     if args.mode == "validate":
         print("Suite and Markdown contract valid")
+        if data.get("exploreUnchecked"):
+            print(f"Locators built at runtime, not checked against the exploration: {data['exploreUnchecked']}")
         if data.get("base") is None and any(c.get("classification") == "new-behavior" for c in data["cases"]):
             # Plan-time view, so the human hears it before any case runs rather than in the final report.
             print("No base instance: no case can prove it fails; every new-behavior case will report Can-fail: NOT_PROVEN")
@@ -1331,23 +1601,9 @@ def main():
     if args.out is None:
         raise ValueError("--out must name a new run directory")
     recipe = data.get("instance")
-    head_sha = None
-    if data.get("head") is not None:
-        head_sha = subprocess.run(["git", "rev-parse", "--verify", data["head"]["revision"] + "^{commit}"], cwd=root, capture_output=True, text=True).stdout.strip()
-        if not head_sha:
-            raise ValueError(f"Head revision {data['head']['revision']} is not in this repository; fetch it (evidence.py refs) first")
-        local_head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
-        if data["head"].get("uncommitted") and head_sha != local_head:
-            raise ValueError("An uncommitted head is applied on top of the checkout's HEAD; its revision must be that commit")
+    head_sha = resolve_head(root, data["head"]) if data.get("head") is not None else None
     if recipe and recipe["resources"] == "shared" and (head_sha or data.get("base") is not None):
-        # Held until this process exits, across head and base, so no other run takes the local ports in between.
-        shared_lock, holder = instance.lock_shared(root, f"evidence.py run {args.out}")  # noqa: F841
-        if shared_lock is None:
-            raise ValueError("Shared resources: " + instance.lock_held(holder))
-        busy = instance.busy_ports(recipe, instance.instance_env(recipe, root))
-        if busy:
-            # Checked before anything runs, so the human hears it now rather than after a full run.
-            raise ValueError(f"Shared resources run each worktree on the local stack's ports and {', '.join(busy)} is in use; stop the local stack and rerun, or rerun setup and choose isolated")
+        shared_lock = hold_shared(root, recipe, f"evidence.py run {args.out}")  # noqa: F841
     bundle = args.out.resolve()
     bundle.mkdir(parents=True, exist_ok=False)
     for name in hashes:

@@ -189,6 +189,68 @@ With `identity` in the recipe, each instance must print the token the tool write
 `shares` names what an instance shares with the local stack (database, queues, storage); keep the run marker and lock rules from the reference's `## Parallel execution` for each of them.
 Without `head`, the head run uses the checkout and whatever stack is already running, as before.
 
+## Exploration
+
+A suite with `head` and a `browser` case needs an exploration of that head before its first run: tests are written from what the served page shows, not from source.
+Write an exploration file outside `docs/testing`, for example next to the light suite:
+
+```json
+{
+  "head": {"revision": "<40-hex SHA>", "source": "origin/feature"},
+  "instance": "project-runtime",
+  "baseURL": "http://localhost:{WEB_PORT}",
+  "writes": true,
+  "env": {"TZ": "UTC"},
+  "flows": [
+    {"id": "admin-confirm", "viewport": {"width": 320, "height": 640}, "locale": "vi-VN", "steps": [
+      {"request": {"method": "POST", "path": "/api/test/reset"}},
+      {"goto": "/login"},
+      {"fill": {"label": "Email"}, "value": "admin@example.test"},
+      {"click": {"role": "button", "name": "Sign in"}},
+      {"goto": "/orders/2"},
+      {"click": {"role": "button", "name": "Confirm"}},
+      {"waitFor": {"text": "Sent"}},
+      {"reload": true}
+    ]}
+  ]
+}
+```
+
+- `head` and `instance` are the suite's; `env` is the suite's `determinism.env`, so the explored app is configured as the run's.
+- `baseURL` names the app's URL with the recipe's port variables.
+- `writes` is `true` in light mode. Before approval in durable mode it is `false`: every request other than GET, HEAD, and OPTIONS is blocked and listed.
+  A GET that changes data (a logout link, a confirm link with a token) and WebSocket messages still reach the app, so such a step does not belong in a read-only flow.
+  With shared resources a write reaches the local stack's data, as a run's does.
+- A flow starts with `goto` and walks one user path to every state a case asserts on: each step is `goto` (a path), `click`, `fill` and `select` (with `value`), `check`, `press` (with `key`), `waitFor`, or `reload: true`.
+  Flows run one after another on the same app data, so a flow after one that changes data starts with the reset the project's test fixtures use, as `{"request": {"method": "POST", "path": "/api/test/reset"}}` before its `goto`; with `writes: false` such a request is blocked and listed.
+  A target is one of `{"role", "name"}`, `label`, `text`, `placeholder`, `testId`, `title`, or `altText`, with `exact` when the test will use it: the same locator the test will use.
+- Explore each locale and viewport whose text or layout a case asserts.
+
+```bash
+python3 <skill-root>/scripts/evidence.py explore <explore.json> --root <project> --out <new-directory>
+```
+
+`explore` serves the head worktree from the recipe, as `run` does (the shared-resources lock and port check included), and drives each flow in Chromium with the project's own Playwright.
+After each step it waits until no request has been in flight for 300 ms, then records the URL, the accessibility snapshot (the roles and names `getByRole` matches), test IDs, placeholders, titles, image alt texts, each select's option values, the requests the step made with their status, console errors, and blocked writes.
+A target must match exactly one visible element within 5 seconds, as a strict Playwright locator does; hidden matches, such as an option inside a closed select, count too.
+Otherwise the flow fails at that step with what matched (nothing, only hidden elements, or several), and the output names what the page shows instead, such as the buttons that exist.
+Values typed into a field whose target names a password, secret, token, key, OTP, or PIN, and the project's secret values, are replaced with `[REDACTED]`.
+It writes `record.json`, the flows as run in `explore.json`, and the instance and setup logs, and exits 1 when a flow failed.
+Fix the flow and explore again until every flow passes, then write the tests from the record.
+
+List each record in the suite's `explore` (a path or a list of paths).
+`validate` and `run` then refuse the suite when:
+
+- a record explored another commit than `head.revision`;
+- a literal locator in a listed test or helper file (`getByRole` with its `name`, `getByLabel`, `getByText`, `getByPlaceholder`, `getByTestId`, `getByTitle`, `getByAltText`) appears in no recorded step, compared case-insensitively as a substring, the way Playwright matches by default.
+  The check proves that the text was shown somewhere on that step, not that the locator matches one element; the run proves that.
+  A role's name is compared with the accessibility snapshot line, so a name computed differently there (such as from `aria-describedby`) can be refused and goes in `unexplored`.
+
+The change's own tests (`pr-test` files) are not checked.
+A locator for a state no flow can reach, such as an error only a failing partner service shows, goes in `unexplored` as `{"locator": "<as the refusal prints it>", "reason": "..."}`; the human sees it in the suite.
+`validate` counts the locators built at runtime (a variable, a template with `${}` as the target or the role's name, a regular-expression name), which it cannot check.
+Records are hashed with the suite, so approval pins them and the run bundle keeps them under `inputs/`.
+
 ## Determinism
 
 `determinism` is optional; without it the summary states that time, seed data, randomness, and IDs are uncontrolled.
@@ -333,6 +395,7 @@ Declared expectations are human-reviewed semantics; the tool cannot infer whethe
 ## Commands
 
 ```bash
+python3 <skill-root>/scripts/evidence.py explore <explore.json> --root <project> --out <new-directory>
 python3 <skill-root>/scripts/evidence.py validate <suite.json> --root <project>
 # Durable mode, only after explicit human approval, never as an agent's own decision:
 python3 <skill-root>/scripts/evidence.py approve <suite.json> --root <project> --reviewer <human-id>

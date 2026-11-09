@@ -20,6 +20,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The exploration driver's test needs a real Chromium; it skips without one.
+      - run: npm install --no-save playwright@1.63.0 && npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run check-skills
       - name: Typecheck Paseo plugins

@@ -25,6 +25,17 @@ Source: Human request, YYYY-MM-DD: <one-line summary>
 
 ## Entries
 
+## Explore the served head before browser tests
+
+Date: 2026-11-09 · Status: Active
+Source: Human request, 2026-11-09: write the exploration step for runtime-e2e-test as a Playwright script, open a PR, and test it on a testbed first (PR #94).
+
+- Decision: Before writing browser tests, `runtime-e2e-test` explores the served head with `evidence.py explore`. A Playwright driver walks declared flows in Chromium and records what each step shows: the accessibility snapshot, test IDs, select options, requests, and console errors.
+- Decision: A suite with `head` and a `browser` case MUST list an exploration record of that head. `validate` and `run` refuse a record of another commit, and any literal locator in the listed test files that no recorded step shows, unless the suite lists it in `unexplored` with a reason.
+- Decision: An exploration target must match exactly one visible element, as a strict Playwright locator does. Light mode explores with `writes: true`. Durable mode explores with `writes: false` before approval, which blocks every non-GET request.
+- Why: In real validate runs the agent wrote locators from source without opening a page and paid for it in reruns. On the testbed, exploring first caught strict-mode traps before any test existed, and no rerun was caused by a wrong locator.
+- Constraints: Records are approved inputs: they are hashed with the suite, kept in the run bundle, and counted by `audit`. Credential values and project secrets never stay in the record or in the kept flows. The check proves a locator's text was shown, not that the locator matches one element, and locators built at runtime are counted, not checked. Exploration does not settle wait timing.
+
 ## Grill mode in brainstorm-partner
 
 Date: 2026-11-08 · Status: Active
