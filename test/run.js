@@ -2053,6 +2053,154 @@ test("runtime E2E setup with shared resources reports a busy local port before a
   }
 });
 
+test("runtime E2E browser cases need an exploration of the head that shows every literal locator", () => {
+  const fixture = createBaseHeadFixture();
+  try {
+    const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: fixture.root, encoding: "utf8" }).stdout.trim();
+    fs.writeFileSync(path.join(fixture.root, "e2e/order.spec.ts"), [
+      "await page.getByRole('button', { name: 'Save' }).click();",
+      "await page.getByLabel(\"Status\").selectOption('done');",
+      "await expect(page.getByTestId('label')).toHaveText('new');",
+      "await expect(page.getByText(`Saved ${id}`)).toBeVisible();",
+      "await page.getByRole('button', { name: 'Resend' }).click();",
+    ].join("\n"));
+    // The change's own test was not written from the exploration, so its locators are not checked.
+    fs.writeFileSync(path.join(fixture.root, "e2e/label.spec.ts"), "page.getByRole('button', { name: 'Never shown' });\n");
+    const step = (aria, testIds = []) => ({ index: 0, step: { goto: "/" }, url: "http://127.0.0.1/", aria, testIds, placeholders: [], titles: [], alts: [], selects: [], requests: [], console: [], blockedWrites: [] });
+    const record = (sha) => ({
+      schema: "runtime-e2e/explore-record@1", headSha: sha, uncommitted: false, writes: true,
+      flows: [{ id: "save", status: "OK", steps: [step("- combobox \"Status\":\n  - option \"Done\"\n- button \"Save\"", ["label"])] }],
+    });
+    fs.mkdirSync(path.join(fixture.root, ".runtime-e2e/explore"), { recursive: true });
+    const recordPath = path.join(fixture.root, ".runtime-e2e/explore/record.json");
+    fs.writeFileSync(recordPath, JSON.stringify(record(head)));
+    const browserSuite = (extra) => (data) => {
+      data.files.push("e2e/order.spec.ts");
+      data.head = { revision: head };
+      data.instance = { start: ["python3", "app.py"], ready: { url: "http://127.0.0.1:{WEB_PORT}/" }, resources: "isolated", ports: { WEB_PORT: "5300" }, shares: [] };
+      data.base = { revision: fixture.base };
+      data.cases[0].kind = "browser";
+      Object.assign(data, extra);
+    };
+
+    const unexplored = fixture.validate(browserSuite({}));
+    assert.strictEqual(unexplored.status, 2);
+    assert.ok(unexplored.stderr.includes("browser cases need an exploration of the head before the first run"), unexplored.stderr);
+    const missing = fixture.validate(browserSuite({ explore: ".runtime-e2e/explore/record.json" }));
+    assert.strictEqual(missing.status, 2);
+    assert.ok(missing.stderr.includes('Locators not shown by the exploration: role=button name="Resend" (e2e/order.spec.ts)'), missing.stderr);
+    assert.ok(!missing.stderr.includes("Never shown"), missing.stderr);
+    const waived = fixture.validate(browserSuite({ explore: [".runtime-e2e/explore/record.json"], unexplored: [{ locator: 'role=button name="Resend"', reason: "shown only after a failed delivery the exploration cannot cause" }] }));
+    assert.strictEqual(waived.status, 0, waived.stderr);
+    assert.ok(waived.stdout.includes("Locators built at runtime, not checked against the exploration: 1"), waived.stdout);
+    fs.writeFileSync(recordPath, JSON.stringify(record(fixture.base)));
+    const stale = fixture.validate(browserSuite({ explore: ".runtime-e2e/explore/record.json" }));
+    assert.strictEqual(stale.status, 2);
+    assert.ok(stale.stderr.includes("not the suite's head; explore the head again"), stale.stderr);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+function playwrightAvailable() {
+  return spawnSync("node", ["-e", "require('playwright').chromium.executablePath()"], { encoding: "utf8" }).status === 0;
+}
+
+const EXPLORE_APP = `import http.server, os, pathlib
+label = pathlib.Path("app.txt").read_text().strip()
+PAGE = """<!doctype html><html><body><h1>Orders</h1>
+<label for=s>Status</label><select id=s><option value=open>Open</option><option value=done>Done</option></select>
+<label>Password <input type=password name=p></label>
+<p data-testid=label>%s</p>
+<button onclick="fetch('/save',{method:'POST'}).then(r=>r.text()).then(t=>{document.querySelector('#out').textContent=t})">Save</button>
+<button>Cancel</button>
+<div id=out></div></body></html>"""
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        self.wfile.write((PAGE % label).encode() if self.path == "/" else b"ok")
+    def do_POST(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Saved " + label.encode())
+    def log_message(self, *args):
+        pass
+http.server.HTTPServer(("127.0.0.1", int(os.environ["WEB_PORT"])), Handler).serve_forever()
+`;
+
+test("runtime E2E explore records what each step of a flow shows on the served head", () => {
+  if (!playwrightAvailable()) {
+    console.log("# skipped: Playwright with Chromium is not installed here");
+    return;
+  }
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-e2e-explore-"));
+  const git = (...args) => spawnSync("git", args, { cwd: root, encoding: "utf8" }).stdout.trim();
+  try {
+    git("init", "-q");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "Test");
+    fs.writeFileSync(path.join(root, ".gitignore"), ".runtime-e2e/\n");
+    fs.writeFileSync(path.join(root, "app.py"), EXPLORE_APP);
+    fs.writeFileSync(path.join(root, "app.txt"), "old\n");
+    git("add", ".");
+    git("commit", "-qm", "base");
+    fs.writeFileSync(path.join(root, "app.txt"), "new\n");
+    git("commit", "-qam", "head");
+    const head = git("rev-parse", "HEAD");
+    // The checkout moved on; exploration still serves the declared head.
+    fs.writeFileSync(path.join(root, "app.txt"), "dirty\n");
+    const port = spawnSync("python3", ["-c", "import socket; s = socket.socket(); s.bind(('127.0.0.1', 0)); print(s.getsockname()[1])"], { encoding: "utf8" }).stdout.trim();
+    const spec = (writes) => ({
+      head: { revision: head },
+      instance: { start: ["python3", "app.py"], ready: { url: "http://127.0.0.1:{WEB_PORT}/health" }, resources: "isolated", ports: { WEB_PORT: port }, shares: [] },
+      baseURL: "http://127.0.0.1:{WEB_PORT}",
+      writes,
+      flows: [
+        { id: "save", steps: [{ goto: "/" }, { select: { label: "Status" }, value: "done" }, { fill: { label: "Password" }, value: "hunter22" }, { click: { role: "button", name: "Save" } }, { waitFor: { text: "Saved new" } }] },
+        { id: "resend", steps: [{ goto: "/" }, { click: { role: "button", name: "Resend" } }] },
+      ],
+    });
+    const evidence = path.join(SOURCE_ROOT, "skills/runtime-e2e-test/scripts/evidence.py");
+    const explore = (name, data) => {
+      fs.mkdirSync(path.join(root, ".runtime-e2e"), { recursive: true });
+      fs.writeFileSync(path.join(root, `.runtime-e2e/${name}.json`), JSON.stringify(data));
+      const out = path.join(root, ".runtime-e2e", name);
+      const result = spawnSync("python3", [evidence, "explore", `.runtime-e2e/${name}.json`, "--out", out, "--root", root], { cwd: root, encoding: "utf8" });
+      return { ...result, out, record: fs.existsSync(path.join(out, "record.json")) ? JSON.parse(fs.readFileSync(path.join(out, "record.json"), "utf8")) : null };
+    };
+
+    const run = explore("writes", spec(true));
+    assert.strictEqual(run.status, 1, run.stdout + run.stderr);
+    assert.ok(run.stdout.includes("save: OK, 5 steps"), run.stdout);
+    // A locator the page does not have fails at once and names what the page shows instead.
+    assert.ok(run.stdout.includes('resend: FAILED at step 1') && run.stdout.includes('no element matches role=button name="Resend"'), run.stdout);
+    assert.ok(run.stdout.includes('shown: - button "Save"') && run.stdout.includes('shown: - button "Cancel"'), run.stdout);
+    assert.strictEqual(run.record.headSha, head);
+    const last = run.record.flows[0].steps[4];
+    assert.ok(last.aria.includes("- paragraph: new") && last.aria.includes("Saved new"), last.aria);
+    assert.deepStrictEqual(last.testIds, ["label"]);
+    assert.deepStrictEqual(run.record.flows[0].steps[1].selects[0].options.map((o) => o.value), ["open", "done"]);
+    assert.ok(run.record.flows[0].steps[3].requests.some((r) => r.method === "POST" && r.url.endsWith("/save") && r.status === 200));
+    assert.ok(!allText(run.out).includes("hunter22"));
+    assert.strictEqual(run.record.worktreeCleanup, "COMPLETE");
+    assert.strictEqual(run.record.instance.portsReleased, true);
+
+    // Read-only exploration: the write never reaches the app, and the record says which one was blocked.
+    const readOnly = explore("read-only", { ...spec(false), flows: [spec(false).flows[0]] });
+    assert.strictEqual(readOnly.status, 1);
+    assert.ok(readOnly.stdout.includes("write blocked (writes is false): POST"), readOnly.stdout);
+    assert.ok(readOnly.stdout.includes('no element matches text="Saved new"'), readOnly.stdout);
+
+    const bad = explore("bad", { ...spec(true), flows: [{ id: "x", steps: [{ click: { role: "button" } }] }] });
+    assert.strictEqual(bad.status, 2);
+    assert.ok(bad.stderr.includes("steps must start with goto"), bad.stderr);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("runtime E2E setup proves a worktree instance serves the worktree's own code", () => {
   const fixture = createSetupFixture();
   try {
