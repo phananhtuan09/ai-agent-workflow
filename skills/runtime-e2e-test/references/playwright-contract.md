@@ -290,6 +290,8 @@ Each suite gets one status:
 
 When the app has no server-side clock control, freeze browser time in the test with `page.clock.setFixedTime()` or `page.clock.install()` and say so in `limits` if server time still varies.
 Read rendered values only after a web-first assertion (for example `await expect(row).toBeVisible()`) has confirmed the data loaded; `innerText()` and `textContent()` do not wait for data and make results timing-dependent.
+The same holds for `count()`, `isVisible()` and `allInnerTexts()`: first wait for the state the value describes, such as the toast or the loaded rows, not only for the page around it, because a heading often renders while the list is still loading.
+An absence check needs the same wait: confirm that a sibling row is visible before counting a button that should be missing, or the count can be 0 only because nothing has loaded yet.
 
 List every executed local dependency in `files`, including helpers, fixture modules, configs, dependency manifests/lockfiles, and approved baselines.
 Use one test per case, titled `[E2E-01] descriptive title`.
