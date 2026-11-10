@@ -1,6 +1,6 @@
 ---
 name: record-workflow-friction
-description: Record any observable problem, blocker, ambiguity, retry, rework, workaround, human correction, tool failure, runtime issue, task-context issue, workflow friction, or bug that escaped a validate-change run. Use only when the human explicitly asks to note, capture, or log the current execution difficulty, or reports that a bug got past a validate run, for later analysis. Do not assume the workflow caused the problem, and do not fix or replace the active task.
+description: Record any observable problem, blocker, ambiguity, retry, rework, workaround, human correction, tool failure, runtime issue, task-context issue, workflow friction, or bug that escaped a validate-change run. Use only when the human explicitly asks to note, capture, or log the current execution difficulty, or reports that a bug got past a validate run, for later analysis, or when a human-installed schedule starts the nightly Paseo friction sweep. Do not assume the workflow caused the problem, and do not fix or replace the active task.
 ---
 
 # Record Workflow Friction
@@ -24,7 +24,7 @@ The workflow name and phase may be `unknown`. Do not force a workflow attributio
 
 ## Boundaries
 
-- Run only after an explicit human request.
+- Run only after an explicit human request, or as the nightly Paseo friction sweep started by a schedule the human installed; for the sweep, follow [references/nightly-sweep.md](references/nightly-sweep.md).
 - Record observable facts separately from hypotheses.
 - Do not expose chain-of-thought, secrets, credentials, or unnecessary transcript content.
 - Do not diagnose, fix, or redesign the workflow or active task.
@@ -202,7 +202,7 @@ Required only when `category` is `escaped-bug`:
 
 ## Evidence Rule
 
-The artifact is discovery evidence with status `agent-reported-observation`. It does not prove a workflow failure or root cause. `workflow-evaluation` must corroborate it with session traces, tool or artifact evidence, human correction, repeated observations, or controlled exercise before upgrading its evidence status.
+The artifact is discovery evidence with status `agent-reported-observation`, or `audit-detected-observation` when the nightly sweep found it in another session's trace. It does not prove a workflow failure or root cause. `workflow-evaluation` must corroborate it with session traces, tool or artifact evidence, human correction, repeated observations, or controlled exercise before upgrading its evidence status.
 
 Observation counts do not establish a failure rate without a known session denominator.
 

@@ -223,7 +223,7 @@ Every behavioral finding includes:
 - smallest change or `do not change workflow`
 - re-test
 
-Treat observations created by `record-workflow-friction` as `agent-reported-observation`. They may describe workflow, model, runtime, tool, environment, task, or coordination friction. Corroborate before upgrading evidence status or calling them workflow failures.
+Treat observations created by `record-workflow-friction` as `agent-reported-observation`, or `audit-detected-observation` when its nightly Paseo sweep found them in another session's trace. They may describe workflow, model, runtime, tool, environment, task, or coordination friction. Corroborate before upgrading evidence status or calling them workflow failures.
 
 ## Output
 
