@@ -10,7 +10,9 @@ It scans the local Paseo sessions active on the run day and records the friction
 - Window: from 00:00 local time on the run day until the sweep starts; activity after the sweep starts is out of scope.
 - Read-only toward audited projects and their agents: never prompt, resume, interrupt, or modify a source agent, and never write into an audited checkout.
 - Requires `workflow-evaluation` installed next to this skill for `extract_session_trace.py`; when it is missing, stop and report that.
+- The sweep workspace is the working directory the schedule starts the sweep agent in; it is a folder the human chose, never an audited project. When the working directory is an audited project, stop and report that.
 - Outputs are observation files in the sweep workspace's `docs/evaluation/observations/`; extracted traces stay git-ignored under `docs/evaluation/session-traces/`.
+- Observations describe other projects, so they may carry private details: quote only the minimum the evidence needs, and leave every file uncommitted for the human to review before it reaches a shared or public repository.
 - Do not diagnose root cause, write a report or ledger, commit, or change any skill or instruction file.
 
 ## 1. Discover projects
@@ -56,7 +58,8 @@ Write one observation per distinct friction, using the `SKILL.md` artifact forma
 - `## Evidence References` lists the trace path and the zero-based event `index` values
 - `subject` is the audited project folder name
 
-Before writing, search `docs/evaluation/observations/` for the same `session_reference` and category; skip only a friction that is already recorded there, and still record the session's other frictions.
+Before writing, search `docs/evaluation/observations/`, including files written earlier in this run, for the same `session_reference` and category.
+Skip a friction only when one of those observations describes the same friction, with the same first visible divergence; record a different friction of the same category in the same session as its own observation, and still record the session's other frictions.
 When no friction is found, write nothing.
 
 ## 5. Finish
