@@ -1,6 +1,6 @@
 # Agent Observations
 
-Human-requested notes about observable friction encountered while an AI agent is executing a task.
+Notes about observable friction encountered while an AI agent is executing a task, recorded on human request or by the nightly Paseo friction sweep.
 
 Observations may concern workflow behavior, model execution, runtime or tools, environment, task ambiguity, or human-agent coordination. They do not assume the workflow caused the issue.
 
@@ -10,7 +10,8 @@ Create observations with `record-workflow-friction` and store one observation pe
 docs/evaluation/observations/YYYY-MM-DD-{subject}-{short-slug}.md
 ```
 
-Every observation has evidence status `agent-reported-observation`. `workflow-evaluation` must corroborate and attribute it before presenting it as a repeated pattern, confirmed behavior, or workflow failure.
+Observations recorded on request have evidence status `agent-reported-observation`; observations written by the nightly sweep in `record-workflow-friction/references/nightly-sweep.md` have `audit-detected-observation`.
+Either way, `workflow-evaluation` must corroborate and attribute an observation before presenting it as a repeated pattern, confirmed behavior, or workflow failure.
 
 ## Escaped bugs
 

@@ -4,7 +4,7 @@ Observations, session traces, and evaluation reports belong in this group.
 
 Existing evaluation paths remain supported while skills migrate to this taxonomy.
 
-- `observations/`: human-requested friction notes from `record-workflow-friction`.
+- `observations/`: friction notes from `record-workflow-friction`, recorded on human request or by its nightly Paseo sweep.
 - `session-traces/`: normalized, git-ignored session traces.
 - `reports/`: HTML evaluation reports, plus the experimental weekly session audit's Markdown reports and findings ledger.
 

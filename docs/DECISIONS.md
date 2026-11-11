@@ -25,6 +25,17 @@ Source: Human request, YYYY-MM-DD: <one-line summary>
 
 ## Entries
 
+## Nightly Paseo friction sweep
+
+Date: 2026-11-10 · Status: Experimental
+Source: Human request, 2026-11-09: run `record-workflow-friction` every evening at 22:00 (UTC+7) over all Paseo projects, limited to sessions created or updated that day, with a new evidence label; 2026-11-10: still deep-dive sessions that already have observations.
+
+- Decision: `record-workflow-friction` has a nightly sweep mode defined in `references/nightly-sweep.md`. A schedule the human installs starts a dedicated sweep agent; the repository ships no schedule.
+- Decision: The sweep scans every project with a Paseo agent, including archived agents, keeps Paseo-backed sessions active since 00:00 local time on the run day, and deep-dives the first 5 triaged sessions plus any with a `#friction` note, even when observations already cite them.
+- Decision: Each distinct friction becomes one observation with the evidence status `audit-detected-observation`; only a friction already recorded for the same session and category is skipped.
+- Why: `record-workflow-friction` ran only on an explicit mid-task request, so friction was rarely recorded.
+- Constraints: The sweep is read-only toward audited projects and agents and writes only observations and git-ignored traces in its own workspace. `workflow-evaluation` must corroborate an `audit-detected-observation` before upgrading it. The weekly session audit stays manual and unscheduled.
+
 ## Explore the served head before browser tests
 
 Date: 2026-11-09 · Status: Active
@@ -111,7 +122,7 @@ Source: Human request, 2026-10-22: implement issue #31, "Add a manual weekly ses
 - Decision: Sources are local Claude Code and Paseo sessions, with Paseo resolved to its provider transcript. The extractor's `--triage` option inventories the projects, filters by transcript timestamps (default 7 days), and ranks sessions by observable signals, `#friction` notes first. Only the top N (default 5) are deep-dived.
 - Decision: Each audit writes a Vietnamese Markdown report and updates one findings ledger under `docs/evaluation/reports/`, with the statuses, response ladder, and escalation rule from issue #31.
 - Why: `record-workflow-friction` was never used, so there was no evidence for deciding which skill to improve, and the retrospective audit covered one project with no memory across audits.
-- Constraints: No schedule, cron job, or hook is installed. The audit is read-only toward audited projects. It stays labeled experimental, with its hypothesis and success criteria, until audits provide runtime evidence. The full HTML evaluation and `record-workflow-friction` stay unchanged.
+- Constraints: No schedule, cron job, or hook is installed. The audit is read-only toward audited projects. It stays labeled experimental, with its hypothesis and success criteria, until audits provide runtime evidence. The full HTML evaluation stays unchanged; `record-workflow-friction` gained only the nightly sweep recorded above.
 
 ## Think in code for bulk data
 

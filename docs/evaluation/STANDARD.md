@@ -409,7 +409,7 @@ Moi behavioral finding gom:
 
 - `finding_id`
 - `severity`: `Critical`, `High`, `Medium`, `Low`
-- `evidence_status`: `agent-reported-observation`, `trace-observed`, `repeated-pattern`, `exercise-confirmed`
+- `evidence_status`: `agent-reported-observation`, `audit-detected-observation`, `trace-observed`, `repeated-pattern`, `exercise-confirmed`
 - `cohort` va denominator
 - `observed_pattern`
 - `trigger_condition`
@@ -432,7 +432,7 @@ Severity:
 - `Medium`: rework, overhead, portability, consistency, hoac recovery problem co impact ro
 - `Low`: friction cuc bo hoac cai thien nho
 
-Observation do skill `record-workflow-friction` tao ra chi co evidence status `agent-reported-observation`. No co the mo ta bat ky friction nao trong agent execution, khong chi workflow problem. Chi sau attribution evaluator moi duoc goi no la workflow failure.
+Observation do skill `record-workflow-friction` tao ra chi co evidence status `agent-reported-observation`, hoac `audit-detected-observation` khi nightly sweep phat hien no trong trace cua session khac. No co the mo ta bat ky friction nao trong agent execution, khong chi workflow problem. Chi sau attribution evaluator moi duoc goi no la workflow failure.
 
 ## Observation Sources
 

@@ -37,6 +37,7 @@ docs/learning/.learning-tx-*/
 .vscode/
 .idea/
 *.swp
+.claude/worktrees/
 
 # Extracted session traces (normalized transcripts, evidence only)
 docs/evaluation/session-traces/*
