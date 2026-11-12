@@ -1097,6 +1097,11 @@ def recipe_steps(recipe, tree):
     return [(where, step) for step in recipe.get("setup", [])]
 
 
+def base_setup_steps(base, recipe, tree):
+    """`base.setup` belongs to the suite, not the recipe, so it runs in the worktree root; the recipe's steps follow in its `cwd`."""
+    return [(tree, step) for step in base.get("setup", [])] + (recipe_steps(recipe, tree) if recipe else [])
+
+
 def add_worktree(root, revision, prefix):
     tree = Path(tempfile.mkdtemp(prefix=prefix))
     added = subprocess.run(["git", "worktree", "add", "--detach", str(tree), revision], cwd=root, capture_output=True, text=True)
@@ -1203,7 +1208,7 @@ def run_base(bundle, root, data, run_id):
             manifest["copied"] = instance.copy_local(root, tree, recipe)
         served = instance.instance_env(recipe, tree) if recipe else {}
         env = {**fixed, **base.get("env", {}), **served}
-        failed = run_setup([(tree, step) for step in base.get("setup", [])] + (recipe_steps(recipe, tree) if recipe else []), tree, env, run / "setup.log", manifest["setup"])
+        failed = run_setup(base_setup_steps(base, recipe, tree), tree, env, run / "setup.log", manifest["setup"])
         if failed:
             manifest["degraded"] = f"Base setup {failed[0]} exited {failed[1]}; see base/setup.log"
             return

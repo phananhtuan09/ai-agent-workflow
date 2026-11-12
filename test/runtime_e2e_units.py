@@ -334,17 +334,22 @@ class Measurements(unittest.TestCase):
 class RecipeSetup(unittest.TestCase):
     def test_recipe_setup_runs_in_the_recipe_cwd_as_setup_prove_does(self):
         with tempfile.TemporaryDirectory() as folder:
-            tree = Path(folder)
+            tree = Path(folder).resolve()
             (tree / "app").mkdir()
             (tree / "shared").mkdir()
             # A relative link target resolves only from the recipe cwd, as in a recipe that passed `setup.py prove`.
             recipe = {"cwd": "app", "setup": [["ln", "-s", "../shared", "linked"], ["test", "-d", "linked"]]}
             base_step = [["test", "-d", "app"]]
             records = []
-            steps = [(tree, step) for step in base_step] + evidence.recipe_steps(recipe, tree)
+            steps = evidence.base_setup_steps({"setup": base_step}, recipe, tree)
+            self.assertEqual([where for where, _ in steps], [tree, tree / "app", tree / "app"])
             self.assertIsNone(evidence.run_setup(steps, tree, {}, tree / "setup.log", records))
             self.assertTrue((tree / "app" / "linked").is_symlink())
             self.assertEqual([r["exitCode"] for r in records], [0, 0, 0])
+
+    def test_base_setup_without_a_recipe_runs_in_the_worktree_root(self):
+        tree = Path("/tmp/tree")
+        self.assertEqual(evidence.base_setup_steps({"setup": [["true"]]}, None, tree), [(tree, ["true"])])
 
     def test_recipe_cwd_outside_the_worktree_is_refused(self):
         with tempfile.TemporaryDirectory() as folder:
