@@ -174,7 +174,7 @@ An inline recipe object is accepted too, for example in a fixture.
 Approval pins the recipe it read; editing it in the reference makes the approval stale, and the bundle keeps the recipe used as `instance.json`.
 
 With `head`, `run` tests no file of the checkout: it creates a head worktree at `head.revision`, and with `"uncommitted": true` (allowed only when `head.revision` is the checkout's `HEAD`) applies the checkout's `git diff --binary HEAD` and copies its untracked files once, keeping the patch as `head.patch`.
-Each worktree, head and base, then gets the approved test files from the snapshot, the recipe's `copy` files from the checkout (for example `.env`, never read), and the recipe's `setup` steps (after `base.setup` on base).
+Each worktree, head and base, then gets the approved test files from the snapshot, the recipe's `copy` files from the checkout (for example `.env`, never read), and the recipe's `setup` steps, run in the recipe `cwd` as `setup.py prove` runs them (after `base.setup`, which runs in the worktree root, on base).
 The tool starts `start` there, waits up to `timeout` seconds for `ready` (`{"url": ...}` answering below 500, or `{"log": <regex>}` in its log), runs the tests and the existing suites, runs `stop` (or terminates the start process group), and records whether the ports were released.
 Head and base run one after the other, and both worktrees are removed afterwards (`worktreeCleanup`).
 A head that cannot be built or never becomes ready stops the run with the reason; a base that never becomes ready degrades the base run with the reason and the log in `base/instance.log`.
