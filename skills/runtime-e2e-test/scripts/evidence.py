@@ -1071,14 +1071,14 @@ def serve(run, tree, recipe, env, fixed, manifest, label):
 
 
 def run_setup(steps, tree, env, log_path, records):
-    """Run setup steps in a worktree; returns the first failing (step, exit code), or None."""
+    """Run (directory, step) pairs in a worktree; returns the first failing (step, exit code), or None."""
     # Kept logs are evidence: a step that echoes config must not leave a credential in the bundle.
     secrets = sorted(set(instance.secret_values(tree)) | {v for k, v in env.items() if instance.SECRET_NAMES.search(k) and len(v) >= 4}, key=len, reverse=True)
     with log_path.open("w", encoding="utf-8") as log:
-        for step in steps:
+        for where, step in steps:
             try:
                 # Setup steps are human-approved argument arrays (hashed with the suite) and run without a shell.
-                done = subprocess.run(step, cwd=tree, env={**os.environ, **env}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+                done = subprocess.run(step, cwd=where, env={**os.environ, **env}, capture_output=True, text=True, timeout=SETUP_TIMEOUT)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
                 code, output = done.returncode, done.stdout + done.stderr
             except subprocess.TimeoutExpired:
                 code, output = 124, f"timed out after {SETUP_TIMEOUT}s"
@@ -1089,6 +1089,17 @@ def run_setup(steps, tree, env, log_path, records):
             if code:
                 return step, code
     return None
+
+
+def recipe_steps(recipe, tree):
+    """Recipe setup steps run in the recipe `cwd`, as `setup.py prove` runs them, so a proven recipe behaves the same here."""
+    where = local(tree, recipe.get("cwd", "."))
+    return [(where, step) for step in recipe.get("setup", [])]
+
+
+def base_setup_steps(base, recipe, tree):
+    """`base.setup` belongs to the suite, not the recipe, so it runs in the worktree root; the recipe's steps follow in its `cwd`."""
+    return [(tree, step) for step in base.get("setup", [])] + (recipe_steps(recipe, tree) if recipe else [])
 
 
 def add_worktree(root, revision, prefix):
@@ -1139,7 +1150,7 @@ def open_head(bundle, root, data, sha, manifest):
         place_snapshot(bundle, tree, data["files"])
         recipe = data["instance"]
         record["copied"] = instance.copy_local(root, tree, recipe)
-        failed = run_setup(recipe.get("setup", []), tree, {**(data.get("determinism") or {}).get("env", {}), **instance.instance_env(recipe, tree)}, bundle / "head-setup.log", record["setup"])
+        failed = run_setup(recipe_steps(recipe, tree), tree, {**(data.get("determinism") or {}).get("env", {}), **instance.instance_env(recipe, tree)}, bundle / "head-setup.log", record["setup"])
         if failed:
             raise ValueError(f"Head setup {failed[0]} exited {failed[1]}; see head-setup.log")
     except Exception:
@@ -1197,7 +1208,7 @@ def run_base(bundle, root, data, run_id):
             manifest["copied"] = instance.copy_local(root, tree, recipe)
         served = instance.instance_env(recipe, tree) if recipe else {}
         env = {**fixed, **base.get("env", {}), **served}
-        failed = run_setup(base.get("setup", []) + (recipe or {}).get("setup", []), tree, env, run / "setup.log", manifest["setup"])
+        failed = run_setup(base_setup_steps(base, recipe, tree), tree, env, run / "setup.log", manifest["setup"])
         if failed:
             manifest["degraded"] = f"Base setup {failed[0]} exited {failed[1]}; see base/setup.log"
             return
