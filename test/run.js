@@ -4450,6 +4450,8 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     writeJson(path.join(run, "run.json"), { schema: "validate-change/run@1", target: { label: "worktree" }, gate: { override: null, answer: "confirmed" },
       steps: ["quality-code-check", "review-pr", "runtime-e2e-test", "security-performance-check"].map((skill) => ({ skill, ...skipped })),
       separateTests: untracked.separateTests });
+    assert.strictEqual(validateChange(root, ["claims", run, "--none"]).status, 0);
+    assert.strictEqual(validateChange(root, ["gate", run]).status, 0);
     const later = validateChange(root, ["report", run]);
     assert.strictEqual(later.status, 1, later.stderr);
     assert.ok(!later.stdout.includes("tests-skipped"), later.stdout);
@@ -4474,6 +4476,90 @@ test("validate-change risk rules read the diff and the editable rules table", ()
   }
 });
 
+test("validate-change claims every PR description line and gate records what the human saw", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "validate-change-claims-"));
+  const git = (...args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    assert.strictEqual(result.status, 0, result.stderr);
+  };
+  try {
+    git("init", "-q");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "Test");
+    fs.writeFileSync(path.join(root, "app.txt"), "old\n");
+    fs.writeFileSync(path.join(root, ".gitignore"), ".runtime-e2e/\n");
+    git("add", ".");
+    git("commit", "-qm", "base");
+    fs.writeFileSync(path.join(root, "app.txt"), "new\n");
+    git("commit", "-qam", "change");
+    const run = path.join(root, ".runtime-e2e/x/validate");
+    const read = (name) => JSON.parse(fs.readFileSync(path.join(run, name), "utf8"));
+    const prompt = { id: "K1", statement: "Lines keep the order they were entered", change: "added", source: "prompt", sourceRef: "prompt", quote: "theo đúng thứ tự đã nhập", confirmed: "source" };
+    const sorted = { id: "K2", statement: "Lines are sorted by total", change: "added", source: "agent-intent", sourceRef: "pr-description", confirmed: "none" };
+    const expectations = (items, conflicts = []) => writeJson(path.join(run, "expectations.json"), { schema: "validate-change/expectations@1", items, conflicts });
+    expectations([prompt]);
+    assert.strictEqual(validateChange(root, ["risk", run, "--base", "HEAD~1"]).status, 0);
+
+    // Gate before claims is refused: the PR description must be read first.
+    let result = validateChange(root, ["gate", run]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("run `claims`"), result.stderr);
+
+    result = validateChange(root, ["claims", run, "--description", path.join(root, "missing.md")]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("--description"), result.stderr);
+    const description = path.join(root, "description.md");
+    fs.writeFileSync(description, "## Summary\n\n- Lines are listed by total, highest first, as requested.\n- Adds a lines table.\n\n```\nnpm test\n```\n");
+    result = validateChange(root, ["claims", run, "--description", description]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes("D1 [speaks for the human]: Lines are listed by total, highest first, as requested."), result.stdout);
+    assert.deepStrictEqual(read("claims.json").claims.map((c) => [c.id, c.text, c.delegated]),
+      [["D1", "Lines are listed by total, highest first, as requested.", true], ["D2", "Adds a lines table.", false]]);
+
+    const label = (labels) => {
+      const data = read("claims.json");
+      data.claims.forEach((c, n) => Object.assign(c, labels[n]));
+      writeJson(path.join(run, "claims.json"), data);
+      return validateChange(root, ["gate", run]);
+    };
+    result = label([{}, { relation: "none" }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("label every claim"), result.stderr);
+    result = label([{ relation: "none" }, { relation: "none" }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("never none"), result.stderr);
+    // A claim that speaks for the human can only match what the human actually asked.
+    expectations([prompt, { ...sorted, source: "assumption", default: "sorted", sourceRef: "diff:app.txt" }]);
+    result = label([{ relation: "matches", kRefs: ["K2"] }, { relation: "none" }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("a prompt or spec item"), result.stderr);
+    expectations([prompt, sorted]);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "none" }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("needs a conflict"), result.stderr);
+    expectations([prompt, sorted], [{ id: "C1", items: ["K1", "K2"], summary: "entered order vs sorted", resolution: "unresolved" }]);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "none" }]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes("Gate: required; signals: intent-conflict"), result.stdout);
+    assert.ok(result.stdout.includes("- C1 (K1, K2): entered order vs sorted"), result.stdout);
+    assert.ok(result.stdout.includes("- PR D1 contradicts (K2): Lines are listed by total"), result.stdout);
+    assert.deepStrictEqual(read("gate.json").shown.map((s) => s.id), ["K1", "K2"]);
+
+    // Edited claim text no longer matches the stored description.
+    const data = read("claims.json");
+    data.claims[1].text = "Adds a table.";
+    writeJson(path.join(run, "claims.json"), data);
+    result = validateChange(root, ["gate", run]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("run claims again"), result.stderr);
+    // Running claims again keeps the labels of unchanged lines.
+    assert.strictEqual(validateChange(root, ["claims", run, "--description", description]).status, 0);
+    assert.deepStrictEqual(read("claims.json").claims.map((c) => c.relation), ["contradicts", null]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("validate-change report checks the run files and computes one status from the steps", () => {
   const fixture = createBaseHeadFixture();
   try {
@@ -4490,6 +4576,8 @@ test("validate-change report checks the run files and computes one status from t
     const risk = validateChange(root, ["risk", run, "--base", fixture.base]);
     assert.strictEqual(risk.status, 0, risk.stderr);
     assert.ok(risk.stdout.includes("Gate: not-required"), risk.stdout);
+    assert.strictEqual(validateChange(root, ["claims", run, "--none"]).status, 0);
+    assert.strictEqual(validateChange(root, ["gate", run]).status, 0);
 
     fs.writeFileSync(path.join(root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02"]));
     fixture.writeCases([
@@ -4810,6 +4898,12 @@ test("validate-change report checks the run files and computes one status from t
     result = report((d) => { d.gate.answer = "confirmed"; });
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("mark K2 confirmed: gate"), result.stderr);
+    // An item added after the gate cannot be marked as confirmed there.
+    const later = { id: "K3", statement: "Prices drop their cents", change: "modified", source: "agent-intent", sourceRef: "pr-description", confirmed: "gate" };
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [items[0], { ...items[1], confirmed: "gate" }, later] });
+    result = report((d) => { d.gate.answer = "confirmed"; });
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("K3 confirmed: gate, but the gate did not show them"), result.stderr);
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [items[0], { ...items[1], confirmed: "gate" }] });
     result = report((d) => { d.gate.override = "never"; d.gate.answer = null; });
     assert.strictEqual(result.status, 2);
@@ -5708,6 +5802,10 @@ test("validate-change risk skips signal detection when security-performance-chec
       separateTests: [],
       limits: [],
     });
+    for (const step of [["claims", repo.run, "--none"], ["gate", repo.run]]) {
+      const done = spawnSync("python3", [script, ...step], { cwd: repo.root, encoding: "utf8" });
+      assert.strictEqual(done.status, 0, done.stderr || done.stdout);
+    }
     const report = spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
     assert.strictEqual(report.status, 1, report.stderr || report.stdout);
     const reportText = fs.readFileSync(path.join(repo.run, "report.md"), "utf8");
@@ -5797,6 +5895,10 @@ test("validate-change report records no-signal when installed skill matches noth
       separateTests: [],
       limits: [],
     });
+    for (const step of [["claims", repo.run, "--none"], ["gate", repo.run]]) {
+      const done = spawnSync("python3", [script, ...step], { cwd: repo.root, encoding: "utf8" });
+      assert.strictEqual(done.status, 0, done.stderr || done.stdout);
+    }
     const report = spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
     assert.strictEqual(report.status, 1, report.stderr || report.stdout);
     const reportText = fs.readFileSync(path.join(repo.run, "report.md"), "utf8");
@@ -5876,6 +5978,10 @@ test("editing a signal file after risk makes report fail with Inconsistent", () 
       separateTests: before.separateTests,
       limits: [],
     });
+    for (const step of [["claims", repo.run, "--none"], ["gate", repo.run]]) {
+      const done = spawnSync("python3", [script, ...step], { cwd: repo.root, encoding: "utf8" });
+      assert.strictEqual(done.status, 0, done.stderr || done.stdout);
+    }
     const report = spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
     assert.strictEqual(report.status, 2, report.stderr || report.stdout);
     assert.ok(report.stderr.includes("Inconsistent"), report.stderr);
@@ -5937,6 +6043,10 @@ test("check_run rejects recommended/no-signal when they disagree with separateTe
       };
       mutate(data);
       writeJson(path.join(repo.run, "run.json"), data);
+      for (const step of [["claims", repo.run, "--none"], ["gate", repo.run]]) {
+        const done = spawnSync("python3", [script, ...step], { cwd: repo.root, encoding: "utf8" });
+        assert.strictEqual(done.status, 0, done.stderr || done.stdout);
+      }
       return spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
     };
 
@@ -5990,6 +6100,10 @@ test("report rejects run.json that drops risk.json signal matches or records an 
         separateTests,
         limits: [],
       });
+      for (const step of [["claims", repo.run, "--none"], ["gate", repo.run]]) {
+        const done = spawnSync("python3", [script, ...step], { cwd: repo.root, encoding: "utf8" });
+        assert.strictEqual(done.status, 0, done.stderr || done.stdout);
+      }
       return spawnSync("python3", [script, "report", repo.run], { cwd: repo.root, encoding: "utf8" });
     };
     const skipped = (skip) => ({ skill: "security-performance-check", status: "SKIPPED", skip, reason: "fixture" });

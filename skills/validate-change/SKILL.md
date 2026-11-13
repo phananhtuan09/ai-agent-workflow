@@ -25,7 +25,9 @@ Use `<evidence root>/<slug>/validate/`, under the evidence root that `runtime-e2
 | File | Written by | Holds |
 | --- | --- | --- |
 | `expectations.json` | this skill | K1..Kn and conflicts |
+| `pr-description.md`, `claims.json` | `validate_change.py claims`, then this skill labels each claim | the PR description as written, one claim per line |
 | `risk.json` | `validate_change.py risk` | risk signals, gate, audit requirement |
+| `gate.json` | `validate_change.py gate` | the items the gate showed |
 | `run.json` | this skill | gate answer, steps, `Cần test riêng`, limits |
 | `review.json` | `review-pr` | the review status and the handoff |
 | `audit-input.json` | `validate_change.py audit-input` | what the auditor may see |
@@ -65,7 +67,12 @@ Build exactly one expectation list in `expectations.json`; every later step cons
   - `agent-intent`: behavior only the implementer's account or the diff suggests. The PR description is never an intent source: anything taken from it is `agent-intent` with `sourceRef: pr-description`.
 - When the prompt and the spec disagree, keep both items and record the conflict. Never pick one silently.
   Record a conflict only when two sources expect different outcomes for the same observable state; a difference in wording, detail, or scope that one outcome satisfies is not a conflict.
-- Read the PR description before the gate. A claim that it does something "as requested" (or otherwise on the human's behalf) that contradicts a K becomes an `agent-intent` item with `sourceRef: pr-description` and a conflict with that K, so the gate shows it.
+- Save the PR description to a file and run `validate_change.py claims <run-dir> --description <file>` (`--none` when the change has no description). It writes `claims.json` with one claim per line and marks each line that speaks for the human (the `delegation` phrases in `references/risk-rules.md`, such as "as requested").
+  Label every claim with `relation` and `kRefs`:
+  - `matches`: it describes a K; a claim that speaks for the human names a `prompt` or `spec` K.
+  - `beyond`: behavior no human source asks for; record it as an `agent-intent` item with `sourceRef: pr-description` and name that item.
+  - `contradicts`: it goes against a K; record the `agent-intent` item and a conflict with that K, and name the item.
+  - `none`: no behavior (headings, notes, test commands); never allowed on a line that speaks for the human.
 - Ask nothing yet; the gate asks once.
 
 ## 2. Risk gate
@@ -85,7 +92,10 @@ Before the gate, read `Status` and `Base instance` in `runtime-e2e-test/referenc
 When `Status` is not `READY`, say so in the gate message (or in chat when no gate is needed) and suggest `/runtime-e2e-test setup`; never rediscover the runtime silently.
 When `Base instance` is `BLOCKED` or missing, the gate message also states that no runtime case can prove it fails, so every `new-behavior` case will report `Can-fail: NOT_PROVEN`, with the recorded reason.
 
-- Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists K1..Kn, the conflicts, the assumptions, and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
+Then run `validate_change.py gate <run-dir>`, whether or not the gate is required. It refuses unlabelled claims or a `contradicts` claim without its conflict, writes `gate.json` with the items it shows, and prints them.
+`report` refuses an item marked `confirmed: gate` that `gate.json` did not show as written: an item added after the gate needs `gate` again and another answer from the human.
+
+- Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists every line `gate` printed (K1..Kn, the conflicts, the assumptions, and the PR claims that contradict or go beyond the request) and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
   - Edited: apply the edits; an item the human adds is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.
   - No human can answer (a headless run): record `answer: no-human`, mark the three steps `SKIPPED` with `skip: no-human`, and report. The status is `NEEDS_HUMAN`; never continue on your own.

@@ -21,6 +21,7 @@ Scopes:
 
 A regular expression is Python syntax; start it with `(?i)` to ignore case, and write a literal `|` as `\|` inside the table.
 Files under `ignore` are left out of every rule and every count.
+`delegation` lists phrases, matched without case, by which a PR description claims to speak for the human; `claims` marks such a sentence and `gate` refuses to let it go unlabelled.
 Files under `tests` are left out of `added`, `removed`, and `changed` rules whose ID does not start with `tests-`, and out of the `Cần test riêng` signals; they still count toward `size` and the path rules.
 
 ## Settings
@@ -30,6 +31,7 @@ Files under `tests` are left out of `added`, `removed`, and `changed` rules whos
 - max-lines: 500
 - max-files: 25
 - shared:
+- delegation: as requested, per request, per your request, as you asked, theo yêu cầu, như yêu cầu, như bạn yêu cầu, đúng yêu cầu
 
 ## Rules
 

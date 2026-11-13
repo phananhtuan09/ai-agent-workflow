@@ -36,6 +36,7 @@ REVIEW_STATUSES = {
     "Không thể đánh giá": "BLOCKED",
 }
 VERDICTS = ("SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "MISSING")
+RELATIONS = ("matches", "contradicts", "beyond", "none")
 AREAS = ("security", "performance", "accessibility")
 # Worst wins: the overall status is the first of these that any section reaches.
 ORDER = ("NEEDS_HUMAN", "BLOCKED", "FAILED", "NEEDS_REVIEW", "PASSED")
@@ -138,7 +139,8 @@ def load_rules(path=RULES):
         limits = {"max-lines": int(settings.get("max-lines", "500")), "max-files": int(settings.get("max-files", "25"))}
     except ValueError:
         raise Inconsistent(f"{path}: max-lines and max-files must be integers") from None
-    return {"ignore": split("ignore"), "tests": split("tests"), "shared": split("shared"), **limits}, rules
+    return {"ignore": split("ignore"), "tests": split("tests"), "shared": split("shared"),
+            "delegation": [p.lower() for p in split("delegation")], **limits}, rules
 
 
 # ---------- diff ----------
@@ -429,6 +431,79 @@ def check_expectations(data):
     return known
 
 
+def split_description(text):
+    """One claim per non-empty line of the PR description, outside code fences; headings carry no claim."""
+    claims, fenced = [], False
+    for line in text.splitlines():
+        if line.strip().startswith("```"):
+            fenced = not fenced
+            continue
+        body = re.sub(r"^\s*(?:[-*+>]|\d+[.)]|\[[ xX]\])\s*", "", line).strip()
+        body = re.sub(r"^\[[ xX]\]\s*", "", body)
+        if fenced or not body or line.lstrip().startswith("#"):
+            continue
+        claims.append(body)
+    return claims
+
+
+def delegated(claim, phrases):
+    lowered = claim.lower()
+    return any(p in lowered for p in phrases)
+
+
+def fresh_claims(run_dir, phrases):
+    """The claim list as `claims` writes it, rebuilt from the stored description so labels cannot drift from it."""
+    source = run_dir / "pr-description.md"
+    if not source.is_file():
+        return []
+    return [{"id": f"D{n}", "text": t, "delegated": delegated(t, phrases)}
+            for n, t in enumerate(split_description(source.read_text(encoding="utf-8")), 1)]
+
+
+def check_claims(run_dir, expectations, phrases):
+    """Every sentence of the PR description is labelled; claims made on the human's behalf cannot be ignored."""
+    path = run_dir / "claims.json"
+    if not path.is_file():
+        raise Inconsistent("claims.json is missing; run `claims` on the PR description (or `claims --none` when the change has none) before the gate")
+    data = load(path)
+    if data.get("schema") != "validate-change/claims@1" or not isinstance(data.get("claims"), list):
+        raise Inconsistent("claims.json: schema validate-change/claims@1 with a claims list")
+    expected = fresh_claims(run_dir, phrases)
+    if [(c.get("id"), c.get("text")) for c in data["claims"]] != [(c["id"], c["text"]) for c in expected]:
+        raise Inconsistent("claims.json does not match pr-description.md; run claims again instead of editing the claim text")
+    items = {i["id"]: i for i in expectations["items"]}
+    in_conflict = {k for c in expectations.get("conflicts", []) for k in c["items"]}
+    unlabelled = [c["id"] for c in data["claims"] if c.get("relation") not in RELATIONS]
+    if unlabelled:
+        raise Inconsistent(f"claims.json: label every claim with relation {'|'.join(RELATIONS)}: {', '.join(unlabelled)}")
+    for claim, fresh in zip(data["claims"], expected):
+        where = f"claims.json {claim['id']}"
+        k_refs = refs(claim.get("kRefs", []), set(items), where)
+        relation = claim["relation"]
+        if fresh["delegated"] and relation == "none":
+            raise Inconsistent(f"{where}: the claim speaks for the human (\"{claim['text'][:80]}\"), so it matches, contradicts, or goes beyond a K; it is never none")
+        human = [k for k in k_refs if items[k]["source"] in ("prompt", "spec")]
+        own = [k for k in k_refs if items[k]["source"] == "agent-intent" and items[k]["sourceRef"].startswith("pr-description")]
+        if relation == "matches" and not (human if fresh["delegated"] else k_refs):
+            raise Inconsistent(f"{where}: matches names the K it matches" + (", a prompt or spec item, since the claim speaks for the human" if fresh["delegated"] else ""))
+        if relation in ("contradicts", "beyond") and not own:
+            raise Inconsistent(f"{where}: {relation} names the agent-intent item (sourceRef pr-description) that records the claim")
+        if relation == "contradicts" and not any(k in in_conflict for k in own):
+            raise Inconsistent(f"{where}: contradicts needs a conflict between its agent-intent item and the K it contradicts, so the gate shows it")
+    return data["claims"]
+
+
+def check_gate_record(run_dir, items):
+    """Items confirmed at the gate must be the ones the gate showed; nothing added later counts as confirmed."""
+    path = run_dir / "gate.json"
+    if not path.is_file():
+        raise Inconsistent("gate.json is missing; run `gate` before asking the human or running checks")
+    shown = {e.get("id"): e.get("statement") for e in load(path).get("shown", [])}
+    unseen = [i["id"] for i in items if i["confirmed"] == "gate" and shown.get(i["id"]) != i["statement"]]
+    if unseen:
+        raise Inconsistent(f"{', '.join(unseen)} confirmed: gate, but the gate did not show them as written; run gate again and ask the human")
+
+
 def check_run(data):
     if data.get("schema") != "validate-change/run@1" or not isinstance(data.get("target"), dict) or not text(data["target"].get("label")):
         raise Inconsistent("run.json: schema validate-change/run@1 with target.label")
@@ -677,6 +752,8 @@ def evaluate(root, run_dir, rules_path):
         if gate["answer"] is not None:
             raise Inconsistent("The gate was not required, so run.json records no gate answer")
         mode = "STRAIGHT-THROUGH"
+    claims = check_claims(run_dir, expectations, load_rules(rules_path)[0]["delegation"])
+    check_gate_record(run_dir, items)
     unconfirmed = [i["id"] for i in items if i["confirmed"] == "none"]
     if mode == "CONFIRMED" and unconfirmed:
         raise Inconsistent(f"The human confirmed the list at the gate; mark {', '.join(unconfirmed)} confirmed: gate")
@@ -776,7 +853,8 @@ def evaluate(root, run_dir, rules_path):
 
     overall = next(s for s in ORDER if s == "PASSED" or any(level == s for level, _ in sections))
     return {"expectations": expectations, "risk": risk, "run": run, "steps": steps, "mode": mode, "review": review, "runtime": runtime,
-            "covered": covered, "verdicts": verdicts, "sections": sections, "limits": limits, "overall": overall, "humanIntent": bool(human)}
+            "covered": covered, "verdicts": verdicts, "sections": sections, "limits": limits, "overall": overall, "humanIntent": bool(human),
+            "claims": claims}
 
 
 def markdown(state):
@@ -813,6 +891,9 @@ def markdown(state):
     conflicts = state["expectations"].get("conflicts", [])
     if conflicts:
         lines += ["", "## Xung đột", ""] + [f"- {c['id']} ({', '.join(c['items'])}): {c['summary']} — {'chưa giải quyết' if c['resolution'] == 'unresolved' else 'human chọn ' + c['resolution']}" for c in conflicts]
+    flagged = [c for c in state["claims"] if c["relation"] in ("contradicts", "beyond")]
+    if flagged:
+        lines += ["", "## Đối chiếu mô tả PR", ""] + [f"- {c['id']} ({'mâu thuẫn với yêu cầu' if c['relation'] == 'contradicts' else 'ngoài yêu cầu'}; {', '.join(c['kRefs'])}): {c['text']}" for c in flagged]
     review, runtime = state["review"], state["runtime"]
     if review:
         tested = lambda key, ident: runtime and any(ident in c[key] for c in runtime["cases"])
@@ -840,7 +921,12 @@ def main(argv=None):
     risk.add_argument("--base", required=True, help="base ref; the change is base...HEAD, or base..working tree with --worktree")
     risk.add_argument("--worktree", action="store_true", help="include uncommitted changes")
     risk.add_argument("--head", help="the change's commit SHA from `evidence.py refs`; the change is base...head, whatever the checkout holds")
-    for name in ("audit-input", "report"):
+    claims = sub.add_parser("claims", help="split the PR description into claims.json for labelling")
+    claims.add_argument("run_dir")
+    described = claims.add_mutually_exclusive_group(required=True)
+    described.add_argument("--description", help="a file holding the PR description as the implementer wrote it")
+    described.add_argument("--none", action="store_true", help="the change has no description")
+    for name in ("gate", "audit-input", "report"):
         sub.add_parser(name).add_argument("run_dir")
     for command in sub.choices.values():
         command.add_argument("--rules", default=str(RULES))
@@ -857,6 +943,48 @@ def main(argv=None):
             write(run_dir / "risk.json", result)
             separate = ", ".join(f"{e['area']}:{e['signal'].split(':', 1)[0]}" for e in result["separateTests"]) or "none"
             print(f"Gate: {result['gate']}; audit: {result['audit']}; signals: {', '.join(s['rule'] for s in result['signals']) or 'none'}; separateTests: {separate}")
+            return 0
+        if args.command == "claims":
+            phrases = load_rules(args.rules)[0]["delegation"]
+            previous = {}
+            if (run_dir / "claims.json").is_file():
+                previous = {c.get("text"): c for c in load(run_dir / "claims.json").get("claims", [])}
+            if args.none:
+                (run_dir / "pr-description.md").unlink(missing_ok=True)
+            else:
+                try:
+                    described_text = Path(args.description).read_text(encoding="utf-8")
+                except OSError as error:
+                    raise Inconsistent(f"--description: {error}") from None
+                (run_dir / "pr-description.md").write_text(described_text, encoding="utf-8")
+            listed = fresh_claims(run_dir, phrases)
+            for claim in listed:
+                kept = previous.get(claim["text"], {})
+                claim["relation"], claim["kRefs"] = kept.get("relation"), kept.get("kRefs", [])
+            write(run_dir / "claims.json", {"schema": "validate-change/claims@1", "claims": listed})
+            for claim in listed:
+                print(f"{claim['id']}{' [speaks for the human]' if claim['delegated'] else ''}: {claim['text']}")
+            print(f"Label each claim in claims.json: relation {'|'.join(RELATIONS)} and kRefs." if listed else "No description: nothing to label.")
+            return 0
+        if args.command == "gate":
+            risk_data = load(run_dir / "risk.json")
+            claims_list = check_claims(run_dir, expectations, load_rules(args.rules)[0]["delegation"])
+            items = expectations["items"]
+            write(run_dir / "gate.json", {"schema": "validate-change/gate@1", "headSha": risk_data["headSha"],
+                                          "shown": [{"id": i["id"], "statement": i["statement"]} for i in items]})
+            # Conflicts recorded after the risk step still require the gate.
+            signals = risk_data["signals"] + [s for s in intent_signals(expectations, load_rules(args.rules)[1])
+                                              if s["rule"] not in {x["rule"] for x in risk_data["signals"]}]
+            required = "required" if any(s["level"] in ("high", "gate") for s in signals) else "not-required"
+            print(f"Gate: {required}; signals: {', '.join(s['rule'] for s in signals) or 'none'}")
+            for i in items:
+                print(f"- {i['id']} ({i['source']}{', ' + i['default'] if i['source'] == 'assumption' else ''}): {i['statement']}")
+            for c in expectations.get("conflicts", []):
+                print(f"- {c['id']} ({', '.join(c['items'])}): {c['summary']}")
+            for c in claims_list:
+                if c["relation"] in ("contradicts", "beyond"):
+                    print(f"- PR {c['id']} {c['relation']} ({', '.join(c['kRefs'])}): {c['text']}")
+            print("Show every line above in the gate message." if required == "required" else "No gate is required; run straight through.")
             return 0
         if args.command == "audit-input":
             risk_data = load(run_dir / "risk.json")
