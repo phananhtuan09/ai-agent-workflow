@@ -4396,7 +4396,7 @@ test("validate-change risk rules read the diff and the editable rules table", ()
     assert.deepStrictEqual([low.gate, low.audit, low.signals], ["not-required", "not-required", []]);
 
     // Intent-only signals come from the expectation list, not the diff.
-    expectations([{ ...prompt, source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined }]);
+    expectations([{ ...prompt, change: "added", source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined }]);
     const base = git("rev-parse", "HEAD~1");
     assert.strictEqual(validateChange(root, ["risk", run, "--base", base]).status, 0);
     const intent = JSON.parse(fs.readFileSync(path.join(run, "risk.json"), "utf8"));
@@ -4555,6 +4555,53 @@ test("validate-change claims every PR description line and gate records what the
     // Running claims again keeps the labels of unchanged lines.
     assert.strictEqual(validateChange(root, ["claims", run, "--description", description]).status, 0);
     assert.deepStrictEqual(read("claims.json").claims.map((c) => c.relation), ["contradicts", null]);
+
+    // An agent-intent change to existing behavior must be a conflict with the behavior it replaces.
+    const cents = { id: "K3", statement: "Whole amounts drop their cents", change: "modified", source: "agent-intent", sourceRef: "pr-description", confirmed: "none" };
+    const conflict = { id: "C1", items: ["K1", "K2"], summary: "entered order vs sorted", resolution: "unresolved" };
+    expectations([prompt, sorted, cents], [conflict]);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "none" }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("K3: an agent-intent item that changes existing behavior (modified) needs a conflict with an unchanged item"), result.stderr);
+    const keep = { id: "K4", statement: "Money keeps two decimals", change: "unchanged", source: "assumption", sourceRef: "diff:app.txt", default: "keep $12.00", confirmed: "none" };
+    expectations([prompt, sorted, cents, keep], [conflict, { id: "C2", items: ["K1", "K3"], summary: "not a keep item", resolution: "unresolved" }]);
+    assert.strictEqual(label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "none" }]).status, 2);
+    expectations([prompt, sorted, cents, keep], [conflict, { id: "C2", items: ["K4", "K3"], summary: "$12.00 vs $12", resolution: "unresolved" }]);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "none" }]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes("- C2 (K4, K3): $12.00 vs $12"), result.stdout);
+
+    // Claims under a testing heading name the test lines that back them, or are unbacked.
+    fs.mkdirSync(path.join(root, "e2e"), { recursive: true });
+    fs.writeFileSync(path.join(root, "e2e/items.spec.ts"), "test('create', () => {});\ntest('stepper', () => {});\n");
+    fs.writeFileSync(description, "## Summary\n\n- Lines are listed by total, highest first, as requested.\n\n**Testing**\n\n- e2e covers create and edit lines.\n");
+    result = validateChange(root, ["claims", run, "--description", description]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes("D2 [testing: testRefs or unbacked]: e2e covers create and edit lines."), result.stdout);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "none" }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("D2: a claim under a testing heading is matches (with testRefs) or unbacked"), result.stderr);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "matches", kRefs: ["K1"] }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("names testRefs"), result.stderr);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "matches", testRefs: ["e2e/items.spec.ts:9"] }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("past the end of the file"), result.stderr);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "matches", testRefs: ["e2e/missing.spec.ts:1"] }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("not path:line of a file"), result.stderr);
+    result = label([{ relation: "unbacked", kRefs: ["K2"] }, { relation: "unbacked" }]);
+    assert.strictEqual(result.status, 2);
+    assert.ok(result.stderr.includes("D1: unbacked is only for claims under a testing heading"), result.stderr);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "matches", testRefs: ["e2e/items.spec.ts:1"] }]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    result = label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "unbacked", kRefs: [] }]);
+    assert.strictEqual(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes("- PR D2 unbacked (): e2e covers create and edit lines."), result.stdout);
+    // Re-running claims keeps the test references of unchanged lines.
+    label([{ relation: "contradicts", kRefs: ["K2"] }, { relation: "matches", testRefs: ["e2e/items.spec.ts:2"] }]);
+    assert.strictEqual(validateChange(root, ["claims", run, "--description", description]).status, 0);
+    assert.deepStrictEqual(read("claims.json").claims[1].testRefs, ["e2e/items.spec.ts:2"]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -4846,7 +4893,7 @@ test("validate-change report checks the run files and computes one status from t
     fs.writeFileSync(path.join(root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02"]));
 
     // Expectations edited after the risk step can add a gate, and an unconfirmed agent-intent item needs a question.
-    const agentOnly = items.map((i) => ({ ...i, source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined, default: undefined }));
+    const agentOnly = items.map((i) => ({ ...i, change: "added", source: "agent-intent", sourceRef: "pr-description", confirmed: "none", quote: undefined, default: undefined }));
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: agentOnly });
     result = report();
     assert.strictEqual(result.status, 2);
@@ -4899,7 +4946,7 @@ test("validate-change report checks the run files and computes one status from t
     assert.strictEqual(result.status, 2);
     assert.ok(result.stderr.includes("mark K2 confirmed: gate"), result.stderr);
     // An item added after the gate cannot be marked as confirmed there.
-    const later = { id: "K3", statement: "Prices drop their cents", change: "modified", source: "agent-intent", sourceRef: "pr-description", confirmed: "gate" };
+    const later = { id: "K3", statement: "Prices drop their cents", change: "added", source: "agent-intent", sourceRef: "pr-description", confirmed: "gate" };
     writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items: [items[0], { ...items[1], confirmed: "gate" }, later] });
     result = report((d) => { d.gate.answer = "confirmed"; });
     assert.strictEqual(result.status, 2);

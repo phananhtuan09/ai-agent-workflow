@@ -72,7 +72,9 @@ Build exactly one expectation list in `expectations.json`; every later step cons
   - `matches`: it describes a K; a claim that speaks for the human names a `prompt` or `spec` K.
   - `beyond`: behavior no human source asks for; record it as an `agent-intent` item with `sourceRef: pr-description` and name that item.
   - `contradicts`: it goes against a K; record the `agent-intent` item and a conflict with that K, and name the item.
-  - `none`: no behavior (headings, notes, test commands); never allowed on a line that speaks for the human.
+  - `none`: no behavior (notes); never allowed on a line that speaks for the human.
+  - A claim under a testing heading (`test-headings` in `references/risk-rules.md`; `claims` prints `[testing]`) is checked against the tests: `matches` with `testRefs`, the `path:line` of each test step that does what the claim says, or `unbacked` when no test does one of the things it claims. `unbacked` claims are review findings.
+- An `agent-intent` item with `change: modified` or `removed` alters behavior users already have without a human asking. Record the `unchanged` item that keeps the current behavior and a conflict between the two, so the gate asks; `validate_change.py` refuses it otherwise.
 - Ask nothing yet; the gate asks once.
 
 ## 2. Risk gate
@@ -95,7 +97,7 @@ When `Base instance` is `BLOCKED` or missing, the gate message also states that 
 Then run `validate_change.py gate <run-dir>`, whether or not the gate is required. It refuses unlabelled claims or a `contradicts` claim without its conflict, writes `gate.json` with the items it shows, and prints them.
 `report` refuses an item marked `confirmed: gate` that `gate.json` did not show as written: an item added after the gate needs `gate` again and another answer from the human.
 
-- Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists every line `gate` printed (K1..Kn, the conflicts, the assumptions, and the PR claims that contradict or go beyond the request) and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
+- Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists every line `gate` printed (K1..Kn, the conflicts, the assumptions, and the PR claims that contradict or go beyond the request or that no test backs) and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
   - Edited: apply the edits; an item the human adds is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.
   - No human can answer (a headless run): record `answer: no-human`, mark the three steps `SKIPPED` with `skip: no-human`, and report. The status is `NEEDS_HUMAN`; never continue on your own.

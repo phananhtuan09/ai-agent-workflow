@@ -36,7 +36,7 @@ REVIEW_STATUSES = {
     "Không thể đánh giá": "BLOCKED",
 }
 VERDICTS = ("SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "MISSING")
-RELATIONS = ("matches", "contradicts", "beyond", "none")
+RELATIONS = ("matches", "contradicts", "beyond", "unbacked", "none")
 AREAS = ("security", "performance", "accessibility")
 # Worst wins: the overall status is the first of these that any section reaches.
 ORDER = ("NEEDS_HUMAN", "BLOCKED", "FAILED", "NEEDS_REVIEW", "PASSED")
@@ -140,7 +140,8 @@ def load_rules(path=RULES):
     except ValueError:
         raise Inconsistent(f"{path}: max-lines and max-files must be integers") from None
     return {"ignore": split("ignore"), "tests": split("tests"), "shared": split("shared"),
-            "delegation": [p.lower() for p in split("delegation")], **limits}, rules
+            "delegation": [p.lower() for p in split("delegation")],
+            "test-headings": [p.lower() for p in split("test-headings")], **limits}, rules
 
 
 # ---------- diff ----------
@@ -428,21 +429,35 @@ def check_expectations(data):
             raise Inconsistent(f"expectations.json {conflict['id']}: a conflict names two or more items and a summary")
         if conflict.get("resolution") != "unresolved" and conflict.get("resolution") not in members:
             raise Inconsistent(f"expectations.json {conflict['id']}: resolution is unresolved or the item the human chose")
+    # A change to existing behavior nobody asked for is a regression until the human chooses it, so the gate must show it as a conflict.
+    by_id = {i["id"]: i for i in data["items"]}
+    for item in data["items"]:
+        if item["source"] == "agent-intent" and item["change"] in ("modified", "removed") and not any(
+                item["id"] in c["items"] and any(by_id[k]["change"] == "unchanged" for k in c["items"] if k != item["id"]) for c in conflicts):
+            raise Inconsistent(f"expectations.json {item['id']}: an agent-intent item that changes existing behavior ({item['change']}) needs a conflict with an unchanged item that keeps the current behavior")
     return known
 
 
+HEADING = re.compile(r"^\s*(?:#+\s*(.*?)|\*\*([^*]+)\*\*:?)\s*$")
+
+
 def split_description(text):
-    """One claim per non-empty line of the PR description, outside code fences; headings carry no claim."""
-    claims, fenced = [], False
+    """(heading, claim) for each non-empty line of the PR description, outside code fences; headings carry no claim."""
+    claims, fenced, heading = [], False, ""
     for line in text.splitlines():
         if line.strip().startswith("```"):
             fenced = not fenced
             continue
+        if fenced:
+            continue
+        found = HEADING.match(line)
+        if found:
+            heading = (found.group(1) or found.group(2) or "").strip()
+            continue
         body = re.sub(r"^\s*(?:[-*+>]|\d+[.)]|\[[ xX]\])\s*", "", line).strip()
         body = re.sub(r"^\[[ xX]\]\s*", "", body)
-        if fenced or not body or line.lstrip().startswith("#"):
-            continue
-        claims.append(body)
+        if body:
+            claims.append((heading, body))
     return claims
 
 
@@ -451,16 +466,30 @@ def delegated(claim, phrases):
     return any(p in lowered for p in phrases)
 
 
-def fresh_claims(run_dir, phrases):
+def fresh_claims(run_dir, settings):
     """The claim list as `claims` writes it, rebuilt from the stored description so labels cannot drift from it."""
     source = run_dir / "pr-description.md"
     if not source.is_file():
         return []
-    return [{"id": f"D{n}", "text": t, "delegated": delegated(t, phrases)}
-            for n, t in enumerate(split_description(source.read_text(encoding="utf-8")), 1)]
+    testing = lambda heading: any(p in heading.lower() for p in settings["test-headings"])
+    return [{"id": f"D{n}", "text": t, "delegated": delegated(t, settings["delegation"]), "test": testing(h)}
+            for n, (h, t) in enumerate(split_description(source.read_text(encoding="utf-8")), 1)]
 
 
-def check_claims(run_dir, expectations, phrases):
+def check_test_refs(root, refs_value, where):
+    """Each `path:line` names a line that exists in the checked-out change."""
+    if not isinstance(refs_value, list) or not refs_value:
+        raise Inconsistent(f"{where}: a testing claim that matches names testRefs, path:line of the test that does what it claims")
+    for ref in refs_value:
+        found = re.match(r"^(.+):(\d+)$", ref) if isinstance(ref, str) else None
+        target = root / found.group(1) if found else None
+        if not target or not target.is_file():
+            raise Inconsistent(f"{where}: testRefs {ref!r} is not path:line of a file in the change")
+        if not 1 <= int(found.group(2)) <= len(target.read_text(encoding="utf-8", errors="replace").splitlines()):
+            raise Inconsistent(f"{where}: testRefs {ref!r} is past the end of the file")
+
+
+def check_claims(root, run_dir, expectations, settings):
     """Every sentence of the PR description is labelled; claims made on the human's behalf cannot be ignored."""
     path = run_dir / "claims.json"
     if not path.is_file():
@@ -468,7 +497,7 @@ def check_claims(run_dir, expectations, phrases):
     data = load(path)
     if data.get("schema") != "validate-change/claims@1" or not isinstance(data.get("claims"), list):
         raise Inconsistent("claims.json: schema validate-change/claims@1 with a claims list")
-    expected = fresh_claims(run_dir, phrases)
+    expected = fresh_claims(run_dir, settings)
     if [(c.get("id"), c.get("text")) for c in data["claims"]] != [(c["id"], c["text"]) for c in expected]:
         raise Inconsistent("claims.json does not match pr-description.md; run claims again instead of editing the claim text")
     items = {i["id"]: i for i in expectations["items"]}
@@ -480,6 +509,15 @@ def check_claims(run_dir, expectations, phrases):
         where = f"claims.json {claim['id']}"
         k_refs = refs(claim.get("kRefs", []), set(items), where)
         relation = claim["relation"]
+        if fresh["test"]:
+            # A testing claim is checked against the tests themselves, not left to be believed.
+            if relation not in ("matches", "unbacked"):
+                raise Inconsistent(f"{where}: a claim under a testing heading is matches (with testRefs) or unbacked (no test does what it says), never {relation}")
+            if relation == "matches":
+                check_test_refs(root, claim.get("testRefs"), where)
+            continue
+        if relation == "unbacked":
+            raise Inconsistent(f"{where}: unbacked is only for claims under a testing heading")
         if fresh["delegated"] and relation == "none":
             raise Inconsistent(f"{where}: the claim speaks for the human (\"{claim['text'][:80]}\"), so it matches, contradicts, or goes beyond a K; it is never none")
         human = [k for k in k_refs if items[k]["source"] in ("prompt", "spec")]
@@ -752,7 +790,7 @@ def evaluate(root, run_dir, rules_path):
         if gate["answer"] is not None:
             raise Inconsistent("The gate was not required, so run.json records no gate answer")
         mode = "STRAIGHT-THROUGH"
-    claims = check_claims(run_dir, expectations, load_rules(rules_path)[0]["delegation"])
+    claims = check_claims(root, run_dir, expectations, load_rules(rules_path)[0])
     check_gate_record(run_dir, items)
     unconfirmed = [i["id"] for i in items if i["confirmed"] == "none"]
     if mode == "CONFIRMED" and unconfirmed:
@@ -891,9 +929,10 @@ def markdown(state):
     conflicts = state["expectations"].get("conflicts", [])
     if conflicts:
         lines += ["", "## Xung đột", ""] + [f"- {c['id']} ({', '.join(c['items'])}): {c['summary']} — {'chưa giải quyết' if c['resolution'] == 'unresolved' else 'human chọn ' + c['resolution']}" for c in conflicts]
-    flagged = [c for c in state["claims"] if c["relation"] in ("contradicts", "beyond")]
+    flagged = [c for c in state["claims"] if c["relation"] in ("contradicts", "beyond", "unbacked")]
     if flagged:
-        lines += ["", "## Đối chiếu mô tả PR", ""] + [f"- {c['id']} ({'mâu thuẫn với yêu cầu' if c['relation'] == 'contradicts' else 'ngoài yêu cầu'}; {', '.join(c['kRefs'])}): {c['text']}" for c in flagged]
+        label = {"contradicts": "mâu thuẫn với yêu cầu", "beyond": "ngoài yêu cầu", "unbacked": "claim test nhưng không test nào làm vậy"}
+        lines += ["", "## Đối chiếu mô tả PR", ""] + [f"- {c['id']} ({label[c['relation']]}{'; ' + ', '.join(c['kRefs']) if c['kRefs'] else ''}): {c['text']}" for c in flagged]
     review, runtime = state["review"], state["runtime"]
     if review:
         tested = lambda key, ident: runtime and any(ident in c[key] for c in runtime["cases"])
@@ -945,7 +984,7 @@ def main(argv=None):
             print(f"Gate: {result['gate']}; audit: {result['audit']}; signals: {', '.join(s['rule'] for s in result['signals']) or 'none'}; separateTests: {separate}")
             return 0
         if args.command == "claims":
-            phrases = load_rules(args.rules)[0]["delegation"]
+            settings = load_rules(args.rules)[0]
             previous = {}
             if (run_dir / "claims.json").is_file():
                 previous = {c.get("text"): c for c in load(run_dir / "claims.json").get("claims", [])}
@@ -957,18 +996,20 @@ def main(argv=None):
                 except OSError as error:
                     raise Inconsistent(f"--description: {error}") from None
                 (run_dir / "pr-description.md").write_text(described_text, encoding="utf-8")
-            listed = fresh_claims(run_dir, phrases)
+            listed = fresh_claims(run_dir, settings)
             for claim in listed:
                 kept = previous.get(claim["text"], {})
                 claim["relation"], claim["kRefs"] = kept.get("relation"), kept.get("kRefs", [])
+                if claim["test"]:
+                    claim["testRefs"] = kept.get("testRefs", [])
             write(run_dir / "claims.json", {"schema": "validate-change/claims@1", "claims": listed})
             for claim in listed:
-                print(f"{claim['id']}{' [speaks for the human]' if claim['delegated'] else ''}: {claim['text']}")
-            print(f"Label each claim in claims.json: relation {'|'.join(RELATIONS)} and kRefs." if listed else "No description: nothing to label.")
+                print(f"{claim['id']}{' [speaks for the human]' if claim['delegated'] else ''}{' [testing: testRefs or unbacked]' if claim['test'] else ''}: {claim['text']}")
+            print(f"Label each claim in claims.json: relation {'|'.join(RELATIONS)} and kRefs; a testing claim is matches with testRefs (path:line) or unbacked." if listed else "No description: nothing to label.")
             return 0
         if args.command == "gate":
             risk_data = load(run_dir / "risk.json")
-            claims_list = check_claims(run_dir, expectations, load_rules(args.rules)[0]["delegation"])
+            claims_list = check_claims(root, run_dir, expectations, load_rules(args.rules)[0])
             items = expectations["items"]
             write(run_dir / "gate.json", {"schema": "validate-change/gate@1", "headSha": risk_data["headSha"],
                                           "shown": [{"id": i["id"], "statement": i["statement"]} for i in items]})
@@ -982,7 +1023,7 @@ def main(argv=None):
             for c in expectations.get("conflicts", []):
                 print(f"- {c['id']} ({', '.join(c['items'])}): {c['summary']}")
             for c in claims_list:
-                if c["relation"] in ("contradicts", "beyond"):
+                if c["relation"] in ("contradicts", "beyond", "unbacked"):
                     print(f"- PR {c['id']} {c['relation']} ({', '.join(c['kRefs'])}): {c['text']}")
             print("Show every line above in the gate message." if required == "required" else "No gate is required; run straight through.")
             return 0
