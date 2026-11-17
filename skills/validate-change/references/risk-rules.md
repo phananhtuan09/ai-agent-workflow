@@ -35,6 +35,16 @@ Files under `tests` are left out of `added`, `removed`, and `changed` rules whos
 - delegation: as requested, per request, per your request, as you asked, theo yêu cầu, như yêu cầu, như bạn yêu cầu, đúng yêu cầu
 - test-headings: test, verification, qa, kiểm thử, kiểm tra
 
+## Write routes
+
+Each pattern finds a route declaration that writes data, on one line of application code, with the named groups `method` and `path`; `risk` lists in `writeRoutes` every declaration whose handler the change touches (from that line to the next declaration in the file), and `report` refuses the run until a case calls each one or a limit says why it cannot.
+Add the declaration style your framework uses; a path must start with `/`, so calls such as `map.delete(key)` do not match.
+
+- `\b\w+\.(?P<method>post|put|patch|delete)\(\s*['"\x60](?P<path>/[^'"\x60]*)`
+- `@(?P<method>Post|Put|Patch|Delete)Mapping\(\s*(?:(?:value|path)\s*=\s*)?"(?P<path>/[^"]*)"`
+- `\bRoute::(?P<method>post|put|patch|delete)\(\s*['"](?P<path>/[^'"]*)`
+- `^\s*(?P<method>post|put|patch|delete)\s+['"](?P<path>/[^'"]*)`
+
 ## Rules
 
 | ID | Level | Scope | Check | What |

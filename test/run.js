@@ -763,7 +763,7 @@ for item in tests:
     if item.get("unmeasured"):
         # A page function that never ran: JSON drops the undefined actual value.
         passed = False
-    observed = {"actualPath": "GET /label", "cleanup": "NOT_REQUIRED", "port": os.environ.get("WEB_PORT", ""),
+    observed = {"actualPath": item.get("path", "GET /label"), "cleanup": "NOT_REQUIRED", "port": os.environ.get("WEB_PORT", ""),
                 "now": os.environ.get("FIXED_NOW", ""), "spec": Path("e2e/label.spec.ts").read_text().strip(),
                 "checks": [{"id": "label", "source": "fresh API read", "expected": item["expect"], **({} if item.get("unmeasured") else {"actual": actual})}]}
     attachments = [] if item.get("existing") else [{"name": "runtime-observations", "contentType": "application/json",
@@ -4604,6 +4604,90 @@ test("validate-change claims every PR description line and gate records what the
     assert.deepStrictEqual(read("claims.json").claims[1].testRefs, ["e2e/items.spec.ts:2"]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("validate-change requires a case that calls each writing route the change touches", () => {
+  // The handler span runs from a declaration to the next one, so only touched handlers count.
+  const script = `import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("vc", sys.argv[1]); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+settings = m.load_rules()[0]
+text = "router.post('/orders', create)\\nfunction create() {}\\nrouter.put('/orders/:id', (req, res) => {\\n  save(req.body)\\n})\\ncache.delete('key')\\n"
+files = {"server.js": {"added": [], "removed": [], "touched": [4], "deleted": False, "renamed": False}}
+found = m.write_routes(files, settings, lambda name: ("", text))
+called = [m.route_called(found[0], p) for p in ["Edit -> Save; PUT /api/orders/4", "PATCH /api/orders/4", "PUT /api/orders"]]
+print(json.dumps([found, called]))`;
+  const unit = spawnSync("python3", ["-c", script, path.join(SOURCE_ROOT, "skills/validate-change/scripts/validate_change.py")], { encoding: "utf8" });
+  assert.strictEqual(unit.status, 0, unit.stderr);
+  assert.deepStrictEqual(JSON.parse(unit.stdout), [[{ id: "W1", method: "PUT", path: "/orders/:id", file: "server.js", line: 3 }], [true, false, false]]);
+
+  const fixture = createBaseHeadFixture();
+  try {
+    const root = fixture.root;
+    const git = (...args) => assert.strictEqual(spawnSync("git", args, { cwd: root, encoding: "utf8" }).status, 0);
+    fs.writeFileSync(path.join(root, "server.js"), "app.post('/label', save);\nfunction save() {}\napp.delete('/label/:id', drop);\n");
+    git("add", "server.js");
+    git("commit", "-qm", "routes");
+    const runDir = ".runtime-e2e/routes/validate";
+    const run = path.join(root, runDir);
+    const file = (name) => path.join(run, name);
+    const items = [{ id: "K1", statement: "The label shows the new text", change: "modified", source: "prompt", sourceRef: "prompt", quote: "show new", confirmed: "source" }];
+    writeJson(file("expectations.json"), { schema: "validate-change/expectations@1", items });
+    assert.strictEqual(validateChange(root, ["risk", run, "--base", fixture.base]).status, 0);
+    const risk = JSON.parse(fs.readFileSync(file("risk.json"), "utf8"));
+    assert.deepStrictEqual(risk.writeRoutes.map((w) => `${w.id} ${w.method} ${w.path} ${w.file}:${w.line}`),
+      ["W1 POST /label server.js:1", "W2 DELETE /label/:id server.js:3"]);
+    assert.strictEqual(validateChange(root, ["claims", run, "--none"]).status, 0);
+    const gate = validateChange(root, ["gate", run]);
+    assert.ok(gate.stdout.includes("- W2 DELETE /label/:id (server.js:3): a writing route the change touches"), gate.stdout);
+
+    fs.writeFileSync(path.join(root, "docs/testing/active/label.md"), runtimePlan(["E2E-01", "E2E-02"]));
+    const bundle = (paths, name) => {
+      fixture.writeCases([
+        { title: "[E2E-01] shows the new label", expect: "new", path: paths[0] },
+        { title: "[E2E-02] label endpoint responds", expect: "*", path: paths[1] },
+      ]);
+      const result = fixture.run((suite) => {
+        suite.cases = suite.cases.filter((c) => c.kind !== "pr-test");
+        suite.expectations = `${runDir}/expectations.json`;
+        suite.cases[0].expects = ["K1"];
+        suite.cases[0].flows = ["F1"];
+        suite.cases[1].expects = ["K1"];
+        suite.cases[1].flows = ["F2"];
+      }, `routes/runs/${name}`);
+      assert.ok(result.results, result.stderr || result.stdout);
+    };
+    bundle(["Save -> Reload; POST /label", "GET /label"], "one");
+    const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+    writeJson(file("review.json"), { schema: "validate-change/review@1", headSha: head, status: "Có thể merge", findings: [], questions: [],
+      flows: [{ id: "F1", route: "/label", risk: "high", why: "saves a label", kRefs: ["K1"], writes: ["W1"] },
+        { id: "F2", route: "/label/:id", risk: "high", why: "deletes a label", kRefs: ["K1"], writes: ["W2"] }] });
+    const report = (limits, artifact = "one") => {
+      writeJson(file("run.json"), { schema: "validate-change/run@1", target: { label: "routes" }, gate: { override: null, answer: risk.gate === "required" ? "confirmed" : null },
+        steps: [
+          { skill: "quality-code-check", status: "RAN", checks: [{ kind: "build", command: "npm run build", exit: 0 }, { kind: "surface", command: "node surface-scan.cjs", exit: 0 }] },
+          { skill: "review-pr", status: "RAN", artifact: `${runDir}/review.json` },
+          { skill: "runtime-e2e-test", status: "RAN", artifact: `.runtime-e2e/routes/runs/${artifact}` },
+          { skill: "security-performance-check", status: "SKIPPED", skip: "not-applicable", reason: "fixture" }],
+        separateTests: risk.separateTests, limits });
+      return validateChange(root, ["report", run]);
+    };
+    // E2E-02 belongs to the delete flow but never calls DELETE.
+    let result = report([]);
+    assert.strictEqual(result.status, 2, result.stdout);
+    assert.ok(result.stderr.includes("W2 DELETE /label/:id (server.js:3) changed, but no PASS or FAIL case"), result.stderr);
+    result = report(["W2: the fixture has no delete button"]);
+    assert.ok(result.status === 0 || result.status === 1, result.stderr);
+    let text = fs.readFileSync(file("report.md"), "utf8");
+    assert.ok(text.includes("- W1 `POST /label` (server.js:1): E2E-01"), text);
+    assert.ok(text.includes("- W2 `DELETE /label/:id` (server.js:3): không có case; xem giới hạn"), text);
+    bundle(["Save -> Reload; POST /label", "Delete; DELETE /label/7"], "two");
+    result = report([], "two");
+    assert.ok(result.status === 0 || result.status === 1, result.stderr);
+    text = fs.readFileSync(file("report.md"), "utf8");
+    assert.ok(text.includes("- W2 `DELETE /label/:id` (server.js:3): E2E-02"), text);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 

@@ -88,6 +88,7 @@ A path hint alone counts only for a file with no changed text (binary or mode-on
 Those signal files stay the single source of truth: this skill does not copy their rows.
 When the skill is not installed, `separateTests` in `risk.json` is empty and detection is skipped.
 The risk step writes each command without the target label; the report step appends that label when copying into `run.json`.
+The risk step also lists in `writeRoutes` (W1..Wn) each route declaration that writes data and whose handler the change touches, found by the `Write routes` patterns in `references/risk-rules.md`; add your framework's declaration style there when it is missing.
 A `risk.json` written before this signal detection existed has no `separateTests` key: with the skill installed, `report`/`evaluate` treats that as stale and requires re-running `risk`.
 
 Before the gate, read `Status` and `Base instance` in `runtime-e2e-test/references/project-runtime.md`.
@@ -97,7 +98,7 @@ When `Base instance` is `BLOCKED` or missing, the gate message also states that 
 Then run `validate_change.py gate <run-dir>`, whether or not the gate is required. It refuses unlabelled claims or a `contradicts` claim without its conflict, writes `gate.json` with the items it shows, and prints them.
 `report` refuses an item marked `confirmed: gate` that `gate.json` did not show as written: an item added after the gate needs `gate` again and another answer from the human.
 
-- Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists every line `gate` printed (K1..Kn, the conflicts, the assumptions, and the PR claims that contradict or go beyond the request or that no test backs) and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
+- Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists every line `gate` printed (K1..Kn, the conflicts, the assumptions, the PR claims that contradict or go beyond the request or that no test backs, and the writing routes W1..Wn) and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
   - Edited: apply the edits; an item the human adds is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.
   - No human can answer (a headless run): record `answer: no-human`, mark the three steps `SKIPPED` with `skip: no-human`, and report. The status is `NEEDS_HUMAN`; never continue on your own.
@@ -118,6 +119,7 @@ When `quality-code-check/scripts/surface-scan.cjs` is installed, `report` reject
 ## 4. Review
 
 Load `review-pr` with the target, the base, and `expectations.json` as its intent basis, and ask for its composite handoff in `<run-dir>/review.json` (its section "Called from validate-change"). It still writes its normal review in the conversation.
+Each writing route W in `risk.json` belongs to a review flow that lists it in `writes` (for example `"writes": ["W2"]`).
 
 ## 5. Runtime
 
@@ -129,6 +131,7 @@ Load `runtime-e2e-test` in light mode with `expectations.json` and `review.json`
   A K that needs another server configuration than the suite's instance (a variable unset or set differently, another flag) is not one no case can reach: run it in an extra light suite whose `determinism.env` sets that configuration (it reaches the head and base instances), with the other K in its `notCovered` as "covered by the main suite", and list its bundle in the runtime step's `extraArtifacts`.
 - Regression: the impact map, `unchanged` items, and the review's flows, named in `flows`.
 - Edge cases: the blind-spot catalog and the review's suspicions that need runtime proof, named in `suspicions`.
+- Writing routes: each W needs a case of a flow that lists it, whose `actualPath` names the call it makes (for example `PUT /api/orders/4`), with a PASS or FAIL result. Call the route the way a user saves through it and read the stored result back; a case that only checks a rejection does not show the write works. `report` refuses the run until each W has such a case, or a `run.json` limit starting with `W<n>:` that says why it cannot run.
 
 A sweep difference is never yours to call expected.
 The report script accepts it only when it is the run's only open item, adds no console error, and each differing route is covered by a passing, proving case for an expectation the human confirmed (`confirmed` is `source` or `gate`); the report then lists it as a note with both screenshots.
