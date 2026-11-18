@@ -4515,6 +4515,13 @@ test("validate-change claims every PR description line and gate records what the
     assert.ok(result.stdout.includes("D1 [speaks for the human]: Lines are listed by total, highest first, as requested."), result.stdout);
     assert.deepStrictEqual(read("claims.json").claims.map((c) => [c.id, c.text, c.delegated]),
       [["D1", "Lines are listed by total, highest first, as requested.", true], ["D2", "Adds a lines table.", false]]);
+    // A bold label is a heading; a bold sentence is a claim and keeps the heading above it.
+    const bold = path.join(root, "bold.md");
+    fs.writeFileSync(bold, "**Notes**\n\n**Adds rate limiting.**\n\n**Testing.**\n\n- Ran the suite.\n");
+    assert.strictEqual(validateChange(root, ["claims", run, "--description", bold]).status, 0);
+    assert.deepStrictEqual(read("claims.json").claims.map((c) => [c.text, c.test === true]),
+      [["Adds rate limiting.", false], ["Ran the suite.", true]]);
+    assert.strictEqual(validateChange(root, ["claims", run, "--description", description]).status, 0);
 
     const label = (labels) => {
       const data = read("claims.json");
@@ -4749,7 +4756,12 @@ test("validate-change report checks the run files and computes one status from t
     };
 
     // A suspicion the review says needs runtime proof needs a case naming it, or a limit saying why none can run.
-    let result = report((d) => { d.limits = []; });
+    // recommended and no-signal belong to the optional security step; a required step cannot use them to pass unchecked.
+    let result = report((d) => { d.steps[2] = { skill: "runtime-e2e-test", status: "SKIPPED", skip: "recommended", reason: "not needed" }; });
+    assert.strictEqual(result.status, 2, result.stderr || result.stdout);
+    assert.ok(result.stderr.includes("a required step is skipped only with"), result.stderr);
+
+    result = report((d) => { d.limits = []; });
     assert.strictEqual(result.status, 2, result.stderr || result.stdout);
     assert.ok(result.stderr.includes("H1 (app.txt:1) needs runtime proof"), result.stderr);
 

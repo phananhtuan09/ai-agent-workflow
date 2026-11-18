@@ -491,10 +491,12 @@ def split_description(text):
         if fenced:
             continue
         found = HEADING.match(line)
-        if found:
+        # A bold line of several words ending a sentence is a claim written in bold; "**Testing.**" stays a heading.
+        bold = (found.group(2) or "").strip() if found else ""
+        if found and not (re.search(r"[.!?]$", bold) and len(bold.split()) > 1):
             heading = (found.group(1) or found.group(2) or "").strip()
             continue
-        body = re.sub(r"^\s*(?:[-*+>]|\d+[.)]|\[[ xX]\])\s*", "", line).strip()
+        body = bold or re.sub(r"^\s*(?:[-*+>]|\d+[.)]|\[[ xX]\])\s*", "", line).strip()
         body = re.sub(r"^\[[ xX]\]\s*", "", body)
         if body:
             claims.append((heading, body))
@@ -601,6 +603,9 @@ def check_run(data):
             raise Inconsistent(f"{where}: status is RAN, SKIPPED, or MISSING")
         if step["status"] == "SKIPPED" and (step.get("skip") not in SKIPS or not text(step.get("reason"))):
             raise Inconsistent(f"{where}: a skipped step names skip ({'|'.join(SKIPS)}) and a reason")
+        # recommended and no-signal describe the optional security step; a required step skipped that way would let the run pass unchecked.
+        if step["status"] == "SKIPPED" and step["skill"] in REQUIRED_STEPS and step["skip"] in ("recommended", "no-signal"):
+            raise Inconsistent(f"{where}: a required step is skipped only with build-failed, no-human, or not-applicable")
         if step["status"] == "RAN" and step["skill"] not in ("quality-code-check", "security-performance-check") and not text(step.get("artifact")):
             raise Inconsistent(f"{where}: a step that ran names its artifact")
         extra = step.get("extraArtifacts", [])
