@@ -4735,7 +4735,8 @@ test("validate-change report checks the run files and computes one status from t
       { skill: "runtime-e2e-test", status: "RAN", artifact: ".runtime-e2e/label/runs/one" },
     ];
     const runFile = { schema: "validate-change/run@1", target: { label: "label change" }, gate: { override: null, answer: null }, steps,
-      separateTests: [{ area: "performance", signal: "GET /label twice per load", command: "/security-performance-check /label" }], limits: [] };
+      separateTests: [{ area: "performance", signal: "GET /label twice per load", command: "/security-performance-check /label" }],
+      limits: ["H1: the cache sits in a CDN the local instance does not run"] };
     const report = (mutate) => {
       const data = JSON.parse(JSON.stringify(runFile));
       if (mutate) mutate(data);
@@ -4747,7 +4748,12 @@ test("validate-change report checks the run files and computes one status from t
       return validateChange(root, ["report", run]);
     };
 
-    let result = report();
+    // A suspicion the review says needs runtime proof needs a case naming it, or a limit saying why none can run.
+    let result = report((d) => { d.limits = []; });
+    assert.strictEqual(result.status, 2, result.stderr || result.stdout);
+    assert.ok(result.stderr.includes("H1 (app.txt:1) needs runtime proof"), result.stderr);
+
+    result = report();
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     assert.deepStrictEqual(read("status.json").overall, "PASSED");
     const text = fs.readFileSync(file("report.md"), "utf8");

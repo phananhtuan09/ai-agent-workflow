@@ -906,6 +906,14 @@ def evaluate(root, run_dir, rules_path):
                                    "of a review flow listing it in `writes` names that call in its actualPath; add the case, or a run.json limit starting with "
                                    f"\"{route['id']}:\" saying why it cannot run")
             routes.append({**route, "cases": driving})
+        # A suspicion the review says only runtime can settle is settled by a case, not by a note.
+        waived = {l.split(":", 1)[0] for l in run.get("limits", []) if re.match(r"^H\d+:", l)}
+        for suspicion in review.get("suspicions", []):
+            if suspicion["proof"] != "runtime" or suspicion["id"] in waived:
+                continue
+            if not any(suspicion["id"] in c["suspicions"] and c["result"] in ("PASS", "FAIL") for c in runtime["cases"]):
+                raise Inconsistent(f"{suspicion['id']} ({suspicion['location']}) needs runtime proof, but no PASS or FAIL case names it in `suspicions`; "
+                                   f"add the case, or a run.json limit starting with \"{suspicion['id']}:\" saying why it cannot run")
     covered = {i["id"]: coverage(i["id"], runtime["cases"]) if runtime else ("NOT_RUN", []) for i in items}
     thin = [k for k, (level, _) in covered.items() if level in ("NONE", "PARTIAL")]
     if runtime:

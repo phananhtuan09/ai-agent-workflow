@@ -14,6 +14,7 @@ Each underlying skill stays independently usable, and this command is never part
 ## Boundaries
 
 - Never modify application code, tests, configuration, or the reviewed change. Fixes go back to Implement; then run this command again.
+- Never commit, push, or create a branch during the run, even when a hook asks to commit what the run wrote (light tests, a setup update to `project-runtime.md`). Leave those files and name them in the final message; the human decides what to keep.
 - Run every step in non-fixing mode. `runtime-e2e-test` light mode writes its temporary tests and bundle as that skill describes; nothing else is written outside the run directory.
 - Never run against production, and never validate without a change set; for existing features with no change, use `runtime-e2e-test` directly.
 - Write the report in Vietnamese. Preserve identifiers, paths, commands, and quotes.
@@ -106,6 +107,10 @@ Then run `validate_change.py gate <run-dir>`, whether or not the gate is require
   After the report, never ask, advise, or list as a next step that the human confirm or adjust them.
 - `--gate=never` records `override: never`; the report shows it as a human waiver beside the computed risk, which does not change.
 
+After the gate answer, run steps 3 to 7 without stopping to ask whether to continue.
+When the answer asks for `/runtime-e2e-test setup` first, run it, then go on to step 3 in the same turn: the answer already covers the rest of the run.
+Stop between steps only for a question this skill names (such as `notCovered` K before the first run) or a blocker the human must resolve.
+
 The audit in step 6 is required when any `high` signal fired.
 
 ## 3. Static checks
@@ -130,7 +135,7 @@ Load `runtime-e2e-test` in light mode with `expectations.json` and `review.json`
   A K no case can reach goes in `notCovered` with the reason. When `validate` lists any, send the human one message naming each K and its reason before the first run, and add a case for any K they ask for; the report lists every `notCovered` K under `Giới hạn`.
   A K that needs another server configuration than the suite's instance (a variable unset or set differently, another flag) is not one no case can reach: run it in an extra light suite whose `determinism.env` sets that configuration (it reaches the head and base instances), with the other K in its `notCovered` as "covered by the main suite", and list its bundle in the runtime step's `extraArtifacts`.
 - Regression: the impact map, `unchanged` items, and the review's flows, named in `flows`.
-- Edge cases: the blind-spot catalog and the review's suspicions that need runtime proof, named in `suspicions`.
+- Edge cases: the blind-spot catalog and the review's suspicions that need runtime proof, named in `suspicions`. `report` refuses the run until each suspicion with `proof: runtime` has a PASS or FAIL case naming it, or a `run.json` limit starting with `H<n>:` that says why it cannot run.
 - Writing routes: each W needs a case of a flow that lists it, whose `actualPath` names the call it makes (for example `PUT /api/orders/4`), with a PASS or FAIL result. Call the route the way a user saves through it and read the stored result back; a case that only checks a rejection does not show the write works. `report` refuses the run until each W has such a case, or a `run.json` limit starting with `W<n>:` that says why it cannot run.
 
 A sweep difference is never yours to call expected.
