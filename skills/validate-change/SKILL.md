@@ -101,7 +101,7 @@ Then run `validate_change.py gate <run-dir>`, whether or not the gate is require
 
 - Gate required (any `high` or `gate` signal, or `--gate=always`): stop once and send one message that lists every line `gate` printed (K1..Kn, the conflicts, the assumptions, the PR claims that contradict or go beyond the request or that no test backs, and the writing routes W1..Wn) and the flows you plan to test, with the signals that fired. The human confirms, edits, or picks conflict resolutions in that one answer.
   - Confirmed: set `confirmed: gate` on every assumption and agent-intent item, write the chosen item into each conflict's `resolution`, and record `answer: confirmed`.
-  - Edited: apply the edits; an item the human adds is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.
+  - Edited: apply the edits; an item the human adds, or one whose statement they change, is `source: prompt` with `sourceRef: gate`, their words as `quote`, and `confirmed: source`. Set `confirmed: gate` on every assumption and agent-intent item that remains, as for a confirmation, and record `answer: edited`.
   - No human can answer (a headless run): record `answer: no-human`, mark the three steps `SKIPPED` with `skip: no-human`, and report. The status is `NEEDS_HUMAN`; never continue on your own.
 - Gate not required: run straight through. Assumptions stay `confirmed: none` and the report lists them with their defaults.
   After the report, never ask, advise, or list as a next step that the human confirm or adjust them.

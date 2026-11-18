@@ -4517,10 +4517,11 @@ test("validate-change claims every PR description line and gate records what the
       [["D1", "Lines are listed by total, highest first, as requested.", true], ["D2", "Adds a lines table.", false]]);
     // A bold label is a heading; a bold sentence is a claim and keeps the heading above it.
     const bold = path.join(root, "bold.md");
-    fs.writeFileSync(bold, "**Notes**\n\n**Adds rate limiting.**\n\n**Testing.**\n\n- Ran the suite.\n");
+    // A testing phrase matches at the start of a word, so "Latest" is not a testing heading.
+    fs.writeFileSync(bold, "## Latest changes\n\n- Bumps a dependency.\n\n**Notes**\n\n**Adds rate limiting.**\n\n**Testing.**\n\n- Ran the suite.\n");
     assert.strictEqual(validateChange(root, ["claims", run, "--description", bold]).status, 0);
     assert.deepStrictEqual(read("claims.json").claims.map((c) => [c.text, c.test === true]),
-      [["Adds rate limiting.", false], ["Ran the suite.", true]]);
+      [["Bumps a dependency.", false], ["Adds rate limiting.", false], ["Ran the suite.", true]]);
     assert.strictEqual(validateChange(root, ["claims", run, "--description", description]).status, 0);
 
     const label = (labels) => {

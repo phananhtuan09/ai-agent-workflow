@@ -513,7 +513,8 @@ def fresh_claims(run_dir, settings):
     source = run_dir / "pr-description.md"
     if not source.is_file():
         return []
-    testing = lambda heading: any(p in heading.lower() for p in settings["test-headings"])
+    # A phrase matches at the start of a word: "Tests" and "Testing" count, "Latest" does not.
+    testing = lambda heading: any(re.search(rf"\b{re.escape(p)}", heading.lower()) for p in settings["test-headings"])
     return [{"id": f"D{n}", "text": t, "delegated": delegated(t, settings["delegation"]), "test": testing(h)}
             for n, (h, t) in enumerate(split_description(source.read_text(encoding="utf-8")), 1)]
 
