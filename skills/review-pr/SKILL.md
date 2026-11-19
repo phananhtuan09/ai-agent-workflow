@@ -82,7 +82,7 @@ Besides the normal review in the conversation, write the handoff to the path the
   "headSha": "<git rev-parse HEAD>",
   "status": "Chưa thể kết luận — cần quyết định",
   "findings": [{"id": "PR-01", "kind": "fix | decide", "kRefs": ["K2"]}],
-  "flows": [{"id": "F1", "route": "/orders/:id", "risk": "high | medium | low", "why": "calls the changed guard", "kRefs": ["K1"]}],
+  "flows": [{"id": "F1", "route": "/orders/:id", "risk": "high | medium | low", "why": "calls the changed guard", "kRefs": ["K1"], "writes": ["W1"]}],
   "suspicions": [{"id": "H1", "location": "src/orders/guard.ts:40", "hypothesis": "an expired session skips the owner check", "proof": "runtime | unit | human", "kRefs": ["K1"]}],
   "preflight": [{"kind": "migration | flag | env | seed", "detail": "ORDERS_V2 must be on"}],
   "questions": [{"kRef": "K3", "question": "Should the badge also show for drafts?"}]
@@ -91,6 +91,7 @@ Besides the normal review in the conversation, write the handoff to the path the
 
 - `status` and `findings` match the review's status and its `Cần sửa` (`fix`) and `Cần quyết định` (`decide`) items.
 - `flows`: user-facing flows the change affects, ordered by your risk judgment on top of the impact map when one exists.
+  `writes` names the writing routes from `risk.json` `writeRoutes` (W1..Wn) the flow saves through; every W belongs to at least one flow.
 - `suspicions`: concerns you could not prove or disprove statically. They are not findings; the runtime step tests the ones marked `runtime`.
 - `preflight`: what a test run needs first: migrations, flags, environment variables, seed data.
 - `questions`: one per `agent-intent` item still unconfirmed, for the human.

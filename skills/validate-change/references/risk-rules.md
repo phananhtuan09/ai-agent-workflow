@@ -21,6 +21,8 @@ Scopes:
 
 A regular expression is Python syntax; start it with `(?i)` to ignore case, and write a literal `|` as `\|` inside the table.
 Files under `ignore` are left out of every rule and every count.
+`delegation` lists phrases, matched without case, by which a PR description claims to speak for the human; `claims` marks such a sentence and `gate` refuses to let it go unlabelled.
+`test-headings` lists phrases, matched without case, that make a PR description heading a testing section; each claim under it must name the test lines that do what it says (`testRefs`) or be labelled `unbacked`.
 Files under `tests` are left out of `added`, `removed`, and `changed` rules whose ID does not start with `tests-`, and out of the `Cần test riêng` signals; they still count toward `size` and the path rules.
 
 ## Settings
@@ -30,6 +32,18 @@ Files under `tests` are left out of `added`, `removed`, and `changed` rules whos
 - max-lines: 500
 - max-files: 25
 - shared:
+- delegation: as requested, per request, per your request, as you asked, theo yêu cầu, như yêu cầu, như bạn yêu cầu, đúng yêu cầu
+- test-headings: test, verification, qa, kiểm thử, kiểm tra
+
+## Write routes
+
+Each pattern finds a route declaration that writes data, on one line of application code, with the named groups `method` and `path`; `risk` lists in `writeRoutes` every declaration whose handler the change touches (from that line to the next declaration in the file), and `report` refuses the run until a case calls each one or a limit says why it cannot.
+Add the declaration style your framework uses; a path must start with `/`, so calls such as `map.delete(key)` do not match.
+
+- `\b\w+\.(?P<method>post|put|patch|delete)\(\s*['"\x60](?P<path>/[^'"\x60]*)`
+- `@(?P<method>Post|Put|Patch|Delete)Mapping\(\s*(?:(?:value|path)\s*=\s*)?"(?P<path>/[^"]*)"`
+- `\bRoute::(?P<method>post|put|patch|delete)\(\s*['"](?P<path>/[^'"]*)`
+- `^\s*(?P<method>post|put|patch|delete)\s+['"](?P<path>/[^'"]*)`
 
 ## Rules
 

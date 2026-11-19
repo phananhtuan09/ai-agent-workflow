@@ -36,6 +36,7 @@ REVIEW_STATUSES = {
     "Không thể đánh giá": "BLOCKED",
 }
 VERDICTS = ("SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "MISSING")
+RELATIONS = ("matches", "contradicts", "beyond", "unbacked", "none")
 AREAS = ("security", "performance", "accessibility")
 # Worst wins: the overall status is the first of these that any section reaches.
 ORDER = ("NEEDS_HUMAN", "BLOCKED", "FAILED", "NEEDS_REVIEW", "PASSED")
@@ -102,12 +103,22 @@ def matcher(patterns):
 
 def load_rules(path=RULES):
     text = Path(path).read_text(encoding="utf-8")
-    settings, rules, section = {}, [], None
+    settings, rules, section, routes = {}, [], None, []
     for line in text.splitlines():
         if line.startswith("## "):
             section = line[3:].strip().lower()
             continue
-        if section == "settings":
+        if section == "write routes":
+            found = re.match(r"^- `(.+)`\s*$", line)
+            if found:
+                try:
+                    pattern = re.compile(found.group(1))
+                except re.error as error:
+                    raise Inconsistent(f"{path}: write route {found.group(1)}: {error}") from None
+                if not {"method", "path"} <= set(pattern.groupindex):
+                    raise Inconsistent(f"{path}: write route {found.group(1)} needs the named groups method and path")
+                routes.append(pattern)
+        elif section == "settings":
             found = re.match(r"^- ([a-z-]+):\s*(.*)$", line)
             if found:
                 settings[found.group(1)] = found.group(2).strip()
@@ -138,7 +149,9 @@ def load_rules(path=RULES):
         limits = {"max-lines": int(settings.get("max-lines", "500")), "max-files": int(settings.get("max-files", "25"))}
     except ValueError:
         raise Inconsistent(f"{path}: max-lines and max-files must be integers") from None
-    return {"ignore": split("ignore"), "tests": split("tests"), "shared": split("shared"), **limits}, rules
+    return {"ignore": split("ignore"), "tests": split("tests"), "shared": split("shared"),
+            "delegation": [p.lower() for p in split("delegation")],
+            "test-headings": [p.lower() for p in split("test-headings")], "write-routes": routes, **limits}, rules
 
 
 # ---------- diff ----------
@@ -171,25 +184,30 @@ def read_diff(root, base, worktree, untracked=None, head="HEAD"):
     """
     ref = [base] if worktree else [f"{base}...{head}"]
     text = git(root, "diff", "--no-color", "--no-renames", "--no-ext-diff", "-U0", *ref)
-    files, current, header, old = {}, None, False, None
+    files, current, header, old, hunk = {}, None, False, None, None
     for line in text.splitlines():
         if line.startswith("diff --git "):
             current, header, old = None, True, None
-        elif header and line.startswith("@@"):
+        elif line.startswith("@@"):
             header = False
+            hunk = re.match(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", line)
+            if current is not None and hunk:
+                start, count = int(hunk.group(1)), int(hunk.group(2) or 1)
+                # A pure deletion touches the lines on either side of where it was.
+                current["touched"] += list(range(start, start + count)) if count else [start, start + 1]
         # Inside a hunk, a removed "-- x" reads "--- x" and an added "++ x" reads "+++ x"; only the header names files.
         elif header and line.startswith("--- "):
             old = None if line[4:] == "/dev/null" else unquote(line[4:])[2:]
         elif header and line.startswith("+++ "):
             new = None if line[4:] == "/dev/null" else unquote(line[4:])[2:]
-            current = files.setdefault(new or old, {"added": [], "removed": [], "deleted": new is None, "renamed": False})
+            current = files.setdefault(new or old, {"added": [], "removed": [], "touched": [], "deleted": new is None, "renamed": False})
         elif current is not None and not header and line.startswith("+"):
             current["added"].append(line[1:])
         elif current is not None and not header and line.startswith("-"):
             current["removed"].append(line[1:])
     # Binary files and mode-only changes carry no hunks, so they come from the name list.
     for name in git(root, "diff", "--name-only", "--no-renames", *ref).splitlines():
-        files.setdefault(unquote(name), {"added": [], "removed": [], "deleted": False, "renamed": False})
+        files.setdefault(unquote(name), {"added": [], "removed": [], "touched": [], "deleted": False, "renamed": False})
     fields = git(root, "diff", "--name-status", "-M", "-z", *ref).split("\0")
     i = 0
     while i < len(fields) - 1:
@@ -208,7 +226,7 @@ def read_diff(root, base, worktree, untracked=None, head="HEAD"):
                 lines = (root / name).read_text(encoding="utf-8").splitlines()
             except (OSError, UnicodeDecodeError):
                 lines = []
-            files[name] = {"added": lines, "removed": [], "deleted": False, "renamed": False}
+            files[name] = {"added": lines, "removed": [], "touched": list(range(1, len(lines) + 1)), "deleted": False, "renamed": False}
     return files, found
 
 
@@ -271,6 +289,30 @@ def diff_signals(files, settings, rules, versions):
         if hits:
             signals.append({"rule": rule["id"], "level": rule["level"], "what": rule["what"], "count": len(hits), "hits": hits[:5]})
     return signals, {"files": len(kept), "lines": lines}
+
+
+def write_routes(files, settings, versions):
+    """Writing route declarations whose handler the change touches: from a declaration to the next one in its file."""
+    ignored, tests = matcher(settings["ignore"]), matcher(settings["tests"])
+    found = []
+    for name, change in sorted(files.items()):
+        if change["deleted"] or not change["touched"] or ignored(name) or tests(name) or not settings["write-routes"]:
+            continue
+        lines = (versions(name)[1] or "").splitlines()
+        declared = [(n, m) for n, line in enumerate(lines, 1) for m in [next((r.search(line) for r in settings["write-routes"] if r.search(line)), None)] if m]
+        for index, (line_no, match) in enumerate(declared):
+            end = declared[index + 1][0] - 1 if index + 1 < len(declared) else len(lines)
+            if any(line_no <= t <= end for t in change["touched"]):
+                found.append({"method": match.group("method").upper(), "path": match.group("path"), "file": name, "line": line_no})
+    return [{"id": f"W{n}", **route} for n, route in enumerate(found, 1)]
+
+
+def route_called(route, actual_path):
+    """The case's actual path names the method and a path ending in the declared pattern, parameters as any segment."""
+    param = re.compile(r"^(:\w+|\{[^}]*\}|<[^>]*>)$")
+    segments = [r"[^/\s?]+" if param.match(seg) else re.escape(seg) for seg in route["path"].strip("/").split("/") if seg]
+    tail = "".join("/" + seg for seg in segments)
+    return bool(re.search(r"\b" + route["method"] + r"\s+\S*" + tail + r"/?(?=[\s?;,)]|$)", actual_path or ""))
 
 
 def intent_signals(expectations, rules):
@@ -363,6 +405,7 @@ def assess(root, base, worktree, expectations, rules_path, untracked=None, head=
     code_paths = [name for name in sorted(files) if not ignored(name) and not tests(name)]
     separate = separate_tests_from_signals(code_paths, diff_changes(files))
     return {
+        "writeRoutes": write_routes(files, settings, versions),
         "schema": "validate-change/risk@1",
         "base": base,
         "baseSha": base_sha,
@@ -426,7 +469,120 @@ def check_expectations(data):
             raise Inconsistent(f"expectations.json {conflict['id']}: a conflict names two or more items and a summary")
         if conflict.get("resolution") != "unresolved" and conflict.get("resolution") not in members:
             raise Inconsistent(f"expectations.json {conflict['id']}: resolution is unresolved or the item the human chose")
+    # A change to existing behavior nobody asked for is a regression until the human chooses it, so the gate must show it as a conflict.
+    by_id = {i["id"]: i for i in data["items"]}
+    for item in data["items"]:
+        if item["source"] == "agent-intent" and item["change"] in ("modified", "removed") and not any(
+                item["id"] in c["items"] and any(by_id[k]["change"] == "unchanged" for k in c["items"] if k != item["id"]) for c in conflicts):
+            raise Inconsistent(f"expectations.json {item['id']}: an agent-intent item that changes existing behavior ({item['change']}) needs a conflict with an unchanged item that keeps the current behavior")
     return known
+
+
+HEADING = re.compile(r"^\s*(?:#+\s*(.*?)|\*\*([^*]+)\*\*:?)\s*$")
+
+
+def split_description(text):
+    """(heading, claim) for each non-empty line of the PR description, outside code fences; headings carry no claim."""
+    claims, fenced, heading = [], False, ""
+    for line in text.splitlines():
+        if line.strip().startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        found = HEADING.match(line)
+        # A bold line of several words ending a sentence is a claim written in bold; "**Testing.**" stays a heading.
+        bold = (found.group(2) or "").strip() if found else ""
+        if found and not (re.search(r"[.!?]$", bold) and len(bold.split()) > 1):
+            heading = (found.group(1) or found.group(2) or "").strip()
+            continue
+        body = bold or re.sub(r"^\s*(?:[-*+>]|\d+[.)]|\[[ xX]\])\s*", "", line).strip()
+        body = re.sub(r"^\[[ xX]\]\s*", "", body)
+        if body:
+            claims.append((heading, body))
+    return claims
+
+
+def delegated(claim, phrases):
+    lowered = claim.lower()
+    return any(p in lowered for p in phrases)
+
+
+def fresh_claims(run_dir, settings):
+    """The claim list as `claims` writes it, rebuilt from the stored description so labels cannot drift from it."""
+    source = run_dir / "pr-description.md"
+    if not source.is_file():
+        return []
+    # A phrase matches at the start of a word: "Tests" and "Testing" count, "Latest" does not.
+    testing = lambda heading: any(re.search(rf"\b{re.escape(p)}", heading.lower()) for p in settings["test-headings"])
+    return [{"id": f"D{n}", "text": t, "delegated": delegated(t, settings["delegation"]), "test": testing(h)}
+            for n, (h, t) in enumerate(split_description(source.read_text(encoding="utf-8")), 1)]
+
+
+def check_test_refs(root, refs_value, where):
+    """Each `path:line` names a line that exists in the checked-out change."""
+    if not isinstance(refs_value, list) or not refs_value:
+        raise Inconsistent(f"{where}: a testing claim that matches names testRefs, path:line of the test that does what it claims")
+    for ref in refs_value:
+        found = re.match(r"^(.+):(\d+)$", ref) if isinstance(ref, str) else None
+        target = root / found.group(1) if found else None
+        if not target or not target.is_file():
+            raise Inconsistent(f"{where}: testRefs {ref!r} is not path:line of a file in the change")
+        if not 1 <= int(found.group(2)) <= len(target.read_text(encoding="utf-8", errors="replace").splitlines()):
+            raise Inconsistent(f"{where}: testRefs {ref!r} is past the end of the file")
+
+
+def check_claims(root, run_dir, expectations, settings):
+    """Every sentence of the PR description is labelled; claims made on the human's behalf cannot be ignored."""
+    path = run_dir / "claims.json"
+    if not path.is_file():
+        raise Inconsistent("claims.json is missing; run `claims` on the PR description (or `claims --none` when the change has none) before the gate")
+    data = load(path)
+    if data.get("schema") != "validate-change/claims@1" or not isinstance(data.get("claims"), list):
+        raise Inconsistent("claims.json: schema validate-change/claims@1 with a claims list")
+    expected = fresh_claims(run_dir, settings)
+    if [(c.get("id"), c.get("text")) for c in data["claims"]] != [(c["id"], c["text"]) for c in expected]:
+        raise Inconsistent("claims.json does not match pr-description.md; run claims again instead of editing the claim text")
+    items = {i["id"]: i for i in expectations["items"]}
+    in_conflict = {k for c in expectations.get("conflicts", []) for k in c["items"]}
+    unlabelled = [c["id"] for c in data["claims"] if c.get("relation") not in RELATIONS]
+    if unlabelled:
+        raise Inconsistent(f"claims.json: label every claim with relation {'|'.join(RELATIONS)}: {', '.join(unlabelled)}")
+    for claim, fresh in zip(data["claims"], expected):
+        where = f"claims.json {claim['id']}"
+        k_refs = refs(claim.get("kRefs", []), set(items), where)
+        relation = claim["relation"]
+        if fresh["test"]:
+            # A testing claim is checked against the tests themselves, not left to be believed.
+            if relation not in ("matches", "unbacked"):
+                raise Inconsistent(f"{where}: a claim under a testing heading is matches (with testRefs) or unbacked (no test does what it says), never {relation}")
+            if relation == "matches":
+                check_test_refs(root, claim.get("testRefs"), where)
+            continue
+        if relation == "unbacked":
+            raise Inconsistent(f"{where}: unbacked is only for claims under a testing heading")
+        if fresh["delegated"] and relation == "none":
+            raise Inconsistent(f"{where}: the claim speaks for the human (\"{claim['text'][:80]}\"), so it matches, contradicts, or goes beyond a K; it is never none")
+        human = [k for k in k_refs if items[k]["source"] in ("prompt", "spec")]
+        own = [k for k in k_refs if items[k]["source"] == "agent-intent" and items[k]["sourceRef"].startswith("pr-description")]
+        if relation == "matches" and not (human if fresh["delegated"] else k_refs):
+            raise Inconsistent(f"{where}: matches names the K it matches" + (", a prompt or spec item, since the claim speaks for the human" if fresh["delegated"] else ""))
+        if relation in ("contradicts", "beyond") and not own:
+            raise Inconsistent(f"{where}: {relation} names the agent-intent item (sourceRef pr-description) that records the claim")
+        if relation == "contradicts" and not any(k in in_conflict for k in own):
+            raise Inconsistent(f"{where}: contradicts needs a conflict between its agent-intent item and the K it contradicts, so the gate shows it")
+    return data["claims"]
+
+
+def check_gate_record(run_dir, items):
+    """Items confirmed at the gate must be the ones the gate showed; nothing added later counts as confirmed."""
+    path = run_dir / "gate.json"
+    if not path.is_file():
+        raise Inconsistent("gate.json is missing; run `gate` before asking the human or running checks")
+    shown = {e.get("id"): e.get("statement") for e in load(path).get("shown", [])}
+    unseen = [i["id"] for i in items if i["confirmed"] == "gate" and shown.get(i["id"]) != i["statement"]]
+    if unseen:
+        raise Inconsistent(f"{', '.join(unseen)} confirmed: gate, but the gate did not show them as written; run gate again and ask the human")
 
 
 def check_run(data):
@@ -448,6 +604,9 @@ def check_run(data):
             raise Inconsistent(f"{where}: status is RAN, SKIPPED, or MISSING")
         if step["status"] == "SKIPPED" and (step.get("skip") not in SKIPS or not text(step.get("reason"))):
             raise Inconsistent(f"{where}: a skipped step names skip ({'|'.join(SKIPS)}) and a reason")
+        # recommended and no-signal describe the optional security step; a required step skipped that way would let the run pass unchecked.
+        if step["status"] == "SKIPPED" and step["skill"] in REQUIRED_STEPS and step["skip"] in ("recommended", "no-signal"):
+            raise Inconsistent(f"{where}: a required step is skipped only with build-failed, no-human, or not-applicable")
         if step["status"] == "RAN" and step["skill"] not in ("quality-code-check", "security-performance-check") and not text(step.get("artifact")):
             raise Inconsistent(f"{where}: a step that ran names its artifact")
         extra = step.get("extraArtifacts", [])
@@ -501,6 +660,8 @@ def check_review(data, known, items, head):
         if not text(flow.get("route")) or flow.get("risk") not in ("high", "medium", "low") or not text(flow.get("why")):
             raise Inconsistent(f"review.json {flow['id']}: route, risk (high|medium|low), why")
         refs(flow.get("kRefs", []), known, f"review.json {flow['id']}")
+        if not isinstance(flow.get("writes", []), list) or any(not re.match(r"^W\d+$", str(w)) for w in flow.get("writes", [])):
+            raise Inconsistent(f"review.json {flow['id']}: writes lists W ids from risk.json writeRoutes")
     for suspicion in data.get("suspicions", []):
         if not text(suspicion.get("location")) or not text(suspicion.get("hypothesis")) or suspicion.get("proof") not in ("runtime", "unit", "human"):
             raise Inconsistent(f"review.json {suspicion['id']}: location, hypothesis, proof (runtime|unit|human)")
@@ -567,6 +728,7 @@ def runtime_status(bundle, known, confirmed, review, head):
     for case in suite["cases"]:
         where = f"suite case {case['id']}"
         cases.append({"id": case["id"], "result": rows[case["id"]]["result"], "proof": rows[case["id"]]["proof"],
+                      "actualPath": (rows[case["id"]].get("observations") or {}).get("actualPath", ""),
                       "expects": refs(case.get("expects", []), known, where),
                       "flows": refs(case.get("flows", []), flows, where) if review else [],
                       "suspicions": refs(case.get("suspicions", []), suspicions, where) if review else []})
@@ -642,8 +804,8 @@ def evaluate(root, run_dir, rules_path):
     rules = load_rules(rules_path)[1]
     intent_ids = {r["id"] for r in rules if r["scope"] == "builtin" and r["check"] in INTENT_BUILTINS}
     diff_only = lambda r: [s for s in r["signals"] if s["rule"] not in intent_ids]
-    if (fresh["rulesDigest"], fresh["baseSha"], diff_only(fresh), fresh.get("separateTests", [])) != (
-            risk["rulesDigest"], risk["baseSha"], diff_only(risk), risk.get("separateTests", [])):
+    if (fresh["rulesDigest"], fresh["baseSha"], diff_only(fresh), fresh.get("separateTests", []), fresh["writeRoutes"]) != (
+            risk["rulesDigest"], risk["baseSha"], diff_only(risk), risk.get("separateTests", []), risk.get("writeRoutes")):
         raise Inconsistent("risk.json does not match the diff, the risk rules, or the installed signal files; run risk again instead of editing it")
     # Expectations edited after the risk step can add an intent signal, never remove the stored one.
     added = [s for s in intent_signals(expectations, rules) if s["rule"] not in {x["rule"] for x in risk["signals"]}]
@@ -677,6 +839,8 @@ def evaluate(root, run_dir, rules_path):
         if gate["answer"] is not None:
             raise Inconsistent("The gate was not required, so run.json records no gate answer")
         mode = "STRAIGHT-THROUGH"
+    claims = check_claims(root, run_dir, expectations, load_rules(rules_path)[0])
+    check_gate_record(run_dir, items)
     unconfirmed = [i["id"] for i in items if i["confirmed"] == "none"]
     if mode == "CONFIRMED" and unconfirmed:
         raise Inconsistent(f"The human confirmed the list at the gate; mark {', '.join(unconfirmed)} confirmed: gate")
@@ -735,6 +899,27 @@ def evaluate(root, run_dir, rules_path):
                                 [Path(a).name for a in [step["artifact"], *step.get("extraArtifacts", [])]])
         if runtime["status"] != "PASSED":
             sections.append((runtime["status"], f"runtime-e2e-test: {runtime['audit']}"))
+    routes = []
+    if runtime and review:
+        # Each writing route the change touches is driven by a case through the review flow that names it.
+        flows_of = lambda w: {f["id"] for f in review.get("flows", []) if w in f.get("writes", [])}
+        waived = {l.split(":", 1)[0] for l in run.get("limits", []) if re.match(r"^W\d+:", l)}
+        for route in risk["writeRoutes"]:
+            driving = [c["id"] for c in runtime["cases"] if set(c["flows"]) & flows_of(route["id"])
+                       and c["result"] in ("PASS", "FAIL") and route_called(route, c["actualPath"])]
+            if not driving and route["id"] not in waived:
+                raise Inconsistent(f"{route['id']} {route['method']} {route['path']} ({route['file']}:{route['line']}) changed, but no PASS or FAIL case "
+                                   "of a review flow listing it in `writes` names that call in its actualPath; add the case, or a run.json limit starting with "
+                                   f"\"{route['id']}:\" saying why it cannot run")
+            routes.append({**route, "cases": driving})
+        # A suspicion the review says only runtime can settle is settled by a case, not by a note.
+        waived = {l.split(":", 1)[0] for l in run.get("limits", []) if re.match(r"^H\d+:", l)}
+        for suspicion in review.get("suspicions", []):
+            if suspicion["proof"] != "runtime" or suspicion["id"] in waived:
+                continue
+            if not any(suspicion["id"] in c["suspicions"] and c["result"] in ("PASS", "FAIL") for c in runtime["cases"]):
+                raise Inconsistent(f"{suspicion['id']} ({suspicion['location']}) needs runtime proof, but no PASS or FAIL case names it in `suspicions`; "
+                                   f"add the case, or a run.json limit starting with \"{suspicion['id']}:\" saying why it cannot run")
     covered = {i["id"]: coverage(i["id"], runtime["cases"]) if runtime else ("NOT_RUN", []) for i in items}
     thin = [k for k, (level, _) in covered.items() if level in ("NONE", "PARTIAL")]
     if runtime:
@@ -776,7 +961,8 @@ def evaluate(root, run_dir, rules_path):
 
     overall = next(s for s in ORDER if s == "PASSED" or any(level == s for level, _ in sections))
     return {"expectations": expectations, "risk": risk, "run": run, "steps": steps, "mode": mode, "review": review, "runtime": runtime,
-            "covered": covered, "verdicts": verdicts, "sections": sections, "limits": limits, "overall": overall, "humanIntent": bool(human)}
+            "covered": covered, "verdicts": verdicts, "sections": sections, "limits": limits, "overall": overall, "humanIntent": bool(human),
+            "claims": claims, "routes": routes}
 
 
 def markdown(state):
@@ -813,6 +999,12 @@ def markdown(state):
     conflicts = state["expectations"].get("conflicts", [])
     if conflicts:
         lines += ["", "## Xung đột", ""] + [f"- {c['id']} ({', '.join(c['items'])}): {c['summary']} — {'chưa giải quyết' if c['resolution'] == 'unresolved' else 'human chọn ' + c['resolution']}" for c in conflicts]
+    flagged = [c for c in state["claims"] if c["relation"] in ("contradicts", "beyond", "unbacked")]
+    if flagged:
+        label = {"contradicts": "mâu thuẫn với yêu cầu", "beyond": "ngoài yêu cầu", "unbacked": "claim test nhưng không test nào làm vậy"}
+        lines += ["", "## Đối chiếu mô tả PR", ""] + [f"- {c['id']} ({label[c['relation']]}{'; ' + ', '.join(c['kRefs']) if c['kRefs'] else ''}): {c['text']}" for c in flagged]
+    if state["routes"]:
+        lines += ["", "## Route ghi dữ liệu bị đổi", ""] + [f"- {w['id']} `{w['method']} {w['path']}` ({w['file']}:{w['line']}): {', '.join(w['cases']) or 'không có case; xem giới hạn'}" for w in state["routes"]]
     review, runtime = state["review"], state["runtime"]
     if review:
         tested = lambda key, ident: runtime and any(ident in c[key] for c in runtime["cases"])
@@ -840,7 +1032,12 @@ def main(argv=None):
     risk.add_argument("--base", required=True, help="base ref; the change is base...HEAD, or base..working tree with --worktree")
     risk.add_argument("--worktree", action="store_true", help="include uncommitted changes")
     risk.add_argument("--head", help="the change's commit SHA from `evidence.py refs`; the change is base...head, whatever the checkout holds")
-    for name in ("audit-input", "report"):
+    claims = sub.add_parser("claims", help="split the PR description into claims.json for labelling")
+    claims.add_argument("run_dir")
+    described = claims.add_mutually_exclusive_group(required=True)
+    described.add_argument("--description", help="a file holding the PR description as the implementer wrote it")
+    described.add_argument("--none", action="store_true", help="the change has no description")
+    for name in ("gate", "audit-input", "report"):
         sub.add_parser(name).add_argument("run_dir")
     for command in sub.choices.values():
         command.add_argument("--rules", default=str(RULES))
@@ -857,6 +1054,52 @@ def main(argv=None):
             write(run_dir / "risk.json", result)
             separate = ", ".join(f"{e['area']}:{e['signal'].split(':', 1)[0]}" for e in result["separateTests"]) or "none"
             print(f"Gate: {result['gate']}; audit: {result['audit']}; signals: {', '.join(s['rule'] for s in result['signals']) or 'none'}; separateTests: {separate}")
+            return 0
+        if args.command == "claims":
+            settings = load_rules(args.rules)[0]
+            previous = {}
+            if (run_dir / "claims.json").is_file():
+                previous = {c.get("text"): c for c in load(run_dir / "claims.json").get("claims", [])}
+            if args.none:
+                (run_dir / "pr-description.md").unlink(missing_ok=True)
+            else:
+                try:
+                    described_text = Path(args.description).read_text(encoding="utf-8")
+                except OSError as error:
+                    raise Inconsistent(f"--description: {error}") from None
+                (run_dir / "pr-description.md").write_text(described_text, encoding="utf-8")
+            listed = fresh_claims(run_dir, settings)
+            for claim in listed:
+                kept = previous.get(claim["text"], {})
+                claim["relation"], claim["kRefs"] = kept.get("relation"), kept.get("kRefs", [])
+                if claim["test"]:
+                    claim["testRefs"] = kept.get("testRefs", [])
+            write(run_dir / "claims.json", {"schema": "validate-change/claims@1", "claims": listed})
+            for claim in listed:
+                print(f"{claim['id']}{' [speaks for the human]' if claim['delegated'] else ''}{' [testing: testRefs or unbacked]' if claim['test'] else ''}: {claim['text']}")
+            print(f"Label each claim in claims.json: relation {'|'.join(RELATIONS)} and kRefs; a testing claim is matches with testRefs (path:line) or unbacked." if listed else "No description: nothing to label.")
+            return 0
+        if args.command == "gate":
+            risk_data = load(run_dir / "risk.json")
+            claims_list = check_claims(root, run_dir, expectations, load_rules(args.rules)[0])
+            items = expectations["items"]
+            write(run_dir / "gate.json", {"schema": "validate-change/gate@1", "headSha": risk_data["headSha"],
+                                          "shown": [{"id": i["id"], "statement": i["statement"]} for i in items]})
+            # Conflicts recorded after the risk step still require the gate.
+            signals = risk_data["signals"] + [s for s in intent_signals(expectations, load_rules(args.rules)[1])
+                                              if s["rule"] not in {x["rule"] for x in risk_data["signals"]}]
+            required = "required" if any(s["level"] in ("high", "gate") for s in signals) else "not-required"
+            print(f"Gate: {required}; signals: {', '.join(s['rule'] for s in signals) or 'none'}")
+            for i in items:
+                print(f"- {i['id']} ({i['source']}{', ' + i['default'] if i['source'] == 'assumption' else ''}): {i['statement']}")
+            for c in expectations.get("conflicts", []):
+                print(f"- {c['id']} ({', '.join(c['items'])}): {c['summary']}")
+            for w in risk_data.get("writeRoutes", []):
+                print(f"- {w['id']} {w['method']} {w['path']} ({w['file']}:{w['line']}): a writing route the change touches; plan a case that calls it")
+            for c in claims_list:
+                if c["relation"] in ("contradicts", "beyond", "unbacked"):
+                    print(f"- PR {c['id']} {c['relation']} ({', '.join(c['kRefs'])}): {c['text']}")
+            print("Show every line above in the gate message." if required == "required" else "No gate is required; run straight through.")
             return 0
         if args.command == "audit-input":
             risk_data = load(run_dir / "risk.json")
