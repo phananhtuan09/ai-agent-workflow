@@ -377,6 +377,12 @@ def separate_tests_from_signals(paths, changes=None):
         # Parser/file errors (including check_findings.Inconsistent) become risk-step inconsistencies;
         # other exceptions (bugs) propagate.
         raise Inconsistent(f"security-performance-check signal files: {error}") from None
+    except (TypeError, AttributeError) as error:
+        # A partial skill update leaves the sibling checker on an older interface.
+        raise Inconsistent(
+            f"the installed security-performance-check is older than validate-change ({error}); "
+            "update both skills together (for an npm installation: npx ai-workflow-init@latest update, then update --apply), "
+            "then rerun risk") from None
     return entries
 
 
