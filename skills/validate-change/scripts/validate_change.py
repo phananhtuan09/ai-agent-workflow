@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import importlib.util
+import inspect
 import json
 import random
 import re
@@ -347,6 +348,23 @@ def load_spc_checker():
     return mod
 
 
+def check_spc_interface(checker):
+    """A partial skill update can leave the sibling checker on another interface; name that instead of a traceback."""
+    expected = {"load_signals": (), "load_performance_signals": (), "hinted_paths": ("content_required",)}
+    missing = []
+    for name, params in expected.items():
+        function = getattr(checker, name, None)
+        if not callable(function):
+            missing.append(name)
+            continue
+        missing += [f"{name}({p}=)" for p in params if p not in inspect.signature(function).parameters]
+    if missing:
+        raise Inconsistent(
+            f"the installed security-performance-check does not match the interface validate-change expects "
+            f"(missing {', '.join(missing)}); update both skills together "
+            "(for an npm installation: npx ai-workflow-init@latest update, then update --apply), then rerun risk")
+
+
 def separate_tests_from_signals(paths, changes=None):
     """Recommend security-performance-check from the changed code, in any language.
 
@@ -358,6 +376,7 @@ def separate_tests_from_signals(paths, changes=None):
     checker = load_spc_checker()
     if checker is None:
         return []
+    check_spc_interface(checker)
     path_list = list(paths)
     entries = []
     try:
@@ -377,12 +396,6 @@ def separate_tests_from_signals(paths, changes=None):
         # Parser/file errors (including check_findings.Inconsistent) become risk-step inconsistencies;
         # other exceptions (bugs) propagate.
         raise Inconsistent(f"security-performance-check signal files: {error}") from None
-    except (TypeError, AttributeError) as error:
-        # A partial skill update leaves the sibling checker on an older interface.
-        raise Inconsistent(
-            f"the installed security-performance-check is older than validate-change ({error}); "
-            "update both skills together (for an npm installation: npx ai-workflow-init@latest update, then update --apply), "
-            "then rerun risk") from None
     return entries
 
 

@@ -6231,7 +6231,7 @@ test("check_run rejects recommended/no-signal when they disagree with separateTe
   }
 });
 
-test("risk names an older installed security-performance-check instead of crashing", () => {
+test("risk names a mismatched installed security-performance-check interface without masking checker bugs", () => {
   const skillsRoot = copySkillTree(["validate-change", "security-performance-check"]);
   const script = path.join(skillsRoot, "validate-change/scripts/validate_change.py");
   const checker = path.join(skillsRoot, "security-performance-check/scripts/check_findings.py");
@@ -6244,9 +6244,19 @@ test("risk names an older installed security-performance-check instead of crashi
   try {
     const risk = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], { cwd: repo.root, encoding: "utf8" });
     assert.strictEqual(risk.status, 2, risk.stderr || risk.stdout);
-    assert.ok(risk.stderr.includes("older than validate-change"), risk.stderr);
+    assert.ok(risk.stderr.includes("does not match the interface validate-change expects"), risk.stderr);
+    assert.ok(risk.stderr.includes("hinted_paths(content_required=)"), risk.stderr);
     assert.ok(risk.stderr.includes("update --apply"), risk.stderr);
     assert.ok(!risk.stderr.includes("Traceback"), risk.stderr);
+
+    // A matching interface with a real error inside is not reported as a version mismatch.
+    fs.writeFileSync(checker, current.replace(
+      "exclude=None, content_required=False):",
+      "exclude=None, content_required=False):\n    raise TypeError('checker bug')\n"));
+    const buggy = spawnSync("python3", [script, "risk", repo.run, "--base", repo.base], { cwd: repo.root, encoding: "utf8" });
+    assert.notStrictEqual(buggy.status, 0, buggy.stderr || buggy.stdout);
+    assert.ok(buggy.stderr.includes("checker bug"), buggy.stderr);
+    assert.ok(!buggy.stderr.includes("update both skills together"), buggy.stderr);
   } finally {
     repo.cleanup();
     fs.rmSync(skillsRoot, { recursive: true, force: true });
