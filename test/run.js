@@ -5207,6 +5207,7 @@ test("record-workflow-friction records escaped-bug with escape_class and update_
     "evidence-gap": "scripts/evidence.py",
     "surface-miss": "quality-code-check/references/surface-rules.md",
     "intent-miss": "upstream_candidate: yes",
+    "ci-miss": ".github/workflows/",
     "unknown": "none",
   };
   Object.entries(classes).forEach(([escapeClass, targetHint]) => {
@@ -5214,10 +5215,12 @@ test("record-workflow-friction records escaped-bug with escape_class and update_
     assert.ok(skill.includes(targetHint), `${escapeClass} -> ${targetHint}`);
   });
   assert.ok(skill.includes("performance-signals.md"));
+  assert.ok(skill.includes("a CI check could have caught"), "description covers a bug a CI check could have caught");
   const observationsReadme = fs.readFileSync(path.join(SOURCE_ROOT, "docs/evaluation/observations/README.md"), "utf8");
   assert.ok(observationsReadme.includes("escaped-bug"));
   assert.ok(observationsReadme.includes("escape_class"));
   assert.ok(observationsReadme.includes("update_target"));
+  assert.ok(observationsReadme.includes("ci-miss"));
 
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
