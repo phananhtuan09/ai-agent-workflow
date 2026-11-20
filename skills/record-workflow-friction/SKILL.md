@@ -1,6 +1,6 @@
 ---
 name: record-workflow-friction
-description: Record any observable problem, blocker, ambiguity, retry, rework, workaround, human correction, tool failure, runtime issue, task-context issue, workflow friction, or bug that escaped a validate-change run. Use only when the human explicitly asks to note, capture, or log the current execution difficulty, or reports that a bug got past a validate run, for later analysis, or when a human-installed schedule starts the nightly Paseo friction sweep. Do not assume the workflow caused the problem, and do not fix or replace the active task.
+description: Record any observable problem, blocker, ambiguity, retry, rework, workaround, human correction, tool failure, runtime issue, task-context issue, workflow friction, bug that escaped a validate-change run, or bug that reached the default branch although a CI check could have caught it. Use only when the human explicitly asks to note, capture, or log the current execution difficulty, or reports that a bug got past a validate run or past CI, for later analysis, or when a human-installed schedule starts the nightly Paseo friction sweep. Do not assume the workflow caused the problem, and do not fix or replace the active task.
 ---
 
 # Record Workflow Friction
@@ -18,6 +18,7 @@ Record friction even when it is not clearly a workflow problem. The observation 
 - task ambiguity or missing context
 - human-agent coordination
 - a bug that a `validate-change` run passed
+- a bug that reached the default branch although a CI check on its PR could have caught it
 - unknown cause
 
 The workflow name and phase may be `unknown`. Do not force a workflow attribution.
@@ -39,6 +40,7 @@ The workflow name and phase may be `unknown`. Do not force a workflow attributio
 3. Choose an `observation_scope` without claiming root cause: `workflow`, `model-execution`, `runtime-tool`, `task-environment`, `coordination`, or `unknown`.
 4. Add direct evidence references such as a session, command result, tool result, file, artifact, or human correction. Do not invent evidence.
 5. When the human reports a bug that escaped a validate run, set `category: escaped-bug` and fill the escaped-bug fields below. Choose `escape_class` as a hypothesis from the escape-class table; the human confirms it later.
+   When the human reports a bug that reached the default branch and a CI check could have caught it, use the same category with `escape_class: ci-miss`; when no validate run covered the change, set `validate_run: unavailable` and `validate_status: unknown`.
 6. Write one Markdown artifact to:
 
 ```text
@@ -192,6 +194,7 @@ Required only when `category` is `escaped-bug`:
 | `evidence-gap` | A case passed on evidence that did not prove the behavior | Proving / verdict rules in `runtime-e2e-test` (`SKILL.md` Evidence section, `scripts/evidence.py`) |
 | `surface-miss` | Code-surface problem the scan missed | `quality-code-check/references/surface-rules.md`, as a regex row when mechanically detectable |
 | `intent-miss` | Intent was misread or a PR-description claim was accepted | `review-pr` / `validate-change` instructions; always `upstream_candidate: yes` |
+| `ci-miss` | A bug reached the default branch that a CI check on its PR could have caught (a type error, a failing test, a lint rule, a broken build) | The project's CI workflow file in `.github/workflows/`; the CI contract instead once the project has one |
 | `unknown` | Cause not determinable from the evidence | `none`; record only |
 
 ### Where lessons land

@@ -15,7 +15,9 @@ Either way, `workflow-evaluation` must corroborate and attribute an observation 
 
 ## Escaped bugs
 
-When a bug escapes a `validate-change` run that reported `PASSED`, record it with category `escaped-bug`. That category adds:
+When a bug escapes a `validate-change` run that reported `PASSED`, record it with category `escaped-bug`.
+A bug that reached the default branch although a CI check on its PR could have caught it uses the same category with `escape_class: ci-miss`.
+That category adds:
 
 - `validate_run` — path to the run's `report.md` / run dir, or `unavailable`
 - `validate_status` — status that run reported, or `unknown`
