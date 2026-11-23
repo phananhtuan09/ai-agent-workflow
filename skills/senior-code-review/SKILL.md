@@ -1,6 +1,6 @@
 ---
 name: senior-code-review
-description: Opt-in command, started only when the human invokes /senior-code-review, that reviews the human's own code the way a senior developer mentors: approach first, then hard-to-reverse decisions, correctness, design, operability, and tests, ending with principles to study. Report-only; never modifies code. Not a merge gate (review-pr), not lint or surface cleanup (quality-code-check), not a security or performance probe (security-performance-check), and independent of the learning workflow.
+description: "Opt-in command, started only when the human invokes /senior-code-review, that reviews the human's own code the way a senior developer mentors: approach first, then hard-to-reverse decisions, correctness, design, operability, and tests, ending with principles to study. Report-only; never modifies code. Not a merge gate (review-pr), not lint or surface cleanup (quality-code-check), not a security or performance probe (security-performance-check), and independent of the learning workflow."
 argument-hint: "[path | branch | diff | PR]"
 disable-model-invocation: true
 disallowed-tools: Edit
