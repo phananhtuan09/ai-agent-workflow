@@ -6316,6 +6316,54 @@ test("report rejects run.json that drops risk.json signal matches or records an 
   }
 });
 
+test("skill frontmatter check accepts supported YAML and rejects strict-parser failures", () => {
+  const { checkFrontmatter } = require("../scripts/skill-frontmatter");
+  const fm = (...lines) => ["---", ...lines, "---", "", "# Body"].join("\n");
+  const messages = (text) => checkFrontmatter(text).errors.map((e) => `${e.line}: ${e.message}`);
+
+  // Valid shapes pass.
+  assert.deepStrictEqual(messages(fm("name: a", "description: plain text, no colon-space")), []);
+  assert.deepStrictEqual(messages(fm("name: a", 'description: "quoted: ok"')), []);
+  assert.deepStrictEqual(messages(fm("name: a", "description: 'it''s: ok'")), []);
+  assert.deepStrictEqual(messages(fm("name: a", "description: folded plain", "  continued here")), []);
+  assert.deepStrictEqual(messages(fm("name: a", "description: |", "  block: scalar # kept", "  more")), []);
+  assert.deepStrictEqual(messages(fm("name: a", "description: >-", "  folded")), []);
+  assert.deepStrictEqual(messages(fm("name: a", "description: x", "metadata:", '  version: "1"')), []);
+  assert.strictEqual(
+    checkFrontmatter(fm("name: a", "description: folded plain", "  continued")).fields.description,
+    "folded plain continued",
+  );
+  // A plain scalar may start on the line after its key.
+  const nextLine = checkFrontmatter(fm("name: a", "description:", "  text on next line", "  more"));
+  assert.deepStrictEqual(nextLine.errors, []);
+  assert.strictEqual(nextLine.fields.description, "text on next line more");
+  assert.deepStrictEqual(messages(fm("name: a", "description:", "  starts: here")), []);
+  assert.deepStrictEqual(messages(fm("name: a", "tags:", "  - one", "  - two", "description: x")), []);
+  // A value starting with `#` is a comment, so the key is empty.
+  assert.strictEqual(checkFrontmatter(fm("name: a", "description: #comment")).fields.description, "");
+
+  // Strict-parser failures are reported with their line.
+  assert.deepStrictEqual(messages(fm("name: a", "description: mentors: approach")), [
+    '3: unquoted value for "description" contains ": "; wrap it in double quotes',
+  ]);
+  assert.deepStrictEqual(messages(fm("name: a", "description: first", "  then: colon")), [
+    '4: unquoted value for "description" contains ": "; wrap it in double quotes',
+  ]);
+  assert.ok(messages(fm("name: a", "description: cut #here"))[0].includes('contains " #"'));
+  assert.deepStrictEqual(messages(fm("name: a", "description: 'a' b'")), [
+    '3: invalid single-quoted value for "description"',
+  ]);
+  assert.deepStrictEqual(messages(fm("name: a", 'description: "open')), [
+    '3: invalid double-quoted value for "description"',
+  ]);
+  assert.deepStrictEqual(messages(fm("name: a", "name: b", "description: x")), ['3: duplicate key "name"']);
+  assert.deepStrictEqual(messages(fm("name: a", "  stray", "description: x")), []);
+  assert.deepStrictEqual(messages(fm("  stray", "name: a")), ["2: indented line outside a key"]);
+  assert.deepStrictEqual(messages(fm("name: a", "not a key line")), ['3: expected "key: value"']);
+  assert.deepStrictEqual(messages("# no frontmatter"), ["1: missing YAML frontmatter"]);
+  assert.deepStrictEqual(messages("---\nname: a\n"), ["1: unterminated YAML frontmatter"]);
+});
+
 test("temporary package workspace can be created", () => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "ai-workflow-test-"));
   assert.ok(fs.existsSync(workspace));

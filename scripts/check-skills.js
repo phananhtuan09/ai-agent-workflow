@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { checkFrontmatter } = require("./skill-frontmatter");
 
 const root = path.resolve(__dirname, "..");
 const skillsRoot = path.join(root, "skills");
@@ -40,6 +41,34 @@ skillDirectories.forEach((skillId) => {
     failures.push(`canonical skill is missing SKILL.md: skills/${skillId}`);
   }
 });
+
+function checkSkillFile(relativeDir, skillId) {
+  const skillFile = path.join(root, relativeDir, skillId, "SKILL.md");
+  if (!fs.existsSync(skillFile)) {
+    return;
+  }
+  const label = `${relativeDir}/${skillId}/SKILL.md`;
+  const { fields, errors } = checkFrontmatter(fs.readFileSync(skillFile, "utf8"));
+  errors.forEach(({ line, message }) => failures.push(`${label}:${line}: ${message}`));
+  if (errors.some(({ message }) => message.endsWith("YAML frontmatter"))) {
+    return;
+  }
+  if (fields.name !== skillId) {
+    failures.push(`${label}: frontmatter name must be "${skillId}"; got ${JSON.stringify(fields.name)}`);
+  }
+  if (!fields.description) {
+    failures.push(`${label}: frontmatter description is missing`);
+  }
+}
+
+skillDirectories.forEach((skillId) => checkSkillFile("skills", skillId));
+
+const globalSkillsRoot = path.join(root, "global-skills");
+if (fs.existsSync(globalSkillsRoot)) {
+  fs.readdirSync(globalSkillsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .forEach((entry) => checkSkillFile("global-skills", entry.name));
+}
 
 const bundles = manifest.bundles || {};
 const registeredSkills = new Set();
