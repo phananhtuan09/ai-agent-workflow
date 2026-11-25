@@ -32,7 +32,7 @@ function checkFrontmatter(text) {
   }
 
   // What indented lines after the current key mean.
-  let mode = null; // "mapping" | "block-scalar" | "plain" | "quoted" | null
+  let mode = null; // "empty" | "mapping" | "block-scalar" | "plain" | "quoted" | null
   let currentKey = null;
 
   lines.slice(1, end).forEach((line, index) => {
@@ -47,6 +47,21 @@ function checkFrontmatter(text) {
       return;
     }
     if (indented) {
+      if (mode === "empty") {
+        // The first indented line decides: a nested mapping or sequence, or a
+        // plain scalar that starts on the next line (`description:\n  text`).
+        if (/^\s+(?:- |-$|[A-Za-z0-9_-]+:(?: |$))/.test(line)) {
+          mode = "mapping";
+          return;
+        }
+        mode = "plain";
+        const problem = checkPlain(line.trim());
+        if (problem) {
+          report(`unquoted value for "${currentKey}" ${problem}`);
+        }
+        fields[currentKey] = line.trim();
+        return;
+      }
       if (mode === "mapping") {
         return;
       }
@@ -73,7 +88,8 @@ function checkFrontmatter(text) {
       return;
     }
     const [, key, rawValue = ""] = match;
-    const value = rawValue.trim();
+    // A value starting with `#` is a comment, so the key itself is empty.
+    const value = rawValue.trim().startsWith("#") ? "" : rawValue.trim();
     if (Object.prototype.hasOwnProperty.call(fields, key)) {
       report(`duplicate key "${key}"`);
     }
@@ -81,7 +97,7 @@ function checkFrontmatter(text) {
     fields[key] = value;
 
     if (value === "") {
-      mode = "mapping";
+      mode = "empty";
     } else if (BLOCK_SCALAR.test(value)) {
       mode = "block-scalar";
       fields[key] = "(block scalar)";

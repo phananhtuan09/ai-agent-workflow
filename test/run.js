@@ -6333,6 +6333,14 @@ test("skill frontmatter check accepts supported YAML and rejects strict-parser f
     checkFrontmatter(fm("name: a", "description: folded plain", "  continued")).fields.description,
     "folded plain continued",
   );
+  // A plain scalar may start on the line after its key.
+  const nextLine = checkFrontmatter(fm("name: a", "description:", "  text on next line", "  more"));
+  assert.deepStrictEqual(nextLine.errors, []);
+  assert.strictEqual(nextLine.fields.description, "text on next line more");
+  assert.deepStrictEqual(messages(fm("name: a", "description:", "  starts: here")), []);
+  assert.deepStrictEqual(messages(fm("name: a", "tags:", "  - one", "  - two", "description: x")), []);
+  // A value starting with `#` is a comment, so the key is empty.
+  assert.strictEqual(checkFrontmatter(fm("name: a", "description: #comment")).fields.description, "");
 
   // Strict-parser failures are reported with their line.
   assert.deepStrictEqual(messages(fm("name: a", "description: mentors: approach")), [
