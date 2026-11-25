@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { checkFrontmatter } = require("./skill-frontmatter");
 
 const root = path.resolve(__dirname, "..");
 const skillsRoot = path.join(root, "skills");
@@ -41,70 +42,17 @@ skillDirectories.forEach((skillId) => {
   }
 });
 
-// Dependency-free strict check of the YAML frontmatter subset skills use:
-// top-level `key: value` scalars plus indented blocks under an empty key.
-// Lenient runtimes accept invalid YAML that strict ones (Codex, OpenCode) drop.
-function checkFrontmatter(relativeDir, skillId) {
+function checkSkillFile(relativeDir, skillId) {
   const skillFile = path.join(root, relativeDir, skillId, "SKILL.md");
   if (!fs.existsSync(skillFile)) {
     return;
   }
   const label = `${relativeDir}/${skillId}/SKILL.md`;
-  const lines = fs.readFileSync(skillFile, "utf8").split(/\r?\n/);
-  if (lines[0] !== "---") {
-    failures.push(`${label}: missing YAML frontmatter`);
+  const { fields, errors } = checkFrontmatter(fs.readFileSync(skillFile, "utf8"));
+  errors.forEach(({ line, message }) => failures.push(`${label}:${line}: ${message}`));
+  if (errors.some(({ message }) => message.endsWith("YAML frontmatter"))) {
     return;
   }
-  const end = lines.indexOf("---", 1);
-  if (end === -1) {
-    failures.push(`${label}: unterminated YAML frontmatter`);
-    return;
-  }
-
-  const fields = {};
-  let blockKey = null;
-  lines.slice(1, end).forEach((line, index) => {
-    const lineLabel = `${label}:${index + 2}`;
-    if (line.trim() === "" || line.trimStart().startsWith("#")) {
-      return;
-    }
-    if (/^\s/.test(line)) {
-      if (!blockKey) {
-        failures.push(`${lineLabel}: indented line outside a block key`);
-      }
-      return;
-    }
-    const match = line.match(/^([A-Za-z0-9_-]+):(?: (.*))?$/);
-    if (!match) {
-      failures.push(`${lineLabel}: expected "key: value"`);
-      return;
-    }
-    const [, key, rawValue = ""] = match;
-    const value = rawValue.trim();
-    if (Object.prototype.hasOwnProperty.call(fields, key)) {
-      failures.push(`${lineLabel}: duplicate key "${key}"`);
-    }
-    blockKey = value === "" ? key : null;
-    fields[key] = value;
-
-    if (value.startsWith('"')) {
-      try {
-        fields[key] = JSON.parse(value);
-      } catch (error) {
-        failures.push(`${lineLabel}: invalid double-quoted value for "${key}"`);
-      }
-    } else if (value.startsWith("'")) {
-      if (value.length < 2 || !value.endsWith("'")) {
-        failures.push(`${lineLabel}: unterminated single-quoted value for "${key}"`);
-      }
-      fields[key] = value.slice(1, -1).replace(/''/g, "'");
-    } else if (/: |:$/.test(value)) {
-      failures.push(`${lineLabel}: unquoted value for "${key}" contains ": "; wrap it in double quotes`);
-    } else if (/ #/.test(value)) {
-      failures.push(`${lineLabel}: unquoted value for "${key}" contains " #", which YAML reads as a comment; wrap it in double quotes`);
-    }
-  });
-
   if (fields.name !== skillId) {
     failures.push(`${label}: frontmatter name must be "${skillId}"; got ${JSON.stringify(fields.name)}`);
   }
@@ -113,13 +61,13 @@ function checkFrontmatter(relativeDir, skillId) {
   }
 }
 
-skillDirectories.forEach((skillId) => checkFrontmatter("skills", skillId));
+skillDirectories.forEach((skillId) => checkSkillFile("skills", skillId));
 
 const globalSkillsRoot = path.join(root, "global-skills");
 if (fs.existsSync(globalSkillsRoot)) {
   fs.readdirSync(globalSkillsRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .forEach((entry) => checkFrontmatter("global-skills", entry.name));
+    .forEach((entry) => checkSkillFile("global-skills", entry.name));
 }
 
 const bundles = manifest.bundles || {};
