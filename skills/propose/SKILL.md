@@ -47,6 +47,9 @@ When the human names an operation, run that one.
   The reviewer does not edit the file or redesign the proposal.
   Return findings to the author and human as advisory feedback.
   If a fresh isolated sub-agent is unavailable, report that independent review could not be performed; do not present a self-review as independent.
+  After a review, record one line under the status in `proposal.md`: `Independent review: <date>, <blocking count> blocking, <advisory count> advisory`.
+  When a later revision substantively changes the proposal, append `, outdated by revision on <date>` to that line.
+  Use this line, not conversation memory, to decide whether the current version has been reviewed.
 - **Revise:** Update the same file from human feedback, Grill results, new research, or review findings.
   Resolve supported issues, preserve still-valid decisions, and leave unresolved material choices explicit.
   When a finding or gap can only be closed by choosing externally observable behavior, such as what a user sees, when, or who may act, ask the human instead of choosing; record the question as open until answered.

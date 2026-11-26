@@ -19,6 +19,7 @@ The mockup is never required to finalize or approve a proposal, and `proposal.md
 Begin with a descriptive title and `Status: Draft | Ready for Approval | Approved`.
 Use `Draft` while material decisions or evidence remain open.
 Use `Ready for Approval` only when the current version is coherent, its material choices are resolved into a recommendation, and no blocking question remains.
+An optional `Independent review:` line under the status records the date and finding counts of the last independent review, and whether a later revision outdated it.
 Use `Approved` only after explicit human approval of the current version; record the approval decision and date in the proposal.
 Return an Approved proposal to Draft when its substantive recommendation or behavior changes.
 
