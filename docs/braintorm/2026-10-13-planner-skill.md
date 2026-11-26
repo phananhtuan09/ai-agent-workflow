@@ -91,5 +91,5 @@ Tiếp theo:
 
 ## Bước tiếp theo
 
-Bản v1 nằm ở `skills/planner/SKILL.md`, `coder` đã bị gỡ, quyết định ghi ở [DECISIONS.md](../DECISIONS.md#manual-planner-mode).
+Bản v1 nằm ở `skills/planner/SKILL.md`, `coder` đã bị gỡ, quyết định ghi ở [DECISIONS.md](../DECISIONS.md#planner-mode-removed).
 Dùng thử trên phiên thật, đếm số lần human chọn ★, chọn lựa chọn khác, hoặc tự gõ yêu cầu khác, rồi chỉnh các mặc định.

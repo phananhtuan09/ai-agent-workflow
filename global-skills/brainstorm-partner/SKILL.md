@@ -1,6 +1,7 @@
 ---
 name: brainstorm-partner
 description: Use when the user wants a read-only thinking partner to break down a vague idea, hard bug, unclear feature logic, or difficult technical decision before implementation, or asks to be grilled ("grill me", "keep asking until it's clear") to settle feature logic or a design. Focus on dialogue, codebase inspection, grounded hypotheses, web research when needed, and concrete next steps without editing files.
+disable-model-invocation: true
 ---
 
 # Brainstorm Partner

@@ -306,38 +306,6 @@ test("review-pr installs its canonical skill and runtime reviewer", () => {
   });
 });
 
-[
-  ["claude", ".claude/skills"],
-  ["codex", ".agents/skills"],
-  ["antigravity", ".agents/skills"],
-  ["opencode", ".agents/skills"],
-  ["pi", ".agents/skills"],
-].forEach(([tool, root]) => {
-  test(`planner-mode bundle installs the manual planner mode for ${tool}`, () => {
-    const result = runCli(["--kit", "coding-standard", "--tool", tool, "--bundle", "planner-mode"]);
-    try {
-      assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-      ["planner", "quality-code-check", "manage-project-knowledge"].forEach((skillId) => {
-        assert.ok(fs.existsSync(path.join(result.workspace, root, skillId, "SKILL.md")), skillId);
-      });
-      const planner = fs.readFileSync(path.join(result.workspace, root, "planner/SKILL.md"), "utf8");
-      assert.ok(planner.includes("disable-model-invocation: true"));
-      assert.ok(!fs.existsSync(path.join(result.workspace, root, "coder")));
-
-      // Planner is plain instructions, so Claude settings carry no hooks for it.
-      if (tool === "claude") {
-        assert.ok(
-          fs.readFileSync(path.join(result.workspace, ".claude/settings.json")).equals(
-            fs.readFileSync(path.join(SOURCE_ROOT, ".claude/settings.json"))
-          )
-        );
-      }
-    } finally {
-      result.cleanup();
-    }
-  });
-});
-
 test("Claude project instructions use the root protocol as their source", () => {
   assert.ok(!fs.existsSync(path.join(SOURCE_ROOT, ".claude/CLAUDE.md")));
   assert.strictEqual(
@@ -361,9 +329,9 @@ test("Claude install imports AGENTS.md instead of copying it", () => {
 
 test("installing a skill that already exists in .claude/skills warns about the duplicate", () => {
   const result = runCli(
-    ["--kit", "coding-standard", "--tool", "codex", "--bundle", "planner-mode"],
+    ["--kit", "coding-standard", "--tool", "codex", "--bundle", "common-review"],
     ({ workspace }) => {
-      fs.mkdirSync(path.join(workspace, ".claude/skills/planner"), { recursive: true });
+      fs.mkdirSync(path.join(workspace, ".claude/skills/quality-code-check"), { recursive: true });
       fs.mkdirSync(path.join(workspace, ".claude/skills/consumer-only"), { recursive: true });
     }
   );
@@ -371,7 +339,7 @@ test("installing a skill that already exists in .claude/skills warns about the d
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
     const warning = result.stdout.split("\n").find((line) => line.includes("list each skill twice"));
     assert.ok(warning, result.stdout);
-    assert.ok(warning.includes("planner"));
+    assert.ok(warning.includes("quality-code-check"));
     assert.ok(!warning.includes("consumer-only"));
   } finally {
     result.cleanup();
@@ -380,19 +348,18 @@ test("installing a skill that already exists in .claude/skills warns about the d
 
 test("skill roots without a shared skill do not warn about duplicates", () => {
   const result = runCli(
-    ["--kit", "coding-standard", "--tool", "codex", "--bundle", "planner-mode"],
+    ["--kit", "coding-standard", "--tool", "codex", "--bundle", "common-review"],
     ({ workspace }) => fs.mkdirSync(path.join(workspace, ".claude/skills"), { recursive: true })
   );
   try {
     assert.strictEqual(result.status, 0, result.stderr || result.stdout);
-    assert.ok(fs.existsSync(path.join(result.workspace, ".agents/skills/planner/SKILL.md")));
     assert.ok(!result.stdout.includes("list each skill twice"), result.stdout);
   } finally {
     result.cleanup();
   }
 });
 
-for (const kitArgs of [["--kit", "workflow-eval"], ["--kit", "design", "--skill", "planner"]]) {
+for (const kitArgs of [["--kit", "workflow-eval"], ["--kit", "design", "--skill", "review-pr"]]) {
   test(`${kitArgs[1]} warns when its skills exist for both Claude and shared runtimes`, () => {
     const result = runCli([...kitArgs, "--tool", "codex"]);
     try {
@@ -5142,8 +5109,6 @@ test("validate-change is a manual command and the composite contracts reach revi
   assert.ok(review.includes("## Called From validate-change"));
   assert.ok(review.includes("Without that caller, never write the handoff"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/runtime-e2e-test/SKILL.md"), "utf8").includes('"expects": ["K1"]'));
-  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Accept a PR or a change just made | `/validate-change` |"));
-  assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/planner/SKILL.md"), "utf8").includes("| Targeted security or performance check on a change | `/security-performance-check` |"));
   assert.ok(fs.readFileSync(path.join(SOURCE_ROOT, "skills/validate-change/references/risk-rules.md"), "utf8").includes("security-performance-check"));
 
   const result = runCli(["--kit", "coding-standard", "--tool", "claude", "--bundle", "validate"]);

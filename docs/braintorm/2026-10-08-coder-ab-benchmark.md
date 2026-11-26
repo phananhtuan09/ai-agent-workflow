@@ -2,7 +2,7 @@
 
 Ngày: 2026-10-08.
 Đây là kịch bản đo đề xuất, chưa phải kết quả.
-Mục tiêu là quyết định giữ hay gỡ coder capability theo tiêu chí trong decision record cũ (đã gỡ cùng `coder`, xem git history; quyết định thay thế ở [Manual planner mode](../DECISIONS.md#manual-planner-mode)).
+Mục tiêu là quyết định giữ hay gỡ coder capability theo tiêu chí trong decision record cũ (đã gỡ cùng `coder`, xem git history; quyết định thay thế ở [Planner mode removed](../DECISIONS.md#planner-mode-removed)).
 
 ## Giả thuyết
 

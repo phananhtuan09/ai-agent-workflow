@@ -54,7 +54,7 @@ Source: Human request, 2026-11-08: update issue #92 with the review fixes and th
 
 - Decision: `brainstorm-partner` has two modes. Explore is the default and unchanged; Grill is an opt-in interview that settles every open feature or design decision before implementation, adapted from mattpocock/skills `grilling` (MIT).
 - Decision: Grill starts only when the user asks or accepts an offer. It asks the whole frontier of open decisions each round, looks up facts instead of asking, states purely technical choices as assumptions, and stays read-only; recording or implementing is offered as a choice at exit.
-- Why: Hard feature logic was being silently assumed and reworked later, and a separate grill skill would overlap `brainstorm-partner`, `proposal-designer`, and `planner`.
+- Why: Hard feature logic was being silently assumed and reworked later, and a separate grill skill would overlap `brainstorm-partner` and `proposal-designer`.
 - Constraints: Keep one thinking-partner skill and do not rename it. Grill must not override the minimal-questions default and must work in repositories without this kit's docs layout.
 
 ## Compact installed protocol docs
@@ -109,7 +109,7 @@ Source: Human request, 2026-10-29: implement issue #51 (validate-change composit
 Date: 2026-10-23 · Status: Active
 Source: Human request, 2026-10-23: move `brainstorm-partner`, `smart-commits`, and `triage` into `global-skills/` and update the READMEs.
 
-- Decision: The three skills live only under `global-skills/` and are installed machine-wide by following `global-skills/README.md`. No bundle installs them, and the `issue-triage` bundle is removed. `planner` still routes to them by name and falls back to `docs/WORKFLOW.md` when they are not installed.
+- Decision: The three skills live only under `global-skills/` and are installed machine-wide by following `global-skills/README.md`. No bundle installs them, and the `issue-triage` bundle is removed.
 - Why: Their content does not depend on this kit's docs layout, and the owner wants them in every project without installing them per repository.
 - Constraints: Global skills must not assume this kit's docs layout and read kit files only when present. A skill exists in exactly one source tree, `skills/` or `global-skills/`. `update --apply` retires earlier project copies.
 
@@ -145,17 +145,13 @@ Source: Human request, 2026-10-19: let the AI agent manage documentation instead
 - Why: When recording was a human chore, knowledge stayed empty or stale, and writing inferred knowledge as authority would turn existing defects into rules.
 - Constraints: Knowledge changes appear in the task report. Record only what should outlive the task.
 
-## Manual planner mode
+## Planner mode removed
 
-Date: 2026-10-16 · Status: Active
-Source: Unknown: no accepting request in repository history.
+Date: 2026-11-26 · Status: Active
+Source: Human request, 2026-11-26: remove the `planner` skill because it is not used.
 
-- Decision: `skills/planner/` is distributed through the `planner-mode` bundle with `quality-code-check` and `manage-project-knowledge`. The human turns it on with `/planner`; it then applies for the rest of the conversation and is never invoked automatically.
-- Decision: For each prompt it places the task on the workflow map, runs the fitting step or skill, and ends with two or three numbered next steps, one marked as recommended.
-- Decision: It asks first before git actions, outward actions, and unresolved product, security, compatibility, or operational decisions. An explicit request, or choosing a numbered option that names that exact action, approves that action only.
-- Decision: For an ambiguous prompt it resolves what it can from repository evidence, acts on cheap reversible guesses while stating them, and offers concrete readings as choices when a wrong guess would be expensive.
-- Why: The human spent effort writing the next prompt. The earlier hook-enforced `coder` capability, which this replaced and removed, was heavier than that need and limited to Claude Code.
-- Constraints: Plain instructions with no hooks, installed for Claude Code, Codex, and Antigravity. It must not override `AGENTS.md`, `docs/WORKFLOW.md`, or the stop points of the skills it routes to. A report format set by an assigning prompt replaces the next-step choices.
+- Decision: `skills/planner/` and the `planner-mode` bundle are removed; no skill replaces them.
+- Why: The human does not use planner mode, so shipping it only adds maintenance.
 
 ## Canonical skill source
 
