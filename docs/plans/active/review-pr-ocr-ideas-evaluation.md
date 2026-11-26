@@ -56,8 +56,8 @@ Stage 2 runs each built arm 3 times on every non-held-out scenario, then once on
 - 2026-11-26: plan written; answer keys for 031 and 032 in `ai-workflow-testbed-answers` branch `claude/review-pr-ocr-scenarios`.
 - 2026-11-26: sandbox `pr/031` (PR #15) and `pr/032` (PR #16) built. 031 is 26 files, smaller than the 30-40 target; 032's runtime outcomes are still unconfirmed (see its key).
 - Runs: each run is a fresh Sonnet cloud session started from this planning session, checking out only the sandbox. The planning session builds scenarios and scores; it never runs an arm.
-- Stage 1 started: 031 arm A run 1.
-- Next: score it, then the remaining stage-1 runs (A and O, 3 each, on 024, 027, 028, 001, 025, 031). Arm O needs the OCR skills and `ocr` CLI installed in the run session first.
+- Stage 1, 031 arm A done (3 runs, scored in the answers repo `scorecards/2026-11-26-031-review-pr-armA-*`): P1 trigger did not fire (every miss had its defect line in the agent's context); P2 did not fire on 031 (the missed item has no documented convention). Misses: C2 2/3 (attention), C4 1/3 (misreading).
+- Next: arm A on 028 (can still fire P2), then arm O on 031 and 028 (P3), then the rest of stage 1. Arm O needs the OCR skills and `ocr` CLI installed in the run session first.
 
 ## Dependencies
 
