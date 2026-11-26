@@ -61,6 +61,7 @@ Stage 2 runs each built arm 3 times on every non-held-out scenario, then once on
   New arm A2: `review-pr` at `2140b94` (`Khớp` needs the lines read and each covered file compared; a claim on a skipped file is `Chưa kiểm chứng`; code statements cite `path:line`), installed on sandbox branch `tooling/review-kit-2`.
   Acceptance on 031, 3 runs: every run gives the same outcome per item; C2 is either detected or its claim is `Chưa kiểm chứng` with `src/i18n` under `Giới hạn`, never `Khớp`; C1, C3, P1 stay 3/3; 0 false positives.
 - 2026-11-26, arm A2 on 031 (3 runs, answers repo `scorecards/2026-11-26-031-review-pr-armA2-summary.md`): C2 silent misses 2 → 0 (2 detected, 1 declared `Chưa kiểm chứng`); C1, C3, P1 3/3; 0 false positives. Not yet stable: C4 still missed 1/3, an admin-only claim checked against the client gate only. Candidate next rule: an access claim is `Khớp` only with the server line that enforces it.
+- 2026-11-26, arm A3 on 031 (A2 + access-claim rule, `0efd568`; answers repo `scorecards/2026-11-26-031-review-pr-armA3-summary.md`): every item 3/3, 0 false positives, the same outcome in all runs. Both rules were written from misses on 031, so confirm on a scenario not used to write them (024 or 027) next.
 
 ## Dependencies
 
