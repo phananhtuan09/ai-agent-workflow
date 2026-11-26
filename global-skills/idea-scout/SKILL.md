@@ -1,6 +1,7 @@
 ---
 name: idea-scout
 description: Propose evidence-based feature ideas for a project when the human has no specific idea yet, grounded in the project's intent, its GitHub issues, and similar products the human chooses, ending with a ranked shortlist of up to 5 ideas, in the same language the user wrote in. Use only when the user asks for feature ideas or what to build next for a project. Do not use to refine, debate, or spec an idea the user already has, or to scan the codebase for gaps.
+disable-model-invocation: true
 ---
 
 # Idea Scout

@@ -44,11 +44,6 @@
       "learning-case",
       "learning-evidence",
       "learning-review"
-    ],
-    "planner-mode": [
-      "planner",
-      "quality-code-check",
-      "manage-project-knowledge"
     ]
   },
   "kits": {

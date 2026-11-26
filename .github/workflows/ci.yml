@@ -24,8 +24,3 @@ jobs:
       - run: npm install --no-save playwright@1.63.0 && npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run check-skills
-      - name: Typecheck Paseo plugins
-        run: |
-          for plugin in attention usage-pill; do
-            (cd "paseo-plugins/$plugin" && npm ci && npm run typecheck)
-          done

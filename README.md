@@ -69,7 +69,6 @@ Record which source or revision you used when comparing installations.
 | Capability | Install flag | What it adds | Status |
 | --- | --- | --- | --- |
 | 🧭 Core protocol | `--kit coding-standard` | `AGENTS.md`, `docs/WORKFLOW.md`, and `docs/DECISIONS.md` | Stable |
-| 🗺️ Planner mode | `--bundle planner-mode` | Manually invoked `/planner` mode that picks the next workflow step and suggests numbered next prompts | Experimental |
 | 🧪 Runtime E2E tests | `--bundle testing` | Playwright-based plan and run workflow with evidence bundles | Stable |
 | ✅ Validate change | `--bundle validate` | Manually invoked `/validate-change` that runs static checks, review, and runtime E2E on one expectation list and reports one status | Experimental |
 | 🔒 Security performance check | `--bundle security-performance` | Manually invoked `/security-performance-check` for targeted security and performance probes on a change | Experimental |
@@ -96,7 +95,6 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `validate-change` | Manually invoked composite that validates a change against one expectation list with `quality-code-check`, `review-pr`, and `runtime-e2e-test`, gates risky changes once, and reports one status (`references/risk-rules.md` is project-customizable). |
 | `security-performance-check` | Manually invoked, report-only security and performance check on a PR, branch, diff, or area (`references/security-signals.md` and `references/performance-signals.md` are project-customizable). |
 | `senior-code-review` | Manually invoked, report-only deep review of your own code: approach, hard-to-reverse decisions, correctness, design, operability, and principles to study (`references/review-catalog.md` is project-customizable). |
-| `planner` | Manually invoked planner mode that resolves ambiguity, runs the fitting step, and suggests next steps. |
 | `workflow-evaluation`, `record-workflow-friction` | Evaluate AI workflows and record execution friction. |
 | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` | Run two-to-three-day learning mini-projects. |
 
@@ -111,24 +109,11 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `senior-review` | `senior-code-review` |
 | `evaluation` | `workflow-evaluation`, `record-workflow-friction` |
 | `learning` | `learning-workflow`, `learning-case`, `learning-evidence`, `learning-review` |
-| `planner-mode` | `planner`, `quality-code-check`, `manage-project-knowledge` |
 
 The bundle named `core` is optional; the `coding-standard` kit does not require it.
 `brainstorm-partner`, `smart-commits`, and `triage` are machine-wide skills in [`global-skills/`](global-skills), installed once per machine instead of by a bundle.
 
 </details>
-
-### Planner mode
-
-The `planner-mode` bundle installs the `planner` skill with `quality-code-check` and `manage-project-knowledge`; Codex and Antigravity receive the same skill.
-It routes to the global `brainstorm-partner` and `smart-commits` skills when they are installed on the machine.
-Type `/planner` to turn it on for the rest of the conversation.
-For each prompt the agent picks the fitting workflow step or skill, does it, and ends with two or three numbered next steps; reply `1`, `2`, or `3` to continue.
-It asks first before git actions, outward actions such as PR comments, and unresolved product decisions, and choosing an option that names one of those actions approves it.
-It is plain instructions with no hooks, so nothing changes until a session invokes it.
-Claude Code keeps it manual with `disable-model-invocation`; Codex and Antigravity rely on the skill description, so a session may occasionally start it on its own.
-No hook re-injects it after compaction in a very long session; invoke `/planner` again if the choices stop appearing.
-See the [decision record](docs/DECISIONS.md#manual-planner-mode) for scope.
 
 ### Runtime E2E tests
 
@@ -275,8 +260,7 @@ For an A/B benchmark, also compare globally available skills and instructions, r
 
 | Path | Contents | Installed by the CLI |
 | --- | --- | --- |
-| [`global-skills/`](global-skills) | Machine-wide skills (`brainstorm-partner`, `herdr-guide`, `idea-scout`, `prompt-leverage`, `smart-commits`, `triage`) | No; follow its README |
-| [`paseo-plugins/`](paseo-plugins) | [Paseo](https://paseo.sh) plugins (`attention`, `usage-pill`) | No; follow its README |
+| [`global-skills/`](global-skills) | Machine-wide skills (`brainstorm-partner`, `idea-scout`, `prompt-leverage`, `smart-commits`, `triage`) | No; follow its README |
 | `cli.js`, `lib/` | The `ai-workflow-init` installer and updater | — |
 | `docs/braintorm/` | Exploratory design notes, not product authority | No |
 | `docs/other/` | Preserved historical workflow documents, not the active protocol | No |

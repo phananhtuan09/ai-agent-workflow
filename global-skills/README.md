@@ -8,9 +8,8 @@ Hand this file to an agent and ask it to install them; it fetches the content st
 
 | Skill | Role |
 | --- | --- |
-| `brainstorm-partner` | Read-only thinking partner for vague ideas, hard bugs, and technical decisions; opt-in Grill mode interviews you until every feature or design decision is settled. |
-| `herdr-guide` | Owns Herdr CLI mechanics. |
-| `idea-scout` | Experimental. Proposes a ranked shortlist of up to 5 feature ideas grounded in project intent, GitHub issues, and chosen similar products, in the user's language. |
+| `brainstorm-partner` | Manually invoked. Read-only thinking partner for vague ideas, hard bugs, and technical decisions; opt-in Grill mode interviews you until every feature or design decision is settled. |
+| `idea-scout` | Experimental, manually invoked. Proposes a ranked shortlist of up to 5 feature ideas grounded in project intent, GitHub issues, and chosen similar products, in the user's language. |
 | `prompt-leverage` | Rewrites a raw prompt into Expected output, Effort, and How to verify, in the user's language. |
 | `smart-commits` | Groups the working tree into intent-based commits, following the repository's proof rules and commit convention, and pushes on request. |
 | `triage` | Labels GitHub issues as needs-info, ready-for-agent, or ready-for-human and comments with questions, an agent brief, or the decision needed; uses the `gh` account that matches the git remote. |
@@ -34,7 +33,7 @@ Every other runtime gets a short pointer file that tells the agent to read the C
 ```bash
 BASE=https://raw.githubusercontent.com/phananhtuan09/ai-agent-workflow/main/global-skills
 
-for skill in brainstorm-partner herdr-guide idea-scout prompt-leverage smart-commits triage; do
+for skill in brainstorm-partner idea-scout prompt-leverage smart-commits triage; do
   mkdir -p "$HOME/.claude/skills/$skill"
   curl -fsSL "$BASE/$skill/SKILL.md" -o "$HOME/.claude/skills/$skill/SKILL.md"
 done
@@ -46,7 +45,7 @@ Each stub keeps its own frontmatter, because `description` is what makes a runti
 Only the body is replaced by the pointer.
 
 ```bash
-for skill in brainstorm-partner herdr-guide idea-scout prompt-leverage smart-commits triage; do
+for skill in brainstorm-partner idea-scout prompt-leverage smart-commits triage; do
   src="$HOME/.claude/skills/$skill/SKILL.md"
   mkdir -p "$HOME/.agents/skills/$skill"
   {
@@ -73,7 +72,7 @@ These were established by testing against real runtimes; violating them fails si
 ## Verify
 
 ```bash
-for skill in brainstorm-partner herdr-guide idea-scout prompt-leverage smart-commits triage; do
+for skill in brainstorm-partner idea-scout prompt-leverage smart-commits triage; do
   head -2 ~/.claude/skills/$skill/SKILL.md ~/.agents/skills/$skill/SKILL.md
 done
 find ~/.claude/skills ~/.agents/skills -name SKILL.md -type l
