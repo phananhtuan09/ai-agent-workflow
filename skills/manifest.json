@@ -16,7 +16,7 @@
       "review-pr"
     ],
     "proposal": [
-      "proposal-designer"
+      "propose"
     ],
     "testing": [
       "runtime-e2e-test"

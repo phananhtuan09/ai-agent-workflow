@@ -25,6 +25,19 @@ Source: Human request, YYYY-MM-DD: <one-line summary>
 
 ## Entries
 
+## Propose skill
+
+Date: 2026-11-26 · Status: Active
+Source: Human request, 2026-11-26: rename `proposal-designer` to a shorter name, make it suggest next steps so commands need not be remembered, and connect it to `impeccable` mockups and `brainstorm-partner` Grill, settled in a Grill session.
+
+- Decision: `skills/proposal-designer/` is renamed `skills/propose/` in the `proposal` bundle; `update --apply` retires earlier `proposal-designer` copies.
+- Decision: `propose` infers the operation from the request and the proposal's state, and every reply ends with numbered next steps with exactly one ★. Choosing the numbered step that approves the current version counts as explicit approval.
+- Decision: `propose` never loads another skill. It always lists `brainstorm-partner` Grill when two or more decisions are open, whichever step carries the ★, and an `impeccable` mockup when the proposal has a user interface, as ready-to-copy commands; the `impeccable` command sets no scope limits. Grill Exit in `brainstorm-partner` likewise prints a `propose` command to record its decisions when `propose` is installed.
+- Decision: A topic may hold one optional `docs/proposals/<topic>/mockup.html`. It is never required to finalize or approve; `propose` flags it as stale after a substantive change to the flows or screens it shows. Before finalizing a consequential proposal, `propose` offers independent review, again after any substantive revision.
+- Decision: When revising, `propose` asks the human for any choice of externally observable behavior instead of choosing it, including choices raised by review findings.
+- Why: The human had to remember operation names and other skills' commands, and wants skills to stay independent.
+- Constraints: Proposal paths, statuses, and the bundle name are unchanged.
+
 ## Nightly Paseo friction sweep
 
 Date: 2026-11-10 · Status: Experimental
@@ -54,7 +67,7 @@ Source: Human request, 2026-11-08: update issue #92 with the review fixes and th
 
 - Decision: `brainstorm-partner` has two modes. Explore is the default and unchanged; Grill is an opt-in interview that settles every open feature or design decision before implementation, adapted from mattpocock/skills `grilling` (MIT).
 - Decision: Grill starts only when the user asks or accepts an offer. It asks the whole frontier of open decisions each round, looks up facts instead of asking, states purely technical choices as assumptions, and stays read-only; recording or implementing is offered as a choice at exit.
-- Why: Hard feature logic was being silently assumed and reworked later, and a separate grill skill would overlap `brainstorm-partner` and `proposal-designer`.
+- Why: Hard feature logic was being silently assumed and reworked later, and a separate grill skill would overlap `brainstorm-partner` and `propose`.
 - Constraints: Keep one thinking-partner skill and do not rename it. Grill must not override the minimal-questions default and must work in repositories without this kit's docs layout.
 
 ## Compact installed protocol docs

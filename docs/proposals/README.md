@@ -11,6 +11,8 @@ Create a proposal when the human requests one or invokes the proposal capability
 Use `docs/proposals/<lowercase-kebab-topic>/proposal.md`.
 Update the existing topic proposal instead of creating a competing file.
 Keep one proposal file per topic; do not add separate review, research, decision, or task files.
+A topic may also hold one optional `mockup.html` that illustrates the proposed interface.
+The mockup is never required to finalize or approve a proposal, and `proposal.md` stays the source of the proposed behavior.
 
 ## Document contract
 

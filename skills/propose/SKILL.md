@@ -1,9 +1,9 @@
 ---
-name: proposal-designer
+name: propose
 description: Turn a vague product or feature idea into a reviewable proposal in docs/proposals, or review, revise, compare alternatives, and finalize an existing proposal before human approval. Use for decisions that need product framing and high-level feasibility, not for ordinary bounded implementation work.
 ---
 
-# Proposal Designer
+# Propose
 
 Shape an idea into `docs/proposals/<topic>/proposal.md` so a human can decide whether to pursue it and which direction to take.
 The proposal covers product intent and high-level technical feasibility.
@@ -18,12 +18,23 @@ Treat an unapproved proposal as a candidate, not accepted repository intent.
 Surface conflicts with accepted intent instead of silently replacing it.
 After approval, record accepted long-lived product rules or decisions in `docs/DECISIONS.md` when the current task authorizes that work; the proposal does not replace `docs/DECISIONS.md`.
 
-Use one topic directory and one `proposal.md` per proposal.
-Keep research findings, review feedback, alternatives, and human decisions in that file when they materially affect the proposal.
+Use one topic directory with one `proposal.md` and at most one optional `mockup.html`.
+Keep research findings, review feedback, alternatives, and human decisions in `proposal.md` when they materially affect the proposal.
 Do not create companion review, research, decision, or task files for this capability.
 Follow the local namespace contract for naming, status, and content.
 
 ## Choose the operation
+
+The human does not need to name an operation.
+Infer it from the request and the proposal's current state:
+
+- No proposal exists for the topic: Create.
+- Draft with new feedback, Grill results, research, or review findings: Revise.
+- Draft that needs a direction chosen between realistic options: Compare.
+- Draft with no open decision: Finalize, after offering independent review when the proposal is consequential.
+- Ready for Approval: wait for the human's approval or requested changes.
+
+When the human names an operation, run that one.
 
 - **Create:** Start with the human's idea, even if it is only one sentence.
   Investigate the problem, users, existing behavior, constraints, and feasible directions.
@@ -36,8 +47,9 @@ Follow the local namespace contract for naming, status, and content.
   The reviewer does not edit the file or redesign the proposal.
   Return findings to the author and human as advisory feedback.
   If a fresh isolated sub-agent is unavailable, report that independent review could not be performed; do not present a self-review as independent.
-- **Revise:** Update the same file from human feedback, new research, or review findings.
+- **Revise:** Update the same file from human feedback, Grill results, new research, or review findings.
   Resolve supported issues, preserve still-valid decisions, and leave unresolved material choices explicit.
+  When a finding or gap can only be closed by choosing externally observable behavior, such as what a user sees, when, or who may act, ask the human instead of choosing; record the question as open until answered.
   A substantive change to an Approved proposal returns it to Draft until the human approves the changed version.
 - **Compare:** Investigate a small set of realistic alternatives in the current proposal.
   Explain how each meets the goal, its meaningful trade-offs, evidence, and limitations.
@@ -46,11 +58,18 @@ Follow the local namespace contract for naming, status, and content.
 - **Finalize:** Remove stale alternatives and resolved questions from the main recommendation, check that the proposed behavior and feasibility claims are coherent and sourced, and mark the document Ready for Approval.
   Do this before the final human decision.
   Mark Approved only after the human explicitly approves that version; approval of an earlier version does not transfer to a substantively changed one.
+  Choosing the numbered next step that approves the current version counts as explicit approval of that version.
 
 Operations are entry points, not a required sequence.
 Create may include comparison or revision when useful.
-Run independent review when requested or when its findings would materially improve a consequential proposal; if review is invoked, preserve the independence rule above.
 Reviewer feedback is advisory, and the human has final authority over approval.
+
+## Mockup
+
+A mockup is an optional illustration at `docs/proposals/<topic>/mockup.html`.
+It is never required to finalize or approve a proposal.
+This skill does not create or edit the mockup; it suggests the `impeccable` command that does.
+When a mockup exists and a later revision substantively changes the flows, screens, or states it shows, say the mockup is stale and suggest regenerating it.
 
 ## Research and questions
 
@@ -85,3 +104,30 @@ Its assessment never approves the proposal.
 
 Report the proposal path, current status, recommendation, material open decisions, sources or checks actually used, and any independent review limitation.
 Do not start planning or implementation from this skill.
+
+End every reply with numbered next steps and mark exactly one with ★ as the recommendation.
+The human picks a step by its number.
+Offer only steps that fit the current state.
+A step marked "always listed" must appear whenever its state applies, even when another step carries the ★:
+
+| State | Step to offer |
+| --- | --- |
+| Draft with two or more open decisions | Grill them with `brainstorm-partner` (always listed); answering them directly may also be listed |
+| Draft with one open decision | Answer it directly |
+| Realistic alternatives not yet compared | Compare |
+| The proposal describes a user interface or flow and has no mockup | Create a mockup with `impeccable` |
+| The mockup is stale | Regenerate the mockup with `impeccable` |
+| Consequential proposal with no open decision whose current version has not been independently reviewed, including after a substantive revision | Independent review, offered before Finalize |
+| Review findings exist | Revise from the findings |
+| Draft with no open decision | Finalize |
+| Ready for Approval | Approve this version; request changes |
+| Approved | Record lasting rules in `docs/DECISIONS.md`; plan or implement through the normal workflow; stop |
+
+Never load or invoke another skill yourself.
+For a step that belongs to another skill, print a ready-to-copy command with the proposal path filled in, for example:
+
+- `/brainstorm-partner grill docs/proposals/<topic>/proposal.md`
+- `/impeccable mockup for docs/proposals/<topic>/proposal.md, save to docs/proposals/<topic>/mockup.html`
+
+When the human picks such a step by number, print the command again instead of running it.
+If that skill does not appear to be installed, still print the command and add how to install it: `brainstorm-partner` through the `global-skills/README.md` of the ai-workflow-init kit, and `impeccable` with `npx impeccable install --scope=global --no-hooks`.

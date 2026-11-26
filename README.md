@@ -90,7 +90,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | `review-pr` | Reviews a PR, branch, commit range, or diff for evidence-backed blocking defects, and checks the PR description's claims against the diff and the human request. |
 | `quality-code-check` | Lint, type check, build, and failing-validation debugging with project-native commands, plus an evidence-based surface review of AI-written code (`references/surface-rules.md` is project-customizable). |
 | `manage-project-knowledge` | Finds and explains durable knowledge under `docs/`, keeps it current on its own after each task, and maintains all project docs when invoked without a topic. |
-| `proposal-designer` | Turns a vague idea into a reviewable proposal under `docs/proposals/`. |
+| `propose` | Turns a vague idea into a reviewable proposal under `docs/proposals/`, picks the next operation from the proposal's state, and ends with numbered next steps, including ready-to-copy `brainstorm-partner` Grill and `impeccable` mockup commands. |
 | `runtime-e2e-test` | Plans and runs real web and HTTP API E2E tests with Playwright. |
 | `validate-change` | Manually invoked composite that validates a change against one expectation list with `quality-code-check`, `review-pr`, and `runtime-e2e-test`, gates risky changes once, and reports one status (`references/risk-rules.md` is project-customizable). |
 | `security-performance-check` | Manually invoked, report-only security and performance check on a PR, branch, diff, or area (`references/security-signals.md` and `references/performance-signals.md` are project-customizable). |
@@ -102,7 +102,7 @@ Add one with `--skill <name>` or a group with `--bundle <name>`.
 | --- | --- |
 | `core` | `review-pr`, `manage-project-knowledge` |
 | `common-review` | `quality-code-check`, `review-pr` |
-| `proposal` | `proposal-designer` |
+| `proposal` | `propose` |
 | `testing` | `runtime-e2e-test` |
 | `validate` | `validate-change`, `quality-code-check`, `review-pr`, `runtime-e2e-test`, `security-performance-check` |
 | `security-performance` | `security-performance-check` |
