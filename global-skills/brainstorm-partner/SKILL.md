@@ -189,6 +189,7 @@ Then:
 1. Summarize every settled decision, separating those the user decided from those you assumed.
 2. State that nothing has been written to the repository.
 3. Offer numbered next steps with one ★, such as leaving read-only mode to record lasting decisions through `manage-project-knowledge` or a proposal, leaving it to implement, or continuing to grill an area still worth probing.
+   When the grilled subject is a proposal under `docs/proposals/` and the `propose` skill is installed, offer a step that prints a ready-to-copy command such as `/propose revise docs/proposals/<topic>/proposal.md with these Grill decisions`; do not load `propose` yourself.
 
 Leaving read-only mode needs its own explicit choice: the number of that step, or words such as "implement" or "record".
 A bare `ok` or `yes` after Exit does not pick a step; ask which one.

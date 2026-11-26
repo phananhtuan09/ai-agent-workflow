@@ -11,12 +11,15 @@ Create a proposal when the human requests one or invokes the proposal capability
 Use `docs/proposals/<lowercase-kebab-topic>/proposal.md`.
 Update the existing topic proposal instead of creating a competing file.
 Keep one proposal file per topic; do not add separate review, research, decision, or task files.
+A topic may also hold one optional `mockup.html` that illustrates the proposed interface.
+The mockup is never required to finalize or approve a proposal, and `proposal.md` stays the source of the proposed behavior.
 
 ## Document contract
 
 Begin with a descriptive title and `Status: Draft | Ready for Approval | Approved`.
 Use `Draft` while material decisions or evidence remain open.
 Use `Ready for Approval` only when the current version is coherent, its material choices are resolved into a recommendation, and no blocking question remains.
+An optional `Independent review:` line under the status records the date and finding counts of the last independent review, and whether a later revision outdated it.
 Use `Approved` only after explicit human approval of the current version; record the approval decision and date in the proposal.
 Return an Approved proposal to Draft when its substantive recommendation or behavior changes.
 

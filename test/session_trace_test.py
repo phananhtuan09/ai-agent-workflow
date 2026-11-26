@@ -219,7 +219,7 @@ class SessionTraceTests(unittest.TestCase):
                              "[Request interrupted by user]"])
         marked = self.claude_session("p", "marked", week[:2], ["fix tests #friction agent ignored the plan", "ok"])
         with marked.open("a", encoding="utf-8") as handle:
-            for block in [{"type": "tool_use", "id": "s", "name": "Skill", "input": {"skill": "proposal-designer"}},
+            for block in [{"type": "tool_use", "id": "s", "name": "Skill", "input": {"skill": "propose"}},
                           {"type": "tool_use", "id": "r", "name": "Read",
                            "input": {"file_path": "/x/.claude/skills/review-pr/SKILL.md"}},
                           {"type": "tool_use", "id": "b", "name": "Bash",
@@ -269,14 +269,14 @@ class SessionTraceTests(unittest.TestCase):
         marked = next(item for item in project["sessions"] if item["session_id"] == "marked")
         self.assertEqual(marked["triage"]["friction_notes"][0]["note"], "agent ignored the plan")
         self.assertLess(marked["triage"]["score"], noisy["triage"]["score"])
-        self.assertEqual(marked["triage"]["skills_used"], ["proposal-designer", "review-pr", "triage"])
+        self.assertEqual(marked["triage"]["skills_used"], ["propose", "review-pr", "triage"])
 
     def test_skills_loaded_counts_reads_but_not_edits_or_mentions(self):
         loaded = MODULE["skills_loaded"]
         self.assertEqual(loaded("exec_command", {"cmd": ["bash", "-lc", "cat .agents/skills/triage/SKILL.md"]}),
                          {"triage"})
-        self.assertEqual(loaded("exec", 'await tools.exec_command({cmd: "head -50 .agents/skills/proposal-designer/SKILL.md"})'),
-                         {"proposal-designer"})
+        self.assertEqual(loaded("exec", 'await tools.exec_command({cmd: "head -50 .agents/skills/propose/SKILL.md"})'),
+                         {"propose"})
         self.assertEqual(loaded("exec_command", {"cmd": "sed -i 's/a/b/' .agents/skills/triage/SKILL.md"}), set())
         self.assertEqual(loaded("Edit", {"file_path": "/x/skills/triage/SKILL.md", "old_string": "a"}), set())
 

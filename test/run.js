@@ -179,10 +179,10 @@ test("extra skills are deduplicated and appended", () => {
   const { skillIds } = resolveSkills({
     sourceRoot: SOURCE_ROOT,
     kitId: "coding-standard",
-    extraSkills: ["quality-code-check", "quality-code-check", "proposal-designer"],
+    extraSkills: ["quality-code-check", "quality-code-check", "propose"],
   });
   assert.strictEqual(skillIds.filter((id) => id === "quality-code-check").length, 1);
-  assert.strictEqual(skillIds[skillIds.length - 1], "proposal-designer");
+  assert.strictEqual(skillIds[skillIds.length - 1], "propose");
 });
 
 test("workflow-eval resolves both evaluation skills", () => {
@@ -211,8 +211,8 @@ test("learning-workflow resolves the coordinator and focused helpers", () => {
 
 test("repeatable --skill flags are parsed", () => {
   assert.deepStrictEqual(
-    getCliSelectedSkills(["--skill", "quality-code-check", "--skill", "proposal-designer"]),
-    ["quality-code-check", "proposal-designer"]
+    getCliSelectedSkills(["--skill", "quality-code-check", "--skill", "propose"]),
+    ["quality-code-check", "propose"]
   );
 });
 
@@ -2617,6 +2617,33 @@ test("update retires coder files and warns when locally merged coder hooks remai
     assert.ok(!fs.existsSync(path.join(fixture.workspace, ".claude/skills/coder/scripts/stop-gate.js")));
     assert.strictEqual(fs.readFileSync(settingsPath, "utf8"), merged);
     assert.ok(apply.stdout.includes("WARNING: the coder skill was retired"), apply.stdout);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update installs a renamed skill under its current id and retires the former copy", () => {
+  const fixture = createUpdateFixture("claude");
+  try {
+    copyFixturePath(path.join(SOURCE_ROOT, "docs/proposals"), path.join(fixture.sourceRoot, "docs/proposals"));
+    const hash = require("../lib/update").hashBytes;
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    const legacyPath = ".claude/skills/proposal-designer/SKILL.md";
+    fs.mkdirSync(path.join(fixture.workspace, path.dirname(legacyPath)), { recursive: true });
+    fs.writeFileSync(path.join(fixture.workspace, legacyPath), "legacy\n");
+    state.core.skills.push("proposal-designer");
+    state.skills.push("proposal-designer");
+    state.files.push({ scope: "repository", path: legacyPath, hash: hash(Buffer.from("legacy\n")) });
+    fs.writeFileSync(fixture.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const apply = fixture.run(["update", "--apply"]);
+    assert.strictEqual(apply.status, 0, apply.stderr || apply.stdout);
+    assert.ok(apply.stdout.includes(`RETIRE repository:${legacyPath}`), apply.stdout);
+    assert.ok(!fs.existsSync(path.join(fixture.workspace, legacyPath)));
+    assert.ok(fs.existsSync(path.join(fixture.workspace, ".claude/skills/propose/SKILL.md")));
+    const updated = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    assert.ok(updated.skills.includes("propose"));
+    assert.ok(!updated.skills.includes("proposal-designer"));
   } finally {
     fixture.cleanup();
   }
