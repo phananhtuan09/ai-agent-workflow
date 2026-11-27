@@ -65,6 +65,13 @@ Stage 2 runs each built arm 3 times on every non-held-out scenario, then once on
 - 2026-11-26, arm A3 on 027 (confirmation, `scorecards/2026-11-26-027-review-pr-armA3-summary.md`): stable, every item the same in all 3 runs, 0 false positives. D1, D3, D5, D6, P1, P2 3/3; D2 (`passwordHash` in note responses) 0/3, an attention miss; D4 (N+1) 0/3, outside review-pr's performance bar by design.
 - 2026-11-27, arm A4 (`cccf155`: rule 2 generalized to enforcing-layer evidence, status vocabulary line; `scorecards/2026-11-27-review-pr-armA4-summary.md`): 031 every item 3/3, 027 same as A3, 0 false positives, stable on both. The status-vocabulary line had no effect (off-vocabulary status in 3 of 6 runs). D2 kept as a known limit: the human ruled that review-pr holds only common rules.
 
+## Outcome (2026-11-27)
+
+- Shipped: `review-pr` evidence rules from arm A4 without the status-vocabulary line (no measurable effect): `Khớp` cites the lines read and compares each covered file, a claim on a skipped file is `Chưa kiểm chứng`, evidence sits at the layer that enforces the claim, code statements cite `path:line`.
+- Result: same outcome on every item across 3 Sonnet runs on 031 and on 027, 0 false positives; 031 C2 went from 1/3 to 3/3 and C4 from 2/3 to 3/3.
+- Not built: P1 (every file already reached the context at 031's size), P2 and P3 (paused when the goal became run-to-run stability; the human ruled that `review-pr` keeps only common rules).
+- Known limits: 027 D2 (a secret field spread into a response) is missed in every run; it belongs to `security-performance-check` or project-specific rules, not `review-pr`. 027 D4 (N+1) is outside `review-pr`'s performance bar by design.
+
 ## Dependencies
 
 - Sandbox needs the OCR skills (`npx skills add alibaba/open-code-review`) and the `ocr` CLI for arm O; install on a separate sandbox commit, recorded in each scorecard.
