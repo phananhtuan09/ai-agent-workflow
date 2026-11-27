@@ -63,6 +63,7 @@ Stage 2 runs each built arm 3 times on every non-held-out scenario, then once on
 - 2026-11-26, arm A2 on 031 (3 runs, answers repo `scorecards/2026-11-26-031-review-pr-armA2-summary.md`): C2 silent misses 2 → 0 (2 detected, 1 declared `Chưa kiểm chứng`); C1, C3, P1 3/3; 0 false positives. Not yet stable: C4 still missed 1/3, an admin-only claim checked against the client gate only. Candidate next rule: an access claim is `Khớp` only with the server line that enforces it.
 - 2026-11-26, arm A3 on 031 (A2 + access-claim rule, `0efd568`; answers repo `scorecards/2026-11-26-031-review-pr-armA3-summary.md`): every item 3/3, 0 false positives, the same outcome in all runs. Both rules were written from misses on 031, so confirm on a scenario not used to write them (024 or 027) next.
 - 2026-11-26, arm A3 on 027 (confirmation, `scorecards/2026-11-26-027-review-pr-armA3-summary.md`): stable, every item the same in all 3 runs, 0 false positives. D1, D3, D5, D6, P1, P2 3/3; D2 (`passwordHash` in note responses) 0/3, an attention miss; D4 (N+1) 0/3, outside review-pr's performance bar by design.
+- 2026-11-27, arm A4 (`cccf155`: rule 2 generalized to enforcing-layer evidence, status vocabulary line; `scorecards/2026-11-27-review-pr-armA4-summary.md`): 031 every item 3/3, 027 same as A3, 0 false positives, stable on both. The status-vocabulary line had no effect (off-vocabulary status in 3 of 6 runs). D2 kept as a known limit: the human ruled that review-pr holds only common rules.
 
 ## Dependencies
 
